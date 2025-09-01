@@ -52,3 +52,7 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/.vs
+/BS-API-Secure/ApiGateway/.vs
+/BS-API-Secure/Authentication/.vs
+/BS-API-Secure/TokenManagement/.vs
