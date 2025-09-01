@@ -1,0 +1,35 @@
+import { Routes, Route } from "react-router-dom";
+import MainLayout from "./layout/MainLayout";
+import LoginPage from "./pages/LoginPage";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+export default function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<div />} />
+        <Route
+          path="timesheet"
+          element={<div>Timesheet Page - Coming Soon</div>}
+        />
+        <Route path="tasks" element={<div>Tasks Page - Coming Soon</div>} />
+        <Route
+          path="calendar"
+          element={<div>Calendar Page - Coming Soon</div>}
+        />
+        <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
+        <Route path="team" element={<div>Team Page - Coming Soon</div>} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
