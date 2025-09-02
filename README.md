@@ -14,6 +14,6 @@ Umbrella project ของ BS รวมระบบทั้งหมด:
 - `hotfix/*` → แก้ปัญหาด่วน  
 
 ```bash
-git clone https://your-git-server/bs-platform.git
+git clone https://github.com/phayungsakp/bs-platform.git
 cd bs-platform
 git checkout -b feature/ชื่อฟีเจอร์
