@@ -42,6 +42,7 @@ import logoHorizontalSvg from "../assets/logo-horizontal.svg";
 
 import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
+import TopLinearProgress from "../components/TopLinearProgress";
 
 const drawerWidth = 280;
 const collapsedWidth = 72;
@@ -125,8 +126,8 @@ export default function MainLayout() {
   ];
 
   // Mock user data - ในอนาคตใช้ข้อมูลจาก useAuth แทน
-  const [currentUser,setCurrentUser] = useState(null);
-
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(false);
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   const toggleDrawer = () => setOpen((prev) => !prev);
@@ -170,11 +171,11 @@ export default function MainLayout() {
     endpoint: "/alive/status",
     intervalMs: 120000, // 2 นาที
   });
-useEffect(() => {
-  if (currentUser === null) {
-    setCurrentUser(user);
-  }
-}, [currentUser, user]);
+  useEffect(() => {
+    if (currentUser === null) {
+      setCurrentUser(user);
+    }
+  }, [currentUser, user]);
 
   return (
     <Box
@@ -294,7 +295,8 @@ useEffect(() => {
           </Box>
         </Toolbar>
       </AppBar>
-
+      {/*liner process*/}
+      <TopLinearProgress open={loading} />
       {/* Notification Menu */}
       <Menu
         anchorEl={notificationAnchor}
@@ -512,68 +514,13 @@ useEffect(() => {
         </DrawerHeader>
         <Divider />
         <SidebarMenu
+          setLoading={setLoading}
           open={open}           // state ที่ควบคุม sidebar เปิด/ปิด
           isMobile={isMobile}   // ไว้ใช้สำหรับ mobile responsive
           setOpen={setOpen}     // ฟังก์ชันเปลี่ยนค่า open
           theme={theme}         // ส่ง theme ของ MUI เข้าไป
         />
-        {/* <List sx={{ px: 2, py: 1 }}>
-          {menuItems.map(({ text, path }) => (
-            <Tooltip
-              key={text}
-              title={!open ? text : ""}
-              placement="right"
-              arrow
-            >
-              <ListItemButton
-                onClick={() => {
-                  navigate(path);
-                  if (isMobile) setOpen(false);
-                }}
-                sx={{
-                  minHeight: 48,
-                  justifyContent: open ? "initial" : "center",
-                  px: 2,
-                  py: 1.5,
-                  mb: 0.5,
-                  borderRadius: 2,
-                  "&:hover": {
-                    bgcolor: theme.palette.action.hover,
-                  },
-                  "&.Mui-selected": {
-                    bgcolor: theme.palette.primary.main,
-                    color: theme.palette.primary.contrastText,
-                    "&:hover": {
-                      bgcolor: theme.palette.primary.dark,
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    minWidth: 0,
-                    mr: open ? 2 : "auto",
-                    justifyContent: "center",
-                    color: "inherit",
-                  }}
-                >
-                  <MenuOpenIcon/
-                </ListItemIcon>
-                {open && (
-                  <ListItemText
-                    primary={text}
-                    sx={{
-                      color: "inherit",
-                      "& .MuiTypography-root": {
-                        fontWeight: 500,
-                      },
-                    }}
-                  />
-                )}
-              </ListItemButton>
-            </Tooltip>
-          ))}
-        </List> */}
+       
       </StyledDrawer>
 
       {/* Main content */}

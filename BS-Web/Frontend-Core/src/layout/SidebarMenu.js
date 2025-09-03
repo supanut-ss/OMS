@@ -13,7 +13,7 @@ import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import useMenuItems from "../contexts/useMenuItems";
 
-export default function SidebarMenu({  open, isMobile, setOpen, theme }) {
+const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme }) => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState({});
 
@@ -27,7 +27,7 @@ export default function SidebarMenu({  open, isMobile, setOpen, theme }) {
     <List sx={{ px: 2, py: 1 }}>
       {menuItems?.map(({ text, path, icon, submenu }) => {
         const key = `${text}-${path}`; // ป้องกัน text ซ้ำ
-        const hasSubmenu = submenu?.length > 0 ;
+        const hasSubmenu = submenu?.length > 0;
 
         return (
           <div key={key}>
@@ -37,6 +37,7 @@ export default function SidebarMenu({  open, isMobile, setOpen, theme }) {
                   if (hasSubmenu) {
                     handleExpand(key); // ✅ toggle expand
                   } else {
+                    setLoading(true);
                     navigate(path);
                     if (isMobile) setOpen(false);
                   }
@@ -95,6 +96,7 @@ export default function SidebarMenu({  open, isMobile, setOpen, theme }) {
                     <ListItemButton
                       key={`${key}-${sub.text}`}
                       onClick={() => {
+                        setLoading(true);
                         navigate(sub.path);
                         if (isMobile) setOpen(false);
                       }}
@@ -125,3 +127,4 @@ export default function SidebarMenu({  open, isMobile, setOpen, theme }) {
     </List>
   );
 }
+export default SidebarMenu;
