@@ -22,6 +22,7 @@ import {
   GridActionsCellItem,
   GridToolbarContainer,
   GridToolbarQuickFilter,
+  GRID_CHECKBOX_SELECTION_COL_DEF,
 } from "@mui/x-data-grid-pro";
 import {
   Edit,
@@ -113,12 +114,20 @@ const DynamicGridToolbar = ({
   showAdd = true,
   headerFiltersEnabled,
   onToggleHeaderFilters,
+  bsBulkEdit = false,
+  bsBulkAdd = false,
+  selectedRowCount = 0,
+  onBulkEdit,
+  onBulkDelete,
 }) => {
   console.log("🔧 DynamicGridToolbar rendering:", {
     onAdd: typeof onAdd,
     onAddExists: !!onAdd,
     showAdd,
     headerFiltersEnabled,
+    bsBulkEdit,
+    bsBulkAdd,
+    selectedRowCount,
   });
 
   // Force render check
@@ -142,7 +151,7 @@ const DynamicGridToolbar = ({
           borderRadius: 1,
         }}
       >
-        🔧 TOOLBAR ACTIVE
+        🔧 BS-TOOLBAR
       </Typography>
 
       {/* Add button */}
@@ -157,6 +166,48 @@ const DynamicGridToolbar = ({
         >
           Add Record
         </Button>
+      )}
+
+      {/* Bulk Add button */}
+      {bsBulkAdd && (
+        <Button
+          size="small"
+          startIcon={<Add />}
+          onClick={() => console.log("Bulk Add clicked")}
+          variant="outlined"
+          color="primary"
+          sx={{ mr: 1 }}
+        >
+          Bulk Add
+        </Button>
+      )}
+
+      {/* Bulk Edit/Delete buttons - show only when rows are selected */}
+      {selectedRowCount > 0 && (
+        <>
+          {bsBulkEdit && (
+            <Button
+              size="small"
+              startIcon={<Edit />}
+              onClick={onBulkEdit}
+              variant="outlined"
+              color="info"
+              sx={{ mr: 1 }}
+            >
+              Bulk Edit ({selectedRowCount})
+            </Button>
+          )}
+          <Button
+            size="small"
+            startIcon={<Delete />}
+            onClick={onBulkDelete}
+            variant="outlined"
+            color="error"
+            sx={{ mr: 1 }}
+          >
+            Bulk Delete ({selectedRowCount})
+          </Button>
+        </>
       )}
 
       {/* Header Filters Toggle */}
@@ -190,23 +241,45 @@ const DynamicGridToolbar = ({
 };
 
 /**
- * DynamicDataGrid - DataGrid ที่สร้างจาก metadata ของตารางอัตโนมัติ
+ * BSDataGrid - DataGrid ที่สร้างจาก metadata ของตารางอัตโนมัติ พร้อมรองรับ properties ครบครัน
  *
- * การใช้งานง่ายที่สุด:
- * <DynamicDataGrid tableName="dbo.Users" />
+ * การใช้งานพื้นฐาน:
+ * <BSDataGrid bsObj="t_wms_customer" />
  *
  * การใช้งานแบบเต็ม:
- * <DynamicDataGrid
- *   tableName="dbo.Users"
+ * <BSDataGrid
+ *   bsLocale="th"
+ *   bsPreObj="default"
+ *   bsObj="t_wms_customer"
+ *   bsCols="name,email,phone"
+ *   bsObjBy="name asc, created_date desc"
+ *   bsObjWh="status='active'"
+ *   bsPinColsLeft="name,id"
+ *   bsPinColsRight="actions"
+ *   bsRowPerPage={25}
+ *   bsBulkEdit={true}
+ *   bsBulkAdd={true}
+ *   bsShowDescColumn={false}
+ *   bsComboBox={[
+ *     {
+ *       Column: "status",
+ *       Display: "name",
+ *       Value: "id",
+ *       Default: "--- Select Status ---",
+ *       PreObj: "default",
+ *       Obj: "t_wms_status",
+ *       ObjWh: "active=1",
+ *       ObjBy: "name asc"
+ *     }
+ *   ]}
+ *   onCheckBoxSelected={(selectedRows) => console.log(selectedRows)}
  *   onEdit={(row) => console.log('Edit:', row)}
  *   onDelete={(id) => console.log('Delete:', id)}
  *   onAdd={() => console.log('Add new')}
- *   readOnly={false}
- *   showToolbar={true}
- *   height={600}
  * />
  */
 const BSDataGrid = ({
+  // Legacy props (เก่า)
   tableName,
   onEdit,
   onDelete,
@@ -217,8 +290,77 @@ const BSDataGrid = ({
   showAdd = true,
   height = 600,
   autoLoad = true,
+
+  // New BS properties (ใหม่)
+  bsLocale = "en",
+  bsPreObj = "default",
+  bsObj,
+  bsSaveObj,
+  bsCols,
+  bsObjBy,
+  bsObjWh,
+  bsBulkEdit = false,
+  bsBulkAdd = false,
+  bsShowDescColumn = true,
+  bsPinColsLeft,
+  bsPinColsRight,
+  bsRowPerPage = 25,
+  bsComboBox = [],
+  onCheckBoxSelected,
+
   ...props
 }) => {
+  // Determine effective table name (bsObj takes priority over tableName)
+  const effectiveTableName = bsObj || tableName;
+
+  // Parse BS-specific configurations
+  const parsedCols = useMemo(() => {
+    if (!bsCols) return null;
+    return bsCols
+      .split(",")
+      .map((col) => col.trim())
+      .filter(Boolean);
+  }, [bsCols]);
+
+  const parsedObjBy = useMemo(() => {
+    if (!bsObjBy) return [];
+    return bsObjBy.split(",").map((item) => {
+      const [field, direction = "asc"] = item.trim().split(/\s+/);
+      return {
+        field,
+        sort: direction.toLowerCase() === "desc" ? "desc" : "asc",
+      };
+    });
+  }, [bsObjBy]);
+
+  const parsedPinColsLeft = useMemo(() => {
+    if (!bsPinColsLeft) return [];
+    return bsPinColsLeft
+      .split(",")
+      .map((col) => col.trim())
+      .filter(Boolean);
+  }, [bsPinColsLeft]);
+
+  const parsedPinColsRight = useMemo(() => {
+    if (!bsPinColsRight) return [];
+    return bsPinColsRight
+      .split(",")
+      .map((col) => col.trim())
+      .filter(Boolean);
+  }, [bsPinColsRight]);
+
+  const comboBoxConfig = useMemo(() => {
+    const config = {};
+    if (Array.isArray(bsComboBox)) {
+      bsComboBox.forEach((combo) => {
+        if (combo.Column) {
+          config[combo.Column] = combo;
+        }
+      });
+    }
+    return config;
+  }, [bsComboBox]);
+
   const {
     metadata,
     loading: metadataLoading,
@@ -228,7 +370,7 @@ const BSDataGrid = ({
     deleteRecord,
     createRecord,
     updateRecord,
-  } = useDynamicCrud(tableName);
+  } = useDynamicCrud(effectiveTableName);
 
   // DataGrid state
   const [rows, setRows] = useState([]);
@@ -239,10 +381,29 @@ const BSDataGrid = ({
 
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
-    pageSize: 25,
+    pageSize: bsRowPerPage,
   });
-  const [sortModel, setSortModel] = useState([]);
-  const [filterModel, setFilterModel] = useState({ items: [] });
+  const [sortModel, setSortModel] = useState(parsedObjBy);
+  const [filterModel, setFilterModel] = useState({
+    items: bsObjWh
+      ? [
+          {
+            field: "custom_where",
+            operator: "custom",
+            value: bsObjWh,
+          },
+        ]
+      : [],
+  });
+
+  // Row selection state for checkbox selection
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+
+  // Column pinning state
+  const [pinnedColumns, setPinnedColumns] = useState({
+    left: parsedPinColsLeft,
+    right: parsedPinColsRight,
+  });
 
   // Dialog & form states for built-in CRUD
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -251,12 +412,12 @@ const BSDataGrid = ({
   const [formData, setFormData] = useState({});
   const [formLoading, setFormLoading] = useState(false);
 
-  // Load metadata when tableName changes
+  // Load metadata when table name changes
   useEffect(() => {
-    if (tableName && autoLoad) {
+    if (effectiveTableName && autoLoad) {
       loadMetadata();
     }
-  }, [tableName, autoLoad, loadMetadata]);
+  }, [effectiveTableName, autoLoad, loadMetadata]);
 
   // Build API request from DataGrid state
   const buildRequest = useCallback(() => {
@@ -276,7 +437,7 @@ const BSDataGrid = ({
     }));
 
     return {
-      tableName,
+      tableName: effectiveTableName,
       page: paginationModel.page + 1, // API uses 1-based pagination
       pageSize: paginationModel.pageSize,
       sortModel: sortModelForApi,
@@ -284,19 +445,33 @@ const BSDataGrid = ({
         items: filterItems,
         logicOperator: filterModel.logicOperator || "and",
       },
+      // Additional BS properties
+      preObj: bsPreObj,
+      columns: parsedCols ? parsedCols.join(",") : undefined,
+      customWhere: bsObjWh,
+      customOrderBy: bsObjBy,
     };
-  }, [tableName, paginationModel, sortModel, filterModel]);
+  }, [
+    effectiveTableName,
+    paginationModel,
+    sortModel,
+    filterModel,
+    bsPreObj,
+    bsObjBy,
+    bsObjWh,
+    parsedCols,
+  ]);
 
   // Load data from API
   const loadData = useCallback(async () => {
-    if (!tableName || !metadata) return;
+    if (!effectiveTableName || !metadata) return;
 
     setLoading(true);
     setError(null);
 
     try {
       const request = buildRequest();
-      Logger.log("📡 Loading dynamic data with request:", request);
+      Logger.log("📡 Loading BS dynamic data with request:", request);
 
       const result = await getTableData(request);
 
@@ -313,19 +488,19 @@ const BSDataGrid = ({
       setRows(processedRows);
       setRowCount(result.rowCount || 0);
 
-      Logger.log("📊 Dynamic data loaded successfully:", {
+      Logger.log("📊 BS dynamic data loaded successfully:", {
         rows: processedRows?.length || 0,
         total: result.rowCount || 0,
       });
     } catch (err) {
-      Logger.error("❌ Failed to load dynamic data:", err);
+      Logger.error("❌ Failed to load BS dynamic data:", err);
       setError(err.message || "Failed to load data");
       setRows([]);
       setRowCount(0);
     } finally {
       setLoading(false);
     }
-  }, [tableName, metadata, buildRequest, getTableData]);
+  }, [effectiveTableName, metadata, buildRequest, getTableData]);
 
   // Auto-reload data when dependencies change
   useEffect(() => {
@@ -627,7 +802,59 @@ const BSDataGrid = ({
     setSelectedRow(null);
   }, []);
 
-  // Helper: Check if column should be hidden
+  // Helper: Render combobox for columns with ComboBox configuration
+  const renderComboBoxCell = useCallback((params, comboConfig) => {
+    const { value } = params;
+    const displayText =
+      comboConfig.valueOptions?.find((opt) => opt.value === value)?.label ||
+      value ||
+      comboConfig.Default ||
+      "";
+
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+        {displayText}
+      </Box>
+    );
+  }, []);
+
+  // Helper: Get ComboBox value options for editing
+  const getComboBoxOptions = useCallback((comboConfig) => {
+    // TODO: In real implementation, this should fetch from API based on comboConfig
+    // For now, return empty array
+    return comboConfig.valueOptions || [];
+  }, []);
+
+  // Helper: Check if field is required (not null)
+  const isFieldRequired = useCallback((columnName, metadata) => {
+    const column = metadata?.columns?.find((c) => c.columnName === columnName);
+    return column && !column.isNullable;
+  }, []);
+
+  // Helper: Apply BS column filtering
+  const applyColumnFiltering = useCallback(
+    (columns) => {
+      if (!parsedCols || parsedCols.length === 0) return columns;
+
+      // Filter to only show specified columns, maintaining order
+      const filteredColumns = [];
+      parsedCols.forEach((colName) => {
+        const column = columns.find((c) => c.field === colName);
+        if (column) {
+          filteredColumns.push(column);
+        }
+      });
+
+      // Add actions column if it exists and not in parsedCols
+      const actionsCol = columns.find((c) => c.field === "actions");
+      if (actionsCol && !parsedCols.includes("actions")) {
+        filteredColumns.push(actionsCol);
+      }
+
+      return filteredColumns;
+    },
+    [parsedCols]
+  );
   const isColumnHidden = useCallback((columnName, dataType) => {
     // Hide GUID columns
     if (dataType?.toLowerCase() === "uniqueidentifier") {
@@ -766,42 +993,60 @@ const BSDataGrid = ({
       .filter(
         (col) => !col.isHidden && !isColumnHidden(col.columnName, col.dataType)
       ) // Skip hidden and GUID/audit columns
-      .map((col) => ({
-        field: col.columnName,
-        headerName: col.displayName || formatColumnName(col.columnName),
-        width: getColumnWidth(col.dataType, col.maxLength),
-        type: getGridColumnType(col.dataType),
-        editable: !col.isIdentity && !col.isReadOnly && !readOnly,
-        sortable: true,
-        filterable: true,
-        resizable: true,
-        renderCell: (params) => {
-          const value = params.value;
-          const formattedValue = formatCellValue(value, col.dataType);
+      .map((col) => {
+        const columnName = col.columnName;
+        const isRequired = isFieldRequired(columnName, metadata);
+        const comboConfig = comboBoxConfig[columnName];
 
-          // Special rendering for different data types
-          if (col.dataType?.toLowerCase() === "bit") {
-            return (
-              <Chip
-                label={value ? "Yes" : "No"}
-                size="small"
-                color={value ? "success" : "default"}
-                variant="outlined"
-              />
-            );
-          }
+        const baseColumn = {
+          field: col.columnName,
+          headerName: col.displayName || formatColumnName(col.columnName),
+          width: getColumnWidth(col.dataType, col.maxLength),
+          type: comboConfig ? "singleSelect" : getGridColumnType(col.dataType),
+          editable: !col.isIdentity && !col.isReadOnly && !readOnly,
+          sortable: true,
+          filterable: true,
+          resizable: true,
+          // Add red styling for required fields
+          headerClassName: isRequired ? "required-field" : undefined,
+        };
 
-          if (col.dataType?.toLowerCase() === "money") {
-            return (
-              <Box sx={{ color: "success.main", fontWeight: "medium" }}>
-                {formattedValue}
-              </Box>
-            );
-          }
+        // ComboBox configuration
+        if (comboConfig) {
+          baseColumn.valueOptions = getComboBoxOptions(comboConfig);
+          baseColumn.renderCell = (params) =>
+            renderComboBoxCell(params, comboConfig);
+        } else {
+          // Standard cell rendering
+          baseColumn.renderCell = (params) => {
+            const value = params.value;
+            const formattedValue = formatCellValue(value, col.dataType);
 
-          return formattedValue;
-        },
-        valueGetter: (value) => {
+            // Special rendering for different data types
+            if (col.dataType?.toLowerCase() === "bit") {
+              return (
+                <Chip
+                  label={value ? "Yes" : "No"}
+                  size="small"
+                  color={value ? "success" : "default"}
+                  variant="outlined"
+                />
+              );
+            }
+
+            if (col.dataType?.toLowerCase() === "money") {
+              return (
+                <Box sx={{ color: "success.main", fontWeight: "medium" }}>
+                  {formattedValue}
+                </Box>
+              );
+            }
+
+            return formattedValue;
+          };
+        }
+
+        baseColumn.valueGetter = (value) => {
           if (
             col.dataType?.toLowerCase() === "datetime" ||
             col.dataType?.toLowerCase() === "datetime2" ||
@@ -810,8 +1055,10 @@ const BSDataGrid = ({
             return value ? new Date(value) : null;
           }
           return value;
-        },
-      }));
+        };
+
+        return baseColumn;
+      });
 
     // Actions: always show when not read-only
     if (!readOnly) {
@@ -853,7 +1100,10 @@ const BSDataGrid = ({
       });
     }
 
-    return dataColumns;
+    // Apply column filtering if bsCols is specified
+    const filteredDataColumns = applyColumnFiltering(dataColumns);
+
+    return filteredDataColumns;
   }, [
     metadata,
     readOnly,
@@ -865,9 +1115,125 @@ const BSDataGrid = ({
     formatCellValue,
     formatColumnName,
     isColumnHidden,
+    comboBoxConfig,
+    isFieldRequired,
+    renderComboBoxCell,
+    getComboBoxOptions,
+    applyColumnFiltering,
   ]);
 
-  // Handle header filters toggle
+  // Handle row selection changes for checkbox selection
+  const handleRowSelectionChange = useCallback(
+    (newRowSelectionModel) => {
+      setRowSelectionModel(newRowSelectionModel);
+
+      if (onCheckBoxSelected) {
+        // Get selected row data
+        const selectedRows = rows.filter((row) => {
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const rowId = row[primaryKey] || row.id || row.Id;
+          return newRowSelectionModel.includes(rowId);
+        });
+        onCheckBoxSelected(selectedRows);
+      }
+    },
+    [rows, metadata, onCheckBoxSelected]
+  );
+
+  // Get localization object for DataGrid
+  const getLocalization = useCallback(() => {
+    // Basic Thai translations - can be extended
+    const thaiLocaleText = {
+      // Toolbar
+      toolbarQuickFilterPlaceholder: "ค้นหา...",
+      toolbarColumns: "คอลัมน์",
+      toolbarFilters: "ตัวกรอง",
+      toolbarDensity: "ความหนาแน่น",
+      toolbarExport: "ส่งออก",
+
+      // Column menu
+      columnMenuLabel: "เมนู",
+      columnMenuShowColumns: "แสดงคอลัมน์",
+      columnMenuFilter: "ตัวกรอง",
+      columnMenuHideColumn: "ซ่อน",
+      columnMenuUnsort: "ยกเลิกการเรียง",
+      columnMenuSortAsc: "เรียงจากน้อยไปมาก",
+      columnMenuSortDesc: "เรียงจากมากไปน้อย",
+
+      // Filter
+      filterPanelColumns: "คอลัมน์",
+      filterPanelOperator: "ตัวดำเนินการ",
+      filterPanelInputLabel: "ค่า",
+      filterPanelInputPlaceholder: "ค่าตัวกรอง",
+
+      // Pagination
+      MuiTablePagination: {
+        labelRowsPerPage: "แถวต่อหน้า:",
+        labelDisplayedRows: ({ from, to, count }) =>
+          `${from}–${to} จาก ${count !== -1 ? count : `มากกว่า ${to}`}`,
+      },
+
+      // Selection
+      checkboxSelectionHeaderName: "เลือก",
+      checkboxSelectionSelectAllRows: "เลือกทั้งหมด",
+      checkboxSelectionUnselectAllRows: "ยกเลิกการเลือกทั้งหมด",
+
+      // Other common texts
+      noRowsLabel: "ไม่มีข้อมูล",
+      noResultsOverlayLabel: "ไม่พบผลลัพธ์",
+      errorOverlayDefaultLabel: "เกิดข้อผิดพลาด",
+    };
+
+    return bsLocale === "th" ? thaiLocaleText : {};
+  }, [bsLocale]);
+
+  // Bulk operations handlers
+  const handleBulkEdit = useCallback(() => {
+    const selectedRows = rows.filter((row) => {
+      const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+      const rowId = row[primaryKey] || row.id || row.Id;
+      return rowSelectionModel.includes(rowId);
+    });
+
+    console.log("Bulk Edit:", selectedRows);
+    // TODO: Implement bulk edit functionality
+    alert(`Bulk edit ${selectedRows.length} rows`);
+  }, [rows, rowSelectionModel, metadata]);
+
+  const handleBulkDelete = useCallback(async () => {
+    const selectedRows = rows.filter((row) => {
+      const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+      const rowId = row[primaryKey] || row.id || row.Id;
+      return rowSelectionModel.includes(rowId);
+    });
+
+    if (selectedRows.length === 0) return;
+
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${selectedRows.length} records?`
+      )
+    ) {
+      try {
+        // TODO: Implement bulk delete API call
+        for (const row of selectedRows) {
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const id = row[primaryKey] || row.id || row.Id;
+          if (id) {
+            await deleteRecord(id);
+          }
+        }
+
+        setRowSelectionModel([]);
+        await loadData();
+        Logger.log("✅ Bulk delete completed");
+      } catch (err) {
+        Logger.error("❌ Bulk delete failed:", err);
+        setError(err.message || "Failed to delete records");
+      }
+    }
+  }, [rows, rowSelectionModel, metadata, deleteRecord, loadData]);
+
   const handleToggleHeaderFilters = useCallback(() => {
     setHeaderFiltersEnabled((prev) => {
       const newValue = !prev;
@@ -878,7 +1244,7 @@ const BSDataGrid = ({
 
   // Loading state
   if (metadataLoading) {
-    console.log("🔄 DynamicDataGrid: metadata is loading...", tableName);
+    console.log("🔄 BSDataGrid: metadata is loading...", effectiveTableName);
     return (
       <Paper
         sx={{
@@ -893,7 +1259,7 @@ const BSDataGrid = ({
           <CircularProgress sx={{ mb: 2 }} />
           <Typography variant="body1">Loading table metadata...</Typography>
           <Typography variant="body2" color="text.secondary">
-            {tableName}
+            {effectiveTableName}
           </Typography>
         </Box>
       </Paper>
@@ -926,7 +1292,7 @@ const BSDataGrid = ({
               ? "ไม่พบ Table หรือ View ที่ระบุ"
               : "Failed to load table metadata"}
           </Typography>
-          <Typography variant="body2">Table: {tableName}</Typography>
+          <Typography variant="body2">Table: {effectiveTableName}</Typography>
           <Typography variant="body2">
             {isNotFound
               ? "กรุณาตรวจสอบชื่อ Table หรือ View ว่าถูกต้องหรือไม่"
@@ -939,8 +1305,8 @@ const BSDataGrid = ({
 
   // No metadata
   if (!metadata) {
-    console.log("⚠️ DynamicDataGrid: no metadata available", {
-      tableName,
+    console.log("⚠️ BSDataGrid: no metadata available", {
+      effectiveTableName,
       metadata,
       showToolbar,
       showAdd,
@@ -951,7 +1317,7 @@ const BSDataGrid = ({
       <Paper sx={{ height, width: "100%" }}>
         <Alert severity="warning" sx={{ m: 2 }}>
           <Typography variant="h6">Backend API ไม่พร้อมใช้งาน</Typography>
-          <Typography variant="body2">Table: {tableName}</Typography>
+          <Typography variant="body2">Table: {effectiveTableName}</Typography>
           <Typography variant="body2">
             กรุณาตรวจสอบการเชื่อมต่อ backend server
           </Typography>
@@ -961,7 +1327,7 @@ const BSDataGrid = ({
         {showToolbar && (
           <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
             <Typography variant="h6" component="div">
-              {tableName} (Offline Mode)
+              {effectiveTableName} (Offline Mode)
             </Typography>
             <Typography variant="body2" color="text.secondary">
               ไม่สามารถโหลด metadata ได้
@@ -995,8 +1361,8 @@ const BSDataGrid = ({
     );
   }
 
-  console.log("✅ DynamicDataGrid: rendering with metadata", {
-    tableName,
+  console.log("✅ BSDataGrid: rendering with metadata", {
+    effectiveTableName,
     metadataLoaded: !!metadata,
     showToolbar,
     columns: metadata?.columns?.length,
@@ -1023,7 +1389,7 @@ const BSDataGrid = ({
       {showToolbar && (
         <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
           <Typography variant="h6" component="div">
-            {metadata.displayName || tableName}
+            {metadata.displayName || effectiveTableName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {rowCount.toLocaleString()} records • {metadata.columns?.length}{" "}
@@ -1053,27 +1419,41 @@ const BSDataGrid = ({
         onFilterModelChange={setFilterModel}
         // Header Filters (Pro feature)
         headerFilters={headerFiltersEnabled}
+        // Row Selection (checkbox selection when enabled)
+        checkboxSelection={bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected}
+        rowSelectionModel={rowSelectionModel}
+        onRowSelectionModelChange={handleRowSelectionChange}
+        disableRowSelectionOnClick={false}
+        // Column Pinning (Pro feature)
+        pinnedColumns={pinnedColumns}
+        onPinnedColumnsChange={setPinnedColumns}
         // UI Settings
-        disableRowSelectionOnClick
         getRowId={(row) => {
           const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
           return row[primaryKey] || row.id || row.Id;
         }}
+        // Localization
+        localeText={getLocalization()}
         // Custom Toolbar (use slots + slotProps for better compatibility)
         slots={showToolbar ? { toolbar: DynamicGridToolbar } : undefined}
         slotProps={
           showToolbar
             ? {
                 toolbar: {
-                  onAdd: handleAddClick, // Always pass handleAddClick when toolbar is shown
+                  onAdd: handleAddClick,
                   showAdd,
                   headerFiltersEnabled,
                   onToggleHeaderFilters: handleToggleHeaderFilters,
+                  bsBulkEdit,
+                  bsBulkAdd,
+                  selectedRowCount: rowSelectionModel.length,
+                  onBulkEdit: handleBulkEdit,
+                  onBulkDelete: handleBulkDelete,
                 },
               }
             : undefined
         }
-        // Styling
+        // Styling with required field indicator
         sx={{
           border: 0,
           [`& .${gridClasses.cell}`]: {
@@ -1087,6 +1467,11 @@ const BSDataGrid = ({
           },
           // Force header text bold
           "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
+            fontWeight: "bold",
+          },
+          // Required field styling
+          "& .required-field .MuiDataGrid-columnHeaderTitle": {
+            color: "error.main",
             fontWeight: "bold",
           },
           [`& .${gridClasses.row}`]: {
