@@ -9,13 +9,13 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/v1/api/login",
+      "UpstreamPathTemplate": "/gateway/v1/api/login",
       "UpstreamHttpMethod": [ "post" ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
         "Period": "1s",
-        "Limit": 5 
+        "Limit": 5
       }
     },
     {
@@ -27,14 +27,14 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/v1/api/logout",
+      "UpstreamPathTemplate": "/gateway/v1/api/logout",
       "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
-      {
+    {
       "DownstreamPathTemplate": "/users/reset_password",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -43,7 +43,7 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/v1/api/reset_password",
+      "UpstreamPathTemplate": "/gateway/v1/api/reset_password",
       "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
@@ -56,10 +56,10 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "auth_api",
-          "Port": 80
+          "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/v1/api/refresh",
+      "UpstreamPathTemplate": "/gateway/v1/api/refresh",
       "UpstreamHttpMethod": [ "post" ]
     },
     {
@@ -68,10 +68,10 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "auth_api",
-          "Port": 80
+          "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/v1/api/alive",
+      "UpstreamPathTemplate": "/gateway/v1/api/alive",
       "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
@@ -84,10 +84,26 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "auth_api",
-          "Port": 80
+          "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/v1/api/alive/status",
+      "UpstreamPathTemplate": "/gateway/v1/api/alive/status",
+      "UpstreamHttpMethod": [ "post" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/resource",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/resource",
       "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
@@ -96,6 +112,6 @@
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://10.10.60.166:8080/gateway"
+    "BaseUrl": "http://10.10.60.166:8080"
   }
 }

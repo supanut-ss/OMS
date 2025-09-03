@@ -26,7 +26,7 @@ namespace Authentication.Controllers.Resource
             {
                 return _resource == null
                     ? Unauthorized("Resource service is not available.")
-                    : string.IsNullOrEmpty(request.appliceation_license) || string.IsNullOrEmpty(request.platform)
+                    : string.IsNullOrEmpty(request.application_license) || string.IsNullOrEmpty(request.platform)
                         ? BadRequest("Application license and platform are required.")
                         : await _resource.GetAsync(request) is var resourceResponse
                             ? Ok(resourceResponse)
