@@ -49,7 +49,6 @@ namespace Authentication.Services.Auth
                             IsView = reader["is_view"].ToString() ?? "",
                             ParentMenuId = reader["parent_menu_id"] != DBNull.Value ? int.Parse(reader["parent_menu_id"].ToString() ?? "0") : null,
                             MenuId = reader["menu_id"] != DBNull.Value ? int.Parse(reader["menu_id"].ToString() ?? "0") : 0,
-                            ParentMenuId = reader["parent_menu_id"] != DBNull.Value ? int.Parse(reader["parent_menu_id"].ToString() ?? "0") : 0,
                             MenuName = reader["menu_name"].ToString() ?? "",
                             MenuGroup = reader["menu_group"].ToString() ?? "",
                             MenuPath = reader["process"].ToString() ?? "",
