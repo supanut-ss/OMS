@@ -28,21 +28,10 @@ namespace Authentication.Controllers.Auth
 
                 var response = await _imenu.GetAuthenMenu(usergroupid, platform);
                 return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
-                //NotFound(new
-                //               {
-                //                   message_code = 404,
-                //                   message_status = "not_found",
-                //                   message_text = "No found Menu."
-                //               });
             }
             catch (Exception ex)
             {
-                return BadRequest(new
-                {
-                    message_code = 1,
-                    message_status = "error",
-                    message_text = ex.Message
-                }); 
+                return ResponseError(ex.Message, 1);
             }
         }
 

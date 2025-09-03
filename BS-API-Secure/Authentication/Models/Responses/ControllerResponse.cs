@@ -22,6 +22,11 @@ namespace Authentication.Models.Responses
         {
             return Ok(access);
         }
+
+        protected IActionResult AccessResponseSuccess<T>(string status, T access, int code = 0)
+        {
+            return Ok(access);
+        }
         protected IActionResult ResponseSuccess(string status, string message, int code = 0)
         {
             return Ok(new

@@ -47,12 +47,12 @@ namespace Authentication.Services.Auth
                             IsEditView = reader["is_edit_view"].ToString() ?? "",
                             IsDeleteView = reader["is_delete_view"].ToString() ?? "",
                             IsView = reader["is_view"].ToString() ?? "",
-                            MenuId = reader["menu_id"] == DBNull.Value ? int.Parse(reader["menu_id"].ToString() ?? "0") : 0,
+                            MenuId = reader["menu_id"] != DBNull.Value ? int.Parse(reader["menu_id"].ToString() ?? "0") : 0,
                             MenuName = reader["menu_name"].ToString() ?? "",
                             MenuGroup = reader["menu_group"].ToString() ?? "",
                             MenuPath = reader["process"].ToString() ?? "",
-                            MenuGroupSequence =  reader["menu_group_sequence"] == DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
-                            MenuSequence = reader["menu_sequence"] == DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0, 
+                            MenuGroupSequence =  reader["menu_group_sequence"] != DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
+                            MenuSequence = reader["menu_sequence"] != DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0, 
                         };
 
                         response.data.Add(data);
