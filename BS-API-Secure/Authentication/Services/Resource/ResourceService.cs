@@ -14,7 +14,7 @@ namespace Authentication.Services.Resource
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
             var platform = request.platform ?? throw new ArgumentNullException(nameof(request.platform));
-            var licenseKey = request.appliceation_license ?? throw new ArgumentNullException(nameof(request.appliceation_license));
+            var licenseKey = request.application_license ?? throw new ArgumentNullException(nameof(request.application_license));
             ResourceResponse response = new ResourceResponse();
             try
             {

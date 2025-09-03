@@ -27,7 +27,7 @@ export default function LoginPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login,resource } = useAuth();
 
   const [formData, setFormData] = useState({
     usersname: "",
@@ -63,6 +63,7 @@ export default function LoginPage() {
       // Mock login - in real app, call API here
       let data = await login(formData);
       if(data.status){
+        await resource();
         const from = location.state?.from?.pathname || "/";
         navigate(from, { replace: true });
       }else{
