@@ -6,22 +6,22 @@ namespace Authentication.Models.Responses
 {
     public class ControllerResponse : ControllerBase
     {
-        protected IActionResult AccessResponseSuccess(string status, ApplicationListResponse access, int code = 0)
-        {
-            return Ok(access);
-        }
-        protected IActionResult AccessResponseSuccess(string status, AuthResponse access, int code = 0)
-        {
-            return Ok(access);
-        }
-        protected IActionResult AccessResponseSuccess(string status, AliveUserResponse access, int code = 0)
-        {
-            return Ok(access);
-        }
-        protected IActionResult AccessResponseSuccess(string status, MasterResponse access, int code = 0)
-        {
-            return Ok(access);
-        }
+        //protected IActionResult AccessResponseSuccess(string status, ApplicationListResponse access, int code = 0)
+        //{
+        //    return Ok(access);
+        //}
+        //protected IActionResult AccessResponseSuccess(string status, AuthResponse access, int code = 0)
+        //{
+        //    return Ok(access);
+        //}
+        //protected IActionResult AccessResponseSuccess(string status, AliveUserResponse access, int code = 0)
+        //{
+        //    return Ok(access);
+        //}
+        //protected IActionResult AccessResponseSuccess(string status, MasterResponse access, int code = 0)
+        //{
+        //    return Ok(access);
+        //}
 
         protected IActionResult AccessResponseSuccess<T>(string status, T access, int code = 0)
         {
