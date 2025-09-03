@@ -33,7 +33,6 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth();
   }, []);
-
   const login = async (userData) => {
     let json = {
       status: false,
@@ -80,18 +79,66 @@ export const AuthProvider = ({ children }) => {
     }).finally();
     return json;
   };
-  const resource = async ()=>{
-  
+  const resource = async () => {
+
     await AxiosMaster.post("/resource", {
       application_license: Config.LICENSE_KEY,
-      platform : "web" // web,pda
+      platform: "web" // web,pda
     }).then((res) => {
       if (res.data.message_code === "0") {
-        SecureStorage.set("resouce",res.data.data)
+        SecureStorage.set("resouce", res.data.data)
       } else {
         SecureStorage.remove("resouce")
       }
     }).finally();
+    return true;
+  }
+  const menu = async () => {
+    await AxiosMaster.get("/menu?platform=web").then((res) => {
+      if (res.data.message_code === "0") {
+        let menu_group = res.data.data
+          // กรองเฉพาะที่ isView = YES
+          .filter(item => item.isView === "YES")
+          // จัดกลุ่มตาม menuGroupSequence + menuGroups
+          .reduce((acc, item) => {
+            const key = `${item.menuGroupSequence}_${item.menuGroup}`;
+            if (!acc[key]) {
+              acc[key] = {
+                menu_group_sequence: item.menuGroupSequence,
+                menu_group_name: item.menuGroup,
+                menu_group_path: item.menu_path,
+                submenu: [],
+                is_view: item.isView === "YES",
+                is_delete: item.isDeleteView === "YES",
+                is_add: item.isAddView === "YES",
+                is_edit: item.isEditView === "YES"
+              };
+            }
+            acc[key].submenu.push({
+              parent_menu_id: item.parentMenuId,
+              menu_sequence: item.menuSequence,
+              menu_name: item.menuName,
+              menu_path: item.menuPath,
+              is_view: item.isView === "YES",
+              is_delete: item.isDeleteView === "YES",
+              is_add: item.isAddView === "YES",
+              is_edit: item.isEditView === "YES"
+            });
+
+            return acc;
+          }, {});
+
+        // แปลง object → array และ sort ตามลำดับ group
+        menu_group = Object.values(menu_group)
+          .sort((a, b) => a.menu_group_sequence - b.menu_group_sequence)
+          .map(group => ({
+            ...group,
+            submenu: group.submenu.sort((a, b) => a.menu_sequence - b.menu_sequence)
+          }));
+        SecureStorage.set("menu", menu_group);
+      }
+    }).finally();
+    return true;
   }
 
   const value = {
@@ -100,6 +147,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     resource,
+    menu,
     loading,
   };
 

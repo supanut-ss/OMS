@@ -1,5 +1,5 @@
 import CustomBreadcrumbs from "../components/CustomBreadcrumbs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   CssBaseline,
@@ -8,8 +8,6 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  List,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
   Tooltip,
@@ -42,8 +40,8 @@ import { styled } from "@mui/material/styles";
 import logoMiniSvg from "../assets/logo-mini.svg";
 import logoHorizontalSvg from "../assets/logo-horizontal.svg";
 
-import menuItems from "./menuItems";
 import { useAlive } from "../contexts/AliveContext";
+import SidebarMenu from "./SidebarMenu";
 
 const drawerWidth = 280;
 const collapsedWidth = 72;
@@ -105,7 +103,6 @@ export default function MainLayout() {
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
   const navigate = useNavigate();
-
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
     location.pathname === "/" || location.pathname === "/home";
@@ -128,12 +125,7 @@ export default function MainLayout() {
   ];
 
   // Mock user data - ในอนาคตใช้ข้อมูลจาก useAuth แทน
-  const currentUser = user || {
-    name: "Phayungsak Prasarn",
-    email: "phayungsak.p@oga.co.th",
-    avatar: null, // จะใช้ initial แทน
-    role: "Programmer",
-  };
+  const [currentUser,setCurrentUser] = useState(null);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -178,6 +170,11 @@ export default function MainLayout() {
     endpoint: "/alive/status",
     intervalMs: 120000, // 2 นาที
   });
+useEffect(() => {
+  if (currentUser === null) {
+    setCurrentUser(user);
+  }
+}, [currentUser, user]);
 
   return (
     <Box
@@ -290,7 +287,7 @@ export default function MainLayout() {
                     fontWeight: 600,
                   }}
                 >
-                  {getInitials(currentUser.FirstName + " " + currentUser.LastName)}
+                  {getInitials(currentUser?.FirstName + " " + currentUser?.LastName)}
                 </Avatar>
               </IconButton>
             </Tooltip>
@@ -408,17 +405,17 @@ export default function MainLayout() {
                 fontWeight: 600,
               }}
             >
-              {getInitials(currentUser.FirstName + " " + currentUser.LastName)}
+              {getInitials(currentUser?.FirstName + " " + currentUser?.LastName)}
             </Avatar>
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                {currentUser.FirstName}
+                {currentUser?.FirstName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {currentUser.FirstName}
+                {currentUser?.FirstName}
               </Typography>
               <Chip
-                label={currentUser.Role}
+                label={currentUser?.Role}
                 size="small"
                 sx={{
                   mt: 0.5,
@@ -514,8 +511,14 @@ export default function MainLayout() {
           </Box>
         </DrawerHeader>
         <Divider />
-        <List sx={{ px: 2, py: 1 }}>
-          {menuItems.map(({ text, path, icon }) => (
+        <SidebarMenu
+          open={open}           // state ที่ควบคุม sidebar เปิด/ปิด
+          isMobile={isMobile}   // ไว้ใช้สำหรับ mobile responsive
+          setOpen={setOpen}     // ฟังก์ชันเปลี่ยนค่า open
+          theme={theme}         // ส่ง theme ของ MUI เข้าไป
+        />
+        {/* <List sx={{ px: 2, py: 1 }}>
+          {menuItems.map(({ text, path }) => (
             <Tooltip
               key={text}
               title={!open ? text : ""}
@@ -554,7 +557,7 @@ export default function MainLayout() {
                     color: "inherit",
                   }}
                 >
-                  {icon}
+                  <MenuOpenIcon/
                 </ListItemIcon>
                 {open && (
                   <ListItemText
@@ -570,7 +573,7 @@ export default function MainLayout() {
               </ListItemButton>
             </Tooltip>
           ))}
-        </List>
+        </List> */}
       </StyledDrawer>
 
       {/* Main content */}
