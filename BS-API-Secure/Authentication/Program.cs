@@ -2,6 +2,7 @@ using Authentication.Interfaces;
 using Authentication.Services;
 using Authentication.Services.Application;
 using Authentication.Services.Auth;
+using Authentication.Services.Resource;
 using Authentication.Services.Users;
 using Microsoft.AspNetCore.Authentication;
 using TokenManagement.Extensions;
@@ -38,6 +39,7 @@ builder.Services.AddHttpContextAccessor();
 // Add services to the container.
 builder.Services.AddScoped<IAuth, AuthService>();
 builder.Services.AddScoped<IUsers, UserService>();
+builder.Services.AddScoped<IResource, ResourceService>();
 builder.Services.AddScoped<IAlive, AliveService>();
 builder.Services.AddScoped<IApplication,ApplicationService>();
 builder.Services.AddScoped<IClientInfo, ClientInfoService>();
