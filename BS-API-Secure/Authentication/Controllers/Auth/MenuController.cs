@@ -61,7 +61,7 @@ namespace Authentication.Controllers.Auth
             {
                 string userId = User.FindFirst("UserId")?.Value ?? "";
 
-                if (!string.IsNullOrEmpty(userId))
+                if (string.IsNullOrEmpty(userId))
                     ResponseNotFound("No found User Id.");
 
                 var response = await _imenu.SaveAssignMenu(_listMenuAssign, userId);

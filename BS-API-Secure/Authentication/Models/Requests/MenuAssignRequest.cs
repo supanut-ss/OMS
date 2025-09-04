@@ -7,7 +7,7 @@
         public string IsEditView { get; set; } = string.Empty;
         public string IsDeleteView { get; set; } = string.Empty;
         public string IsView { get; set; } = string.Empty;
-        public int MenuId { get; set; }
+        public int menu_id { get; set; }
         public string Platform { get; set; } = string.Empty;
     }
 }

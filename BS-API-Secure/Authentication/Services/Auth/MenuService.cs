@@ -97,7 +97,7 @@ namespace Authentication.Services.Auth
 
                             // You need to provide groupId and platform variables or get them from item
                             cmd.Parameters.AddWithValue("@in_intUserGroupId", item.UserGroupId);
-                            cmd.Parameters.AddWithValue("@in_intMenuId", item.MenuId);
+                            cmd.Parameters.AddWithValue("@in_intMenuId", item.menu_id);
                             cmd.Parameters.AddWithValue("@in_vchIsAddView", item.IsAddView);
                             cmd.Parameters.AddWithValue("@in_vchIsEditView", item.IsEditView); 
                             cmd.Parameters.AddWithValue("@in_vchIsDeleteView", item.IsDeleteView);
