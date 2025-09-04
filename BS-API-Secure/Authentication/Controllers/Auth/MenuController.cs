@@ -1,4 +1,5 @@
 ﻿using Authentication.Interfaces;
+using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Authentication.Models.Responses.Application;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -53,5 +54,21 @@ namespace Authentication.Controllers.Auth
                 return ResponseError(ex.Message, 1);
             }
         }
+
+
+        [HttpPost("saveAssign")]
+        public async Task<IActionResult> SaveMenuAssign(List<MenuAssignRequest> _listMenuAssign)
+        {
+            try
+            {  
+                var response = await _imenu.SaveAssignMenu(_listMenuAssign);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+
     }
 }

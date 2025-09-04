@@ -1,14 +1,18 @@
 ﻿using Authentication.Interfaces;
+using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Authentication.Models.Responses.Auth;
+using Authentication.Prototype;
 using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace Authentication.Services.Auth
 {
     public class MenuService : IMenu
     {
         private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly string schema = Environment.GetEnvironmentVariable("DB_SCHEMA") ?? "sec";
         private readonly IClientInfo _clientInfo;
         public MenuService(IClientInfo clientInfo)
         {
@@ -59,6 +63,41 @@ namespace Authentication.Services.Auth
                         response.data.Add(data);
                     }
                 }
+
+                return response;
+            }
+        }
+
+        public async Task<MasterResponse> SaveAssignMenu(List<MenuAssignRequest> listMenu)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+
+                //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
+                var sql = $"DELETE [{schema}].t_com_user_group_menu WHERE  password = @password WHERE user_id = @userId";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userId);
+                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(newPassword));
+
+                var rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                if (rowsAffected == 0)
+                    return new MenuResponse
+                    {
+                        message_code = "1",
+                        message_text = "Error Update",
+                    }; ;
+
+                //Insert AND Update
+                
+            }
+                var response = new MenuResponse
+                {
+                    message_code = "0",
+                    message_text = "Success",
+                };
+
 
                 return response;
             }
