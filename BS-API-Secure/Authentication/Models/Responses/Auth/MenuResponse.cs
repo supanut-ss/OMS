@@ -15,7 +15,7 @@
         public string IsDeleteView { get; set; } = string.Empty;
         public string IsView { get; set; } = string.Empty;
         public int MenuId { get; set; }
-        public int? ParentMenuId { get; set; }
+        public int ParentMenuId { get; set; }
     //    public string IsActive { get; set; } = string.Empty;
    //     public int? AppId { get; set; }
         public string MenuName { get; set; } = string.Empty;

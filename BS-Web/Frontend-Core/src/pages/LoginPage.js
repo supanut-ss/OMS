@@ -27,7 +27,7 @@ export default function LoginPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login,resource } = useAuth();
+  const { login, resource, menu } = useAuth();
 
   const [formData, setFormData] = useState({
     usersname: "",
@@ -62,11 +62,17 @@ export default function LoginPage() {
     try {
       // Mock login - in real app, call API here
       let data = await login(formData);
-      if(data.status){
-        await resource();
-        const from = location.state?.from?.pathname || "/";
-        navigate(from, { replace: true });
-      }else{
+      if (data.status) {
+        let status_resource = await resource();
+        if (status_resource) {
+          let status_menu = await menu();
+          if (status_menu) {
+            const from = location.state?.from?.pathname || "/";
+            navigate(from, { replace: true });
+          }
+        }
+
+      } else {
         setError(data.message)
       }
       setLoading(false);
@@ -74,7 +80,7 @@ export default function LoginPage() {
       // For demo purposes, accept any username/password
       // In real app, validate credentials with backend
       // if (formData.username && formData.password) {
-        
+
 
       //   // Use login function from AuthContext
       //   login(formData);
