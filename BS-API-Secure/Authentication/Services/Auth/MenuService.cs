@@ -19,7 +19,7 @@ namespace Authentication.Services.Auth
             _clientInfo = clientInfo ?? throw new ArgumentNullException(nameof(clientInfo));
         }
 
-        public async Task<MenuResponse> GetAuthenMenu(int groupId,string platform)
+        public async Task<MenuResponse> GetAuthenMenu(int groupId, string platform)
         {
             using (var conn = new SqlConnection(_connectionString))
             {
@@ -56,8 +56,8 @@ namespace Authentication.Services.Auth
                             MenuName = reader["menu_name"].ToString() ?? "",
                             MenuGroup = reader["menu_group"].ToString() ?? "",
                             MenuPath = reader["process"].ToString() ?? "",
-                            MenuGroupSequence =  reader["menu_group_sequence"] != DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
-                            MenuSequence = reader["menu_sequence"] != DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0, 
+                            MenuGroupSequence = reader["menu_group_sequence"] != DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
+                            MenuSequence = reader["menu_sequence"] != DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0,
                         };
 
                         response.data.Add(data);
@@ -77,8 +77,8 @@ namespace Authentication.Services.Auth
                 //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
                 var sql = $"DELETE [{schema}].t_com_user_group_menu WHERE  password = @password WHERE user_id = @userId";
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userId);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(newPassword));
+                //cmd.Parameters.AddWithValue("@userId", userId);
+                //cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(newPassword));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
 
@@ -90,8 +90,8 @@ namespace Authentication.Services.Auth
                     }; ;
 
                 //Insert AND Update
-                
-            }
+
+
                 var response = new MenuResponse
                 {
                     message_code = "0",
