@@ -8,6 +8,6 @@ namespace Authentication.Interfaces
     {
         Task<MenuResponse> GetAuthenMenu(int groupId, string platform);
 
-        Task<MasterResponse> SaveAssignMenu(List<MenuAssignRequest> listMenu);
+        Task<MasterResponse> SaveAssignMenu(List<MenuAssignRequest> listMenu, string userId);
     }
 }

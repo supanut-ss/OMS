@@ -68,40 +68,73 @@ namespace Authentication.Services.Auth
             }
         }
 
-        public async Task<MasterResponse> SaveAssignMenu(List<MenuAssignRequest> listMenu)
+        public async Task<MasterResponse> SaveAssignMenu(List<MenuAssignRequest> listMenu, string userId)
         {
+            var response = new MenuResponse
+            {
+                message_code = "0",
+                message_text = "Success",
+            };
+
             using (var conn = new SqlConnection(_connectionString))
             {
                 await conn.OpenAsync();
 
-                //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
-                var sql = $"DELETE [{schema}].t_com_user_group_menu WHERE  password = @password WHERE user_id = @userId";
-                using var cmd = new SqlCommand(sql, conn);
-                //cmd.Parameters.AddWithValue("@userId", userId);
-                //cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(newPassword));
-
-                var rowsAffected = await cmd.ExecuteNonQueryAsync();
-
-                if (rowsAffected == 0)
-                    return new MenuResponse
-                    {
-                        message_code = "1",
-                        message_text = "Error Update",
-                    }; ;
-
-                //Insert AND Update
-
-
-                var response = new MenuResponse
+                // Begin a transaction using SqlTransaction
+                using (var transaction = conn.BeginTransaction())
                 {
-                    message_code = "0",
-                    message_text = "Success",
-                };
+                    try
+                    {
+                        foreach (var item in listMenu)
+                        {
+                            //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
+                            using var cmd = new SqlCommand("sec.usp_update_menu_assign", conn, transaction);
 
+                            cmd.CommandType = CommandType.StoredProcedure;
 
+                            var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50) { Direction = ParameterDirection.Output };
+                            var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500) { Direction = ParameterDirection.Output };
+
+                            // You need to provide groupId and platform variables or get them from item
+                            cmd.Parameters.AddWithValue("@in_intUserGroupId", item.UserGroupId);
+                            cmd.Parameters.AddWithValue("@in_intMenuId", item.MenuId);
+                            cmd.Parameters.AddWithValue("@in_vchIsAddView", item.IsAddView);
+                            cmd.Parameters.AddWithValue("@in_vchIsEditView", item.IsEditView); 
+                            cmd.Parameters.AddWithValue("@in_vchIsDeleteView", item.IsDeleteView);
+                            cmd.Parameters.AddWithValue("@in_vchIsView", item.IsView);
+                            cmd.Parameters.AddWithValue("@in_vchCreateBy", userId);
+                            cmd.Parameters.Add(errorCodeParam);
+                            cmd.Parameters.Add(errorMsgParam);
+
+                            await cmd.ExecuteNonQueryAsync();
+                             
+                            if (errorCodeParam.Value.ToString() != "0")
+                            {
+                                response.message_code = errorCodeParam.Value.ToString() ?? "1";
+                                response.message_text = errorMsgParam.Value.ToString() ?? "1";
+                                break;
+                            }
+                        }
+
+                        if (response.message_code == "0")
+                        {
+                            transaction.Commit();
+                        }
+                        else
+                        {
+                            transaction.Rollback();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        response.message_code = "-1";
+                        response.message_text = "Exception : " + ex.Message;
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
                 return response;
             }
         }
-
     }
 }

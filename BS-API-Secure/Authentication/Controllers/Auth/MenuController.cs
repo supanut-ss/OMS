@@ -11,7 +11,7 @@ namespace Authentication.Controllers.Auth
 {
     [Route("menu")]
     [ApiController]
-   // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class MenuController : ControllerResponse
     {
         private readonly IMenu _imenu;
@@ -42,10 +42,8 @@ namespace Authentication.Controllers.Auth
             try
             {
                 if (user_group_id == 0)
-                {
                     ResponseNotFound("No found Menu.");
-                }
-              
+
                 var response = await _imenu.GetAuthenMenu(user_group_id, platform);
                 return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
             }
@@ -60,8 +58,13 @@ namespace Authentication.Controllers.Auth
         public async Task<IActionResult> SaveMenuAssign(List<MenuAssignRequest> _listMenuAssign)
         {
             try
-            {  
-                var response = await _imenu.SaveAssignMenu(_listMenuAssign);
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (!string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _imenu.SaveAssignMenu(_listMenuAssign, userId);
                 return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
             }
             catch (Exception ex)
