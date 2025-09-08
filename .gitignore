@@ -62,3 +62,4 @@ nunit-*.xml
 /BS-API-Core/.vs/BS-API-Core
 /BS-API-Core/.dockerignore
 /BS-API-Core/.env
+/BS-API-Core/.vs/ProjectEvaluation
