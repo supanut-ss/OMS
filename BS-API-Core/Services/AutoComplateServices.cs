@@ -25,15 +25,17 @@ namespace BS_API_Core.Services
                     await conn.OpenAsync();
 
                     // ✅ whitelist column
-                    var allowedColumns = new HashSet<string>(request.columns.Select(c => c.field)) { request.primary };
+                    var allowedColumns = new HashSet<string>((request.columns ?? new List<ColumnItem>()).Select(c => c.field)) { request.primary };
 
-                    var columns = request.columns.Select(c => c.field).ToList();
+                    var columns = (request.columns ?? Enumerable.Empty<ColumnItem>())
+                .Select(c => c.field)
+                .ToList();
                     var colum = columns.Count > 0 ? "," + string.Join(",", columns) : "";
 
                     var orderby = string.Join(",",
-                        request.columns
-                               .Where(c => !string.IsNullOrWhiteSpace(c.order_by))
-                               .Select(c => $"{c.field} {c.order_by}")
+                        (request.columns ?? Enumerable.Empty<ColumnItem>())
+                            .Where(c => !string.IsNullOrWhiteSpace(c.order_by))
+                            .Select(c => $"{c.field} {c.order_by}")
                     );
                     if (!string.IsNullOrEmpty(orderby))
                         orderby = "ORDER BY " + orderby;
@@ -59,16 +61,20 @@ namespace BS_API_Core.Services
                             }
                             else
                             {
+                                if (request.include_blank)
+                                {
+                                    response.data.Add(new AutoComplateItem { code = "", value = "--Please Select--" });
+                                }
                                 do
                                 {
-                                    var displayValues = request.columns
-                                        .Where(c => c.display)
-                                        .Select(c => reader[c.field].ToString())
-                                        .ToList();
+                                    var displayValues = (request.columns ?? Enumerable.Empty<ColumnItem>())
+                                    .Where(c => c.display)
+                                    .Select(c => reader[c.field].ToString())
+                                    .ToList();
 
                                     var data = new AutoComplateItem
                                     {
-                                        code = reader[request.primary].ToString(),
+                                        code = reader[request.primary].ToString() ?? "",
                                         value = string.Join(" ", displayValues)
                                     };
 

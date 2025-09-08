@@ -8,7 +8,7 @@
     }
     public class AutoComplateItem
     {
-        public string code { get; set; }
-        public string value { get; set; }
+        public string code { get; set; } = string.Empty;
+        public string value { get; set; } = string.Empty;
     }
 }

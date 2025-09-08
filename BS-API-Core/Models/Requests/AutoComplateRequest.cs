@@ -12,6 +12,7 @@ namespace BS_API_Core.Models.Requests
         public List<ColumnItem>? columns { get; set; } = new List<ColumnItem>();
      
         public List<FilterItem>? filters { get; set; } = new List<FilterItem>();
+        public bool include_blank { get; set; } = false;
 
     }
     public class FilterItem
