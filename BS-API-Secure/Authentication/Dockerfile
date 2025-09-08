@@ -11,11 +11,11 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Copy โปรเจกต์ทั้งหมด
-COPY ["./Authentication/Authentication.csproj", "Authentication/"]
-COPY ["./TokenManagement/TokenManagement.csproj", "TokenManagement/"]
+COPY ["./BS-API-Secure/Authentication", "Authentication/"]
+COPY ["./BS-API-Secure/TokenManagement", "TokenManagement/"]
 
 RUN dotnet restore "Authentication/Authentication.csproj"
-COPY . .
+RUN dotnet restore "TokenManagement/TokenManagement.csproj"
 
 WORKDIR "/src/TokenManagement"
 RUN dotnet build "TokenManagement.csproj" -c $BUILD_CONFIGURATION -o /app/build/TokenManagement

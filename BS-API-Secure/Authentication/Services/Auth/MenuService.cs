@@ -46,18 +46,18 @@ namespace Authentication.Services.Auth
                     {
                         var data = new MenuDataResponse
                         {
-                            UserGroupId = reader["user_group_id"] != DBNull.Value ? int.Parse(reader["user_group_id"].ToString() ?? "0") : 0,
-                            IsAddView = reader["is_add_view"].ToString() ?? "",
-                            IsEditView = reader["is_edit_view"].ToString() ?? "",
-                            IsDeleteView = reader["is_delete_view"].ToString() ?? "",
-                            IsView = reader["is_view"].ToString() ?? "",
-                            ParentMenuId = reader["parent_menu_id"] != DBNull.Value ? int.Parse(reader["parent_menu_id"].ToString() ?? "0") : 0,
-                            MenuId = reader["menu_id"] != DBNull.Value ? int.Parse(reader["menu_id"].ToString() ?? "0") : 0,
-                            MenuName = reader["menu_name"].ToString() ?? "",
-                            MenuGroup = reader["menu_group"].ToString() ?? "",
-                            MenuPath = reader["process"].ToString() ?? "",
-                            MenuGroupSequence = reader["menu_group_sequence"] != DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
-                            MenuSequence = reader["menu_sequence"] != DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0,
+                            user_group_id = reader["user_group_id"] != DBNull.Value ? int.Parse(reader["user_group_id"].ToString() ?? "0") : 0,
+                            is_add_view = reader["is_add_view"].ToString() ?? "",
+                            is_edit_view = reader["is_edit_view"].ToString() ?? "",
+                            is_delete_view = reader["is_delete_view"].ToString() ?? "",
+                            is_view = reader["is_view"].ToString() ?? "",
+                            parent_menu_id = reader["parent_menu_id"] != DBNull.Value ? int.Parse(reader["parent_menu_id"].ToString() ?? "0") : 0,
+                            menu_id = reader["menu_id"] != DBNull.Value ? int.Parse(reader["menu_id"].ToString() ?? "0") : 0,
+                            menu_name = reader["menu_name"].ToString() ?? "",
+                            menu_group = reader["menu_group"].ToString() ?? "",
+                            menu_path = reader["process"].ToString() ?? "",
+                            menu_group_sequence = reader["menu_group_sequence"] != DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
+                            menu_sequence = reader["menu_sequence"] != DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0,
                         };
 
                         response.data.Add(data);
