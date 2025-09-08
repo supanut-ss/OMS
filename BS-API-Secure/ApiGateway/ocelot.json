@@ -111,7 +111,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/menu/menuAuth",
+      "DownstreamPathTemplate": "/menu",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -125,9 +125,25 @@
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
+    },
+    {
+      "DownstreamPathTemplate": "/autocomplate",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/autocomplate",
+      "UpstreamHttpMethod": [ "post" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://10.10.60.166:8080"
+    "BaseUrl": "http://172.19.0.1:8080"
   }
 }
