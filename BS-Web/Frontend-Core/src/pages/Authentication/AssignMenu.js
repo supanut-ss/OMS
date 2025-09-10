@@ -15,6 +15,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import CustomTreeView from "../../components/CustomTreeView";
+import BsAutoComplete from "../../components/BsAutoComplete";
 
 const MenuTreeView = () => {
   const {
@@ -71,29 +72,29 @@ const MenuTreeView = () => {
     const groups = {};
 
     rows.forEach((r) => {
-      const id = String(r.menuId);
-      const parentId = r.parentMenuId ? String(r.parentMenuId) : null;
-      const groupName = r.menuGroup || "Ungrouped";
+      const id = String(r.menu_id);
+      const parentId = r.parent_menu_id ? String(r.parent_menu_id) : null;
+      const groupName = r.menu_group || "Ungrouped";
 
       const perms = [
-        { id: `add-${id}`, label: "Add", isCheck: toBool(r.isAddView) },
-        { id: `edit-${id}`, label: "Edit", isCheck: toBool(r.isEditView) },
+        { id: `add-${id}`, label: "Add", isCheck: toBool(r.is_add_view) },
+        { id: `edit-${id}`, label: "Edit", isCheck: toBool(r.is_edit_view) },
         {
           id: `delete-${id}`,
           label: "Delete",
-          isCheck: toBool(r.isDeleteView),
+          isCheck: toBool(r.is_delete_view),
         },
-        { id: `view-${id}`, label: "View", isCheck: toBool(r.isView) },
+        { id: `view-${id}`, label: "View", isCheck: toBool(r.is_view) },
       ];
 
       nodes[id] = {
         id,
-        label: r.menuName ?? `menu-${id}`,
-        isCheck: toBool(r.isView),
+        label: r.menu_name ?? `menu-${id}`,
+        isCheck: toBool(r.is_view),
         parentId,
         groupName,
-        groupSequence: Number(r.menuGroupSequence ?? 0),
-        sequence: Number(r.menuSequence ?? 0),
+        groupSequence: Number(r.menu_group_sequence ?? 0),
+        sequence: Number(r.menu_sequence ?? 0),
         menuChildren: [],
         permChildren: perms,
       };
@@ -103,7 +104,7 @@ const MenuTreeView = () => {
           id: groupName,
           label: groupName,
           roots: [],
-          groupSequence: Number(r.menuGroupSequence ?? 0),
+          groupSequence: Number(r.menu_group_sequence ?? 0),
         };
       }
       groups[groupName].roots.push(id);
@@ -255,35 +256,38 @@ const MenuTreeView = () => {
       <Paper sx={{ p: 3 }}>
         <Box display="flex" gap={3} alignItems="center">
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
-            <InputLabel id="user-group-label">User Group</InputLabel>
-            <Select
-              labelId="user-group-label"
-              label="User Group"
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-            >
-              {userGroups.map((ug) => (
-                <MenuItem key={ug.user_group_id} value={ug.user_group_id}>
-                  {ug.user_group_name}
-                </MenuItem>
-              ))}
-            </Select>
+            <BsAutoComplete
+              bsModel="select"
+              bsTitle="เลือก Group"
+              bsPreObj="user_group_id"
+              bsObj="sec.t_com_user_group"
+              bsColumes={[
+                { field: "user_group_id", display: false },
+                { field: "name", display: true, order_by: "ASC" },
+              ]}
+              bsFilters={[]}
+              bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
+              cacheKey="group"
+              loadOnOpen={true}
+              bsOnChange={(val) => setSelectedGroup(val)}
+            />
           </FormControl>
-
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
-            <InputLabel id="platform-label">Platform</InputLabel>
-            <Select
-              labelId="platform-label"
-              label="Platform"
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-            >
-              {platforms.map((pf) => (
-                <MenuItem key={pf.app_id} value={pf.app_id}>
-                  {pf.app_name}
-                </MenuItem>
-              ))}
-            </Select>
+            <BsAutoComplete
+              bsModel="select"
+              bsTitle="เลือก Platform"
+              bsPreObj="value_member"
+              bsObj="sec.t_com_combobox_item"
+              bsColumes={[
+                { field: "display_member", display: true },
+                { field: "group_name", display: false },
+              ]}
+              bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
+              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
+              cacheKey="platform"
+              loadOnOpen={true}
+              bsOnChange={(val) => setSelectedPlatform(val)}
+            />
           </FormControl>
 
           <Box sx={{ mb: 3 }}>
