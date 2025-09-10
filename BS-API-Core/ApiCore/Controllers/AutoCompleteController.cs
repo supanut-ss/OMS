@@ -1,31 +1,31 @@
-﻿using BS_API_Core.Interfaces;
-using BS_API_Core.Models.Requests;
-using BS_API_Core.Models.Responses;
+﻿using ApiCore.Services.Interfaces;
+using ApiCore.Models.Requests;
+using ApiCore.Models.Responses;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BS_API_Core.Controllers
+namespace ApiCore.Controllers
 {
-    [Route("autocomplate")]
+    [Route("autocomplete")]
     [ApiController]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    public class AutoComplateController : ControllerResponse
+    public class AutoCompleteController : ControllerResponse
     {
-        private readonly IAutoComplate _autoComplate;
-        public AutoComplateController(IAutoComplate autoComplate)
+        private readonly IAutoComplete _autoComplete;
+        public AutoCompleteController(IAutoComplete autoComplete)
         {
-            _autoComplate = autoComplate;
+            _autoComplete = autoComplete;
         }
         [HttpPost]
         [Consumes("application/json")]
         [Produces("application/json")]
-        public async Task<IActionResult> Post([FromBody] AutoComplateRequest request)
+        public async Task<IActionResult> Post([FromBody] AutoCompleteRequest request)
         {
             try
             {
-                var result = await _autoComplate.AutoComplateAsync(request);
+                var result = await _autoComplete.AutoCompleteAsync(request);
                 return result != null ?
                     AccessResponseSuccess("success", result) :
                     ResponseNotFound("Data not found");

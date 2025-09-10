@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace BS_API_Core.Models.Responses
+namespace ApiCore.Models.Responses
 {
     public class ControllerResponse : ControllerBase
     {

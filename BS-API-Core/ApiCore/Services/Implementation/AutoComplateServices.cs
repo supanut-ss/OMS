@@ -1,18 +1,18 @@
-﻿using BS_API_Core.Interfaces;
-using BS_API_Core.Models.Requests;
-using BS_API_Core.Models.Responses;
+﻿using ApiCore.Services.Interfaces;
+using ApiCore.Models.Requests;
+using ApiCore.Models.Responses;
 using Microsoft.Data.SqlClient;
 
-namespace BS_API_Core.Services
+namespace ApiCore.Services.Implementation
 {
-    public class AutoComplateServices : IAutoComplate
+    public class AutoCompleteServices : IAutoComplete
     {
         private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY")
             ?? throw new ArgumentNullException(nameof(_connectionString));
 
-        public async Task<AutoComplateResponse> AutoComplateAsync(AutoComplateRequest request)
+        public async Task<AutoCompleteResponse> AutoCompleteAsync(AutoCompleteRequest request)
         {
-            var response = new AutoComplateResponse
+            var response = new AutoCompleteResponse
             {
                 message_code = "0",
                 message_text = "success"
@@ -63,7 +63,7 @@ namespace BS_API_Core.Services
                             {
                                 if (request.include_blank)
                                 {
-                                    response.data.Add(new AutoComplateItem { code = "", value = "--Please Select--" });
+                                    response.data.Add(new AutoCompleteItem { code = "", value = "--Please Select--" });
                                 }
                                 do
                                 {
@@ -72,7 +72,7 @@ namespace BS_API_Core.Services
                                     .Select(c => reader[c.field].ToString())
                                     .ToList();
 
-                                    var data = new AutoComplateItem
+                                    var data = new AutoCompleteItem
                                     {
                                         code = reader[request.primary].ToString() ?? "",
                                         value = string.Join(" ", displayValues)

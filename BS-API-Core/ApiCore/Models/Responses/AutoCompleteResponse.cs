@@ -1,12 +1,12 @@
-﻿namespace BS_API_Core.Models.Responses
+﻿namespace ApiCore.Models.Responses
 {
-    public class AutoComplateResponse
+    public class AutoCompleteResponse
     {
         public string message_code { get; set; } = "0";
         public string message_text { get; set; } = "success";
-        public List<AutoComplateItem>? data { get; set; } = new List<AutoComplateItem>();
+        public List<AutoCompleteItem>? data { get; set; } = new List<AutoCompleteItem>();
     }
-    public class AutoComplateItem
+    public class AutoCompleteItem
     {
         public string code { get; set; } = string.Empty;
         public string value { get; set; } = string.Empty;

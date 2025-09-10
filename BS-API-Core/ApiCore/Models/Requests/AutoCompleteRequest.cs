@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BS_API_Core.Models.Requests
+namespace ApiCore.Models.Requests
 {
-    public class AutoComplateRequest
+    public class AutoCompleteRequest
     {
         [Required]
         public string table { get; set; } = string.Empty;
