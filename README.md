@@ -386,7 +386,8 @@ git clone https://github.com/phayungsakp/bs-platform.git
 cd bs-platform
 git checkout -b feature/ชื่อฟีเจอร์
 ```
-### Docker
+## Docker
+
 - `Dockerfile` คือ file ที่กำหนดให้ container ที่จะสร้างมีลักษณะเป็นอย่างไร
 - `docker-compose.yml` คือ file ที่รวมคำสั่งต่างๆที่ใช้สั่ง สร้าง container จาก Dockerfile
 
@@ -403,6 +404,6 @@ BS-Platform/
 └── docker-compose.yml         
 
 ```
-คำสั่ง
-docker-compose up -d                   # จะ build และ run container ทั้งหมดที่ถูกเขียนไว้ใน docker-compose.yml
-docker-compose build <ชื่อ container>    # จะ build container ตามที่กำหนด แต่ container จะไม่ถูก run
+### คำสั่ง
+- `docker-compose up -d`                   # จะ build และ run container ทั้งหมดที่ถูกเขียนไว้ใน docker-compose.yml
+- `docker-compose build <ชื่อ container>`    # จะ build container ตามที่กำหนด แต่ container จะไม่ถูก run
