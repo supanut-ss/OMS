@@ -50,7 +50,7 @@ const BsAutoComplete = ({
                 }
             }
 
-            await AxiosMaster.post("/autocomplate", requestBody).then((res) => {
+            await AxiosMaster.post("/autocomplete", requestBody).then((res) => {
                 if (res.data?.data) {
                     list = res.data.data?.map(item => ({
                         code: item.code,
