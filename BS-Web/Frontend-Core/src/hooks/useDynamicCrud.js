@@ -162,7 +162,7 @@ export const useDynamicCrud = (tableName) => {
           conditions = { Id: id } || { id: id };
         }
 
-        const response = await axios.put("/dynamic/update", {
+        const response = await axios.post("/dynamic/update", {
           tableName: table,
           schemaName: schema,
           data: recordData,
@@ -199,12 +199,10 @@ export const useDynamicCrud = (tableName) => {
           conditions = { Id: id } || { id: id };
         }
 
-        const response = await axios.delete("/dynamic/delete", {
-          data: {
-            tableName: table,
-            schemaName: schema,
-            whereConditions: conditions,
-          },
+        const response = await axios.post("/dynamic/delete", {
+          tableName: table,
+          schemaName: schema,
+          whereConditions: conditions,
         });
 
         Logger.log("✅ Record deleted:", response.data);

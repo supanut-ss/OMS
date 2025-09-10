@@ -267,7 +267,7 @@ namespace ApiCore.Controllers
         /// </summary>
         /// <param name="request">Update request with table name, data, and where conditions</param>
         /// <returns>Updated record data</returns>
-        [HttpPut("update")]
+        [HttpPost("update")]
         [ProducesResponseType(typeof(DynamicResponse), 200)]
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
@@ -298,7 +298,7 @@ namespace ApiCore.Controllers
         /// </summary>
         /// <param name="request">Delete request with table name and where conditions</param>
         /// <returns>Success status</returns>
-        [HttpDelete("delete")]
+        [HttpPost("delete")]
         [ProducesResponseType(typeof(bool), 200)]
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
@@ -393,7 +393,7 @@ namespace ApiCore.Controllers
         /// </summary>
         /// <param name="request">Bulk update request with array of data and conditions</param>
         /// <returns>Updated records count and details</returns>
-        [HttpPut("bulk-update")]
+        [HttpPost("bulk-update")]
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
@@ -454,7 +454,7 @@ namespace ApiCore.Controllers
         /// </summary>
         /// <param name="request">Bulk delete request with array of conditions</param>
         /// <returns>Deleted records count and details</returns>
-        [HttpDelete("bulk-delete")]
+        [HttpPost("bulk-delete")]
         [ProducesResponseType(typeof(object), 200)]
         [ProducesResponseType(typeof(object), 400)]
         [ProducesResponseType(typeof(object), 404)]
