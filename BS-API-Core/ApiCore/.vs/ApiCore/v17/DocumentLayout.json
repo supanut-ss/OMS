@@ -53,32 +53,6 @@
           "SelectedChildIndex": 19,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "DynamicCrudService.cs",
-              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\DynamicCrudService.cs",
-              "RelativeDocumentMoniker": "Services\\Implementation\\DynamicCrudService.cs",
-              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\DynamicCrudService.cs",
-              "RelativeToolTip": "Services\\Implementation\\DynamicCrudService.cs",
-              "ViewState": "AgIAABQAAAAAAAAAAAAQwAMAAAANAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:48:27.487Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "AutoComplateServices.cs",
-              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\AutoComplateServices.cs",
-              "RelativeDocumentMoniker": "Services\\Implementation\\AutoComplateServices.cs",
-              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\AutoComplateServices.cs",
-              "RelativeToolTip": "Services\\Implementation\\AutoComplateServices.cs",
-              "ViewState": "AgIAAC4AAAAAAAAAAAAgwA8AAAANAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:48:11.442Z",
-              "EditorCaption": ""
-            },
-            {
               "$type": "Bookmark",
               "Name": "ST:15:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
             },
@@ -148,13 +122,37 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DynamicCrudService.cs",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\DynamicCrudService.cs",
+              "RelativeDocumentMoniker": "Services\\Implementation\\DynamicCrudService.cs",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\DynamicCrudService.cs",
+              "RelativeToolTip": "Services\\Implementation\\DynamicCrudService.cs",
+              "ViewState": "AgIAABQAAAAAAAAAAAAQwAMAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-10T02:48:27.487Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AutoComplateServices.cs",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\AutoComplateServices.cs",
+              "RelativeDocumentMoniker": "Services\\Implementation\\AutoComplateServices.cs",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Services\\Implementation\\AutoComplateServices.cs",
+              "RelativeToolTip": "Services\\Implementation\\AutoComplateServices.cs",
+              "ViewState": "AgIAAC4AAAAAAAAAAAAgwA8AAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-10T02:48:11.442Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-API-Core\\ApiCore\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAD8AAAAAAAAAAAAAABAAAAAmAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAA4AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-09-10T02:30:38.156Z",
               "EditorCaption": ""
@@ -169,8 +167,7 @@
               "RelativeToolTip": "Data\\ApplicationDbContext.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:40:12.19Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:40:12.19Z"
             },
             {
               "$type": "Document",
@@ -182,8 +179,7 @@
               "RelativeToolTip": "Services\\Interfaces\\IAutoComplate.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAA5AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:39:03.329Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:39:03.329Z"
             },
             {
               "$type": "Document",
@@ -195,8 +191,7 @@
               "RelativeToolTip": "Models\\Responses\\ControllerResponse.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAmAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:38:53.852Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:38:53.852Z"
             },
             {
               "$type": "Document",
@@ -208,8 +203,7 @@
               "RelativeToolTip": "Models\\Responses\\AutoCompleteResponse.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:38:52.489Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:38:52.489Z"
             },
             {
               "$type": "Document",
@@ -221,8 +215,7 @@
               "RelativeToolTip": "Models\\Requests\\AutoCompleteRequest.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAA5AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:38:47.81Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:38:47.81Z"
             },
             {
               "$type": "Document",
@@ -234,8 +227,7 @@
               "RelativeToolTip": "Controllers\\DynamicController.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:38:16.675Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:38:16.675Z"
             },
             {
               "$type": "Document",
@@ -247,8 +239,7 @@
               "RelativeToolTip": "Controllers\\AutoCompleteController.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAABBAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-10T02:38:11.855Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-09-10T02:38:11.855Z"
             }
           ]
         },
