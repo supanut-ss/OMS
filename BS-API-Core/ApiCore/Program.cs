@@ -1,13 +1,14 @@
 using ApiCore.Services.Interfaces;
-using ApiCore.Services;
+using ApiCore.Services.Implementation;
+using ApiCore.Data;
+using Microsoft.EntityFrameworkCore;
 using TokenManagement.Extensions;
 using TokenManagement.Interfaces;
-using TokenManagement.Middleware;
 using TokenManagement.Services;
-using ApiCore.Services.Implementation;
-
+using TokenManagement.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
+builder.Services.AddDbContext<ApplicationDbContext>(options=> options.UseSqlServer(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? ""));
 //string allowIPEnv = Environment.GetEnvironmentVariable("ALLOWIP_WEB") ?? "";
 string KEY = Environment.GetEnvironmentVariable("API_KEY_WEB") ?? "";
 //List<string> allows = new List<string>();
@@ -27,6 +28,7 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<IDynamicCrudService, DynamicCrudService>();
 builder.Services.AddScoped<IAutoComplete, AutoCompleteServices>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
