@@ -1,0 +1,14 @@
+### Test Dynamic CRUD - Get Table Metadata for Projects (No Auth)
+GET https://localhost:5083/api/dynamic/metadata/projects
+
+### Test Dynamic CRUD - Check if table exists (No Auth)
+GET https://localhost:5083/api/dynamic/exists/projects
+
+### Test Dynamic CRUD - Get Schema Information (No Auth)
+POST https://localhost:5083/api/dynamic/schema
+Content-Type: application/json
+
+{
+  "schemaName": "dbo",
+  "searchPattern": "projects"
+}

@@ -1,0 +1,243 @@
+### Dynamic CRUD API Tests
+### รองรับการทำงานกับตาราง/view/stored procedure แบบ dynamic
+
+@host = https://localhost:7140
+@token = {{login.response.body.data.token}}
+
+### 1. Login first to get token
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 2. Get database schema (รายการตาราง, view, stored procedures)
+POST {{host}}/api/dynamic/schema
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "schemaName": "dbo",
+  "searchPattern": null
+}
+
+### 3. Get table metadata (โครงสร้างตาราง CustomerMaster)
+GET {{host}}/api/dynamic/metadata/CustomerMaster?schemaName=dbo
+Authorization: Bearer {{token}}
+
+### 4. Get data from CustomerMaster table with DataGrid support
+POST {{host}}/api/dynamic/datagrid
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "CustomerMaster",
+  "schemaName": "dbo",
+  "start": 0,
+  "end": 25,
+  "sortModel": [
+    {
+      "field": "CreateDate",
+      "sort": "desc"
+    }
+  ],
+  "filterModel": {
+    "items": [
+      {
+        "field": "CompanyName",
+        "operator": "contains",
+        "value": "Co"
+      }
+    ],
+    "logicOperator": "and",
+    "quickFilterValues": ""
+  }
+}
+
+### 5. Get single record by ID from CustomerMaster
+POST {{host}}/api/dynamic/record/CustomerMaster?schemaName=dbo
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "Id": "CUST001"
+}
+
+### 6. Create new record in CustomerMaster
+POST {{host}}/api/dynamic/create
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "CustomerMaster",
+  "schemaName": "dbo",
+  "data": {
+    "Id": "DYNAMIC001",
+    "CompanyName": "Dynamic Test Company",
+    "ContactName": "Test Contact",
+    "Email": "dynamic@test.com",
+    "Phone": "123-456-7890",
+    "Address": "123 Dynamic Street",
+    "IsActive": true
+  }
+}
+
+### 7. Update record in CustomerMaster
+PUT {{host}}/api/dynamic/update
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "CustomerMaster",
+  "schemaName": "dbo",
+  "data": {
+    "CompanyName": "Updated Dynamic Company",
+    "ContactName": "Updated Contact",
+    "Email": "updated@dynamic.com"
+  },
+  "whereConditions": {
+    "Id": "DYNAMIC001"
+  }
+}
+
+### 8. Check if table exists
+GET {{host}}/api/dynamic/exists/CustomerMaster?schemaName=dbo
+Authorization: Bearer {{token}}
+
+### 9. Get data from ProjectMaster table
+POST {{host}}/api/dynamic/datagrid
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "ProjectMaster",
+  "schemaName": "dbo",
+  "start": 0,
+  "end": 10,
+  "sortModel": [
+    {
+      "field": "ProjectName",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": [],
+    "logicOperator": "and",
+    "quickFilterValues": "Web"
+  }
+}
+
+### 10. Get metadata for TimeEntryMaster table
+GET {{host}}/api/dynamic/metadata/TimeEntryMaster?schemaName=dbo
+Authorization: Bearer {{token}}
+
+### 11. Execute stored procedure (if exists)
+POST {{host}}/api/dynamic/procedure/sp_GetCustomerReport?schemaName=dbo
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "StartDate": "2024-01-01",
+  "EndDate": "2024-12-31"
+}
+
+### 12. Get stored procedure metadata
+GET {{host}}/api/dynamic/procedure-metadata/sp_GetCustomerReport?schemaName=dbo
+Authorization: Bearer {{token}}
+
+### 13. Execute custom SQL query (SELECT only)
+POST {{host}}/api/dynamic/query
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+"SELECT TOP 10 CompanyName, ContactName, Email FROM CustomerMaster WHERE IsActive = 1 ORDER BY CompanyName"
+
+### 14. Get data with specific columns only
+POST {{host}}/api/dynamic/datagrid
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "CustomerMaster",
+  "schemaName": "dbo",
+  "selectColumns": ["Id", "CompanyName", "ContactName", "Email"],
+  "start": 0,
+  "end": 20,
+  "sortModel": [
+    {
+      "field": "CompanyName",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": [
+      {
+        "field": "IsActive",
+        "operator": "equals",
+        "value": "1"
+      }
+    ],
+    "logicOperator": "and",
+    "quickFilterValues": ""
+  }
+}
+
+### 15. Search across multiple tables via schema
+POST {{host}}/api/dynamic/schema
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "schemaName": "dbo",
+  "searchPattern": "Master"
+}
+
+### 16. Delete record from CustomerMaster
+DELETE {{host}}/api/dynamic/delete
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "CustomerMaster",
+  "schemaName": "dbo",
+  "whereConditions": {
+    "Id": "DYNAMIC001"
+  }
+}
+
+### ===== Error Testing =====
+
+### 17. Try to access forbidden table (should fail)
+GET {{host}}/api/dynamic/metadata/sysdiagrams?schemaName=dbo
+Authorization: Bearer {{token}}
+
+### 18. Try to execute unsafe SQL (should fail)
+POST {{host}}/api/dynamic/query
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+"DROP TABLE CustomerMaster"
+
+### 19. Try to access non-existent table
+GET {{host}}/api/dynamic/metadata/NonExistentTable?schemaName=dbo
+Authorization: Bearer {{token}}
+
+### 20. Try to get data from non-existent table
+POST {{host}}/api/dynamic/datagrid
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tableName": "NonExistentTable",
+  "schemaName": "dbo",
+  "start": 0,
+  "end": 10,
+  "sortModel": [],
+  "filterModel": {
+    "items": [],
+    "logicOperator": "and",
+    "quickFilterValues": ""
+  }
+}
