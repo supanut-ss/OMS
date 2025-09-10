@@ -11,24 +11,24 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Copy โปรเจกต์ทั้งหมด
-COPY ["./BS-API-Secure/Authentication", "Authentication/"]
-COPY ["./BS-API-Secure/TokenManagement", "TokenManagement/"]
+COPY ["./BS-API-Core", "BS-API-Core/"]
+COPY ["./BS-API-Secure/TokenManagement", "BS-API-Secure/TokenManagement/"]
 
-RUN dotnet restore "Authentication/Authentication.csproj"
-RUN dotnet restore "TokenManagement/TokenManagement.csproj"
+RUN dotnet restore "BS-API-Core/BS-API-Core.csproj"
+RUN dotnet restore "BS-API-Secure/TokenManagement/TokenManagement.csproj"
 
-WORKDIR "/src/TokenManagement"
+WORKDIR "/src/BS-API-Secure/TokenManagement"
 RUN dotnet build "TokenManagement.csproj" -c $BUILD_CONFIGURATION -o /app/build/TokenManagement
 
-WORKDIR "/src/Authentication"
-RUN dotnet build "Authentication.csproj" -c $BUILD_CONFIGURATION -o /app/build/Authentication
+WORKDIR "/src/BS-API-Core/"
+RUN dotnet build "BS-API-Core.csproj" -c $BUILD_CONFIGURATION -o /app/build/BS-API-Core
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-WORKDIR "/src/Authentication"
-RUN dotnet publish "Authentication.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/BS-API-Core/"
+RUN dotnet publish "BS-API-Core.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Authentication.dll"]
+ENTRYPOINT ["dotnet", "BS-API-Core.dll"]

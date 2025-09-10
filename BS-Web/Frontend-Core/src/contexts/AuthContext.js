@@ -64,10 +64,13 @@ export const AuthProvider = ({ children }) => {
     let json = {
       status: false,
       message: "failed"
-    }
-    await AxiosMaster.post("/logout", {
-      refresh_token: SecureStorage.get("refresh_token") ?? ""
-    }).then((res) => {
+    };
+
+    try {
+      const res = await AxiosMaster.post("/logout", {
+        refresh_token: SecureStorage.get("refresh_token") ?? ""
+      });
+
       if (res.data.message_code === "0") {
         SecureStorage.clear();
         json.status = true;
@@ -76,9 +79,16 @@ export const AuthProvider = ({ children }) => {
         json.status = false;
         json.message = res.data.message_text;
       }
-    }).finally();
+    } catch (err) {
+      // ถ้าเจอ 401 จะเข้ามาที่นี่
+      SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
+      json.status = false;
+      json.message = err.response?.data?.message_text || "Unauthorized";
+    }
+
     return json;
   };
+
   const resource = async () => {
 
     await AxiosMaster.post("/resource", {
@@ -94,50 +104,57 @@ export const AuthProvider = ({ children }) => {
     return true;
   }
   const menu = async () => {
-    await AxiosMaster.get("/menu?platform=web").then((res) => {
-      if (res.data.message_code === "0") {
-        let menu_group = res.data.data
-          // กรองเฉพาะที่ isView = YES
-          .filter(item => item.isView === "YES")
-          // จัดกลุ่มตาม menuGroupSequence + menuGroups
-          .reduce((acc, item) => {
-            const key = `${item.menuGroupSequence}_${item.menuGroup}`;
-            if (!acc[key]) {
-              acc[key] = {
-                menu_group_sequence: item.menuGroupSequence,
-                menu_group_name: item.menuGroup,
-                menu_group_path: item.menu_path,
-                submenu: [],
-                is_view: item.isView === "YES",
-                is_delete: item.isDeleteView === "YES",
-                is_add: item.isAddView === "YES",
-                is_edit: item.isEditView === "YES"
-              };
-            }
-            acc[key].submenu.push({
-              parent_menu_id: item.parentMenuId,
-              menu_sequence: item.menuSequence,
-              menu_name: item.menuName,
-              menu_path: item.menuPath,
-              is_view: item.isView === "YES",
-              is_delete: item.isDeleteView === "YES",
-              is_add: item.isAddView === "YES",
-              is_edit: item.isEditView === "YES"
-            });
+    try {
+      await AxiosMaster.get("/menu?platform=web").then((res) => {
+        if (res.data.message_code === "0") {
+          let menu_group = res.data.data
+            // กรองเฉพาะที่ isView = YES
+            .filter(item => item.is_view === "YES")
+            // จัดกลุ่มตาม menuGroupSequence + menuGroups
+            .reduce((acc, item) => {
+              const key = `${item.menu_group_sequence}_${item.menu_group}`;
+              if (!acc[key]) {
+                acc[key] = {
+                  menu_group_sequence: item.menu_group_sequence,
+                  menu_group_name: item.menu_group,
+                  menu_group_path: item.menu_path,
+                  submenu: [],
+                  is_view: item.is_view === "YES",
+                  is_delete: item.is_delete_view === "YES",
+                  is_add: item.is_add_view === "YES",
+                  is_edit: item.is_edit_view === "YES"
+                };
+              }
+              acc[key].submenu.push({
+                parent_menu_id: item.parent_menu_id,
+                menu_sequence: item.menu_sequence,
+                menu_name: item.menu_name,
+                menu_path: item.menu_path,
+                is_view: item.is_view === "YES",
+                is_delete: item.is_delete_view === "YES",
+                is_add: item.is_add_view === "YES",
+                is_edit: item.is_edit_view === "YES"
+              });
 
-            return acc;
-          }, {});
+              return acc;
+            }, {});
 
-        // แปลง object → array และ sort ตามลำดับ group
-        menu_group = Object.values(menu_group)
-          .sort((a, b) => a.menu_group_sequence - b.menu_group_sequence)
-          .map(group => ({
-            ...group,
-            submenu: group.submenu.sort((a, b) => a.menu_sequence - b.menu_sequence)
-          }));
-        SecureStorage.set("menu", menu_group);
-      }
-    }).finally();
+          // แปลง object → array และ sort ตามลำดับ group
+          menu_group = Object.values(menu_group)
+            .sort((a, b) => a.menu_group_sequence - b.menu_group_sequence)
+            .map(group => ({
+              ...group,
+              submenu: group.submenu.sort((a, b) => a.menu_sequence - b.menu_sequence)
+            }));
+          SecureStorage.set("menu", menu_group);
+        }
+      }).finally();
+    } catch (err) {
+      // ถ้าเจอ 401 จะเข้ามาที่นี่
+      SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
+      return false;
+    }
+
     return true;
   }
 

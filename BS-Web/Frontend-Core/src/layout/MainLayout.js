@@ -43,6 +43,7 @@ import logoHorizontalSvg from "../assets/logo-horizontal.svg";
 import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
 import TopLinearProgress from "../components/TopLinearProgress";
+import SecureStorage from "../utils/SecureStorage";
 
 const drawerWidth = 280;
 const collapsedWidth = 72;
@@ -94,7 +95,7 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
 export default function MainLayout() {
   const theme = useTheme();
   const { toggleColorMode, mode } = useColorMode();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const location = useLocation();
 
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -156,7 +157,7 @@ export default function MainLayout() {
     if (data.status) {
       navigate("/login");
     } else {
-      console.log(data.message);
+      navigate("/");
     }
   };
 
@@ -172,10 +173,8 @@ export default function MainLayout() {
     intervalMs: 120000, // 2 นาที
   });
   useEffect(() => {
-    if (currentUser === null) {
-      setCurrentUser(user);
-    }
-  }, [currentUser, user]);
+    setCurrentUser(JSON.parse(SecureStorage.get("userInfo")));
+  }, [location]);
 
   return (
     <Box
@@ -520,7 +519,7 @@ export default function MainLayout() {
           setOpen={setOpen}     // ฟังก์ชันเปลี่ยนค่า open
           theme={theme}         // ส่ง theme ของ MUI เข้าไป
         />
-       
+
       </StyledDrawer>
 
       {/* Main content */}

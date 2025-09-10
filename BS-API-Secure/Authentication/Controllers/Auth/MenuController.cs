@@ -20,7 +20,7 @@ namespace Authentication.Controllers.Auth
             _imenu = menu ?? throw new ArgumentNullException(nameof(menu));
         }
 
-        [HttpGet("menuAuth")]
+        [HttpGet]
         public async Task<IActionResult> GetMenuByUser(string platform)
         {
             try
