@@ -1,13 +1,3 @@
-// using Microsoft.EntityFrameworkCore;
-// using Microsoft.AspNetCore.Authentication.JwtBearer;
-// using Microsoft.IdentityModel.Tokens;
-// using ApiCore.Data;
-// using ApiCore.Data.Repositories;
-// using ApiCore.Services.Interfaces;
-// using ApiCore.Services.Implementation;
-// using DotNetEnv;
-// using System.Text;
-
 using ApiCore.Services.Interfaces;
 using ApiCore.Services;
 using TokenManagement.Extensions;
