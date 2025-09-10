@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { TextField, CircularProgress, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { TextField, CircularProgress } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
-import axios from "axios";
 import SecureStorage from "../utils/SecureStorage";
 import AxiosMaster from "../utils/AxiosMaster";
 
@@ -25,19 +24,20 @@ const BsAutoComplete = ({
     const [value, setValue] = useState(bsValue || (multiple ? [] : ""));
     const [loaded, setLoaded] = useState(bsData.length > 0); // track if options loaded
 
-    // build request body for API
-    const requestBody = {
+    // ✅ ใช้ useMemo แทน object literal
+    const requestBody = useMemo(() => ({
         table: bsObj,
         primary: bsPreObj,
         columns: bsColumes,
         filters: bsFilters,
         include_blank: bsModel === "select",
-    };
+    }), [bsObj, bsPreObj, bsColumes, bsFilters, bsModel]);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (loaded) return;
         setLoading(true);
-        let list = []; // ประกาศที่นี่
+        let list = [];
+
         try {
             // check localStorage cache first
             if (cacheKey) {
@@ -50,18 +50,17 @@ const BsAutoComplete = ({
                 }
             }
 
-            await AxiosMaster.post("/autocomplete", requestBody).then((res) => {
-                if (res.data?.data) {
-                    list = res.data.data?.map(item => ({
-                        code: item.code,
-                        label: item.value
-                    }));
-                    setOptions(list);
-                    setLoaded(true);
+            const res = await AxiosMaster.post("/autocomplete", requestBody);
+            if (res.data?.data) {
+                list = res.data.data?.map(item => ({
+                    code: item.code,
+                    label: item.value
+                }));
+                setOptions(list);
+                setLoaded(true);
 
-                    if (cacheKey) SecureStorage.set(cacheKey, JSON.stringify(list));
-                }
-            }).finally();
+                if (cacheKey) SecureStorage.set(cacheKey, JSON.stringify(list));
+            }
 
             // preload value if provided
             if (bsValue && list.length > 0) {
@@ -80,8 +79,7 @@ const BsAutoComplete = ({
         } finally {
             setLoading(false);
         }
-    };
-
+    }, [loaded, cacheKey, requestBody, bsValue, multiple, isSelect]);
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -96,14 +94,18 @@ const BsAutoComplete = ({
         }
     };
 
-    // trigger fetch on open (for Autocomplete)
-    const handleOpen = () => {
-        if (loadOnOpen) fetchData();
+    const handleOpen = async () => {
+        if (loadOnOpen) await fetchData();
     };
 
+    // ✅ useEffect async แก้ไข
     useEffect(() => {
-        if (!loadOnOpen) fetchData(); // normal fetch on mount
-    }, [JSON.stringify(bsFilters), JSON.stringify(bsColumes), bsObj, bsPreObj]);
+        if (!loadOnOpen) {
+            (async () => {
+                await fetchData();
+            })();
+        }
+    }, [fetchData, loadOnOpen]);
 
     if (isSelect) {
         // แบบ MUI Select
