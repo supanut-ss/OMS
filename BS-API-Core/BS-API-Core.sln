@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113 d17.12
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BS-API-Core", "BS-API-Core.csproj", "{3774DCF5-3736-463B-AB48-62C700356081}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TokenManagement", "..\BS-API-Secure\TokenManagement\TokenManagement.csproj", "{3023E2DD-18F7-48C3-BD58-558DEE933793}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3774DCF5-3736-463B-AB48-62C700356081}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3774DCF5-3736-463B-AB48-62C700356081}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3774DCF5-3736-463B-AB48-62C700356081}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3774DCF5-3736-463B-AB48-62C700356081}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3023E2DD-18F7-48C3-BD58-558DEE933793}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3023E2DD-18F7-48C3-BD58-558DEE933793}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3023E2DD-18F7-48C3-BD58-558DEE933793}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3023E2DD-18F7-48C3-BD58-558DEE933793}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

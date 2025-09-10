@@ -2,20 +2,9 @@
 
 Umbrella project ของ BS รวมระบบทั้งหมด:
 
-- BS-API-Core → ระบบหลัก + DynamicController (Enhanced)
+- BS-API-Core → ระบบหลัก
 - BS-API-Secure → Security API
-- BS-Web → React Frontend + BSDataGrid Component
-
-## 🆕 Latest Updates
-
-### BSDataGrid + DynamicController Integration (Sep 2025)
-
-- ✅ **Enhanced DynamicController** รองรับ BS Platform properties
-- ✅ **BSDataGrid Component** พร้อม MUI X DataGrid Pro integration
-- ✅ **Bulk Operations** API endpoints สำหรับ bulk add/edit/delete
-- ✅ **ComboBox Integration** สำหรับ dropdown columns
-- ✅ **Auto-endpoint Selection** เลือก API endpoint อัตโนมัติ
-- ✅ **Backward Compatible** รองรับ legacy code
+- BS-Web → React Frontend
 
 ---
 

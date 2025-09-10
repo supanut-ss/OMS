@@ -80,7 +80,8 @@ namespace Authentication.Services.Auth
                     return CreateErrorResponse("1", "License limit reached. Cannot login more users.");
                 }
                 // สร้าง JWT token และ refresh token
-                string role = userinfo.UserId == Encryption.Decrypt(Environment.GetEnvironmentVariable("USERNAME_ADMIN") ?? "") ? "SuperAdmin" : userinfo.UserGroupId.ToString() ?? "User";
+                //string role = userinfo.UserId == Encryption.Decrypt(Environment.GetEnvironmentVariable("USERNAME_ADMIN") ?? "") ? "SuperAdmin" : userinfo.UserGroupId.ToString() ?? "User";
+                string role = userinfo.UserGroupId.ToString() ?? "unkonw";
                 var token = _jwtHelper.GenerateToken(userinfo.UserId, role, userinfo.FirstName, userinfo.FirstName, userinfo.LastName, userinfo.Email, userinfo.LocaleId);
                 var refresh = await _tokenValidatorService.GenerateRefreshToken(userinfo.UserId, token);
 

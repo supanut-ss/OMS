@@ -1,16 +1,8 @@
-using Authentication.Interfaces;
-using Authentication.Services;
-using Authentication.Services.Application;
-using Authentication.Services.Auth;
-using Authentication.Services.Resource;
-using Authentication.Services.Users;
-using Microsoft.AspNetCore.Authentication;
+using BS_API_Core.Interfaces;
+using BS_API_Core.Services;
 using TokenManagement.Extensions;
-using TokenManagement.Handler;
 using TokenManagement.Interfaces;
-using TokenManagement.Management.CustomsAuthentication;
 using TokenManagement.Middleware;
-using TokenManagement.Models;
 using TokenManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,32 +18,18 @@ builder.Services.AddCors(options => {
     options.AddPolicy(name: KEY,
         builder =>
         {
-        builder.WithOrigins("*")
-                           .AllowAnyHeader()
-                           .AllowAnyMethod();
+            builder.WithOrigins("*")
+                               .AllowAnyHeader()
+                               .AllowAnyMethod();
         });
 });
-var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB") ?? builder.Configuration.GetConnectionString("DefaultConnection");
-// Update the registration of JwtHelper to use IOptions<JwtSettings>
-builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
-// Add services to the container.
-builder.Services.AddScoped<IAuth, AuthService>();
-builder.Services.AddScoped<IUsers, UserService>();
-builder.Services.AddScoped<IResource, ResourceService>();
-builder.Services.AddScoped<IAlive, AliveService>();
-builder.Services.AddScoped<IApplication,ApplicationService>();
-builder.Services.AddScoped<IClientInfo, ClientInfoService>();
+builder.Services.AddScoped<IAutoComplate, AutoComplateServices>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
-builder.Services.AddScoped<IMenu, MenuService>();
 builder.Services.AddControllers();
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-
-
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -78,26 +56,22 @@ builder.Services.AddSwaggerGen(options =>
     options.UseAllOfToExtendReferenceSchemas();
 });
 builder.Services.AddOpenApi();
-//builder.Services.AddAuthentication(options =>
-//{
-//    options.DefaultAuthenticateScheme = "CustomJwtAuthentication";
-//    options.DefaultChallengeScheme = "CustomJwtAuthentication";
-//})
-//.AddScheme<AuthenticationSchemeOptions, CustomJwtAuthenticationHandler>("CustomJwtAuthentication", null);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
     app.MapOpenApi();
-//}
+}
+
 app.UseCors(KEY);
 app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseHttpsRedirection();
 
-app.UseAuthentication();  
+app.UseAuthentication();
 app.UseAuthorization();
 
 

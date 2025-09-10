@@ -34,12 +34,11 @@ var app = builder.Build();
 
 
 app.UseRouting();
-await app.UseOcelot();
 app.UseCors(KEY);
 app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+await app.UseOcelot();
 app.Run();

@@ -23,6 +23,9 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+#Docker
+docker-compose.yml
+
 # .NET Core
 project.lock.json
 project.fragment.lock.json
@@ -56,3 +59,7 @@ nunit-*.xml
 /BS-API-Secure/ApiGateway/.vs
 /BS-API-Secure/Authentication/.vs
 /BS-API-Secure/TokenManagement/.vs
+/BS-API-Core/.vs/BS-API-Core
+/BS-API-Core/.dockerignore
+/BS-API-Core/.env
+/BS-API-Core/.vs/ProjectEvaluation
