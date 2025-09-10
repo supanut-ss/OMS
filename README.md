@@ -48,7 +48,139 @@ import BSDataGrid from "../components/BSDataGrid";
   }]}
 />
 ```
+### BsAutoComplete Component
 
+```jsx
+import BsAutoComplete from "../components/BsAutoComplete";
+
+// Select
+<BsAutoComplete
+  bsModel="select"
+  bsTitle="เลือก Platform"
+  bsPreObj="combo_box_id"
+  bsObj="sec.t_com_combobox_item"
+  bsColumes={[
+    { field: "combo_box_id", display: false },
+    { field: "value_member", display: true, order_by: "ASC" },
+    { field: "group_name", display: false }
+  ]}
+  bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
+  bsValue="1" // ค่าเริ่มต้น = code ของ option
+  cacheKey="comboBoxItemsCache"
+  loadOnOpen={true}
+  bsOnChange={(val) => console.log("เลือก platform:", val)} 
+/>
+// Single
+<BsAutoComplete
+  bsModel="single"
+  bsTitle="เลือก Item เดียว"
+  bsPreObj="combo_box_id"
+  bsObj="sec.t_com_combobox_item"
+  bsColumes={[
+    { field: "combo_box_id", display: false },
+    { field: "value_member", display: true, order_by: "ASC" },
+    { field: "group_name", display: false }
+  ]}
+  bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
+  bsValue="2"
+  cacheKey="comboBoxItemsCache"
+  bsOnChange={(val) => console.log("เลือก item:", val)}
+/>
+// multi
+<BsAutoComplete
+  bsModel="multi"
+  bsTitle="เลือกหลายค่า"
+  bsPreObj="combo_box_id"
+  bsObj="sec.t_com_combobox_item"
+  bsColumes={[
+    { field: "combo_box_id", display: false },
+    { field: "value_member", display: true, order_by: "ASC" },
+    { field: "group_name", display: false }
+  ]}
+  bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
+  bsValue={["1", "3"]} 
+  cacheKey="comboBoxItemsCache"
+  bsOnChange={(val) => console.log("เลือกหลายค่า:", val)}
+/>
+
+```
+### BSAlert Components
+
+1.BSAlert
+
+```jsx
+import BSAlert from "./BSAlert";
+
+<BSAlert
+  open={true}
+  severity="success"   // success | info | warning | error
+  variant="filled"     // standard | outlined | filled
+  title="บันทึกสำเร็จ"
+  message="ข้อมูลถูกบันทึกเรียบร้อยแล้ว"
+  onClose={() => console.log("alert closed")}
+/>
+
+```
+2.BSAlertSnackbar
+
+```jsx
+import BSAlertSnackbar from "./BSAlertSnackbar";
+import { useState } from "react";
+
+function DemoSnackbar() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Show Snackbar</button>
+      <BSAlertSnackbar
+        open={open}
+        message="เซฟข้อมูลเรียบร้อยแล้ว!"
+        severity="success"
+        autoHideDuration={3000}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+}
+
+```
+3.BSAlertSwal2
+
+```jsx
+import BSAlertSwal2 from "./BSAlertSwal2";
+
+// แบบกำหนด options เอง
+BSAlertSwal2.fire({
+  title: "ลบข้อมูล?",
+  text: "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
+  icon: "warning",
+  showCancelButton: true,
+  confirmButtonText: "ใช่, ลบเลย",
+});
+
+// แบบใช้ shortcut
+BSAlertSwal2.show("success", "บันทึกเรียบร้อยแล้ว!");
+
+```
+### TopLinearProgress
+```jsx
+import TopLinearProgress from "./TopLinearProgress";
+import { useState } from "react";
+
+function DemoTopProgress() {
+  const [loading, setLoading] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setLoading(true)}>Start Loading</button>
+      <button onClick={() => setLoading(false)}>Stop Loading</button>
+      <TopLinearProgress open={loading} />
+    </>
+  );
+}
+
+```
 ### DynamicController API
 
 ```http
@@ -81,18 +213,26 @@ BS-Platform/
 ├── BS-API-Core/              # Backend API
 │   ├── Controllers/
 │   │   └── DynamicController.cs    # 🆕 Enhanced with BS support
+│   │   └── AutoCompleteController.cs    # 🆕 Enhanced with BS support
 │   ├── Models/Dynamic/
 │   └── docs/
 │       └── DynamicController-API.md # 🆕 API Documentation
 ├── BS-Web/Frontend-Core/     # Frontend React
 │   ├── src/components/
 │   │   └── BSDataGrid.js           # 🆕 Main DataGrid component
+│   │   └── BsAutoComplete.js       # 🆕 Main AutoComplete component
+│   │   └── BSAlert.js              # 🆕 Main BSAlert component
+│   │   └── BSAlertSnackbar.js      # 🆕 Main BSAlertSnackbar component
+│   │   └── BSAlertSwal2.js         # 🆕 Main BSAlertSwal2  component
+│   │   └── TopLinearProgress.js    # 🆕 Main TopLinearProgress component
 │   ├── src/hooks/
 │   │   └── useDynamicCrud.js       # 🆕 Enhanced with BS endpoints
 │   ├── src/examples/
 │   │   └── BSDataGridExamples.js   # 🆕 Usage examples
+│   │   └── BSAutoCompleteExamples.js   # 🆕 Usage examples
 │   └── docs/
 │       └── BSDataGrid.md           # 🆕 Component documentation
+│       └── BsAutoComplete.md           # 🆕 Component documentation
 └── docs/
     └── BSDataGrid-Integration.md   # 🆕 Integration guide
 ```
@@ -104,8 +244,11 @@ BS-Platform/
 ### Component Documentation
 
 - [📋 BSDataGrid Component](./BS-Web/Frontend-Core/docs/BSDataGrid.md)
+- [📋 BsAutoComplete Component](./BS-Web/Frontend-Core/docs/BsAutoComplete.md)
+- [📋 BSAlert Component](./BS-Web/Frontend-Core/docs/BSAlert.md)
+- [📋 TopLinearProgress Component](./BS-Web/Frontend-Core/docs/TopLinearProgress.md)
 - [📝 BSDataGrid Examples](./BS-Web/Frontend-Core/src/examples/BSDataGridExamples.js)
-
+- [📝 BsAutoComplete Examples](./BS-Web/Frontend-Core/src/examples/BSAutoCompleteExamples.js)
 ### API Documentation
 
 - [🔌 DynamicController API](./BS-API-Core/docs/DynamicController-API.md)
