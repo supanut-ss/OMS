@@ -1,0 +1,153 @@
+import React, { useState } from "react";
+import { Box, Typography, Paper, Divider } from "@mui/material";
+import BSDataGrid from "../components/BSDataGrid";
+
+/**
+ * ตัวอย่างการใช้งาน BSDataGrid
+ */
+const BSDataGridExamples = () => {
+  const [selectedRows, setSelectedRows] = useState([]);
+
+  // ตัวอย่าง 1: การใช้งานพื้นฐาน
+  const BasicExample = () => (
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        1. การใช้งานพื้นฐาน
+      </Typography>
+      <BSDataGrid bsObj="t_wms_customer" height={400} />
+    </Paper>
+  );
+
+  // ตัวอย่าง 2: การใช้งานแบบเต็มรูปแบบ
+  const AdvancedExample = () => (
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        2. การใช้งานแบบเต็มรูปแบบ
+      </Typography>
+      <BSDataGrid
+        bsLocale="th"
+        bsPreObj="default"
+        bsObj="t_wms_customer"
+        bsCols="id,name,email,phone,status,created_date"
+        bsObjBy="name asc, created_date desc"
+        bsObjWh="status='active'"
+        bsPinColsLeft="id,name"
+        bsPinColsRight="actions"
+        bsRowPerPage={20}
+        bsBulkEdit={true}
+        bsBulkAdd={true}
+        bsShowDescColumn={false}
+        bsComboBox={[
+          {
+            Column: "status",
+            Display: "name",
+            Value: "id",
+            Default: "--- Select Status ---",
+            PreObj: "default",
+            Obj: "t_wms_status",
+            ObjWh: "active=1",
+            ObjBy: "name asc",
+            valueOptions: [
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+              { value: "pending", label: "Pending" },
+            ],
+          },
+        ]}
+        onCheckBoxSelected={(rows) => {
+          console.log("Selected rows:", rows);
+          setSelectedRows(rows);
+        }}
+        onEdit={(row) => console.log("Edit:", row)}
+        onDelete={(id) => console.log("Delete:", id)}
+        onAdd={() => console.log("Add new record")}
+        height={500}
+      />
+    </Paper>
+  );
+
+  // ตัวอย่าง 3: ใช้กับ Legacy API
+  const LegacyExample = () => (
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        3. ใช้กับ Legacy API (เก่า)
+      </Typography>
+      <BSDataGrid
+        tableName="dbo.Users"
+        onEdit={(row) => console.log("Legacy Edit:", row)}
+        onDelete={(id) => console.log("Legacy Delete:", id)}
+        onAdd={() => console.log("Legacy Add")}
+        height={400}
+      />
+    </Paper>
+  );
+
+  // ตัวอย่าง 4: Read-only mode
+  const ReadOnlyExample = () => (
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        4. Read-only Mode
+      </Typography>
+      <BSDataGrid
+        bsObj="t_wms_customer"
+        readOnly={true}
+        showAdd={false}
+        bsCols="name,email,phone"
+        height={350}
+      />
+    </Paper>
+  );
+
+  // ตัวอย่าง 5: Bulk Operations
+  const BulkExample = () => (
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        5. Bulk Operations
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Selected rows: {selectedRows.length}
+      </Typography>
+      <BSDataGrid
+        bsObj="t_wms_customer"
+        bsBulkEdit={true}
+        bsBulkAdd={true}
+        onCheckBoxSelected={setSelectedRows}
+        height={400}
+      />
+    </Paper>
+  );
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        BSDataGrid Examples
+      </Typography>
+      <Typography variant="body1" sx={{ mb: 3 }}>
+        ตัวอย่างการใช้งาน BSDataGrid ในรูปแบบต่างๆ
+      </Typography>
+
+      <Divider sx={{ mb: 3 }} />
+
+      <BasicExample />
+      <AdvancedExample />
+      <LegacyExample />
+      <ReadOnlyExample />
+      <BulkExample />
+
+      {/* Debug Info */}
+      <Paper sx={{ p: 2, backgroundColor: "#f5f5f5" }}>
+        <Typography variant="h6" gutterBottom>
+          Debug Information
+        </Typography>
+        <Typography variant="body2">
+          Selected Rows Count: {selectedRows.length}
+        </Typography>
+        <pre style={{ fontSize: "12px", overflow: "auto", maxHeight: "200px" }}>
+          {JSON.stringify(selectedRows, null, 2)}
+        </pre>
+      </Paper>
+    </Box>
+  );
+};
+
+export default BSDataGridExamples;

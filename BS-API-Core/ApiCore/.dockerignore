@@ -1,0 +1,72 @@
+# Git
+**/.git
+**/.gitignore
+**/.gitmodules
+
+# VS Code
+**/.vscode
+**/.vs
+
+# Visual Studio
+**/.classpath
+**/.project
+**/.settings
+**/.toolstarget
+**/*.*proj.user
+**/*.dbmdl
+**/*.jfm
+
+# Build artifacts
+**/bin
+**/obj
+**/out
+
+# Environment files (exclude from Docker but include in final image if needed)
+**/.env*
+!.env.docker
+
+# Dependencies
+**/node_modules
+**/npm-debug.log
+
+# Docker
+**/.dockerignore
+**/docker-compose*
+**/Dockerfile*
+
+# Azure DevOps
+**/azds.yaml
+**/charts
+**/secrets.dev.yaml
+**/values.dev.yaml
+
+# Documentation
+README.md
+LICENSE
+**/docs
+
+# Test results
+**/TestResults
+**/*.trx
+**/*.coverage
+**/*.coveragexml
+
+# Logs
+**/logs
+**/*.log
+
+# Temporary files
+**/tmp
+**/temp
+**/.tmp
+**/.temp
+
+# OS generated files
+**/.DS_Store
+**/Thumbs.db
+
+# Keep git metadata for build info
+!.git/HEAD
+!.git/config
+!.git/packed-refs
+!.git/refs/heads/**
