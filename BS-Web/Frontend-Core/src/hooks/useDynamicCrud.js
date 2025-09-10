@@ -87,7 +87,16 @@ export const useDynamicCrud = (tableName) => {
 
         Logger.log("📡 Loading dynamic data:", payload);
 
-        const response = await axios.post("/dynamic/datagrid", payload);
+        // Use bs-datagrid endpoint if BS properties are present
+        const endpoint =
+          request.preObj ||
+          request.columns ||
+          request.customWhere ||
+          request.customOrderBy
+            ? "/dynamic/bs-datagrid"
+            : "/dynamic/datagrid";
+
+        const response = await axios.post(endpoint, payload);
 
         Logger.log("📊 Dynamic data loaded:", {
           rows: response.data.rows?.length || 0,

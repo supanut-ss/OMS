@@ -1,0 +1,295 @@
+# MUI X DataGrid API Tests
+# Testing the new MUI X DataGrid server-side data endpoints
+
+@baseUrl = http://localhost:5083
+@token = YOUR_JWT_TOKEN_HERE
+
+###
+# Test 1: Basic DataGrid request (MUI X format)
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 10,
+  "sortModel": [],
+  "filterModel": {
+    "items": []
+  }
+}
+
+###
+# Test 2: DataGrid with sorting
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 10,
+  "sortModel": [
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": []
+  }
+}
+
+###
+# Test 3: DataGrid with multiple sorting
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 10,
+  "sortModel": [
+    {
+      "field": "province",
+      "sort": "desc"
+    },
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": []
+  }
+}
+
+###
+# Test 4: DataGrid with filtering
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 10,
+  "sortModel": [],
+  "filterModel": {
+    "items": [
+      {
+        "field": "name",
+        "operator": "contains",
+        "value": "บริษัท"
+      }
+    ],
+    "logicOperator": "and"
+  }
+}
+
+###
+# Test 5: DataGrid with multiple filters
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 10,
+  "sortModel": [
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": [
+      {
+        "field": "province",
+        "operator": "equals",
+        "value": "กรุงเทพมหานคร"
+      },
+      {
+        "field": "isActive",
+        "operator": "equals",
+        "value": "YES"
+      }
+    ],
+    "logicOperator": "and"
+  }
+}
+
+###
+# Test 6: DataGrid with pagination (second page)
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 10,
+  "end": 20,
+  "sortModel": [
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": []
+  }
+}
+
+###
+# Test 7: DataGrid with custom page size (50 records)
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 50,
+  "sortModel": [
+    {
+      "field": "createDate",
+      "sort": "desc"
+    }
+  ],
+  "filterModel": {
+    "items": []
+  }
+}
+
+###
+# Test 8: DataGrid with global search + province filter
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 20,
+  "sortModel": [
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": [
+      {
+        "field": "name",
+        "operator": "contains",
+        "value": "จำกัด"
+      },
+      {
+        "field": "province",
+        "operator": "equals",
+        "value": "กรุงเทพมหานคร"
+      },
+      {
+        "field": "isActive",
+        "operator": "equals",
+        "value": "YES"
+      }
+    ],
+    "quickFilterValues": "บริษัท"
+  }
+}
+
+###
+# Test 9: DataGrid with complex filtering (OR logic)
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 15,
+  "sortModel": [
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": [
+      {
+        "field": "province",
+        "operator": "equals",
+        "value": "กรุงเทพมหานคร"
+      },
+      {
+        "field": "province",
+        "operator": "equals",
+        "value": "เชียงใหม่"
+      }
+    ],
+    "logicOperator": "or"
+  }
+}
+
+###
+# Test 10: DataGrid with different filter operators
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 10,
+  "sortModel": [],
+  "filterModel": {
+    "items": [
+      {
+        "field": "name",
+        "operator": "startswith",
+        "value": "บริษัท"
+      },
+      {
+        "field": "email",
+        "operator": "endswith",
+        "value": ".com"
+      },
+      {
+        "field": "phone",
+        "operator": "isnotempty",
+        "value": null
+      }
+    ],
+    "logicOperator": "and"
+  }
+}
+
+###
+# Test 11: Large page size for performance testing
+POST {{baseUrl}}/api/customers/datagrid-test
+Content-Type: application/json
+
+{
+  "start": 0,
+  "end": 100,
+  "sortModel": [
+    {
+      "field": "name",
+      "sort": "asc"
+    }
+  ],
+  "filterModel": {
+    "items": []
+  }
+}
+
+###
+# Expected Response Format:
+# {
+#   "rows": [
+#     {
+#       "id": "customer-id",
+#       "code": "C001",
+#       "name": "Company Name",
+#       // ... other customer fields
+#     }
+#   ],
+#   "rowCount": 150,
+#   "success": true,
+#   "message": "Data retrieved successfully",
+#   "metadata": {
+#     "start": 0,
+#     "end": 10,
+#     "pageSize": 10,
+#     "currentPage": 1,
+#     "totalPages": 15,
+#     "appliedSort": [...],
+#     "appliedFilters": [...],
+#     "queryExecutionTimeMs": 45,
+#     "fetchedAt": "2025-08-05T..."
+#   }
+# }
