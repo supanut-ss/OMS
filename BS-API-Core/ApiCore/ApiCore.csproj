@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9">
@@ -28,13 +29,13 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
   </ItemGroup>
 
-    <ItemGroup>
-    <ProjectReference Include="..\..\BS-API-Secure\TokenManagement\TokenManagement.csproj" />
-  </ItemGroup>
-
   <ItemGroup>
     <Folder Include="Extension\" />
     <Folder Include="Services\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BS-API-Secure\TokenManagement\TokenManagement.csproj" />
   </ItemGroup>
 
 </Project>

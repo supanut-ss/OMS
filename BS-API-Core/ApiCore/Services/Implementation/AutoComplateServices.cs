@@ -61,6 +61,7 @@ namespace ApiCore.Services.Implementation
                             }
                             else
                             {
+                                response.data = new List<AutoCompleteItem>();
                                 if (request.include_blank)
                                 {
                                     response.data.Add(new AutoCompleteItem { code = "", value = "--Please Select--" });

@@ -31,6 +31,6 @@ namespace ApiCore.Models.Base
     public abstract class BaseUpdateRequest : BaseRequest
     {
         public string Id { get; set; } = string.Empty;
-        public new string UpdateBy { get; set; } = string.Empty;
+        public string UpdateBy { get; set; } = string.Empty;
     }
 }
