@@ -127,7 +127,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/autocomplate",
+      "DownstreamPathTemplate": "/autocomplete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -135,7 +135,7 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/autocomplate",
+      "UpstreamPathTemplate": "/gateway/v1/api/autocomplete",
       "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
