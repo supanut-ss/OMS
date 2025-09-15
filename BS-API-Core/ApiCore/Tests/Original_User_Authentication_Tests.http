@@ -1,0 +1,35 @@
+### Authentication Tests for Original User Table
+### Test login with original table user
+
+### 1. Login Test - Default Admin
+POST http://localhost:5083/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "Admin123!"
+}
+
+### 2. Login Test - Demo User
+POST http://localhost:5083/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@test.com",
+  "password": "User123!"
+}
+
+### 3. Login Test - Invalid Credentials
+POST http://localhost:5083/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid@test.com",
+  "password": "wrongpassword"
+}
+
+### 4. Database Example Health Check  
+GET http://localhost:5083/api/DatabaseExample/health
+
+### 5. Security Health Check (should still work for multi-database demo)
+GET http://localhost:5083/api/security/health

@@ -1,0 +1,25 @@
+### Test Dynamic CRUD - Get Table Metadata for Projects
+GET https://localhost:5083/api/dynamic/metadata/projects
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiI1IiwidW5pcXVlX25hbWUiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmJmIjoxNzM2OTcyNTQzLCJleHAiOjE3MzcwNTg5NDMsImlhdCI6MTczNjk3MjU0M30.1drQKPOaTHY9cY0hkjXrBfykmhhlxD7xc3SrnFN29LI
+
+### Test Dynamic CRUD - Get Schema Information  
+POST https://localhost:5083/api/dynamic/schema
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiI1IiwidW5pcXVlX25hbWUiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmJmIjoxNzM2OTcyNTQzLCJleHAiOjE3MzcwNTg5NDMsImlhdCI6MTczNjk3MjU0M30.1drQKPOaTHY9cY0hkjXrBfykmhhlxD7xc3SrnFN29LI
+Content-Type: application/json
+
+{
+  "schemaName": "dbo",
+  "searchPattern": "projects"
+}
+
+### Test Dynamic CRUD - Get DataGrid for Projects
+POST https://localhost:5083/api/dynamic/datagrid
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiI1IiwidW5pcXVlX25hbWUiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmJmIjoxNzM2OTcyNTQzLCJleHAiOjE3MzcwNTg5NDMsImlhdCI6MTczNjk3MjU0M30.1drQKPOaTHY9cY0hkjXrBfykmhhlxD7xc3SrnFN29LI
+Content-Type: application/json
+
+{
+  "tableName": "projects",
+  "schemaName": "dbo",
+  "start": 0,
+  "end": 25
+}

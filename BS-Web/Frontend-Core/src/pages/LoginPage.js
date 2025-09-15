@@ -68,7 +68,7 @@ export default function LoginPage() {
           let status_menu = await menu();
           if (status_menu) {
             const from = location.state?.from?.pathname || "/";
-            navigate(from, { replace: true });
+            navigate(from);
           }
         }
 

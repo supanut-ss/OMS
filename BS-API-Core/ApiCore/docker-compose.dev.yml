@@ -1,0 +1,41 @@
+# Development override for Docker Compose
+# Use: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  bs-api-core:
+    build:
+      args:
+        BUILD_CONFIGURATION: Debug
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_LOGGING__LOGLEVEL__DEFAULT=Debug
+      - ASPNETCORE_LOGGING__LOGLEVEL__MICROSOFT=Information
+    volumes:
+      # Mount source code for development
+      - .:/app/src:ro
+      # Mount appsettings for development
+      - ./appsettings.Development.json:/app/appsettings.Development.json:ro
+    ports:
+      - "5000:8080"
+      - "5001:8081"
+    # Override healthcheck for faster feedback
+    healthcheck:
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  sqlserver:
+    environment:
+      - SA_PASSWORD=DevPassword123!
+    # Mount SQL scripts for development
+    volumes:
+      - sqlserver_dev_data:/var/opt/mssql
+      - ./SQL:/docker-entrypoint-initdb.d:ro
+      - ./Tests/TestData:/var/opt/mssql/testdata:ro
+
+volumes:
+  sqlserver_dev_data:
+    driver: local
