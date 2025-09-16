@@ -4,21 +4,22 @@ import Autocomplete from "@mui/material/Autocomplete";
 import SecureStorage from "../utils/SecureStorage";
 import AxiosMaster from "../utils/AxiosMaster";
 
-const BsAutoComplete = ({
-    bsModel = "single",       // single, multi, select
-    bsPreObj,                 // primary key
+const BSAutoComplete = ({
+    bsMode = "single",       // single, multi, select
+    bsPreObj,                 // schema key
     bsTitle,                  // title
     bsObj,                    // table
-    bsFilters = [],           // array [{field, op, value}] or empty
-    bsColumes = [],           // array [{field, display, order_by}]
-    bsData = [],              // optional: initial data array [{code,label}]
+    bsColumes = [],           // array [{field, display, order_by,filter,key}]
+    bsObjBy = "",             // string Columns1, Columns2 desc
+    bsObjWh = "",             // string Columns1='xxx'
+    bsData = [],              // optional: initial data array [{...}]
     bsValue = null,           // pre-selected value(s)
     bsOnChange,               // function callback on change
-    loadOnOpen = false,       // true = fetch only on open
-    cacheKey,                 // string, localStorage key for cache
+    bsLoadOnOpen = false,       // true = fetch only on open
+    bsCacheKey,                 // string, localStorage key for cache
 }) => {
-    const multiple = bsModel === "multi";
-    const isSelect = bsModel === "select";
+    const multiple = bsMode === "multi";
+    const isSelect = bsMode === "select";
     const [options, setOptions] = useState(bsData);
     const [loading, setLoading] = useState(false);
     const [value, setValue] = useState(bsValue || (multiple ? [] : ""));
@@ -27,11 +28,12 @@ const BsAutoComplete = ({
     // ✅ ใช้ useMemo แทน object literal
     const requestBody = useMemo(() => ({
         table: bsObj,
-        primary: bsPreObj,
+        schema: bsPreObj,
         columns: bsColumes,
-        filters: bsFilters,
-        include_blank: bsModel === "select",
-    }), [bsObj, bsPreObj, bsColumes, bsFilters, bsModel]);
+        where: bsObjWh,
+        order_by: bsObjBy,
+        include_blank: bsMode === "select",
+    }), [bsObj, bsPreObj, bsColumes,bsObjBy , bsObjWh, bsMode]);
 
     const fetchData = useCallback(async () => {
         if (loaded) return;
@@ -40,8 +42,8 @@ const BsAutoComplete = ({
 
         try {
             // check localStorage cache first
-            if (cacheKey) {
-                const cached = SecureStorage.get(cacheKey);
+            if (bsCacheKey) {
+                const cached = SecureStorage.get(bsCacheKey);
                 if (cached) {
                     list = JSON.parse(cached);
                     setOptions(list);
@@ -54,12 +56,13 @@ const BsAutoComplete = ({
             if (res.data?.data) {
                 list = res.data.data?.map(item => ({
                     code: item.code,
-                    label: item.value
+                    label: item.value,
+                    ...item
                 }));
                 setOptions(list);
                 setLoaded(true);
 
-                if (cacheKey) SecureStorage.set(cacheKey, JSON.stringify(list));
+                if (bsCacheKey) SecureStorage.set(bsCacheKey, JSON.stringify(list));
             }
 
             // preload value if provided
@@ -79,7 +82,7 @@ const BsAutoComplete = ({
         } finally {
             setLoading(false);
         }
-    }, [loaded, cacheKey, requestBody, bsValue, multiple, isSelect]);
+    }, [loaded, bsCacheKey, requestBody, bsValue, multiple, isSelect]);
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -87,25 +90,25 @@ const BsAutoComplete = ({
             if (isSelect) {
                 bsOnChange(newValue); // code string
             } else if (multiple) {
-                bsOnChange(newValue.map(v => v.code));
+                bsOnChange(newValue);
             } else {
-                bsOnChange(newValue?.code || null);
+                bsOnChange(newValue || null);
             }
         }
     };
 
     const handleOpen = async () => {
-        if (loadOnOpen) await fetchData();
+        if (bsLoadOnOpen) await fetchData();
     };
 
     // ✅ useEffect async แก้ไข
     useEffect(() => {
-        if (!loadOnOpen) {
+        if (!bsLoadOnOpen) {
             (async () => {
                 await fetchData();
             })();
         }
-    }, [fetchData, loadOnOpen]);
+    }, [fetchData, bsLoadOnOpen]);
 
     if (isSelect) {
         // แบบ MUI Select
@@ -113,13 +116,13 @@ const BsAutoComplete = ({
             <Autocomplete
                 disableClearable
                 options={options}
-                getOptionLabel={(option) => option.label || ""}
-                value={options.find(opt => opt.code === value) || null}
+                getOptionLabel={(option) => option.value || ""}
+                value={options.find(opt => opt.code === value.code) || null}
                 onChange={(event, newValue) => {
-                    handleChange(event, newValue ? newValue.code : "");
+                    handleChange(event, newValue ? newValue : "");
                 }}
                 loading={loading}
-                onOpen={loadOnOpen ? fetchData : undefined}
+                onOpen={bsLoadOnOpen ? fetchData : undefined}
                 isOptionEqualToValue={(option, val) => option.code === val.code}
                 renderInput={(params) => (
                     <TextField
@@ -150,7 +153,7 @@ const BsAutoComplete = ({
         <Autocomplete
             multiple={multiple}
             options={options}
-            getOptionLabel={(option) => option.label || ""}
+            getOptionLabel={(option) => option.value || ""}
             value={value}
             onChange={handleChange}
             loading={loading}
@@ -176,4 +179,4 @@ const BsAutoComplete = ({
     );
 };
 
-export default BsAutoComplete;
+export default BSAutoComplete;
