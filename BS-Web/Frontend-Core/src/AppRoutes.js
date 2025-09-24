@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
+import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 
 export default function AppRoutes() {
   return (
@@ -18,6 +19,7 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<div />} />
+        <Route path="autocomplete" element={<BSAutoCompleteExamples/>}/>
         <Route
           path="timesheet"
           element={<div>Timesheet Page - Coming Soon</div>}

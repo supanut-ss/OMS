@@ -127,6 +127,38 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/menu/menuAssign",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/menu/menuAssign",
+      "UpstreamHttpMethod": [ "get" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/menu/saveAssign",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/menu/saveAssign",
+      "UpstreamHttpMethod": [ "post" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
       "DownstreamPathTemplate": "/autocomplete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
