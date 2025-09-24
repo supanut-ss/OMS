@@ -1,5 +1,5 @@
 import { Paper, Typography } from "@mui/material";
-import BSAutoComplete from "../components/BSAutoComplete";
+import BSAutoComplete from "../components/BsAutoComplete";
 import { useState } from "react";
 
 const BSAutoCompleteExamples = () => {
