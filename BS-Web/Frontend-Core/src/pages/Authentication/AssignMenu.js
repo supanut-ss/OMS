@@ -71,29 +71,29 @@ const MenuTreeView = () => {
     const groups = {};
 
     rows.forEach((r) => {
-      const id = String(r.menuId);
-      const parentId = r.parentMenuId ? String(r.parentMenuId) : null;
-      const groupName = r.menuGroup || "Ungrouped";
+      const id = String(r.menu_id);
+      const parentId = r.parent_menu_id ? String(r.parent_menu_id) : null;
+      const groupName = r.menu_group || "Ungrouped";
 
       const perms = [
-        { id: `add-${id}`, label: "Add", isCheck: toBool(r.isAddView) },
-        { id: `edit-${id}`, label: "Edit", isCheck: toBool(r.isEditView) },
+        { id: `add-${id}`, label: "Add", isCheck: toBool(r.is_add_view) },
+        { id: `edit-${id}`, label: "Edit", isCheck: toBool(r.is_edit_view) },
         {
           id: `delete-${id}`,
           label: "Delete",
-          isCheck: toBool(r.isDeleteView),
+          isCheck: toBool(r.is_delete_view),
         },
-        { id: `view-${id}`, label: "View", isCheck: toBool(r.isView) },
+        { id: `view-${id}`, label: "View", isCheck: toBool(r.is_view) },
       ];
 
       nodes[id] = {
         id,
-        label: r.menuName ?? `menu-${id}`,
-        isCheck: toBool(r.isView),
+        label: r.menu_name ?? `menu-${id}`,
+        isCheck: toBool(r.is_view),
         parentId,
         groupName,
-        groupSequence: Number(r.menuGroupSequence ?? 0),
-        sequence: Number(r.menuSequence ?? 0),
+        groupSequence: Number(r.menu_group_sequence ?? 0),
+        sequence: Number(r.menu_sequence ?? 0),
         menuChildren: [],
         permChildren: perms,
       };
@@ -103,7 +103,7 @@ const MenuTreeView = () => {
           id: groupName,
           label: groupName,
           roots: [],
-          groupSequence: Number(r.menuGroupSequence ?? 0),
+          groupSequence: Number(r.menu_group_sequence ?? 0),
         };
       }
       groups[groupName].roots.push(id);
