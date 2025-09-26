@@ -1,10 +1,12 @@
 import { useState, useCallback } from "react";
-import axios from "../utils/axios";
+import AxiosMaster from "../utils/AxiosMaster";
 import Logger from "../utils/logger";
 
 /**
  * Dynamic CRUD Hook สำหรับการจัดการข้อมูลจากตารางใดๆ ใน database
- * @param {string} tableName - ชื่อตาราง เช่น 'dbo.Users', 'app.Products'
+ * Updated to use API Gateway endpoints
+ * @param {str        Logger.error("❌ Failed to execute query via Gateway:", errorMsg);
+        throw new Error(errorMsg);g} tableName - ชื่อตาราง เช่น 'dbo.Users', 'app.Products'
  */
 export const useDynamicCrud = (tableName) => {
   const [metadata, setMetadata] = useState(null);
@@ -38,10 +40,10 @@ export const useDynamicCrud = (tableName) => {
       const { schema, table } = parseTableName(tableName);
       const url = `/dynamic/metadata/${table}?schemaName=${schema}`;
       Logger.log(`🔍 Loading metadata for table: ${schema}.${table}`);
-      Logger.log(`📡 API URL: ${url}`);
-      console.log("📡 useDynamicCrud: Making API call to:", url);
+      Logger.log(`📡 Gateway API URL: ${url}`);
+      console.log("📡 useDynamicCrud: Making API call to Gateway:", url);
 
-      const response = await axios.get(url);
+      const response = await AxiosMaster.get(url);
       setMetadata(response.data);
 
       Logger.log("✅ Metadata loaded for table:", tableName, response.data);
@@ -87,6 +89,8 @@ export const useDynamicCrud = (tableName) => {
 
         Logger.log("📡 Loading dynamic data:", payload);
 
+        Logger.log("📡 Loading dynamic data via Gateway:", payload);
+
         // Use bs-datagrid endpoint if BS properties are present
         const endpoint =
           request.preObj ||
@@ -96,9 +100,9 @@ export const useDynamicCrud = (tableName) => {
             ? "/dynamic/bs-datagrid"
             : "/dynamic/datagrid";
 
-        const response = await axios.post(endpoint, payload);
+        const response = await AxiosMaster.post(endpoint, payload);
 
-        Logger.log("📊 Dynamic data loaded:", {
+        Logger.log("📊 Dynamic data loaded via Gateway:", {
           rows: response.data.rows?.length || 0,
           total: response.data.rowCount || 0,
         });
@@ -113,7 +117,7 @@ export const useDynamicCrud = (tableName) => {
       } catch (err) {
         const errorMsg =
           err.response?.data?.message || err.message || "Failed to load data";
-        Logger.error("❌ Failed to load table data:", errorMsg);
+        Logger.error("❌ Failed to load table data via Gateway:", errorMsg);
         throw new Error(errorMsg);
       }
     },
@@ -126,20 +130,20 @@ export const useDynamicCrud = (tableName) => {
       try {
         const { schema, table } = parseTableName(tableName);
 
-        const response = await axios.post("/dynamic/create", {
+        const response = await AxiosMaster.post("/dynamic/create", {
           tableName: table,
           schemaName: schema,
           data: recordData,
         });
 
-        Logger.log("✅ Record created:", response.data);
+        Logger.log("✅ Record created via Gateway:", response.data);
         return response.data;
       } catch (err) {
         const errorMsg =
           err.response?.data?.message ||
           err.message ||
           "Failed to create record";
-        Logger.error("❌ Failed to create record:", errorMsg);
+        Logger.error("❌ Failed to create record via Gateway:", errorMsg);
         throw new Error(errorMsg);
       }
     },
@@ -162,21 +166,21 @@ export const useDynamicCrud = (tableName) => {
           conditions = { Id: id } || { id: id };
         }
 
-        const response = await axios.post("/dynamic/update", {
+        const response = await AxiosMaster.post("/dynamic/update", {
           tableName: table,
           schemaName: schema,
           data: recordData,
           whereConditions: conditions,
         });
 
-        Logger.log("✅ Record updated:", response.data);
+        Logger.log("✅ Record updated via Gateway:", response.data);
         return response.data;
       } catch (err) {
         const errorMsg =
           err.response?.data?.message ||
           err.message ||
           "Failed to update record";
-        Logger.error("❌ Failed to update record:", errorMsg);
+        Logger.error("❌ Failed to update record via Gateway:", errorMsg);
         throw new Error(errorMsg);
       }
     },
@@ -199,20 +203,20 @@ export const useDynamicCrud = (tableName) => {
           conditions = { Id: id } || { id: id };
         }
 
-        const response = await axios.post("/dynamic/delete", {
+        const response = await AxiosMaster.post("/dynamic/delete", {
           tableName: table,
           schemaName: schema,
           whereConditions: conditions,
         });
 
-        Logger.log("✅ Record deleted:", response.data);
+        Logger.log("✅ Record deleted via Gateway:", response.data);
         return response.data;
       } catch (err) {
         const errorMsg =
           err.response?.data?.message ||
           err.message ||
           "Failed to delete record";
-        Logger.error("❌ Failed to delete record:", errorMsg);
+        Logger.error("❌ Failed to delete record via Gateway:", errorMsg);
         throw new Error(errorMsg);
       }
     },
@@ -225,13 +229,13 @@ export const useDynamicCrud = (tableName) => {
       try {
         const { schema, table: procName } = parseTableName(procedureName);
 
-        const response = await axios.post(
+        const response = await AxiosMaster.post(
           `/dynamic/procedure/${procName}?schemaName=${schema}`,
           parameters
         );
 
         Logger.log(
-          "✅ Stored procedure executed:",
+          "✅ Stored procedure executed via Gateway:",
           procedureName,
           response.data
         );
@@ -241,7 +245,7 @@ export const useDynamicCrud = (tableName) => {
           err.response?.data?.message ||
           err.message ||
           "Failed to execute procedure";
-        Logger.error("❌ Failed to execute procedure:", errorMsg);
+        Logger.error("❌ Failed to execute procedure via Gateway:", errorMsg);
         throw new Error(errorMsg);
       }
     },
@@ -251,16 +255,108 @@ export const useDynamicCrud = (tableName) => {
   // Execute custom query
   const executeQuery = useCallback(async (query) => {
     try {
-      const response = await axios.post("/dynamic/execute-query", {
+      const response = await AxiosMaster.post("/dynamic/query", {
         query,
       });
 
-      Logger.log("✅ Custom query executed:", response.data);
+      Logger.log("✅ Custom query executed via Gateway:", response.data);
       return response.data;
     } catch (err) {
       const errorMsg =
         err.response?.data?.message || err.message || "Failed to execute query";
       Logger.error("❌ Failed to execute query:", errorMsg);
+      throw new Error(errorMsg);
+    }
+  }, []);
+
+  // Bulk operations
+  const bulkCreate = useCallback(
+    async (dataItems) => {
+      try {
+        const { schema, table } = parseTableName(tableName);
+
+        const response = await AxiosMaster.post("/dynamic/bulk-create", {
+          tableName: table,
+          schemaName: schema,
+          dataItems,
+        });
+
+        Logger.log("✅ Bulk create completed via Gateway:", response.data);
+        return response.data;
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to bulk create records";
+        Logger.error("❌ Failed to bulk create via Gateway:", errorMsg);
+        throw new Error(errorMsg);
+      }
+    },
+    [tableName, parseTableName]
+  );
+
+  const bulkUpdate = useCallback(
+    async (updates) => {
+      try {
+        const { schema, table } = parseTableName(tableName);
+
+        const response = await AxiosMaster.post("/dynamic/bulk-update", {
+          tableName: table,
+          schemaName: schema,
+          updates,
+        });
+
+        Logger.log("✅ Bulk update completed via Gateway:", response.data);
+        return response.data;
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to bulk update records";
+        Logger.error("❌ Failed to bulk update via Gateway:", errorMsg);
+        throw new Error(errorMsg);
+      }
+    },
+    [tableName, parseTableName]
+  );
+
+  const bulkDelete = useCallback(
+    async (conditions) => {
+      try {
+        const { schema, table } = parseTableName(tableName);
+
+        const response = await AxiosMaster.post("/dynamic/bulk-delete", {
+          tableName: table,
+          schemaName: schema,
+          conditions,
+        });
+
+        Logger.log("✅ Bulk delete completed via Gateway:", response.data);
+        return response.data;
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to bulk delete records";
+        Logger.error("❌ Failed to bulk delete via Gateway:", errorMsg);
+        throw new Error(errorMsg);
+      }
+    },
+    [tableName, parseTableName]
+  );
+
+  // ComboBox data fetcher
+  const getComboBoxData = useCallback(async (comboConfig) => {
+    try {
+      const response = await AxiosMaster.post("/dynamic/combobox", comboConfig);
+      Logger.log("✅ ComboBox data loaded via Gateway:", response.data);
+      return response.data;
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to load combobox data";
+      Logger.error("❌ Failed to load combobox data via Gateway:", errorMsg);
       throw new Error(errorMsg);
     }
   }, []);
@@ -279,5 +375,13 @@ export const useDynamicCrud = (tableName) => {
     deleteRecord,
     executeStoredProcedure,
     executeQuery,
+
+    // Bulk Operations
+    bulkCreate,
+    bulkUpdate,
+    bulkDelete,
+
+    // Additional utilities
+    getComboBoxData,
   };
 };

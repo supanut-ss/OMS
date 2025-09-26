@@ -22,7 +22,6 @@ import {
   GridActionsCellItem,
   GridToolbarContainer,
   GridToolbarQuickFilter,
-  GRID_CHECKBOX_SELECTION_COL_DEF,
 } from "@mui/x-data-grid-pro";
 import {
   Edit,
