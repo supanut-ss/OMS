@@ -105,7 +105,7 @@ const refresh = async () => {
     localStorage.clear();
     sessionStorage.clear();
     // Redirect to login
-    window.location.href = "/login";
+    //window.location.href = "/login";
   }
 };
 
