@@ -37,6 +37,17 @@ export const useDynamicCrud = (tableName) => {
       setError(null);
       console.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
 
+      // Debug JWT token
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
+      console.log(
+        "🔑 JWT Token check:",
+        token ? "Token exists" : "No token found"
+      );
+      if (token) {
+        console.log("🔑 Token preview:", token.substring(0, 50) + "...");
+      }
+
       const { schema, table } = parseTableName(tableName);
       const url = `/dynamic/metadata/${table}?schemaName=${schema}`;
       Logger.log(`🔍 Loading metadata for table: ${schema}.${table}`);
