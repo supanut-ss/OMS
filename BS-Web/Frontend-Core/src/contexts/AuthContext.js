@@ -67,23 +67,23 @@ export const AuthProvider = ({ children }) => {
     };
 
     try {
-      const res = await AxiosMaster.post("/logout", {
+      await AxiosMaster.post("/logout", {
         refresh_token: SecureStorage.get("refresh_token") ?? ""
+      }).then((res) => {
+        if (res.data.message_code === "0") {
+          SecureStorage.clear();
+          json.status = true;
+          json.message = res.data.message_text;
+        } else {
+          json.status = false;
+          json.message = res.data.message_text;
+        }
       });
-
-      if (res.data.message_code === "0") {
-        SecureStorage.clear();
-        json.status = true;
-        json.message = res.data.message_text;
-      } else {
-        json.status = false;
-        json.message = res.data.message_text;
-      }
     } catch (err) {
       // ถ้าเจอ 401 จะเข้ามาที่นี่
       SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
       json.status = false;
-      json.message = err.response?.data?.message_text || "Unauthorized";
+      json.message = err?.Message || "Unauthorized";
     }
 
     return json;

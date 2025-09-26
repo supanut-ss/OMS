@@ -2,6 +2,8 @@
 using ApiCore.Models.Requests;
 using ApiCore.Models.Responses;
 using Microsoft.Data.SqlClient;
+using DotNetEnv;
+using System.Dynamic;
 
 namespace ApiCore.Services.Implementation
 {
@@ -24,64 +26,69 @@ namespace ApiCore.Services.Implementation
                 {
                     await conn.OpenAsync();
 
-                    // ✅ whitelist column
-                    var allowedColumns = new HashSet<string>((request.columns ?? new List<ColumnItem>()).Select(c => c.field)) { request.primary };
-
                     var columns = (request.columns ?? Enumerable.Empty<ColumnItem>())
-                .Select(c => c.field)
-                .ToList();
-                    var colum = columns.Count > 0 ? "," + string.Join(",", columns) : "";
+                        .Select(c => c.field)
+                        .ToList();
+                    var colum = columns.Count > 0 ? string.Join(",", columns) : "*";
 
-                    var orderby = string.Join(",",
-                        (request.columns ?? Enumerable.Empty<ColumnItem>())
-                            .Where(c => !string.IsNullOrWhiteSpace(c.order_by))
-                            .Select(c => $"{c.field} {c.order_by}")
-                    );
+                    var orderby = request?.order_by ?? "";
                     if (!string.IsNullOrEmpty(orderby))
                         orderby = "ORDER BY " + orderby;
 
-                    // ✅ สร้าง WHERE จาก filters (รองรับ null หรือ [])
-                    var (whereClause, parameters) = BuildWhereClause(request.filters, allowedColumns);
+                    var whereClause = request?.where ?? "";
+                    if (!string.IsNullOrEmpty(whereClause))
+                        whereClause = "WHERE " + whereClause;
 
-                    var sql = @$"SELECT {request.primary}{colum} 
-                                 FROM {request.table}  
+                    var sql = @$"SELECT {colum}
+                                 FROM {request.schema}{request.table}  
                                  {whereClause} {orderby}";
 
                     using (var cmd = new SqlCommand(sql, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        if (parameters.Count > 0)
-                            cmd.Parameters.AddRange(parameters.ToArray());
-
-                        using (var reader = await cmd.ExecuteReaderAsync())
+                        if (!await reader.ReadAsync())
                         {
-                            if (!await reader.ReadAsync())
+                            response.message_code = "2";
+                            response.message_text = "No resources found.";
+                        }
+                        else
+                        {
+                            response.data = new List<Dictionary<string, object>>();
+
+                            if (request.include_blank)
                             {
-                                response.message_code = "2";
-                                response.message_text = "No resources found.";
+                                response.data.Add(new Dictionary<string, object>
+                        {
+                            { "code", "" },
+                            { "value", "--Please Select--" }
+                        });
                             }
-                            else
+
+                            do
                             {
-                                response.data = new List<AutoCompleteItem>();
-                                if (request.include_blank)
-                                {
-                                    response.data.Add(new AutoCompleteItem { code = "", value = "--Please Select--" });
-                                }
-                                do
+                                dynamic row = new ExpandoObject();
+
+                                var dict = (request.columns ?? Enumerable.Empty<ColumnItem>()).Where(c => c.key)
+                                .ToDictionary(
+                                    c => c.field,
+                                    c => (object)(reader[c.field]?.ToString() ?? "")
+                                );
+
+                                // เพิ่ม code + value
+                                int index = request.columns?.FindIndex(c => c.key) ?? -1;
+                                if (index >= 0)
                                 {
                                     var displayValues = (request.columns ?? Enumerable.Empty<ColumnItem>())
-                                    .Where(c => c.display)
-                                    .Select(c => reader[c.field].ToString())
-                                    .ToList();
+                                        .Where(c => c.display)
+                                        .Select(c => reader[c.field]?.ToString() ?? "")
+                                        .ToList();
 
-                                    var data = new AutoCompleteItem
-                                    {
-                                        code = reader[request.primary].ToString() ?? "",
-                                        value = string.Join(" ", displayValues)
-                                    };
+                                    dict["code"] = reader[request.columns[index].field]?.ToString() ?? "";
+                                    dict["value"] = string.Join(" ", displayValues);
+                                }
 
-                                    response.data.Add(data);
-                                } while (await reader.ReadAsync());
-                            }
+                                response.data.Add(dict);
+                            } while (await reader.ReadAsync());
                         }
                     }
                 }
@@ -93,41 +100,6 @@ namespace ApiCore.Services.Implementation
             }
 
             return response;
-        }
-
-        private (string whereClause, List<SqlParameter> parameters) BuildWhereClause(IEnumerable<FilterItem>? filters, HashSet<string> allowedColumns)
-        {
-            var conditions = new List<string>();
-            var parameters = new List<SqlParameter>();
-            int i = 0;
-
-            if (filters == null || !filters.Any())
-                return ("", parameters); // ✅ ถ้า filter ไม่มีค่า คืน string ว่างเลย
-
-            foreach (var f in filters)
-            {
-                // ✅ ตรวจสอบว่า column อยู่ใน whitelist
-                if (!allowedColumns.Contains(f.field))
-                    throw new Exception($"Invalid column: {f.field}");
-
-                var paramName = $"@p{i}";
-                string op = f.op.ToUpper();
-
-                // ✅ รองรับเฉพาะ operator ที่อนุญาต
-                if (op is not ("=" or "<" or ">" or "<=" or ">=" or "<>" or "LIKE"))
-                    throw new Exception($"Invalid operator: {op}");
-
-                conditions.Add($"{f.field} {op} {paramName}");
-
-                // ✅ LIKE ต้องใส่ wildcard
-                object value = (op == "LIKE") ? $"%{f.value}%" : f.value;
-                parameters.Add(new SqlParameter(paramName, value));
-
-                i++;
-            }
-
-            var where = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
-            return (where, parameters);
         }
     }
 }

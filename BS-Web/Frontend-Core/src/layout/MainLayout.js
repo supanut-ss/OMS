@@ -44,6 +44,7 @@ import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
 import TopLinearProgress from "../components/TopLinearProgress";
 import SecureStorage from "../utils/SecureStorage";
+import BSAlertSwal2 from "../components/BSAlertSwal2";
 
 const drawerWidth = 280;
 const collapsedWidth = 72;
@@ -154,11 +155,26 @@ export default function MainLayout() {
     // เรียกใช้ logout function จาก AuthContext
     let data = await logout();
     // Navigate ไปหน้า login
+
+    console.log(data);
     if (data.status) {
-      navigate("/login");
+      BSAlertSwal2.fire({
+        icon: "success",
+        title: "Logout Success",
+        confirmButtonText: "OK"
+      }).then((result) => {
+        navigate("/login");
+      });
     } else {
-      navigate("/");
+      BSAlertSwal2.fire({
+        icon: "warning",
+        title: "Logout Failed",
+        confirmButtonText: "OK"
+      }).then((result) => {
+        window.location.reload();
+      });
     }
+
   };
 
   const getInitials = (name) => {
@@ -173,7 +189,11 @@ export default function MainLayout() {
     intervalMs: 120000, // 2 นาที
   });
   useEffect(() => {
-    setCurrentUser(JSON.parse(SecureStorage.get("userInfo")));
+    if (SecureStorage.get("userInfo") !== null && SecureStorage.get("userInfo") !== "") {
+      setCurrentUser(JSON.parse(SecureStorage.get("userInfo")));
+    } else {
+      setCurrentUser();
+    }
   }, [location]);
 
   return (

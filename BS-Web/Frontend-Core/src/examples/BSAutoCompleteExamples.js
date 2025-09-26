@@ -1,5 +1,5 @@
 import { Paper, Typography } from "@mui/material";
-import BsAutoComplete from "../components/BsAutoComplete";
+import BSAutoComplete from "../components/BSAutoComplete";
 import { useState } from "react";
 
 const BSAutoCompleteExamples = () => {
@@ -10,57 +10,71 @@ const BSAutoCompleteExamples = () => {
         <Typography variant="h6" gutterBottom>
             1. การใช้งาน Autocomplete Select
         </Typography>
-        <BsAutoComplete
-            bsModel="select"
-            bsTitle="เลือก Platform"
-            bsPreObj="combo_box_id"
-            bsObj="sec.t_com_combobox_item"
+        <BSAutoComplete
+            bsMode="select"
+            bsTitle="เลือก Item เดียว"
+            bsPreObj="sec.t_com_"
+            bsObj="combobox_item"
             bsColumes={[
-                { field: "combo_box_id", display: false },
-                { field: "value_member", display: true, order_by: "ASC" },
-                { field: "group_name", display: false }
+                { field: "combo_box_id", display: false, filter: false, key: true },
+                { field: "value_member", display: true, filter: true, key: true },
+                { field: "group_name", display: false, filter: true, key: false }
             ]}
-            bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
+            bsObjBy=""
+            bsObjWh=""
             bsValue={select} // ค่าเริ่มต้น = code ของ option
-            cacheKey="select"
-            loadOnOpen={true}
-            bsOnChange={(val) => setSelect(val)}
+            bsCacheKey="select"
+            bsOnChange={(val) => {
+                console.log(val);
+                setSelect(val);
+            }}
+            bsLoadOnOpen={true}
         />
         <Typography variant="h6" gutterBottom>
             2. การใช้งาน Autocomplete signle
         </Typography>
-        <BsAutoComplete
-            bsModel="single"
+        <BSAutoComplete
+            bsMode="single"
             bsTitle="เลือก Item เดียว"
-            bsPreObj="combo_box_id"
-            bsObj="sec.t_com_combobox_item"
+            bsPreObj="sec.t_com_"
+            bsObj="combobox_item"
             bsColumes={[
-                { field: "combo_box_id", display: false },
-                { field: "value_member", display: true, order_by: "ASC" },
-                { field: "group_name", display: false }
+                { field: "combo_box_id", display: false, filter: false, key: true },
+                { field: "value_member", display: true, filter: true, key: true },
+                { field: "group_name", display: false, filter: true, key: false }
             ]}
-            bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
+            bsObjBy=""
+            bsObjWh=""
             bsValue={single} // ค่าเริ่มต้น = code ของ option
-            cacheKey="signle"
-            bsOnChange={(val) => setSingle(val)}
+            bsCacheKey="signle"
+            bsOnChange={(val) => {
+                console.log(val);
+                setSingle(val)
+            }}
+            bsLoadOnOpen={true}
         />
         <Typography variant="h6" gutterBottom>
             3. การใช้งาน Autocomplete multi.
         </Typography>
-        <BsAutoComplete
-            bsModel="multi"
-            bsTitle="เลือกหลายค่า"
-            bsPreObj="combo_box_id"
-            bsObj="sec.t_com_combobox_item"
+        <BSAutoComplete
+            bsMode="multi"
+            bsTitle="เลือก Item"
+            bsPreObj="sec.t_com_"
+            bsObj="combobox_item"
             bsColumes={[
-                { field: "combo_box_id", display: false },
-                { field: "value_member", display: true, order_by: "ASC" },
-                { field: "group_name", display: false }
+                { field: "combo_box_id", display: false, filter: false, key: true },
+                { field: "value_member", display: true, filter: true, key: true },
+                { field: "group_name", display: false, filter: true, key: false }
             ]}
-            bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
-            bsValue={multi} // ค่าเริ่มต้น = array ของ code
-            cacheKey="multi"
-            bsOnChange={(val) => setMulti(val)}
+            bsObjBy=""
+            bsObjWh=""
+            bsValue={multi} // ค่าเริ่มต้น = code ของ option
+            bsCacheKey="multi"
+            bsOnChange={(val) => {
+                console.log(val);
+                setMulti(val);
+            }}
+            bsLoadOnOpen={true}
         />
 
     </Paper>;
