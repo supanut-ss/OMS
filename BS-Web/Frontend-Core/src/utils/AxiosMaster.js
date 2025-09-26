@@ -45,6 +45,8 @@ AxiosMaster.interceptors.response.use(
       statusText: error.response?.statusText,
       url: error.config?.url,
       message: error.response?.data?.message || error.message,
+      headers: error.response?.headers,
+      fullError: error.response?.data,
     });
 
     if (error.response && error.response.status === 401) {
@@ -88,9 +90,17 @@ const refresh = async () => {
 
     SecureStorage.remove("token");
 
-    const response = await AxiosMaster.post("/auth/refresh", {
-      refresh_token: refreshToken,
-    });
+    const response = await axios.post(
+      Config.API_URL.replace("/gateway/v1/api", "") + "/gateway/v1/api/refresh",
+      {
+        refresh_token: refreshToken,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (response.data.message_code === "0") {
       console.log("✅ Token refreshed successfully");
