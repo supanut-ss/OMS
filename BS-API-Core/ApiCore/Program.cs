@@ -8,7 +8,7 @@ using TokenManagement.Services;
 using TokenManagement.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
-builder.Services.AddDbContext<ApplicationDbContext>(options=> options.UseSqlServer(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? ""));
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(Environment.GetEnvironmentVariable("SERVERDB") ?? ""));
 //string allowIPEnv = Environment.GetEnvironmentVariable("ALLOWIP_WEB") ?? "";
 string KEY = Environment.GetEnvironmentVariable("API_KEY_WEB") ?? "";
 //List<string> allows = new List<string>();

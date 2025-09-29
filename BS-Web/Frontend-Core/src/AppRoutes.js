@@ -5,6 +5,7 @@ import NotFound from "./pages/NotFound";
 import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
+import BSDataGridExamples from "./examples/BSDataGridExamples";
 
 export default function AppRoutes() {
   return (
@@ -19,7 +20,10 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<div />} />
-        <Route path="autocomplete" element={<BSAutoCompleteExamples/>}/>
+        <Route path="autocomplete" element={<BSAutoCompleteExamples />} />
+        {/* route สำหรับ BSDataGrid Examples */}
+        <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />
+
         <Route
           path="timesheet"
           element={<div>Timesheet Page - Coming Soon</div>}
