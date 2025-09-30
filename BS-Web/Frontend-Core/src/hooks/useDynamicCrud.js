@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import AxiosMaster from "../utils/AxiosMaster";
 import Logger from "../utils/logger";
 import { parseTableName } from "../utils/DatabaseConfig";
+import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Dynamic CRUD Hook สำหรับการจัดการข้อมูลจากตารางใดๆ ใน database
@@ -12,6 +13,9 @@ export const useDynamicCrud = (tableName) => {
   const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Get current user from auth context
+  const { user } = useAuth();
 
   // Get table metadata (columns, types, constraints)
   const loadMetadata = useCallback(async () => {
@@ -129,15 +133,44 @@ export const useDynamicCrud = (tableName) => {
       try {
         const { schema, table } = parseTableName(tableName);
 
+        // Get user ID from auth context
+        let userId = null;
+        if (user) {
+          try {
+            const userObj = typeof user === "string" ? JSON.parse(user) : user;
+            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
+            Logger.log("🔐 User data for CREATE audit:", { userObj, userId });
+          } catch (e) {
+            Logger.warn("Failed to parse user data for audit fields:", e);
+          }
+        } else {
+          Logger.warn("⚠️ No user context available for audit fields");
+        }
+
+        // Fallback for testing - use current timestamp as userId if no user
+        if (!userId) {
+          userId = `test_user_${Date.now()}`;
+          Logger.log("🔧 Using fallback userId for testing:", userId);
+        }
+
         const response = await AxiosMaster.post("/dynamic/create", {
           tableName: table,
           schemaName: schema,
           data: recordData,
+          userId: userId, // Add userId for audit fields
         });
 
         Logger.log("✅ Record created via Gateway:", response.data);
         return response.data;
       } catch (err) {
+        // Handle specific 500 error that might be routing related
+        if (err.response?.status === 500) {
+          Logger.warn(
+            "⚠️ Got 500 error - possibly routing issue, but data might have been created"
+          );
+          // You could try to refresh the data here to see if the record was actually created
+        }
+
         const errorMsg =
           err.response?.data?.message ||
           err.message ||
@@ -146,7 +179,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName]
+    [tableName, user]
   );
 
   // Update existing record
@@ -165,11 +198,32 @@ export const useDynamicCrud = (tableName) => {
           conditions = { Id: id } || { id: id };
         }
 
+        // Get user ID from auth context
+        let userId = null;
+        if (user) {
+          try {
+            const userObj = typeof user === "string" ? JSON.parse(user) : user;
+            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
+            Logger.log("🔐 User data for UPDATE audit:", { userObj, userId });
+          } catch (e) {
+            Logger.warn("Failed to parse user data for audit fields:", e);
+          }
+        } else {
+          Logger.warn("⚠️ No user context available for audit fields");
+        }
+
+        // Fallback for testing - use current timestamp as userId if no user
+        if (!userId) {
+          userId = `test_user_${Date.now()}`;
+          Logger.log("🔧 Using fallback userId for testing:", userId);
+        }
+
         const response = await AxiosMaster.post("/dynamic/update", {
           tableName: table,
           schemaName: schema,
           data: recordData,
           whereConditions: conditions,
+          userId: userId, // Add userId for audit fields
         });
 
         Logger.log("✅ Record updated via Gateway:", response.data);
@@ -183,7 +237,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, metadata]
+    [tableName, metadata, user]
   );
 
   // Delete record

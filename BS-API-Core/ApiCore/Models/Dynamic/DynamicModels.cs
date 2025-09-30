@@ -32,6 +32,11 @@ namespace ApiCore.Models.Dynamic
 
         [Required]
         public Dictionary<string, object> Data { get; set; } = new();
+
+        /// <summary>
+        /// User ID for audit fields (create_by, update_by)
+        /// </summary>
+        public string? UserId { get; set; }
     }
 
     /// <summary>
@@ -49,6 +54,11 @@ namespace ApiCore.Models.Dynamic
 
         [Required]
         public Dictionary<string, object> WhereConditions { get; set; } = new();
+
+        /// <summary>
+        /// User ID for audit fields (update_by)
+        /// </summary>
+        public string? UserId { get; set; }
     }
 
     /// <summary>

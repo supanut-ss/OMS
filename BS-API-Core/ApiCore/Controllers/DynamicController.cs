@@ -251,9 +251,8 @@ namespace ApiCore.Controllers
 
                 var result = await _dynamicService.CreateAsync(request);
 
-                return CreatedAtAction(nameof(GetByIdAsync),
-                    new { tableName = request.TableName, schemaName = request.SchemaName ?? "dbo" },
-                    result);
+                // Return 200 OK instead of CreatedAtAction to avoid routing issues
+                return Ok(result);
             }
             catch (Exception ex)
             {

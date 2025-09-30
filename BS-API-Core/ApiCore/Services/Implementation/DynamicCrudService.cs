@@ -422,10 +422,25 @@ namespace ApiCore.Services.Implementation
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Add audit fields if they exist
-            if (metadata.Columns.Any(c => c.ColumnName == "CreateDate"))
-                insertData["CreateDate"] = DateTime.Now;
-            if (metadata.Columns.Any(c => c.ColumnName == "UpdateDate"))
-                insertData["UpdateDate"] = DateTime.Now;
+            if (metadata.Columns.Any(c => c.ColumnName == "create_date"))
+                insertData["create_date"] = DateTime.Now;
+            if (metadata.Columns.Any(c => c.ColumnName == "update_date"))
+                insertData["update_date"] = DateTime.Now;
+
+            // Add create_by field if it exists and not already provided
+            if (metadata.Columns.Any(c => c.ColumnName == "create_by") && !insertData.ContainsKey("create_by"))
+            {
+                // Get user_id from request context or use default value
+                var userId = request.UserId ?? request.Data.GetValueOrDefault("user_id")?.ToString() ?? "system";
+                insertData["create_by"] = userId;
+            }
+
+            // Add update_by field if it exists and not already provided
+            if (metadata.Columns.Any(c => c.ColumnName == "update_by") && !insertData.ContainsKey("update_by"))
+            {
+                var userId = request.UserId ?? request.Data.GetValueOrDefault("user_id")?.ToString() ?? "system";
+                insertData["update_by"] = userId;
+            }
 
             var columns = string.Join(", ", insertData.Keys.Select(k => $"[{k}]"));
             var values = string.Join(", ", insertData.Keys.Select(k => $"@{k}"));
@@ -480,8 +495,15 @@ namespace ApiCore.Services.Implementation
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Add audit fields if they exist
-            if (metadata.Columns.Any(c => c.ColumnName == "UpdateDate"))
-                updateData["UpdateDate"] = DateTime.Now;
+            if (metadata.Columns.Any(c => c.ColumnName == "update_date"))
+                updateData["update_date"] = DateTime.Now;
+
+            // Add update_by field if it exists and not already provided
+            if (metadata.Columns.Any(c => c.ColumnName == "update_by") && !updateData.ContainsKey("update_by"))
+            {
+                var userId = request.UserId ?? request.Data.GetValueOrDefault("user_id")?.ToString() ?? "system";
+                updateData["update_by"] = userId;
+            }
 
             var setClause = string.Join(", ", updateData.Keys.Select(k => $"[{k}] = @{k}"));
             var whereClause = string.Join(" AND ", request.WhereConditions.Keys.Select(k => $"[{k}] = @Where_{k}"));
