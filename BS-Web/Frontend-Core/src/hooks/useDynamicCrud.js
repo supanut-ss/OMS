@@ -1,29 +1,17 @@
 import { useState, useCallback } from "react";
 import AxiosMaster from "../utils/AxiosMaster";
 import Logger from "../utils/logger";
+import { parseTableName } from "../utils/DatabaseConfig";
 
 /**
  * Dynamic CRUD Hook สำหรับการจัดการข้อมูลจากตารางใดๆ ใน database
  * Updated to use API Gateway endpoints
- * @param {str        Logger.error("❌ Failed to execute query via Gateway:", errorMsg);
-        throw new Error(errorMsg);g} tableName - ชื่อตาราง เช่น 'dbo.Users', 'app.Products'
+ * @param {string} tableName - ชื่อตาราง เช่น 'dbo.Users', 'app.Products'
  */
 export const useDynamicCrud = (tableName) => {
   const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Parse table name to extract schema and table
-  const parseTableName = useCallback((fullTableName) => {
-    if (!fullTableName) return { schema: "dbo", table: "" };
-
-    const parts = fullTableName.split(".");
-    if (parts.length === 2) {
-      return { schema: parts[0], table: parts[1] };
-    } else {
-      return { schema: "dbo", table: fullTableName };
-    }
-  }, []);
 
   // Get table metadata (columns, types, constraints)
   const loadMetadata = useCallback(async () => {
@@ -73,7 +61,7 @@ export const useDynamicCrud = (tableName) => {
     } finally {
       setLoading(false);
     }
-  }, [tableName, parseTableName]);
+  }, [tableName]);
 
   // Get table data with DataGrid support (pagination, sorting, filtering)
   const getTableData = useCallback(
@@ -132,7 +120,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName]
+    [tableName]
   );
 
   // Create new record
@@ -158,7 +146,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName]
+    [tableName]
   );
 
   // Update existing record
@@ -195,7 +183,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName, metadata]
+    [tableName, metadata]
   );
 
   // Delete record
@@ -231,7 +219,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName, metadata]
+    [tableName, metadata]
   );
 
   // Execute stored procedure
@@ -260,7 +248,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [parseTableName]
+    []
   );
 
   // Execute custom query
@@ -303,7 +291,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName]
+    [tableName]
   );
 
   const bulkUpdate = useCallback(
@@ -328,7 +316,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName]
+    [tableName]
   );
 
   const bulkDelete = useCallback(
@@ -353,7 +341,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, parseTableName]
+    [tableName]
   );
 
   // ComboBox data fetcher
