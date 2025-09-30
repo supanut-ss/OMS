@@ -24,15 +24,15 @@ const TestBSDataGrid = () => {
         </Typography>
         <Box sx={{ height: 400 }}>
           <BSDataGrid
-            bsObj="t_tmt_customer"
+            bsObj="sec.t_com_user_group"
             bsRowPerPage={10}
             showToolbar={true}
             showAdd={true}
             bsBulkEdit={true}
             bsBulkAdd={true}
-            onAdd={() => console.log("Add clicked")}
-            onEdit={(row) => console.log("Edit:", row)}
-            onDelete={(id) => console.log("Delete:", id)}
+            // onAdd={() => console.log("Add clicked")}
+            // onEdit={(row) => console.log("Edit:", row)}
+            // onDelete={(id) => console.log("Delete:", id)}
             onCheckBoxSelected={(rows) => console.log("Selected:", rows)}
           />
         </Box>
@@ -48,7 +48,7 @@ const TestBSDataGrid = () => {
         <Box sx={{ height: 400 }}>
           <BSDataGrid
             bsObj="t_tmt_customer"
-            bsCols="name,email,phone"
+            bsCols="customer_name,email,phone"
             bsRowPerPage={5}
             showToolbar={true}
             bsBulkEdit={false}

@@ -20,37 +20,37 @@ export const useDynamicCrud = (tableName) => {
   // Get table metadata (columns, types, constraints)
   const loadMetadata = useCallback(async () => {
     if (!tableName) {
-      console.log("⚠️ useDynamicCrud: No tableName provided");
+      Logger.warn("⚠️ useDynamicCrud: No tableName provided");
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      console.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
+      Logger.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
 
       // Debug JWT token
       const token =
         localStorage.getItem("token") || sessionStorage.getItem("token");
-      console.log(
+      Logger.log(
         "🔑 JWT Token check:",
         token ? "Token exists" : "No token found"
       );
       if (token) {
-        console.log("🔑 Token preview:", token.substring(0, 50) + "...");
+        Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
       }
 
       const { schema, table } = parseTableName(tableName);
       const url = `/dynamic/metadata/${table}?schemaName=${schema}`;
       Logger.log(`🔍 Loading metadata for table: ${schema}.${table}`);
       Logger.log(`📡 Gateway API URL: ${url}`);
-      console.log("📡 useDynamicCrud: Making API call to Gateway:", url);
+      Logger.log("📡 useDynamicCrud: Making API call to Gateway:", url);
 
       const response = await AxiosMaster.get(url);
       setMetadata(response.data);
 
       Logger.log("✅ Metadata loaded for table:", tableName, response.data);
-      console.log(
+      Logger.log(
         "✅ useDynamicCrud: Metadata loaded successfully:",
         response.data
       );
@@ -59,7 +59,7 @@ export const useDynamicCrud = (tableName) => {
       const errorMsg =
         err.response?.data?.message || err.message || "Failed to load metadata";
       Logger.error("❌ Failed to load metadata:", errorMsg);
-      console.error("❌ useDynamicCrud: Metadata load failed:", err);
+      Logger.error("❌ useDynamicCrud: Metadata load failed:", err);
       setError(errorMsg);
       throw err;
     } finally {
