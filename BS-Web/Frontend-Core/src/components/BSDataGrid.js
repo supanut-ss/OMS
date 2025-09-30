@@ -33,6 +33,20 @@ import {
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
 import Logger from "../utils/logger";
+import muiLicenseManager from "../utils/muiLicenseManager";
+
+// Initialize MUI X License
+muiLicenseManager.initialize();
+
+// Log license status for debugging
+const licenseStatus = muiLicenseManager.getLicenseStatus();
+Logger.log("🔐 MUI X License Status:", licenseStatus);
+
+if (licenseStatus.hasLicenseKey) {
+  Logger.log("✅ MUI X Pro features are available");
+} else {
+  Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
+}
 
 // Fallback Toolbar - สำหรับใช้เมื่อไม่มี DataGrid context (offline mode)
 const FallbackToolbar = ({
@@ -475,17 +489,33 @@ const BSDataGrid = ({
       const result = await getTableData(request);
 
       // Extract actual row data from nested structure
-      const processedRows = (result.rows || []).map((row) => {
+      const processedRows = (result.rows || []).map((row, index) => {
         // If row has nested data structure, extract the data
+        let rowData = row;
         if (row.data && typeof row.data === "object") {
-          return row.data;
+          rowData = row.data;
         }
-        // If row is already flat, use as is
-        return row;
+
+        // Ensure each row has a valid ID
+        if (!rowData.id && !rowData.Id && !rowData.ID) {
+          // Try to find primary key from metadata
+          const primaryKey = metadata?.primaryKeys?.[0];
+          if (primaryKey && rowData[primaryKey] != null) {
+            rowData.id = rowData[primaryKey];
+          } else {
+            // Generate a fallback ID
+            rowData.id = `row-${index}-${Date.now()}`;
+          }
+        }
+
+        return rowData;
       });
 
       setRows(processedRows);
       setRowCount(result.rowCount || 0);
+
+      // Reset row selection when data changes to prevent stale references
+      setRowSelectionModel([]);
 
       Logger.log("📊 BS dynamic data loaded successfully:", {
         rows: processedRows?.length || 0,
@@ -1365,6 +1395,8 @@ const BSDataGrid = ({
     metadataLoaded: !!metadata,
     showToolbar,
     columns: metadata?.columns?.length,
+    rowsCount: rows.length,
+    hasValidRows: rows.length > 0 && rows.every((row) => row != null),
   });
 
   return (
@@ -1387,12 +1419,25 @@ const BSDataGrid = ({
       {/* Table Info */}
       {showToolbar && (
         <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Typography variant="h6" component="div">
-            {metadata.displayName || effectiveTableName}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="h6" component="div">
+              {metadata.displayName || effectiveTableName}
+            </Typography>
+            {/* License status indicator */}
+            <Chip
+              label={
+                licenseStatus.hasLicenseKey ? "MUI X Pro" : "MUI X Community"
+              }
+              size="small"
+              color={licenseStatus.hasLicenseKey ? "success" : "default"}
+              variant="outlined"
+            />
+          </Box>
           <Typography variant="body2" color="text.secondary">
             {rowCount.toLocaleString()} records • {metadata.columns?.length}{" "}
             columns
+            {!licenseStatus.hasLicenseKey &&
+              " • Limited features (Community version)"}
           </Typography>
         </Box>
       )}
@@ -1402,7 +1447,9 @@ const BSDataGrid = ({
         rows={rows}
         columns={columns}
         rowCount={rowCount}
-        loading={loading}
+        loading={loading || metadataLoading}
+        // Ensure we don't render until we have valid data structure
+        key={`datagrid-${effectiveTableName}-${rows.length}`}
         // Pagination
         paginationMode="server"
         paginationModel={paginationModel}
@@ -1416,20 +1463,39 @@ const BSDataGrid = ({
         filterMode="server"
         filterModel={filterModel}
         onFilterModelChange={setFilterModel}
-        // Header Filters (Pro feature)
-        headerFilters={headerFiltersEnabled}
+        // Header Filters (Pro feature) - Note: headerFilters prop not available in v7
+        // headerFilters={headerFiltersEnabled}
         // Row Selection (checkbox selection when enabled)
         checkboxSelection={bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected}
         rowSelectionModel={rowSelectionModel}
         onRowSelectionModelChange={handleRowSelectionChange}
-        disableRowSelectionOnClick={false}
+        disableRowSelectionOnClick={
+          !bsBulkEdit && !bsBulkAdd && !onCheckBoxSelected
+        }
         // Column Pinning (Pro feature)
         pinnedColumns={pinnedColumns}
         onPinnedColumnsChange={setPinnedColumns}
         // UI Settings
         getRowId={(row) => {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          return row[primaryKey] || row.id || row.Id;
+          // First try to find primary key from metadata
+          const primaryKey = metadata?.primaryKeys?.[0];
+          if (primaryKey && row[primaryKey] != null) {
+            return String(row[primaryKey]);
+          }
+
+          // Fallback to common ID fields
+          const idFields = ["id", "Id", "ID", "_id"];
+          for (const field of idFields) {
+            if (row[field] != null) {
+              return String(row[field]);
+            }
+          }
+
+          // Last resort: generate a unique ID based on row data
+          const rowString = JSON.stringify(row);
+          return `generated-${rowString.length}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
         }}
         // Localization
         localeText={getLocalization()}

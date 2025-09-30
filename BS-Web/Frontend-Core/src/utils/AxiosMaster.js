@@ -15,20 +15,20 @@ AxiosMaster.interceptors.request.use(
     if (!token) {
       // Fallback to localStorage/sessionStorage
       token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      console.log("🔑 Using fallback token from localStorage/sessionStorage");
+      //console.log("🔑 Using fallback token from localStorage/sessionStorage");
     }
 
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
-      console.log(
-        "🔑 Added Authorization header:",
-        `Bearer ${token.substring(0, 20)}...`
-      );
+      // console.log(
+      //   "🔑 Added Authorization header:",
+      //   `Bearer ${token.substring(0, 20)}...`
+      // );
     } else {
       console.warn("⚠️ No JWT token found in any storage");
     }
 
-    console.log("📡 API Request:", config.method?.toUpperCase(), config.url);
+    // console.log("📡 API Request:", config.method?.toUpperCase(), config.url);
     return config;
   },
   (error) => Promise.reject(error)
@@ -36,7 +36,7 @@ AxiosMaster.interceptors.request.use(
 
 AxiosMaster.interceptors.response.use(
   (response) => {
-    console.log("✅ API Response:", response.status, response.config.url);
+    // console.log("✅ API Response:", response.status, response.config.url);
     return response;
   },
   (error) => {

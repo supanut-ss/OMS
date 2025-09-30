@@ -6,6 +6,7 @@ import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
+import TestBSDataGrid from "./pages/TestBSDataGrid";
 
 export default function AppRoutes() {
   return (
@@ -23,6 +24,8 @@ export default function AppRoutes() {
         <Route path="autocomplete" element={<BSAutoCompleteExamples />} />
         {/* route สำหรับ BSDataGrid Examples */}
         <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />
+        {/* route สำหรับ Testing BSDataGrid */}
+        <Route path="test/bsdatagrid" element={<TestBSDataGrid />} />
 
         <Route
           path="timesheet"
