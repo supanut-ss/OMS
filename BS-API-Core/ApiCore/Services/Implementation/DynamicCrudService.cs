@@ -416,9 +416,12 @@ namespace ApiCore.Services.Implementation
 
             var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
-            // Filter out identity columns and add audit fields
+            // Filter out identity columns and timestamp columns from insert data
             var insertData = request.Data
-                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key && c.IsIdentity))
+                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key &&
+                    (c.IsIdentity ||
+                     c.DataType.ToLower() == "timestamp" ||
+                     c.DataType.ToLower() == "rowversion")))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Add audit fields if they exist
@@ -489,9 +492,12 @@ namespace ApiCore.Services.Implementation
 
             var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
-            // Filter out identity columns and primary keys from update data
+            // Filter out identity columns, primary keys, and timestamp columns from update data
             var updateData = request.Data
-                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key && (c.IsIdentity || c.IsPrimaryKey)))
+                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key &&
+                    (c.IsIdentity || c.IsPrimaryKey ||
+                     c.DataType.ToLower() == "timestamp" ||
+                     c.DataType.ToLower() == "rowversion")))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Add audit fields if they exist

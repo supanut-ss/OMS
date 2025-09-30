@@ -87,7 +87,7 @@ const FallbackToolbar = ({
         <Button
           size="small"
           startIcon={<Add />}
-          onClick={onAdd || (() => console.log("No onAdd handler provided"))}
+          onClick={onAdd || (() => Logger.warn("No onAdd handler provided"))}
           variant="contained"
           color="primary"
         >
@@ -121,6 +121,64 @@ const FallbackToolbar = ({
   );
 };
 
+// Bulk Edit Toolbar - แสดงเมื่อเปิด bulk edit mode
+const BulkEditToolbar = ({
+  onSave,
+  onDiscard,
+  hasUnsavedChanges,
+  formLoading,
+  changesCount,
+}) => {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        p: 2,
+        backgroundColor: "warning.light",
+        borderBottom: 1,
+        borderColor: "divider",
+      }}
+    >
+      <Typography variant="h6" sx={{ color: "warning.contrastText" }}>
+        🔄 Bulk Edit Mode
+      </Typography>
+
+      <Typography
+        variant="body2"
+        sx={{ color: "warning.contrastText", flexGrow: 1 }}
+      >
+        Edit cells directly in the grid. Changes are tracked but not saved until
+        you click Save.
+        {changesCount > 0 && ` (${changesCount} unsaved changes)`}
+      </Typography>
+
+      <Button
+        variant="outlined"
+        onClick={onDiscard}
+        disabled={formLoading}
+        sx={{
+          color: "warning.contrastText",
+          borderColor: "warning.contrastText",
+        }}
+      >
+        DISCARD ALL CHANGES
+      </Button>
+
+      <Button
+        variant="contained"
+        onClick={onSave}
+        disabled={formLoading || !hasUnsavedChanges}
+        startIcon={formLoading ? <CircularProgress size={16} /> : undefined}
+        sx={{ bgcolor: "success.main", "&:hover": { bgcolor: "success.dark" } }}
+      >
+        {formLoading ? "SAVING..." : "SAVE"}
+      </Button>
+    </Box>
+  );
+};
+
 // Custom Toolbar - ใช้ GridToolbarContainer (วิธีที่ถูกต้อง)
 const DynamicGridToolbar = ({
   onAdd,
@@ -132,8 +190,9 @@ const DynamicGridToolbar = ({
   selectedRowCount = 0,
   onBulkEdit,
   onBulkDelete,
+  onBulkAdd,
 }) => {
-  console.log("🔧 DynamicGridToolbar rendering:", {
+  Logger.log("🔧 DynamicGridToolbar rendering:", {
     onAdd: typeof onAdd,
     onAddExists: !!onAdd,
     showAdd,
@@ -144,16 +203,16 @@ const DynamicGridToolbar = ({
   });
 
   // Force render check
-  console.log("🔍 DynamicGridToolbar DEFINITELY RENDERING");
+  Logger.log("🔍 DynamicGridToolbar DEFINITELY RENDERING");
 
   React.useEffect(() => {
-    console.log("🚨 DynamicGridToolbar mounted!");
+    Logger.log("🚨 DynamicGridToolbar mounted!");
   }, []);
 
   return (
     <GridToolbarContainer>
       {/* Visual indicator */}
-      <Typography
+      {/* <Typography
         variant="body2"
         sx={{
           mr: 2,
@@ -165,14 +224,14 @@ const DynamicGridToolbar = ({
         }}
       >
         🔧 BS-TOOLBAR
-      </Typography>
+      </Typography> */}
 
       {/* Add button */}
       {showAdd && (
         <Button
           size="small"
           startIcon={<Add />}
-          onClick={onAdd || (() => console.log("No onAdd handler provided"))}
+          onClick={onAdd || (() => Logger.warn("No onAdd handler provided"))}
           variant="contained"
           color="primary"
           sx={{ mr: 1 }}
@@ -186,7 +245,7 @@ const DynamicGridToolbar = ({
         <Button
           size="small"
           startIcon={<Add />}
-          onClick={() => console.log("Bulk Add clicked")}
+          onClick={onBulkAdd}
           variant="outlined"
           color="primary"
           sx={{ mr: 1 }}
@@ -420,10 +479,20 @@ const BSDataGrid = ({
 
   // Dialog & form states for built-in CRUD
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState("add"); // 'add' | 'edit'
+  const [dialogMode, setDialogMode] = useState("add"); // 'add' | 'edit' | 'bulkAdd'
   const [selectedRow, setSelectedRow] = useState(null);
   const [formData, setFormData] = useState({});
   const [formLoading, setFormLoading] = useState(false);
+
+  // Bulk Add specific states
+  const [bulkAddDialogOpen, setBulkAddDialogOpen] = useState(false);
+  const [bulkAddRows, setBulkAddRows] = useState([]);
+  const [bulkRowCount, setBulkRowCount] = useState(5);
+
+  // Bulk Edit states
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const unsavedChangesRef = React.useRef({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Load metadata when table name changes
   useEffect(() => {
@@ -476,60 +545,108 @@ const BSDataGrid = ({
   ]);
 
   // Load data from API
-  const loadData = useCallback(async () => {
-    if (!effectiveTableName || !metadata) return;
+  const loadData = useCallback(
+    async (forceRefresh = false) => {
+      if (!effectiveTableName || !metadata) return;
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
 
-    try {
-      const request = buildRequest();
-      Logger.log("📡 Loading BS dynamic data with request:", request);
+      try {
+        const request = buildRequest();
 
-      const result = await getTableData(request);
-
-      // Extract actual row data from nested structure
-      const processedRows = (result.rows || []).map((row, index) => {
-        // If row has nested data structure, extract the data
-        let rowData = row;
-        if (row.data && typeof row.data === "object") {
-          rowData = row.data;
+        // Add cache buster for force refresh (like after bulk edit)
+        if (forceRefresh) {
+          request.cacheBuster = Date.now();
+          request._forceRefresh = true; // Additional flag for backend
+          Logger.log(
+            "🔄 Force refresh requested with cache buster:",
+            request.cacheBuster
+          );
         }
 
-        // Ensure each row has a valid ID
-        if (!rowData.id && !rowData.Id && !rowData.ID) {
-          // Try to find primary key from metadata
-          const primaryKey = metadata?.primaryKeys?.[0];
-          if (primaryKey && rowData[primaryKey] != null) {
-            rowData.id = rowData[primaryKey];
-          } else {
-            // Generate a fallback ID
-            rowData.id = `row-${index}-${Date.now()}`;
-          }
+        Logger.log("📡 Loading BS dynamic data with request:", {
+          ...request,
+          forceRefresh,
+        });
+
+        const result = await getTableData(request);
+
+        // Extract actual row data from nested structure
+        const processedRows = (result.rows || [])
+          .map((row, index) => {
+            // If row has nested data structure, extract the data
+            let rowData = row;
+            if (row.data && typeof row.data === "object") {
+              rowData = row.data;
+            }
+
+            // Skip null, undefined, or empty rows
+            if (
+              !rowData ||
+              typeof rowData !== "object" ||
+              Object.keys(rowData).length === 0
+            ) {
+              return null;
+            }
+
+            // Ensure each row has a valid ID - use consistent ID generation
+            if (!rowData.id && !rowData.Id && !rowData.ID) {
+              // Try to find primary key from metadata
+              const primaryKey = metadata?.primaryKeys?.[0];
+              if (primaryKey && rowData[primaryKey] != null) {
+                rowData.id = rowData[primaryKey];
+              } else {
+                // Generate a stable fallback ID based on row content hash
+                const rowString = JSON.stringify(rowData);
+                const hash = rowString.split("").reduce((a, b) => {
+                  a = (a << 5) - a + b.charCodeAt(0);
+                  return a & a;
+                }, 0);
+                rowData.id = `generated-${Math.abs(hash)}-${index}`;
+              }
+            }
+
+            return rowData;
+          })
+          .filter((row) => row !== null); // Remove null rows
+
+        setRows(processedRows);
+        setRowCount(result.rowCount || 0);
+
+        // Reset row selection when data changes to prevent stale references
+        setRowSelectionModel([]);
+
+        // Force component update if this is a refresh
+        if (forceRefresh) {
+          Logger.log("🔄 Force refresh completed, triggering component update");
+          // Small delay to ensure state is properly updated
+          setTimeout(() => {
+            Logger.log("� DataGrid should now show updated data");
+          }, 100);
         }
 
-        return rowData;
-      });
-
-      setRows(processedRows);
-      setRowCount(result.rowCount || 0);
-
-      // Reset row selection when data changes to prevent stale references
-      setRowSelectionModel([]);
-
-      Logger.log("📊 BS dynamic data loaded successfully:", {
-        rows: processedRows?.length || 0,
-        total: result.rowCount || 0,
-      });
-    } catch (err) {
-      Logger.error("❌ Failed to load BS dynamic data:", err);
-      setError(err.message || "Failed to load data");
-      setRows([]);
-      setRowCount(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveTableName, metadata, buildRequest, getTableData]);
+        Logger.log("�📊 BS dynamic data loaded successfully:", {
+          originalRowsCount: result.rows?.length || 0,
+          processedRowsCount: processedRows?.length || 0,
+          filteredOutCount:
+            (result.rows?.length || 0) - (processedRows?.length || 0),
+          total: result.rowCount || 0,
+          forceRefresh,
+          timestamp: new Date().toISOString(),
+          sampleData: processedRows.slice(0, 2), // Show first 2 rows for debugging
+        });
+      } catch (err) {
+        Logger.error("❌ Failed to load BS dynamic data:", err);
+        setError(err.message || "Failed to load data");
+        setRows([]);
+        setRowCount(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [effectiveTableName, metadata, buildRequest, getTableData]
+  );
 
   // Auto-reload data when dependencies change
   useEffect(() => {
@@ -1032,7 +1149,8 @@ const BSDataGrid = ({
           headerName: col.displayName || formatColumnName(col.columnName),
           width: getColumnWidth(col.dataType, col.maxLength),
           type: comboConfig ? "singleSelect" : getGridColumnType(col.dataType),
-          editable: !col.isIdentity && !col.isReadOnly && !readOnly,
+          editable:
+            (!col.isIdentity && !col.isReadOnly && !readOnly) || bulkEditMode,
           sortable: true,
           filterable: true,
           resizable: true,
@@ -1149,6 +1267,7 @@ const BSDataGrid = ({
     renderComboBoxCell,
     getComboBoxOptions,
     applyColumnFiltering,
+    bulkEditMode,
   ]);
 
   // Handle row selection changes for checkbox selection
@@ -1217,6 +1336,23 @@ const BSDataGrid = ({
   }, [bsLocale]);
 
   // Bulk operations handlers
+  const handleBulkAdd = useCallback(() => {
+    if (!metadata?.columns) {
+      Logger.warn("⚠️ Cannot open bulk add dialog without metadata");
+      return;
+    }
+
+    // Initialize empty rows for bulk add
+    const emptyRows = Array.from({ length: bulkRowCount }, (_, index) => ({
+      _id: `bulk-add-${index}`,
+      ...initializeFormData(),
+    }));
+
+    setBulkAddRows(emptyRows);
+    setBulkAddDialogOpen(true);
+    Logger.log("📝 Bulk Add dialog opened with", bulkRowCount, "empty rows");
+  }, [metadata, bulkRowCount, initializeFormData]);
+
   const handleBulkEdit = useCallback(() => {
     const selectedRows = rows.filter((row) => {
       const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
@@ -1224,9 +1360,15 @@ const BSDataGrid = ({
       return rowSelectionModel.includes(rowId);
     });
 
-    console.log("Bulk Edit:", selectedRows);
-    // TODO: Implement bulk edit functionality
-    alert(`Bulk edit ${selectedRows.length} rows`);
+    if (selectedRows.length === 0) {
+      Logger.warn("⚠️ No rows selected for bulk edit");
+      return;
+    }
+
+    setBulkEditMode(true);
+    unsavedChangesRef.current = {};
+    setHasUnsavedChanges(false);
+    Logger.log("📝 Bulk Edit mode enabled for", selectedRows.length, "rows");
   }, [rows, rowSelectionModel, metadata]);
 
   const handleBulkDelete = useCallback(async () => {
@@ -1263,6 +1405,200 @@ const BSDataGrid = ({
     }
   }, [rows, rowSelectionModel, metadata, deleteRecord, loadData]);
 
+  // Bulk Add specific functions
+  const handleBulkSave = useCallback(async () => {
+    try {
+      setFormLoading(true);
+
+      // Filter out empty rows (rows with all empty values)
+      const validRows = bulkAddRows.filter((row) => {
+        const { _id, ...data } = row;
+        return Object.values(data).some(
+          (value) => value !== null && value !== undefined && value !== ""
+        );
+      });
+
+      if (validRows.length === 0) {
+        Logger.warn("⚠️ No valid data to save");
+        return;
+      }
+
+      Logger.log("💾 Saving", validRows.length, "bulk records");
+
+      // Save each row individually
+      for (const row of validRows) {
+        const { _id, ...data } = row;
+        await createRecord(data);
+      }
+
+      setBulkAddDialogOpen(false);
+      setBulkAddRows([]);
+      await loadData();
+      Logger.log("✅ Bulk add completed successfully");
+    } catch (err) {
+      Logger.error("❌ Bulk save failed:", err);
+      setError(err.message || "Failed to save bulk records");
+    } finally {
+      setFormLoading(false);
+    }
+  }, [bulkAddRows, createRecord, loadData]);
+
+  const handleBulkDialogClose = useCallback(() => {
+    setBulkAddDialogOpen(false);
+    setBulkAddRows([]);
+  }, []);
+
+  const updateBulkRow = useCallback((rowIndex, field, value) => {
+    setBulkAddRows((prev) =>
+      prev.map((row, index) =>
+        index === rowIndex ? { ...row, [field]: value } : row
+      )
+    );
+  }, []);
+
+  const addMoreBulkRows = useCallback(() => {
+    const newRows = Array.from({ length: 3 }, (_, index) => ({
+      _id: `bulk-add-${bulkAddRows.length + index}`,
+      ...initializeFormData(),
+    }));
+    setBulkAddRows((prev) => [...prev, ...newRows]);
+  }, [bulkAddRows.length, initializeFormData]);
+
+  const removeBulkRow = useCallback((rowIndex) => {
+    setBulkAddRows((prev) => prev.filter((_, index) => index !== rowIndex));
+  }, []);
+
+  // Bulk Edit functions
+  const processBulkRowUpdate = useCallback(
+    (newRow, oldRow) => {
+      if (!bulkEditMode) {
+        // Normal mode - save immediately and refresh data
+        const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+        const rowId = newRow[primaryKey] || newRow.id || newRow.Id;
+
+        Logger.log("📝 Normal mode update:", { primaryKey, rowId, newRow });
+
+        // Remove invalid id fields from data before sending to backend
+        const cleanData = { ...newRow };
+
+        // Remove generic id fields that don't match the actual primary key
+        if (primaryKey !== "id") delete cleanData.id;
+        if (primaryKey !== "Id") delete cleanData.Id;
+        if (primaryKey !== "ID") delete cleanData.ID;
+
+        Logger.log("📝 Clean data for update:", {
+          cleanData,
+          whereConditions: { [primaryKey]: rowId },
+        });
+
+        // Perform update and refresh data
+        return updateRecord({
+          id: rowId,
+          data: cleanData,
+          whereConditions: { [primaryKey]: rowId },
+        })
+          .then((result) => {
+            // Refresh data after successful update
+            Logger.log("✅ Normal mode update successful, refreshing data");
+            // Use setTimeout to ensure the update is completed before refresh
+            setTimeout(() => {
+              loadData(true); // Force refresh with cache buster
+            }, 100);
+            return result;
+          })
+          .catch((error) => {
+            Logger.error("❌ Normal mode update failed:", error);
+            // Set error state to show user
+            setError(`Failed to update record: ${error.message || error}`);
+            throw error;
+          });
+      }
+
+      // Bulk edit mode - store changes
+      const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+      const rowId = newRow[primaryKey] || newRow.id || newRow.Id;
+
+      unsavedChangesRef.current[rowId] = newRow;
+      setHasUnsavedChanges(true);
+
+      Logger.log("📝 Row change stored:", { rowId, changes: newRow });
+      return newRow;
+    },
+    [bulkEditMode, metadata, updateRecord, loadData]
+  );
+
+  const handleBulkSaveChanges = useCallback(async () => {
+    try {
+      setFormLoading(true);
+      setLoading(true); // Set loading to prevent rendering issues
+
+      const changes = Object.values(unsavedChangesRef.current);
+
+      Logger.log("💾 Saving bulk changes:", changes.length, "rows");
+
+      // Save each changed row
+      for (const row of changes) {
+        const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+        const id = row[primaryKey] || row.id || row.Id;
+
+        // Remove invalid id fields from data before sending to backend
+        const cleanData = { ...row };
+
+        // Remove generic id fields that don't match the actual primary key
+        if (primaryKey !== "id") delete cleanData.id;
+        if (primaryKey !== "Id") delete cleanData.Id;
+        if (primaryKey !== "ID") delete cleanData.ID;
+
+        Logger.log("📝 Bulk save row:", {
+          primaryKey,
+          id,
+          cleanData,
+          whereConditions: { [primaryKey]: id },
+        });
+
+        await updateRecord({
+          id,
+          data: cleanData,
+          whereConditions: { [primaryKey]: id },
+        });
+      }
+
+      // Reset bulk edit state
+      setBulkEditMode(false);
+      unsavedChangesRef.current = {};
+      setHasUnsavedChanges(false);
+      setRowSelectionModel([]);
+
+      // Small delay to ensure database transactions are committed
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Force reload data from server with cache buster
+      await loadData(true);
+      Logger.log("✅ Bulk changes saved successfully and data refreshed");
+    } catch (err) {
+      Logger.error("❌ Bulk save failed:", err);
+      setError(err.message || "Failed to save bulk changes");
+    } finally {
+      setFormLoading(false);
+      setLoading(false); // Clear loading state
+    }
+  }, [metadata, updateRecord, loadData]);
+
+  const handleBulkDiscardChanges = useCallback(() => {
+    setLoading(true); // Set loading state
+    setBulkEditMode(false);
+    unsavedChangesRef.current = {};
+    setHasUnsavedChanges(false);
+    setRowSelectionModel([]);
+
+    // Force reload to discard changes with loading state
+    loadData(true).finally(() => {
+      setLoading(false); // Clear loading state after reload
+    });
+
+    Logger.log("🗑️ Bulk changes discarded");
+  }, [loadData]);
+
   const handleToggleHeaderFilters = useCallback(() => {
     setHeaderFiltersEnabled((prev) => {
       const newValue = !prev;
@@ -1273,7 +1609,7 @@ const BSDataGrid = ({
 
   // Loading state
   if (metadataLoading) {
-    console.log("🔄 BSDataGrid: metadata is loading...", effectiveTableName);
+    Logger.log("🔄 BSDataGrid: metadata is loading...", effectiveTableName);
     return (
       <Paper
         sx={{
@@ -1334,7 +1670,7 @@ const BSDataGrid = ({
 
   // No metadata
   if (!metadata) {
-    console.log("⚠️ BSDataGrid: no metadata available", {
+    Logger.warn("⚠️ BSDataGrid: no metadata available", {
       effectiveTableName,
       metadata,
       showToolbar,
@@ -1390,7 +1726,7 @@ const BSDataGrid = ({
     );
   }
 
-  console.log("✅ BSDataGrid: rendering with metadata", {
+  Logger.log("✅ BSDataGrid: rendering with metadata", {
     effectiveTableName,
     metadataLoaded: !!metadata,
     showToolbar,
@@ -1416,8 +1752,19 @@ const BSDataGrid = ({
         </Alert>
       )}
 
+      {/* Bulk Edit Toolbar */}
+      {bulkEditMode && (
+        <BulkEditToolbar
+          onSave={handleBulkSaveChanges}
+          onDiscard={handleBulkDiscardChanges}
+          hasUnsavedChanges={hasUnsavedChanges}
+          formLoading={formLoading}
+          changesCount={Object.keys(unsavedChangesRef.current).length}
+        />
+      )}
+
       {/* Table Info */}
-      {showToolbar && (
+      {showToolbar && !bulkEditMode && (
         <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Typography variant="h6" component="div">
@@ -1444,12 +1791,20 @@ const BSDataGrid = ({
 
       {/* DataGrid */}
       <DataGridPro
-        rows={rows}
+        rows={rows.filter(
+          (row) => row && typeof row === "object" && Object.keys(row).length > 0
+        )}
         columns={columns}
         rowCount={rowCount}
         loading={loading || metadataLoading}
         // Ensure we don't render until we have valid data structure
-        key={`datagrid-${effectiveTableName}-${rows.length}`}
+        // Include rowCount and content hash in key to force re-render when data changes
+        key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length}-${
+          JSON.stringify(rows.slice(0, 1))?.length || 0
+        }`}
+        // Editing
+        editMode="row"
+        processRowUpdate={processBulkRowUpdate}
         // Pagination
         paginationMode="server"
         paginationModel={paginationModel}
@@ -1491,18 +1846,31 @@ const BSDataGrid = ({
             }
           }
 
-          // Last resort: generate a unique ID based on row data
+          // Last resort: generate a stable ID based on row content hash
           const rowString = JSON.stringify(row);
-          return `generated-${rowString.length}-${Math.random()
-            .toString(36)
-            .substr(2, 9)}`;
+          const hash = rowString.split("").reduce((a, b) => {
+            a = (a << 5) - a + b.charCodeAt(0);
+            return a & a;
+          }, 0);
+          return `generated-${Math.abs(hash)}`;
         }}
         // Localization
         localeText={getLocalization()}
+        // Row styling for unsaved changes
+        getRowClassName={(params) => {
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const rowId =
+            params.row[primaryKey] || params.row.id || params.row.Id;
+          return unsavedChangesRef.current[rowId] ? "unsaved-changes" : "";
+        }}
         // Custom Toolbar (use slots + slotProps for better compatibility)
-        slots={showToolbar ? { toolbar: DynamicGridToolbar } : undefined}
+        slots={
+          showToolbar && !bulkEditMode
+            ? { toolbar: DynamicGridToolbar }
+            : undefined
+        }
         slotProps={
-          showToolbar
+          showToolbar && !bulkEditMode
             ? {
                 toolbar: {
                   onAdd: handleAddClick,
@@ -1514,6 +1882,7 @@ const BSDataGrid = ({
                   selectedRowCount: rowSelectionModel.length,
                   onBulkEdit: handleBulkEdit,
                   onBulkDelete: handleBulkDelete,
+                  onBulkAdd: handleBulkAdd,
                 },
               }
             : undefined
@@ -1542,6 +1911,13 @@ const BSDataGrid = ({
           [`& .${gridClasses.row}`]: {
             "&:hover": {
               backgroundColor: "#f9f9f9",
+            },
+            // Highlight rows with unsaved changes
+            "&.unsaved-changes": {
+              backgroundColor: "#fff3cd",
+              "&:hover": {
+                backgroundColor: "#ffeaa7",
+              },
             },
           },
           // Header filter styling
@@ -1585,6 +1961,182 @@ const BSDataGrid = ({
             disabled={formLoading}
           >
             {formLoading ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Add Dialog */}
+      <Dialog
+        open={bulkAddDialogOpen}
+        onClose={handleBulkDialogClose}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          Bulk Add Records
+          <Typography variant="body2" color="text.secondary">
+            Add multiple records at once. Empty rows will be ignored.
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {metadata?.columns ? (
+            <Box sx={{ mt: 2 }}>
+              {/* Bulk Row Count Control */}
+              <Box
+                sx={{ mb: 3, display: "flex", alignItems: "center", gap: 2 }}
+              >
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Number of rows"
+                  value={bulkRowCount}
+                  onChange={(e) =>
+                    setBulkRowCount(Math.max(1, parseInt(e.target.value) || 1))
+                  }
+                  sx={{ width: 150 }}
+                />
+                <Button
+                  onClick={addMoreBulkRows}
+                  startIcon={<Add />}
+                  variant="outlined"
+                  size="small"
+                >
+                  Add 3 More Rows
+                </Button>
+              </Box>
+
+              {/* Bulk Rows Grid */}
+              <Box sx={{ maxHeight: 600, overflow: "auto" }}>
+                {bulkAddRows.map((row, rowIndex) => (
+                  <Paper
+                    key={row._id}
+                    sx={{ p: 2, mb: 2, position: "relative" }}
+                  >
+                    <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                      Row #{rowIndex + 1}
+                      <Button
+                        size="small"
+                        onClick={() => removeBulkRow(rowIndex)}
+                        sx={{ ml: 2 }}
+                        color="error"
+                      >
+                        Remove
+                      </Button>
+                    </Typography>
+                    <Grid container spacing={2}>
+                      {metadata.columns
+                        .filter((c) =>
+                          isFieldInForm(c.columnName, c.dataType, c.isIdentity)
+                        )
+                        .map((c) => {
+                          const { columnName, dataType, isNullable } = c;
+                          const val = row[columnName] ?? "";
+                          let inputType = "text";
+                          let multiline = false;
+
+                          switch (dataType?.toLowerCase()) {
+                            case "int":
+                            case "smallint":
+                            case "tinyint":
+                            case "bigint":
+                            case "decimal":
+                            case "float":
+                            case "real":
+                            case "money":
+                              inputType = "number";
+                              break;
+                            case "datetime":
+                            case "datetime2":
+                            case "date":
+                              inputType = "datetime-local";
+                              break;
+                            case "text":
+                            case "ntext":
+                              multiline = true;
+                              break;
+                            case "bit":
+                              inputType = "checkbox";
+                              break;
+                            default:
+                              inputType = "text";
+                          }
+
+                          if (inputType === "checkbox") {
+                            return (
+                              <Grid item xs={12} sm={6} md={4} key={columnName}>
+                                <FormControlLabel
+                                  control={
+                                    <Checkbox
+                                      checked={Boolean(val)}
+                                      onChange={(e) =>
+                                        updateBulkRow(
+                                          rowIndex,
+                                          columnName,
+                                          e.target.checked
+                                        )
+                                      }
+                                    />
+                                  }
+                                  label={`${formatColumnName(columnName)} ${
+                                    !isNullable ? "*" : ""
+                                  }`}
+                                />
+                              </Grid>
+                            );
+                          }
+
+                          const gridSize = multiline
+                            ? { xs: 12 }
+                            : { xs: 12, sm: 6, md: 4 };
+
+                          return (
+                            <Grid item {...gridSize} key={columnName}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label={`${formatColumnName(columnName)} ${
+                                  !isNullable ? "*" : ""
+                                }`}
+                                type={inputType}
+                                value={val}
+                                onChange={(e) =>
+                                  updateBulkRow(
+                                    rowIndex,
+                                    columnName,
+                                    e.target.value
+                                  )
+                                }
+                                required={!isNullable}
+                                multiline={multiline}
+                                rows={multiline ? 2 : 1}
+                              />
+                            </Grid>
+                          );
+                        })}
+                    </Grid>
+                  </Paper>
+                ))}
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <CircularProgress />
+              <Typography variant="body2" sx={{ mt: 2 }}>
+                Loading metadata...
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleBulkDialogClose} disabled={formLoading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleBulkSave}
+            variant="contained"
+            disabled={formLoading}
+          >
+            {formLoading ? "Saving..." : `Save ${bulkAddRows.length} Records`}
           </Button>
         </DialogActions>
       </Dialog>
