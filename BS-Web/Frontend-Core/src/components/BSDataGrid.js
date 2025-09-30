@@ -15,6 +15,18 @@ import {
   Grid,
   FormControlLabel,
   Checkbox,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
+  ButtonGroup,
+  ClickAwayListener,
+  Grow,
+  Paper as MenuPaper,
+  Popper,
+  MenuList,
+  MenuItem as MenuListItem,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -30,6 +42,8 @@ import {
   Add,
   FilterList as FilterListIcon,
   FilterListOff as FilterListOffIcon,
+  Restore,
+  ArrowDropDown,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
 import Logger from "../utils/logger";
@@ -47,6 +61,135 @@ if (licenseStatus.hasLicenseKey) {
 } else {
   Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
 }
+
+// Split Button Component for Bulk Operations
+const BulkSplitButton = ({
+  selectedRowCount,
+  onBulkEdit,
+  onBulkDelete,
+  bsBulkEdit = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const anchorRef = React.useRef(null);
+
+  const options = [
+    {
+      label: `Bulk Edit (${selectedRowCount})`,
+      icon: <Edit />,
+      action: onBulkEdit,
+      color: "info",
+      show: bsBulkEdit,
+    },
+    {
+      label: `Bulk Delete (${selectedRowCount})`,
+      icon: <Delete />,
+      action: onBulkDelete,
+      color: "error",
+      show: true,
+    },
+  ].filter((option) => option.show);
+
+  const handleClick = () => {
+    if (options[selectedIndex]?.action) {
+      options[selectedIndex].action();
+    }
+  };
+
+  const handleMenuItemClick = (event, index) => {
+    setSelectedIndex(index);
+    setOpen(false);
+    if (options[index]?.action) {
+      options[index].action();
+    }
+  };
+
+  const handleToggle = () => {
+    setOpen((prevOpen) => !prevOpen);
+  };
+
+  const handleClose = (event) => {
+    if (anchorRef.current && anchorRef.current.contains(event.target)) {
+      return;
+    }
+    setOpen(false);
+  };
+
+  if (options.length === 0 || selectedRowCount === 0) {
+    return null;
+  }
+
+  return (
+    <React.Fragment>
+      <ButtonGroup
+        variant="outlined"
+        color={options[selectedIndex]?.color || "primary"}
+        ref={anchorRef}
+        aria-label="split button"
+        sx={{ mr: 1 }}
+      >
+        <Button
+          onClick={handleClick}
+          startIcon={options[selectedIndex]?.icon}
+          size="small"
+        >
+          {options[selectedIndex]?.label}
+        </Button>
+        <Button
+          size="small"
+          aria-controls={open ? "split-button-menu" : undefined}
+          aria-expanded={open ? "true" : undefined}
+          aria-label="select bulk operation"
+          aria-haspopup="menu"
+          onClick={handleToggle}
+        >
+          <ArrowDropDown />
+        </Button>
+      </ButtonGroup>
+      <Popper
+        sx={{
+          zIndex: 1,
+        }}
+        open={open}
+        anchorEl={anchorRef.current}
+        role={undefined}
+        transition
+        disablePortal
+      >
+        {({ TransitionProps, placement }) => (
+          <Grow
+            {...TransitionProps}
+            style={{
+              transformOrigin:
+                placement === "bottom" ? "center top" : "center bottom",
+            }}
+          >
+            <MenuPaper>
+              <ClickAwayListener onClickAway={handleClose}>
+                <MenuList id="split-button-menu" autoFocusItem>
+                  {options.map((option, index) => (
+                    <MenuListItem
+                      key={option.label}
+                      selected={index === selectedIndex}
+                      onClick={(event) => handleMenuItemClick(event, index)}
+                    >
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        {option.icon}
+                        {option.label}
+                      </Box>
+                    </MenuListItem>
+                  ))}
+                </MenuList>
+              </ClickAwayListener>
+            </MenuPaper>
+          </Grow>
+        )}
+      </Popper>
+    </React.Fragment>
+  );
+};
 
 // Fallback Toolbar - สำหรับใช้เมื่อไม่มี DataGrid context (offline mode)
 const FallbackToolbar = ({
@@ -254,33 +397,29 @@ const DynamicGridToolbar = ({
         </Button>
       )}
 
-      {/* Bulk Edit/Delete buttons - show only when rows are selected */}
+      {/* Bulk Edit/Delete Split Button - show only when rows are selected */}
       {selectedRowCount > 0 && (
-        <>
-          {bsBulkEdit && (
-            <Button
-              size="small"
-              startIcon={<Edit />}
-              onClick={onBulkEdit}
-              variant="outlined"
-              color="info"
-              sx={{ mr: 1 }}
-            >
-              Bulk Edit ({selectedRowCount})
-            </Button>
-          )}
-          <Button
-            size="small"
-            startIcon={<Delete />}
-            onClick={onBulkDelete}
-            variant="outlined"
-            color="error"
-            sx={{ mr: 1 }}
-          >
-            Bulk Delete ({selectedRowCount})
-          </Button>
-        </>
+        <BulkSplitButton
+          selectedRowCount={selectedRowCount}
+          onBulkEdit={onBulkEdit}
+          onBulkDelete={onBulkDelete}
+          bsBulkEdit={bsBulkEdit}
+        />
       )}
+
+      {/* Quick Filter */}
+      <Box sx={{ flexGrow: 1 }} />
+      <GridToolbarQuickFilter />
+
+      {/* {headerFiltersEnabled && (
+        <Chip
+          label="Header Filters Enabled"
+          size="small"
+          color="primary"
+          variant="filled"
+          sx={{ ml: 1 }}
+        />
+      )} */}
 
       {/* Header Filters Toggle */}
       <Button
@@ -294,20 +433,6 @@ const DynamicGridToolbar = ({
       >
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
-
-      {/* Quick Filter */}
-      <Box sx={{ flexGrow: 1 }} />
-      <GridToolbarQuickFilter />
-
-      {headerFiltersEnabled && (
-        <Chip
-          label="Header Filters Enabled"
-          size="small"
-          color="primary"
-          variant="filled"
-          sx={{ ml: 1 }}
-        />
-      )}
     </GridToolbarContainer>
   );
 };
@@ -800,6 +925,11 @@ const BSDataGrid = ({
     return true;
   }, []);
 
+  // Helper: Check if field is is_active
+  const isActiveField = useCallback((columnName) => {
+    return columnName?.toLowerCase() === "is_active";
+  }, []);
+
   // Initialize form data based on metadata
   const initializeFormData = useCallback(
     (existing = null) => {
@@ -811,34 +941,39 @@ const BSDataGrid = ({
           if (existing && existing[c.columnName] !== undefined) {
             init[c.columnName] = existing[c.columnName];
           } else {
-            const dt = c.dataType?.toLowerCase();
-            switch (dt) {
-              case "int":
-              case "smallint":
-              case "tinyint":
-              case "bigint":
-              case "decimal":
-              case "float":
-              case "real":
-              case "money":
-                init[c.columnName] = 0;
-                break;
-              case "bit":
-                init[c.columnName] = false;
-                break;
-              case "datetime":
-              case "datetime2":
-              case "date":
-                init[c.columnName] = new Date().toISOString().slice(0, 19);
-                break;
-              default:
-                init[c.columnName] = "";
+            // Special handling for is_active field - default to YES for new records
+            if (isActiveField(c.columnName)) {
+              init[c.columnName] = "YES";
+            } else {
+              const dt = c.dataType?.toLowerCase();
+              switch (dt) {
+                case "int":
+                case "smallint":
+                case "tinyint":
+                case "bigint":
+                case "decimal":
+                case "float":
+                case "real":
+                case "money":
+                  init[c.columnName] = 0;
+                  break;
+                case "bit":
+                  init[c.columnName] = false;
+                  break;
+                case "datetime":
+                case "datetime2":
+                case "date":
+                  init[c.columnName] = new Date().toISOString().slice(0, 19);
+                  break;
+                default:
+                  init[c.columnName] = "";
+              }
             }
           }
         });
       return init;
     },
-    [metadata, isFieldInForm]
+    [metadata, isFieldInForm, isActiveField]
   );
 
   // Open Add dialog or delegate to external handler
@@ -971,6 +1106,14 @@ const BSDataGrid = ({
     return comboConfig.valueOptions || [];
   }, []);
 
+  // Helper: Get is_active dropdown options
+  const getIsActiveOptions = useCallback(() => {
+    return [
+      { value: "YES", label: "YES" },
+      { value: "NO", label: "NO" },
+    ];
+  }, []);
+
   // Helper: Check if field is required (not null)
   const isFieldRequired = useCallback((columnName, metadata) => {
     const column = metadata?.columns?.find((c) => c.columnName === columnName);
@@ -982,20 +1125,25 @@ const BSDataGrid = ({
     (columns) => {
       if (!parsedCols || parsedCols.length === 0) return columns;
 
+      // Separate actions column if it exists
+      const actionsCol = columns.find((c) => c.field === "actions");
+      const otherColumns = columns.filter((c) => c.field !== "actions");
+
       // Filter to only show specified columns, maintaining order
       const filteredColumns = [];
+
+      // Add actions column first if it exists
+      if (actionsCol) {
+        filteredColumns.push(actionsCol);
+      }
+
+      // Add other specified columns
       parsedCols.forEach((colName) => {
-        const column = columns.find((c) => c.field === colName);
+        const column = otherColumns.find((c) => c.field === colName);
         if (column) {
           filteredColumns.push(column);
         }
       });
-
-      // Add actions column if it exists and not in parsedCols
-      const actionsCol = columns.find((c) => c.field === "actions");
-      if (actionsCol && !parsedCols.includes("actions")) {
-        filteredColumns.push(actionsCol);
-      }
 
       return filteredColumns;
     },
@@ -1040,12 +1188,63 @@ const BSDataGrid = ({
     if (!metadata?.columns) return null;
 
     const formFields = metadata.columns
-      .filter((c) => isFieldInForm(c.columnName, c.dataType, c.isIdentity))
+      .filter((c) => {
+        // Filter out is_active field in add mode
+        if (dialogMode === "add" && isActiveField(c.columnName)) {
+          return false;
+        }
+        return isFieldInForm(c.columnName, c.dataType, c.isIdentity);
+      })
       .map((c) => {
         const { columnName, dataType, isNullable } = c;
         const val = formData[columnName] ?? "";
         let inputType = "text";
         let multiline = false;
+
+        // Special handling for is_active field
+        if (isActiveField(columnName)) {
+          return (
+            <Grid item xs={12} sm={6} md={4} key={columnName}>
+              <FormControl fullWidth size="small" required={!isNullable}>
+                <InputLabel>
+                  {formatColumnName(columnName)} {!isNullable ? "*" : ""}
+                </InputLabel>
+                <Select
+                  value={val || "YES"}
+                  label={`${formatColumnName(columnName)} ${
+                    !isNullable ? "*" : ""
+                  }`}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+                  }
+                >
+                  {getIsActiveOptions().map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "flex-start",
+                          width: "100%",
+                        }}
+                      >
+                        <Chip
+                          label={option.label}
+                          size="small"
+                          color={option.value === "YES" ? "success" : "error"}
+                          variant="outlined"
+                        />
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {dataType} {isNullable ? "(nullable)" : "(required)"}
+                </FormHelperText>
+              </FormControl>
+            </Grid>
+          );
+        }
 
         switch (dataType?.toLowerCase()) {
           case "int":
@@ -1129,7 +1328,50 @@ const BSDataGrid = ({
         {formFields}
       </Grid>
     );
-  }, [metadata, formData, isFieldInForm, formatColumnName]);
+  }, [
+    metadata,
+    formData,
+    isFieldInForm,
+    formatColumnName,
+    dialogMode,
+    isActiveField,
+    getIsActiveOptions,
+  ]);
+
+  // Function to restore a single row to its original state
+  const handleRestoreRow = useCallback(
+    (rowId) => {
+      const change = unsavedChangesRef.current[rowId];
+      if (!change) return;
+
+      // Remove from unsaved changes
+      delete unsavedChangesRef.current[rowId];
+
+      // Check if there are any remaining unsaved changes
+      const remainingChanges = Object.keys(unsavedChangesRef.current).length;
+      setHasUnsavedChanges(remainingChanges > 0);
+
+      // Update the row in the grid to show original data
+      setRows((prevRows) =>
+        prevRows.map((row) => {
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const currentRowId = row[primaryKey] || row.id || row.Id;
+
+          if (String(currentRowId) === String(rowId)) {
+            Logger.log("🔄 Restoring row to original state:", {
+              rowId,
+              originalData: change.originalData,
+            });
+            return change.originalData;
+          }
+          return row;
+        })
+      );
+
+      Logger.log("✅ Row restored successfully:", { rowId, remainingChanges });
+    },
+    [metadata]
+  );
 
   // Build columns from metadata
   const columns = useMemo(() => {
@@ -1148,7 +1390,10 @@ const BSDataGrid = ({
           field: col.columnName,
           headerName: col.displayName || formatColumnName(col.columnName),
           width: getColumnWidth(col.dataType, col.maxLength),
-          type: comboConfig ? "singleSelect" : getGridColumnType(col.dataType),
+          type:
+            comboConfig || isActiveField(columnName)
+              ? "singleSelect"
+              : getGridColumnType(col.dataType),
           editable:
             (!col.isIdentity && !col.isReadOnly && !readOnly) || bulkEditMode,
           sortable: true,
@@ -1158,8 +1403,35 @@ const BSDataGrid = ({
           headerClassName: isRequired ? "required-field" : undefined,
         };
 
+        // is_active field configuration
+        if (isActiveField(columnName)) {
+          baseColumn.valueOptions = getIsActiveOptions();
+          baseColumn.renderCell = (params) => {
+            const { value } = params;
+            const displayText = value || "YES"; // Default to YES if empty
+
+            return (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  width: "100%",
+                  height: "100%",
+                }}
+              >
+                <Chip
+                  label={displayText}
+                  size="small"
+                  color={displayText === "YES" ? "success" : "error"}
+                  variant="outlined"
+                />
+              </Box>
+            );
+          };
+        }
         // ComboBox configuration
-        if (comboConfig) {
+        else if (comboConfig) {
           baseColumn.valueOptions = getComboBoxOptions(comboConfig);
           baseColumn.renderCell = (params) =>
             renderComboBoxCell(params, comboConfig);
@@ -1221,29 +1493,62 @@ const BSDataGrid = ({
         ));
       }
 
-      actions.push((params) => (
-        <GridActionsCellItem
-          icon={<Edit />}
-          label="Edit"
-          onClick={() => handleEditClick(params.row)}
-        />
-      ));
+      // In bulk edit mode, show restore button for changed rows
+      if (bulkEditMode) {
+        actions.push((params) => {
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const rowId =
+            params.row[primaryKey] || params.row.id || params.row.Id;
+          const hasChanges = !!unsavedChangesRef.current[rowId];
 
-      actions.push((params) => (
-        <GridActionsCellItem
-          icon={<Delete />}
-          label="Delete"
-          onClick={() => handleDeleteClick(params.row)}
-          showInMenu
-        />
-      ));
+          if (!hasChanges) return null;
 
-      dataColumns.push({
+          return (
+            <GridActionsCellItem
+              icon={<Restore />}
+              label="Restore"
+              onClick={() => handleRestoreRow(rowId)}
+              sx={{
+                color: "warning.main",
+                "&:hover": {
+                  backgroundColor: "warning.light",
+                  color: "warning.dark",
+                },
+              }}
+            />
+          );
+        });
+      } else {
+        // Regular edit/delete actions (only in normal mode)
+        actions.push((params) => (
+          <GridActionsCellItem
+            icon={<Edit />}
+            label="Edit"
+            onClick={() => handleEditClick(params.row)}
+          />
+        ));
+
+        actions.push((params) => (
+          <GridActionsCellItem
+            icon={<Delete />}
+            label="Delete"
+            onClick={() => handleDeleteClick(params.row)}
+            showInMenu
+          />
+        ));
+      }
+
+      // Insert actions column at the beginning (after checkbox if present)
+      dataColumns.unshift({
         field: "actions",
         type: "actions",
-        headerName: "Actions",
-        width: 120,
-        getActions: (params) => actions.map((a) => a(params)),
+        headerName: "", // Hide column header
+        width: bulkEditMode ? 80 : 120, // Smaller width in bulk edit mode
+        sortable: false,
+        filterable: false,
+        hideable: false,
+        disableColumnMenu: true,
+        getActions: (params) => actions.map((a) => a(params)).filter(Boolean),
       });
     }
 
@@ -1268,6 +1573,9 @@ const BSDataGrid = ({
     getComboBoxOptions,
     applyColumnFiltering,
     bulkEditMode,
+    isActiveField,
+    getIsActiveOptions,
+    handleRestoreRow,
   ]);
 
   // Handle row selection changes for checkbox selection
@@ -1514,14 +1822,24 @@ const BSDataGrid = ({
           });
       }
 
-      // Bulk edit mode - store changes
+      // Bulk edit mode - store changes WITHOUT saving to backend
       const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
       const rowId = newRow[primaryKey] || newRow.id || newRow.Id;
 
-      unsavedChangesRef.current[rowId] = newRow;
+      // Store both new row data and original row data for restore functionality
+      unsavedChangesRef.current[rowId] = {
+        newData: newRow,
+        originalData: oldRow,
+      };
       setHasUnsavedChanges(true);
 
-      Logger.log("📝 Row change stored:", { rowId, changes: newRow });
+      Logger.log("📝 Bulk edit - row change stored (not saved):", {
+        rowId,
+        newData: newRow,
+        originalData: oldRow,
+      });
+
+      // Return newRow to update the grid display but don't save to backend
       return newRow;
     },
     [bulkEditMode, metadata, updateRecord, loadData]
@@ -1532,7 +1850,10 @@ const BSDataGrid = ({
       setFormLoading(true);
       setLoading(true); // Set loading to prevent rendering issues
 
-      const changes = Object.values(unsavedChangesRef.current);
+      // Get only the new data from changes (not the original data)
+      const changes = Object.values(unsavedChangesRef.current).map(
+        (change) => change.newData
+      );
 
       Logger.log("💾 Saving bulk changes:", changes.length, "rows");
 
@@ -1606,6 +1927,38 @@ const BSDataGrid = ({
       return newValue;
     });
   }, []);
+
+  // Handle row editing events
+  const handleRowEditStart = useCallback(
+    (params) => {
+      Logger.log("📝 Row edit started:", params.id);
+      if (!bulkEditMode) {
+        setBulkEditMode(true);
+        unsavedChangesRef.current = {};
+        setHasUnsavedChanges(false);
+        Logger.log("📝 Bulk Edit mode enabled via row double-click");
+      }
+    },
+    [bulkEditMode]
+  );
+
+  const handleRowEditStop = useCallback(
+    (params) => {
+      Logger.log("📝 Row edit stopped:", params.id, "reason:", params.reason);
+
+      // If user cancels editing (Escape key) and there are no unsaved changes,
+      // automatically exit bulk edit mode
+      if (params.reason === "escapeKeyDown" && !hasUnsavedChanges) {
+        setBulkEditMode(false);
+        Logger.log(
+          "📝 Bulk Edit mode disabled - user cancelled with no changes"
+        );
+      }
+      // For other reasons (like clicking away), keep bulk edit mode active
+      // Let user manually save/discard changes via toolbar
+    },
+    [hasUnsavedChanges]
+  );
 
   // Loading state
   if (metadataLoading) {
@@ -1805,6 +2158,8 @@ const BSDataGrid = ({
         // Editing
         editMode="row"
         processRowUpdate={processBulkRowUpdate}
+        onRowEditStart={handleRowEditStart}
+        onRowEditStop={handleRowEditStop}
         // Pagination
         paginationMode="server"
         paginationModel={paginationModel}
@@ -1818,8 +2173,9 @@ const BSDataGrid = ({
         filterMode="server"
         filterModel={filterModel}
         onFilterModelChange={setFilterModel}
-        // Header Filters (Pro feature) - Note: headerFilters prop not available in v7
-        // headerFilters={headerFiltersEnabled}
+        // Header Filters (Pro feature)
+        headerFilters={headerFiltersEnabled}
+        headerFilterHeight={52}
         // Row Selection (checkbox selection when enabled)
         checkboxSelection={bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected}
         rowSelectionModel={rowSelectionModel}
@@ -1884,6 +2240,17 @@ const BSDataGrid = ({
                   onBulkDelete: handleBulkDelete,
                   onBulkAdd: handleBulkAdd,
                 },
+                // Header filter cell props to show inline clear button
+                headerFilterCell: {
+                  showClearIcon: true,
+                },
+              }
+            : headerFiltersEnabled
+            ? {
+                // Header filter cell props when toolbar is disabled but header filters are enabled
+                headerFilterCell: {
+                  showClearIcon: true,
+                },
               }
             : undefined
         }
@@ -1924,6 +2291,16 @@ const BSDataGrid = ({
           [`& .MuiDataGrid-headerFilterRow`]: {
             backgroundColor: "#f9f9f9",
             borderBottom: "1px solid #e0e0e0",
+            "& .MuiInputBase-root": {
+              fontSize: "0.875rem",
+            },
+            "& .MuiInputBase-input": {
+              padding: "8px 12px",
+            },
+          },
+          // Header filter cells
+          "& .MuiDataGrid-headerFilterCell": {
+            padding: "4px",
           },
         }}
         {...props}
@@ -2033,6 +2410,64 @@ const BSDataGrid = ({
                           const val = row[columnName] ?? "";
                           let inputType = "text";
                           let multiline = false;
+
+                          // Special handling for is_active field
+                          if (isActiveField(columnName)) {
+                            return (
+                              <Grid item xs={12} sm={6} md={4} key={columnName}>
+                                <FormControl
+                                  fullWidth
+                                  size="small"
+                                  required={!isNullable}
+                                >
+                                  <InputLabel>
+                                    {formatColumnName(columnName)}{" "}
+                                    {!isNullable ? "*" : ""}
+                                  </InputLabel>
+                                  <Select
+                                    value={val || "YES"}
+                                    label={`${formatColumnName(columnName)} ${
+                                      !isNullable ? "*" : ""
+                                    }`}
+                                    onChange={(e) =>
+                                      updateBulkRow(
+                                        rowIndex,
+                                        columnName,
+                                        e.target.value
+                                      )
+                                    }
+                                  >
+                                    {getIsActiveOptions().map((option) => (
+                                      <MenuItem
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "flex-start",
+                                            width: "100%",
+                                          }}
+                                        >
+                                          <Chip
+                                            label={option.label}
+                                            size="small"
+                                            color={
+                                              option.value === "YES"
+                                                ? "success"
+                                                : "error"
+                                            }
+                                            variant="outlined"
+                                          />
+                                        </Box>
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </Grid>
+                            );
+                          }
 
                           switch (dataType?.toLowerCase()) {
                             case "int":
