@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using ApiCore.Services.Interfaces;
 using System.Data;
+using System;
 
 namespace ApiCore.Services.Implementation
 {
@@ -19,8 +20,10 @@ namespace ApiCore.Services.Implementation
 
         public SqlConnectionFactory(IConfiguration configuration)
         {
-            var defaultConnection = configuration.GetConnectionString("DefaultConnection")
-                ?? throw new ArgumentNullException("DefaultConnection", "Main database connection string is required");
+            // Read connection string from environment variable SERVERDB
+            var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB")
+                ?? configuration.GetConnectionString("DefaultConnection")
+                ?? throw new ArgumentNullException("SERVERDB", "Database connection string is required. Set SERVERDB environment variable or DefaultConnection in appsettings.");
 
             _connectionStrings = new Dictionary<DatabaseType, string>
             {
