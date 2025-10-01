@@ -25,6 +25,7 @@ const TestBSDataGrid = () => {
         <Box sx={{ height: 400 }}>
           <BSDataGrid
             bsObj="sec.t_com_user_group"
+            bsCols="name"
             bsRowPerPage={10}
             showToolbar={true}
             showAdd={true}

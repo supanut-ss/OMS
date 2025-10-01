@@ -6,7 +6,7 @@ import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
-import TestBSDataGrid from "./pages/TestBSDataGrid";
+import TestBSDataGrid from "./test/TestBSDataGrid";
 
 export default function AppRoutes() {
   return (
