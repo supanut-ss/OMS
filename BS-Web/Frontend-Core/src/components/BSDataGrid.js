@@ -409,7 +409,7 @@ const DynamicGridToolbar = ({
 
       {/* Quick Filter */}
       <Box sx={{ flexGrow: 1 }} />
-      <GridToolbarQuickFilter />
+      <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={300} />
 
       {/* {headerFiltersEnabled && (
         <Chip
@@ -512,11 +512,23 @@ const BSDataGrid = ({
 
   // Parse BS-specific configurations
   const parsedCols = useMemo(() => {
-    if (!bsCols) return null;
-    return bsCols
+    if (!bsCols) {
+      Logger.log("📋 No bsCols specified - will show all columns");
+      return null;
+    }
+
+    const cols = bsCols
       .split(",")
       .map((col) => col.trim())
       .filter(Boolean);
+
+    Logger.log("📋 Parsed bsCols:", {
+      original: bsCols,
+      parsed: cols,
+      count: cols.length,
+    });
+
+    return cols;
   }, [bsCols]);
 
   const parsedObjBy = useMemo(() => {
@@ -637,13 +649,26 @@ const BSDataGrid = ({
         value: item.value,
       }));
 
+    // Handle Quick Filter (search box)
+    let quickFilterValue = null;
+    if (
+      filterModel.quickFilterValues &&
+      filterModel.quickFilterValues.length > 0
+    ) {
+      quickFilterValue = filterModel.quickFilterValues.join(" ");
+      Logger.log("🔍 Quick Filter detected:", {
+        quickFilterValues: filterModel.quickFilterValues,
+        combinedValue: quickFilterValue,
+      });
+    }
+
     // Build sort model for backend
     const sortModelForApi = sortModel.map((sort) => ({
       field: sort.field,
       sort: sort.sort,
     }));
 
-    return {
+    const request = {
       tableName: effectiveTableName,
       page: paginationModel.page + 1, // API uses 1-based pagination
       pageSize: paginationModel.pageSize,
@@ -651,6 +676,7 @@ const BSDataGrid = ({
       filterModel: {
         items: filterItems,
         logicOperator: filterModel.logicOperator || "and",
+        quickFilter: quickFilterValue, // Add quick filter to the request
       },
       // Additional BS properties
       preObj: bsPreObj,
@@ -658,6 +684,14 @@ const BSDataGrid = ({
       customWhere: bsObjWh,
       customOrderBy: bsObjBy,
     };
+
+    Logger.log("📡 API Request with filters:", {
+      filterItems: filterItems.length,
+      quickFilter: quickFilterValue,
+      hasCustomWhere: !!bsObjWh,
+    });
+
+    return request;
   }, [
     effectiveTableName,
     paginationModel,
@@ -779,6 +813,22 @@ const BSDataGrid = ({
       loadData();
     }
   }, [metadata, autoLoad, paginationModel, sortModel, filterModel, loadData]);
+
+  // Handler for filter model changes with debugging
+  const handleFilterModelChange = useCallback(
+    (newFilterModel) => {
+      Logger.log("🔍 Filter model changed:", {
+        oldModel: filterModel,
+        newModel: newFilterModel,
+        hasQuickFilter: !!newFilterModel.quickFilterValues?.length,
+        quickFilterValues: newFilterModel.quickFilterValues,
+        itemsCount: newFilterModel.items?.length || 0,
+      });
+
+      setFilterModel(newFilterModel);
+    },
+    [filterModel]
+  );
 
   // Helper: Format column name for display (underscore to space + title case)
   const formatColumnName = useCallback((columnName) => {
@@ -1120,35 +1170,6 @@ const BSDataGrid = ({
     return column && !column.isNullable;
   }, []);
 
-  // Helper: Apply BS column filtering
-  const applyColumnFiltering = useCallback(
-    (columns) => {
-      if (!parsedCols || parsedCols.length === 0) return columns;
-
-      // Separate actions column if it exists
-      const actionsCol = columns.find((c) => c.field === "actions");
-      const otherColumns = columns.filter((c) => c.field !== "actions");
-
-      // Filter to only show specified columns, maintaining order
-      const filteredColumns = [];
-
-      // Add actions column first if it exists
-      if (actionsCol) {
-        filteredColumns.push(actionsCol);
-      }
-
-      // Add other specified columns
-      parsedCols.forEach((colName) => {
-        const column = otherColumns.find((c) => c.field === colName);
-        if (column) {
-          filteredColumns.push(column);
-        }
-      });
-
-      return filteredColumns;
-    },
-    [parsedCols]
-  );
   const isColumnHidden = useCallback((columnName, dataType) => {
     // Hide GUID columns
     if (dataType?.toLowerCase() === "uniqueidentifier") {
@@ -1375,207 +1396,316 @@ const BSDataGrid = ({
 
   // Build columns from metadata
   const columns = useMemo(() => {
-    if (!metadata?.columns) return [];
+    Logger.log("🏗️ Building columns - START", {
+      hasMetadata: !!metadata,
+      hasColumns: !!metadata?.columns,
+      columnsCount: metadata?.columns?.length,
+      parsedCols,
+      readOnly,
+      bulkEditMode,
+    });
 
-    const dataColumns = metadata.columns
-      .filter(
-        (col) => !col.isHidden && !isColumnHidden(col.columnName, col.dataType)
-      ) // Skip hidden and GUID/audit columns
-      .map((col) => {
-        const columnName = col.columnName;
-        const isRequired = isFieldRequired(columnName, metadata);
-        const comboConfig = comboBoxConfig[columnName];
-
-        const baseColumn = {
-          field: col.columnName,
-          headerName: col.displayName || formatColumnName(col.columnName),
-          width: getColumnWidth(col.dataType, col.maxLength),
-          type:
-            comboConfig || isActiveField(columnName)
-              ? "singleSelect"
-              : getGridColumnType(col.dataType),
-          editable:
-            (!col.isIdentity && !col.isReadOnly && !readOnly) || bulkEditMode,
-          sortable: true,
-          filterable: true,
-          resizable: true,
-          // Add red styling for required fields
-          headerClassName: isRequired ? "required-field" : undefined,
-        };
-
-        // is_active field configuration
-        if (isActiveField(columnName)) {
-          baseColumn.valueOptions = getIsActiveOptions();
-          baseColumn.renderCell = (params) => {
-            const { value } = params;
-            const displayText = value || "YES"; // Default to YES if empty
-
-            return (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  width: "100%",
-                  height: "100%",
-                }}
-              >
-                <Chip
-                  label={displayText}
-                  size="small"
-                  color={displayText === "YES" ? "success" : "error"}
-                  variant="outlined"
-                />
-              </Box>
-            );
-          };
+    // Early validation - must return empty array if no metadata
+    if (!metadata?.columns || !Array.isArray(metadata.columns)) {
+      Logger.warn(
+        "⚠️ No valid metadata columns available, returning empty array",
+        {
+          metadata: !!metadata,
+          columns: metadata?.columns,
+          isArray: Array.isArray(metadata?.columns),
         }
-        // ComboBox configuration
-        else if (comboConfig) {
-          baseColumn.valueOptions = getComboBoxOptions(comboConfig);
-          baseColumn.renderCell = (params) =>
-            renderComboBoxCell(params, comboConfig);
-        } else {
-          // Standard cell rendering
-          baseColumn.renderCell = (params) => {
-            const value = params.value;
-            const formattedValue = formatCellValue(value, col.dataType);
-
-            // Special rendering for different data types
-            if (col.dataType?.toLowerCase() === "bit") {
-              return (
-                <Chip
-                  label={value ? "Yes" : "No"}
-                  size="small"
-                  color={value ? "success" : "default"}
-                  variant="outlined"
-                />
-              );
-            }
-
-            if (col.dataType?.toLowerCase() === "money") {
-              return (
-                <Box sx={{ color: "success.main", fontWeight: "medium" }}>
-                  {formattedValue}
-                </Box>
-              );
-            }
-
-            return formattedValue;
-          };
-        }
-
-        baseColumn.valueGetter = (value) => {
-          if (
-            col.dataType?.toLowerCase() === "datetime" ||
-            col.dataType?.toLowerCase() === "datetime2" ||
-            col.dataType?.toLowerCase() === "date"
-          ) {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        };
-
-        return baseColumn;
-      });
-
-    // Actions: always show when not read-only
-    if (!readOnly) {
-      const actions = [];
-
-      if (onView) {
-        actions.push((params) => (
-          <GridActionsCellItem
-            icon={<Visibility />}
-            label="View"
-            onClick={() => onView(params.row)}
-          />
-        ));
-      }
-
-      // In bulk edit mode, show restore button for changed rows
-      if (bulkEditMode) {
-        actions.push((params) => {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const rowId =
-            params.row[primaryKey] || params.row.id || params.row.Id;
-          const hasChanges = !!unsavedChangesRef.current[rowId];
-
-          if (!hasChanges) return null;
-
-          return (
-            <GridActionsCellItem
-              icon={<Restore />}
-              label="Restore"
-              onClick={() => handleRestoreRow(rowId)}
-              sx={{
-                color: "warning.main",
-                "&:hover": {
-                  backgroundColor: "warning.light",
-                  color: "warning.dark",
-                },
-              }}
-            />
-          );
-        });
-      } else {
-        // Regular edit/delete actions (only in normal mode)
-        actions.push((params) => (
-          <GridActionsCellItem
-            icon={<Edit />}
-            label="Edit"
-            onClick={() => handleEditClick(params.row)}
-          />
-        ));
-
-        actions.push((params) => (
-          <GridActionsCellItem
-            icon={<Delete />}
-            label="Delete"
-            onClick={() => handleDeleteClick(params.row)}
-            showInMenu
-          />
-        ));
-      }
-
-      // Insert actions column at the beginning (after checkbox if present)
-      dataColumns.unshift({
-        field: "actions",
-        type: "actions",
-        headerName: "", // Hide column header
-        width: bulkEditMode ? 80 : 120, // Smaller width in bulk edit mode
-        sortable: false,
-        filterable: false,
-        hideable: false,
-        disableColumnMenu: true,
-        getActions: (params) => actions.map((a) => a(params)).filter(Boolean),
-      });
+      );
+      return [];
     }
 
-    // Apply column filtering if bsCols is specified
-    const filteredDataColumns = applyColumnFiltering(dataColumns);
+    try {
+      const dataColumns = metadata.columns
+        .filter(
+          (col) =>
+            !col.isHidden && !isColumnHidden(col.columnName, col.dataType)
+        ) // Skip hidden and GUID/audit columns
+        .map((col) => {
+          const columnName = col.columnName;
+          const isRequired = isFieldRequired(columnName, metadata);
+          const comboConfig = comboBoxConfig[columnName];
 
-    return filteredDataColumns;
+          const baseColumn = {
+            field: col.columnName,
+            headerName: col.displayName || formatColumnName(col.columnName),
+            width: getColumnWidth(col.dataType, col.maxLength),
+            type:
+              comboConfig || isActiveField(columnName)
+                ? "singleSelect"
+                : getGridColumnType(col.dataType),
+            editable:
+              (!col.isIdentity && !col.isReadOnly && !readOnly) || bulkEditMode,
+            sortable: true,
+            filterable: true,
+            resizable: true,
+            // Add red styling for required fields
+            headerClassName: isRequired ? "required-field" : undefined,
+          };
+
+          // is_active field configuration
+          if (isActiveField(columnName)) {
+            baseColumn.valueOptions = getIsActiveOptions();
+            baseColumn.renderCell = (params) => {
+              const { value } = params;
+              const displayText = value || "YES"; // Default to YES if empty
+
+              return (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
+                  <Chip
+                    label={displayText}
+                    size="small"
+                    color={displayText === "YES" ? "success" : "error"}
+                    variant="outlined"
+                  />
+                </Box>
+              );
+            };
+          }
+          // ComboBox configuration
+          else if (comboConfig) {
+            baseColumn.valueOptions = getComboBoxOptions(comboConfig);
+            baseColumn.renderCell = (params) =>
+              renderComboBoxCell(params, comboConfig);
+          } else {
+            // Standard cell rendering
+            baseColumn.renderCell = (params) => {
+              const value = params.value;
+              const formattedValue = formatCellValue(value, col.dataType);
+
+              // Special rendering for different data types
+              if (col.dataType?.toLowerCase() === "bit") {
+                return (
+                  <Chip
+                    label={value ? "Yes" : "No"}
+                    size="small"
+                    color={value ? "success" : "default"}
+                    variant="outlined"
+                  />
+                );
+              }
+
+              if (col.dataType?.toLowerCase() === "money") {
+                return (
+                  <Box sx={{ color: "success.main", fontWeight: "medium" }}>
+                    {formattedValue}
+                  </Box>
+                );
+              }
+
+              return formattedValue;
+            };
+          }
+
+          baseColumn.valueGetter = (value) => {
+            if (
+              col.dataType?.toLowerCase() === "datetime" ||
+              col.dataType?.toLowerCase() === "datetime2" ||
+              col.dataType?.toLowerCase() === "date"
+            ) {
+              return value ? new Date(value) : null;
+            }
+            return value;
+          };
+
+          return baseColumn;
+        });
+
+      // Actions: always show when not read-only
+      if (!readOnly) {
+        const actions = [];
+
+        if (onView) {
+          actions.push((params) => (
+            <GridActionsCellItem
+              icon={<Visibility />}
+              label="View"
+              onClick={() => onView(params.row)}
+            />
+          ));
+        }
+
+        // In bulk edit mode, show restore button for changed rows
+        if (bulkEditMode) {
+          actions.push((params) => {
+            const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+            const rowId =
+              params.row[primaryKey] || params.row.id || params.row.Id;
+            const hasChanges = !!unsavedChangesRef.current[rowId];
+
+            if (!hasChanges) return null;
+
+            return (
+              <GridActionsCellItem
+                icon={<Restore />}
+                label="Restore"
+                onClick={() => handleRestoreRow(rowId)}
+                sx={{
+                  color: "warning.main",
+                  "&:hover": {
+                    backgroundColor: "warning.light",
+                    color: "warning.dark",
+                  },
+                }}
+              />
+            );
+          });
+        } else {
+          // Regular edit/delete actions (only in normal mode)
+          actions.push((params) => (
+            <GridActionsCellItem
+              icon={<Edit />}
+              label="Edit"
+              onClick={() => handleEditClick(params.row)}
+            />
+          ));
+
+          actions.push((params) => (
+            <GridActionsCellItem
+              icon={<Delete />}
+              label="Delete"
+              onClick={() => handleDeleteClick(params.row)}
+              showInMenu
+            />
+          ));
+        }
+
+        // Insert actions column at the beginning (after checkbox if present)
+        dataColumns.unshift({
+          field: "actions",
+          type: "actions",
+          headerName: "", // Hide column header
+          width: bulkEditMode ? 80 : 120, // Smaller width in bulk edit mode
+          sortable: false,
+          filterable: false,
+          hideable: false,
+          disableColumnMenu: true,
+          getActions: (params) => actions.map((a) => a(params)).filter(Boolean),
+        });
+      }
+
+      // Apply column filtering if bsCols is specified
+      Logger.log("🔍 Column filtering in useMemo:", {
+        parsedCols,
+        totalColumns: dataColumns.length,
+        columnFields: dataColumns.map((c) => c.field),
+      });
+
+      let filteredDataColumns = [...dataColumns]; // Ensure we have an array copy
+
+      if (parsedCols && parsedCols.length > 0) {
+        // Separate actions column if it exists
+        const actionsCol = dataColumns.find((c) => c.field === "actions");
+        const otherColumns = dataColumns.filter((c) => c.field !== "actions");
+
+        // Filter to only show specified columns, maintaining order
+        filteredDataColumns = [];
+
+        // Add actions column first if it exists
+        if (actionsCol) {
+          filteredDataColumns.push(actionsCol);
+        }
+
+        // Add other specified columns
+        parsedCols.forEach((colName) => {
+          const column = otherColumns.find((c) => c.field === colName);
+          if (column) {
+            filteredDataColumns.push(column);
+          } else {
+            Logger.warn(`❌ Column '${colName}' not found in metadata`);
+          }
+        });
+
+        Logger.log("✅ Column filtering applied:", {
+          originalCount: dataColumns.length,
+          filteredCount: filteredDataColumns.length,
+          filteredFields: filteredDataColumns.map((c) => c.field),
+        });
+      } else {
+        Logger.log("⚠️ No column filtering - showing all columns");
+      }
+
+      // Final safety check to ensure we always return an array
+      let finalColumns = Array.isArray(filteredDataColumns)
+        ? filteredDataColumns
+        : [];
+
+      // Deep validation for MUI DataGrid compatibility
+      finalColumns = finalColumns.filter((col) => {
+        // Ensure each column is a proper object with required properties
+        return (
+          col &&
+          typeof col === "object" &&
+          typeof col.field === "string" &&
+          col.field.length > 0 &&
+          typeof col.headerName === "string"
+        );
+      });
+
+      // Create a deep clone to avoid any reference issues
+      finalColumns = finalColumns.map((col) => ({
+        field: col.field,
+        headerName: col.headerName,
+        type: col.type || "string",
+        width: col.width || 150,
+        editable: Boolean(col.editable),
+        sortable: col.sortable !== false,
+        filterable: col.filterable !== false,
+        hideable: col.hideable !== false,
+        ...col, // Include any other properties
+      }));
+
+      Logger.log("🔍 Final columns check:", {
+        isArray: Array.isArray(finalColumns),
+        count: finalColumns.length,
+        type: typeof finalColumns,
+        allValid: finalColumns.every(
+          (c) =>
+            c && typeof c.field === "string" && typeof c.headerName === "string"
+        ),
+        sample: finalColumns.slice(0, 2).map((c) => ({
+          field: c.field,
+          headerName: c.headerName,
+          type: c.type,
+        })),
+      });
+
+      return finalColumns;
+    } catch (error) {
+      Logger.error("❌ Error building columns:", error);
+      return []; // Always return empty array on error
+    }
   }, [
     metadata,
     readOnly,
+    bulkEditMode,
+    parsedCols,
+    comboBoxConfig,
     onView,
     handleEditClick,
     handleDeleteClick,
+    handleRestoreRow,
+    formatColumnName,
     getColumnWidth,
     getGridColumnType,
     formatCellValue,
-    formatColumnName,
     isColumnHidden,
-    comboBoxConfig,
     isFieldRequired,
     renderComboBoxCell,
     getComboBoxOptions,
-    applyColumnFiltering,
-    bulkEditMode,
     isActiveField,
     getIsActiveOptions,
-    handleRestoreRow,
   ]);
 
   // Handle row selection changes for checkbox selection
@@ -2143,168 +2273,268 @@ const BSDataGrid = ({
       )}
 
       {/* DataGrid */}
-      <DataGridPro
-        rows={rows.filter(
-          (row) => row && typeof row === "object" && Object.keys(row).length > 0
-        )}
-        columns={columns}
-        rowCount={rowCount}
-        loading={loading || metadataLoading}
-        // Ensure we don't render until we have valid data structure
-        // Include rowCount and content hash in key to force re-render when data changes
-        key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length}-${
-          JSON.stringify(rows.slice(0, 1))?.length || 0
-        }`}
-        // Editing
-        editMode="row"
-        processRowUpdate={processBulkRowUpdate}
-        onRowEditStart={handleRowEditStart}
-        onRowEditStop={handleRowEditStop}
-        // Pagination
-        paginationMode="server"
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        pageSizeOptions={[10, 25, 50, 100]}
-        // Sorting
-        sortingMode="server"
-        sortModel={sortModel}
-        onSortModelChange={setSortModel}
-        // Filtering
-        filterMode="server"
-        filterModel={filterModel}
-        onFilterModelChange={setFilterModel}
-        // Header Filters (Pro feature)
-        headerFilters={headerFiltersEnabled}
-        headerFilterHeight={52}
-        // Row Selection (checkbox selection when enabled)
-        checkboxSelection={bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected}
-        rowSelectionModel={rowSelectionModel}
-        onRowSelectionModelChange={handleRowSelectionChange}
-        disableRowSelectionOnClick={
-          !bsBulkEdit && !bsBulkAdd && !onCheckBoxSelected
-        }
-        // Column Pinning (Pro feature)
-        pinnedColumns={pinnedColumns}
-        onPinnedColumnsChange={setPinnedColumns}
-        // UI Settings
-        getRowId={(row) => {
-          // First try to find primary key from metadata
-          const primaryKey = metadata?.primaryKeys?.[0];
-          if (primaryKey && row[primaryKey] != null) {
-            return String(row[primaryKey]);
+      {(() => {
+        try {
+          // Debug columns before passing to DataGridPro
+          Logger.log("🔧 About to render DataGridPro with:", {
+            columnsType: typeof columns,
+            columnsIsArray: Array.isArray(columns),
+            columnsLength: Array.isArray(columns) ? columns.length : "N/A",
+            columnsValid: Array.isArray(columns) && columns.length > 0,
+            sampleColumns: Array.isArray(columns)
+              ? columns
+                  .slice(0, 2)
+                  .map((c) => ({ field: c.field, type: c.type }))
+              : "N/A",
+            metadataExists: !!metadata,
+            metadataColumnsCount: metadata?.columns?.length,
+            effectiveTableName,
+          });
+
+          // Final validation before render
+          const safeColumns = Array.isArray(columns) ? columns : [];
+          const validColumns = safeColumns.filter(
+            (col) =>
+              col &&
+              typeof col === "object" &&
+              typeof col.field === "string" &&
+              col.field.length > 0
+          );
+
+          Logger.log("🎯 DataGridPro render decision:", {
+            originalLength: safeColumns.length,
+            validLength: validColumns.length,
+            filtered: safeColumns.length - validColumns.length,
+            isDataReady: validColumns.length > 0 && !metadataLoading,
+            loading: loading || metadataLoading || validColumns.length === 0,
+          });
+
+          // If no valid columns, show loading state
+          if (validColumns.length === 0) {
+            return (
+              <Box
+                sx={{
+                  height: height - 100,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Box sx={{ textAlign: "center" }}>
+                  <CircularProgress sx={{ mb: 2 }} />
+                  <Typography variant="body1">
+                    {metadataLoading
+                      ? "Loading columns..."
+                      : "No valid columns available"}
+                  </Typography>
+                </Box>
+              </Box>
+            );
           }
 
-          // Fallback to common ID fields
-          const idFields = ["id", "Id", "ID", "_id"];
-          for (const field of idFields) {
-            if (row[field] != null) {
-              return String(row[field]);
-            }
-          }
+          return (
+            <DataGridPro
+              rows={rows.filter(
+                (row) =>
+                  row && typeof row === "object" && Object.keys(row).length > 0
+              )}
+              columns={(() => {
+                // Final validation and cleaning of columns before passing to MUI
+                const safeColumns = Array.isArray(columns) ? columns : [];
+                const validColumns = safeColumns.filter(
+                  (col) =>
+                    col &&
+                    typeof col === "object" &&
+                    typeof col.field === "string" &&
+                    col.field.length > 0 &&
+                    typeof col.headerName === "string"
+                );
 
-          // Last resort: generate a stable ID based on row content hash
-          const rowString = JSON.stringify(row);
-          const hash = rowString.split("").reduce((a, b) => {
-            a = (a << 5) - a + b.charCodeAt(0);
-            return a & a;
-          }, 0);
-          return `generated-${Math.abs(hash)}`;
-        }}
-        // Localization
-        localeText={getLocalization()}
-        // Row styling for unsaved changes
-        getRowClassName={(params) => {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const rowId =
-            params.row[primaryKey] || params.row.id || params.row.Id;
-          return unsavedChangesRef.current[rowId] ? "unsaved-changes" : "";
-        }}
-        // Custom Toolbar (use slots + slotProps for better compatibility)
-        slots={
-          showToolbar && !bulkEditMode
-            ? { toolbar: DynamicGridToolbar }
-            : undefined
-        }
-        slotProps={
-          showToolbar && !bulkEditMode
-            ? {
-                toolbar: {
-                  onAdd: handleAddClick,
-                  showAdd,
-                  headerFiltersEnabled,
-                  onToggleHeaderFilters: handleToggleHeaderFilters,
-                  bsBulkEdit,
-                  bsBulkAdd,
-                  selectedRowCount: rowSelectionModel.length,
-                  onBulkEdit: handleBulkEdit,
-                  onBulkDelete: handleBulkDelete,
-                  onBulkAdd: handleBulkAdd,
-                },
-                // Header filter cell props to show inline clear button
-                headerFilterCell: {
-                  showClearIcon: true,
-                },
+                // Return empty array if no valid columns to prevent MUI errors
+                return validColumns.length > 0 ? validColumns : [];
+              })()}
+              rowCount={rowCount}
+              loading={
+                loading ||
+                metadataLoading ||
+                !Array.isArray(columns) ||
+                columns.length === 0
               }
-            : headerFiltersEnabled
-            ? {
-                // Header filter cell props when toolbar is disabled but header filters are enabled
-                headerFilterCell: {
-                  showClearIcon: true,
-                },
+              // Ensure we don't render until we have valid data structure
+              // Include rowCount and content hash in key to force re-render when data changes
+              key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length}-${
+                JSON.stringify(rows.slice(0, 1))?.length || 0
+              }-${Array.isArray(columns) ? columns.length : 0}`}
+              // Editing
+              editMode="row"
+              processRowUpdate={processBulkRowUpdate}
+              onRowEditStart={handleRowEditStart}
+              onRowEditStop={handleRowEditStop}
+              // Pagination
+              paginationMode="server"
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              pageSizeOptions={[10, 25, 50, 100]}
+              // Sorting
+              sortingMode="server"
+              sortModel={sortModel}
+              onSortModelChange={setSortModel}
+              // Filtering
+              filterMode="client"
+              filterModel={filterModel}
+              onFilterModelChange={handleFilterModelChange}
+              // Quick Filter Settings
+              filterDebounceMs={300}
+              // Header Filters (Pro feature)
+              headerFilters={headerFiltersEnabled}
+              headerFilterHeight={52}
+              // Row Selection (checkbox selection when enabled)
+              checkboxSelection={
+                bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected
               }
-            : undefined
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={handleRowSelectionChange}
+              disableRowSelectionOnClick={
+                !bsBulkEdit && !bsBulkAdd && !onCheckBoxSelected
+              }
+              // Column Pinning (Pro feature)
+              pinnedColumns={pinnedColumns}
+              onPinnedColumnsChange={setPinnedColumns}
+              // UI Settings
+              getRowId={(row) => {
+                // First try to find primary key from metadata
+                const primaryKey = metadata?.primaryKeys?.[0];
+                if (primaryKey && row[primaryKey] != null) {
+                  return String(row[primaryKey]);
+                }
+
+                // Fallback to common ID fields
+                const idFields = ["id", "Id", "ID", "_id"];
+                for (const field of idFields) {
+                  if (row[field] != null) {
+                    return String(row[field]);
+                  }
+                }
+
+                // Last resort: generate a stable ID based on row content hash
+                const rowString = JSON.stringify(row);
+                const hash = rowString.split("").reduce((a, b) => {
+                  a = (a << 5) - a + b.charCodeAt(0);
+                  return a & a;
+                }, 0);
+                return `generated-${Math.abs(hash)}`;
+              }}
+              // Localization
+              localeText={getLocalization()}
+              // Row styling for unsaved changes
+              getRowClassName={(params) => {
+                const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+                const rowId =
+                  params.row[primaryKey] || params.row.id || params.row.Id;
+                return unsavedChangesRef.current[rowId]
+                  ? "unsaved-changes"
+                  : "";
+              }}
+              // Custom Toolbar (use slots + slotProps for better compatibility)
+              slots={
+                showToolbar && !bulkEditMode
+                  ? { toolbar: DynamicGridToolbar }
+                  : undefined
+              }
+              slotProps={
+                showToolbar && !bulkEditMode
+                  ? {
+                      toolbar: {
+                        onAdd: handleAddClick,
+                        showAdd,
+                        headerFiltersEnabled,
+                        onToggleHeaderFilters: handleToggleHeaderFilters,
+                        bsBulkEdit,
+                        bsBulkAdd,
+                        selectedRowCount: rowSelectionModel.length,
+                        onBulkEdit: handleBulkEdit,
+                        onBulkDelete: handleBulkDelete,
+                        onBulkAdd: handleBulkAdd,
+                      },
+                      // Header filter cell props to show inline clear button
+                      headerFilterCell: {
+                        showClearIcon: true,
+                      },
+                    }
+                  : headerFiltersEnabled
+                  ? {
+                      // Header filter cell props when toolbar is disabled but header filters are enabled
+                      headerFilterCell: {
+                        showClearIcon: true,
+                      },
+                    }
+                  : undefined
+              }
+              // Styling with required field indicator
+              sx={{
+                border: 0,
+                [`& .${gridClasses.cell}`]: {
+                  borderBottom: "1px solid #f0f0f0",
+                  fontSize: "0.875rem",
+                },
+                [`& .${gridClasses.columnHeaders}`]: {
+                  backgroundColor: "#f5f5f5",
+                  borderBottom: "2px solid #e0e0e0",
+                  fontSize: "0.875rem",
+                },
+                // Force header text bold
+                "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
+                  {
+                    fontWeight: "bold",
+                  },
+                // Required field styling
+                "& .required-field .MuiDataGrid-columnHeaderTitle": {
+                  color: "error.main",
+                  fontWeight: "bold",
+                },
+                [`& .${gridClasses.row}`]: {
+                  "&:hover": {
+                    backgroundColor: "#f9f9f9",
+                  },
+                  // Highlight rows with unsaved changes
+                  "&.unsaved-changes": {
+                    backgroundColor: "#fff3cd",
+                    "&:hover": {
+                      backgroundColor: "#ffeaa7",
+                    },
+                  },
+                },
+                // Header filter styling
+                [`& .MuiDataGrid-headerFilterRow`]: {
+                  backgroundColor: "#f9f9f9",
+                  borderBottom: "1px solid #e0e0e0",
+                  "& .MuiInputBase-root": {
+                    fontSize: "0.875rem",
+                  },
+                  "& .MuiInputBase-input": {
+                    padding: "8px 12px",
+                  },
+                },
+                // Header filter cells
+                "& .MuiDataGrid-headerFilterCell": {
+                  padding: "4px",
+                },
+              }}
+              {...props}
+            />
+          );
+        } catch (error) {
+          Logger.error("❌ DataGridPro render error:", error);
+          return (
+            <Alert severity="error" sx={{ m: 2 }}>
+              <Typography variant="h6">DataGrid Error</Typography>
+              <Typography variant="body2">
+                Failed to render data grid: {error.message}
+              </Typography>
+            </Alert>
+          );
         }
-        // Styling with required field indicator
-        sx={{
-          border: 0,
-          [`& .${gridClasses.cell}`]: {
-            borderBottom: "1px solid #f0f0f0",
-            fontSize: "0.875rem",
-          },
-          [`& .${gridClasses.columnHeaders}`]: {
-            backgroundColor: "#f5f5f5",
-            borderBottom: "2px solid #e0e0e0",
-            fontSize: "0.875rem",
-          },
-          // Force header text bold
-          "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
-            fontWeight: "bold",
-          },
-          // Required field styling
-          "& .required-field .MuiDataGrid-columnHeaderTitle": {
-            color: "error.main",
-            fontWeight: "bold",
-          },
-          [`& .${gridClasses.row}`]: {
-            "&:hover": {
-              backgroundColor: "#f9f9f9",
-            },
-            // Highlight rows with unsaved changes
-            "&.unsaved-changes": {
-              backgroundColor: "#fff3cd",
-              "&:hover": {
-                backgroundColor: "#ffeaa7",
-              },
-            },
-          },
-          // Header filter styling
-          [`& .MuiDataGrid-headerFilterRow`]: {
-            backgroundColor: "#f9f9f9",
-            borderBottom: "1px solid #e0e0e0",
-            "& .MuiInputBase-root": {
-              fontSize: "0.875rem",
-            },
-            "& .MuiInputBase-input": {
-              padding: "8px 12px",
-            },
-          },
-          // Header filter cells
-          "& .MuiDataGrid-headerFilterCell": {
-            padding: "4px",
-          },
-        }}
-        {...props}
-      />
+      })()}
 
       {/* Built-in CRUD Dialog */}
       <Dialog
