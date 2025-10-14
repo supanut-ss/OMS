@@ -1,5 +1,7 @@
 ﻿using Import_Export_Manager.Interfaces;
 using Import_Export_Manager.Models.Requests;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +9,7 @@ namespace Import_Export_Manager.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class ImportMasterController : ControllerBase
     {
         private readonly IImportMaster _importMasterService;
