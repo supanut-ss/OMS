@@ -25,7 +25,7 @@ export default function App() {
   return (
     <ThemeContextProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter basename="/ams_kpmt_count_tag" >
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>

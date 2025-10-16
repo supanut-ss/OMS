@@ -1,13 +1,14 @@
 import SecureLS from "secure-ls";
 import Logger from "./logger";
+import Config from "./Config";
 
 // กำหนดค่าเพื่อความปลอดภัยสูงสุด
 const ls = new SecureLS({
   encodingType: "aes",
   isCompression: true, // บีบอัดข้อมูลเพื่อประสิทธิภาพ
   encryptionSecret:
-    process.env.REACT_APP_STORAGE_SECRET || "default-secret-2025",
-  encryptionNamespace: "TimeSheet-App",
+    Config.LICENSE_KEY || "default-secret-2025",
+  encryptionNamespace: Config.ENCRYPYION,
 });
 
 const secureStorage = {
