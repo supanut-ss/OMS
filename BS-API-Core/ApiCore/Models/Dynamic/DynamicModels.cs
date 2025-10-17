@@ -109,6 +109,11 @@ namespace ApiCore.Models.Dynamic
         /// Custom ORDER BY clause for sorting
         /// </summary>
         public string? CustomOrderBy { get; set; }
+
+        /// <summary>
+        /// Quick filter value from Frontend (for BSDataGrid compatibility)
+        /// </summary>
+        public string? QuickFilter { get; set; }
     }
 
     /// <summary>

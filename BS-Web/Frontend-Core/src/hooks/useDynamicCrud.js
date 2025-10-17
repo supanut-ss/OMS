@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import AxiosMaster from "../utils/AxiosMaster";
 import Logger from "../utils/logger";
 import { parseTableName } from "../utils/DatabaseConfig";
+import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import { useAuth } from "../contexts/AuthContext";
 
 /**
@@ -18,60 +19,100 @@ export const useDynamicCrud = (tableName) => {
   const { user } = useAuth();
 
   // Get table metadata (columns, types, constraints)
-  const loadMetadata = useCallback(async () => {
-    if (!tableName) {
-      Logger.warn("⚠️ useDynamicCrud: No tableName provided");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      Logger.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
-
-      // Debug JWT token
-      const token =
-        localStorage.getItem("token") || sessionStorage.getItem("token");
-      Logger.log(
-        "🔑 JWT Token check:",
-        token ? "Token exists" : "No token found"
-      );
-      if (token) {
-        Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
+  const loadMetadata = useCallback(
+    async (preObj = null) => {
+      if (!tableName) {
+        Logger.warn("⚠️ useDynamicCrud: No tableName provided");
+        return;
       }
 
-      const { schema, table } = parseTableName(tableName);
-      const url = `/dynamic/metadata/${table}?schemaName=${schema}`;
-      Logger.log(`🔍 Loading metadata for table: ${schema}.${table}`);
-      Logger.log(`📡 Gateway API URL: ${url}`);
-      Logger.log("📡 useDynamicCrud: Making API call to Gateway:", url);
+      try {
+        setLoading(true);
+        setError(null);
+        Logger.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
 
-      const response = await AxiosMaster.get(url);
-      setMetadata(response.data);
+        // Debug JWT token
+        const token =
+          localStorage.getItem("token") || sessionStorage.getItem("token");
+        Logger.log(
+          "🔑 JWT Token check:",
+          token ? "Token exists" : "No token found"
+        );
+        if (token) {
+          Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
+        }
 
-      Logger.log("✅ Metadata loaded for table:", tableName, response.data);
-      Logger.log(
-        "✅ useDynamicCrud: Metadata loaded successfully:",
-        response.data
-      );
-      return response.data;
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.message || err.message || "Failed to load metadata";
-      Logger.error("❌ Failed to load metadata:", errorMsg);
-      Logger.error("❌ useDynamicCrud: Metadata load failed:", err);
-      setError(errorMsg);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [tableName]);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName:", { schema, table });
+        }
+
+        const url = `/dynamic/metadata/${table}?schemaName=${schema}`;
+        Logger.log(`🔍 Loading metadata for table: ${schema}.${table}`);
+        Logger.log(`📡 Gateway API URL: ${url}`);
+        Logger.log("📡 useDynamicCrud: Making API call to Gateway:", url);
+
+        const response = await AxiosMaster.get(url);
+        setMetadata(response.data);
+
+        Logger.log("✅ Metadata loaded for table:", tableName, response.data);
+        Logger.log(
+          "✅ useDynamicCrud: Metadata loaded successfully:",
+          response.data
+        );
+        return response.data;
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to load metadata";
+        Logger.error("❌ Failed to load metadata:", errorMsg);
+        Logger.error("❌ useDynamicCrud: Metadata load failed:", err);
+        setError(errorMsg);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [tableName]
+  );
 
   // Get table data with DataGrid support (pagination, sorting, filtering)
   const getTableData = useCallback(
     async (request) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (request.preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(request.preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for data:", {
+            preObj: request.preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for data:", { schema, table });
+        }
 
         // Remove tableName from request to avoid overriding parsed values
         const { tableName: requestTableName, ...cleanRequest } = request;
