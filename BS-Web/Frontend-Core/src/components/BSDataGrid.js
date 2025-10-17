@@ -474,6 +474,17 @@ const DynamicGridToolbar = ({
  *   onDelete={(id) => console.log('Delete:', id)}
  *   onAdd={() => console.log('Add new')}
  * />
+ *
+ * @filterMode Configuration:
+ * - bsFilterMode="server" (default): Filters are processed on the server side
+ *   * Filters and Quick Filter values are sent to the API
+ *   * Best for large datasets where client-side filtering would be slow
+ *   * Requires backend support for filter processing
+ *
+ * - bsFilterMode="client": Filters are processed on the client side
+ *   * All data is loaded and filtering happens in the browser
+ *   * Best for smaller datasets that can be loaded entirely
+ *   * No filter parameters are sent to the API
  */
 const BSDataGrid = ({
   // Legacy props (เก่า)
@@ -503,6 +514,7 @@ const BSDataGrid = ({
   bsPinColsRight,
   bsRowPerPage = 25,
   bsComboBox = [],
+  bsFilterMode = "server", // "server" | "client"
   onCheckBoxSelected,
 
   ...props
@@ -634,32 +646,39 @@ const BSDataGrid = ({
   // Load metadata when table name changes
   useEffect(() => {
     if (effectiveTableName && autoLoad) {
-      loadMetadata();
+      loadMetadata(bsPreObj);
     }
-  }, [effectiveTableName, autoLoad, loadMetadata]);
+  }, [effectiveTableName, autoLoad, loadMetadata, bsPreObj]);
 
   // Build API request from DataGrid state
   const buildRequest = useCallback(() => {
-    // Build filter model for backend
-    const filterItems = filterModel.items
-      .filter((item) => item.value !== undefined && item.value !== "")
-      .map((item) => ({
-        field: item.field,
-        operator: item.operator || "contains",
-        value: item.value,
-      }));
-
-    // Handle Quick Filter (search box)
+    // Only process filters for server mode
+    let filterItems = [];
     let quickFilterValue = null;
-    if (
-      filterModel.quickFilterValues &&
-      filterModel.quickFilterValues.length > 0
-    ) {
-      quickFilterValue = filterModel.quickFilterValues.join(" ");
-      Logger.log("🔍 Quick Filter detected:", {
-        quickFilterValues: filterModel.quickFilterValues,
-        combinedValue: quickFilterValue,
-      });
+
+    if (bsFilterMode === "server") {
+      // Build filter model for backend
+      filterItems = filterModel.items
+        .filter((item) => item.value !== undefined && item.value !== "")
+        .map((item) => ({
+          field: item.field,
+          operator: item.operator || "contains",
+          value: item.value,
+        }));
+
+      // Handle Quick Filter (search box)
+      if (
+        filterModel.quickFilterValues &&
+        filterModel.quickFilterValues.length > 0
+      ) {
+        quickFilterValue = filterModel.quickFilterValues.join(" ");
+        Logger.log("🔍 Quick Filter detected (server mode):", {
+          quickFilterValues: filterModel.quickFilterValues,
+          combinedValue: quickFilterValue,
+        });
+      }
+    } else {
+      Logger.log("🔍 Client-side filtering - not sending filters to server");
     }
 
     // Build sort model for backend
@@ -701,6 +720,7 @@ const BSDataGrid = ({
     bsObjBy,
     bsObjWh,
     parsedCols,
+    bsFilterMode,
   ]);
 
   // Load data from API
@@ -823,11 +843,12 @@ const BSDataGrid = ({
         hasQuickFilter: !!newFilterModel.quickFilterValues?.length,
         quickFilterValues: newFilterModel.quickFilterValues,
         itemsCount: newFilterModel.items?.length || 0,
+        filterMode: bsFilterMode,
       });
 
       setFilterModel(newFilterModel);
     },
-    [filterModel]
+    [filterModel, bsFilterMode]
   );
 
   // Helper: Format column name for display (underscore to space + title case)
@@ -2130,7 +2151,7 @@ const BSDataGrid = ({
         <Alert
           severity={isNotFound ? "warning" : "error"}
           action={
-            <Button onClick={() => loadMetadata()} size="small">
+            <Button onClick={() => loadMetadata(bsPreObj)} size="small">
               Retry
             </Button>
           }
@@ -2198,7 +2219,7 @@ const BSDataGrid = ({
             ไม่สามารถแสดงข้อมูลได้เนื่องจาก backend API ไม่พร้อมใช้งาน
           </Typography>
           <Button
-            onClick={() => loadMetadata()}
+            onClick={() => loadMetadata(bsPreObj)}
             variant="outlined"
             sx={{ mt: 2 }}
           >
@@ -2380,7 +2401,7 @@ const BSDataGrid = ({
               sortModel={sortModel}
               onSortModelChange={setSortModel}
               // Filtering
-              filterMode="client"
+              filterMode={bsFilterMode}
               filterModel={filterModel}
               onFilterModelChange={handleFilterModelChange}
               // Quick Filter Settings

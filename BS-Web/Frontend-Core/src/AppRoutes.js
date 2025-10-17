@@ -7,6 +7,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
 import TestBSDataGrid from "./test/TestBSDataGrid";
+import SchemaTestPage from "./test/SchemaTestPage";
+import SchemaMappingDemo from "./test/SchemaMappingDemo";
 
 export default function AppRoutes() {
   return (
@@ -26,6 +28,10 @@ export default function AppRoutes() {
         <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />
         {/* route สำหรับ Testing BSDataGrid */}
         <Route path="test/bsdatagrid" element={<TestBSDataGrid />} />
+        {/* route สำหรับ Schema Mapping Test */}
+        <Route path="test/schema" element={<SchemaTestPage />} />
+        {/* route สำหรับ Schema Mapping Demo */}
+        <Route path="test/schema-demo" element={<SchemaMappingDemo />} />
 
         <Route
           path="timesheet"

@@ -31,6 +31,7 @@ const TestBSDataGrid = () => {
             showAdd={true}
             bsBulkEdit={true}
             bsBulkAdd={true}
+            bsFilterMode="server"
             // onAdd={() => console.log("Add clicked")}
             // onEdit={(row) => console.log("Edit:", row)}
             // onDelete={(id) => console.log("Delete:", id)}
