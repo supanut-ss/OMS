@@ -7,15 +7,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
 import TestBSDataGrid from "./test/TestBSDataGrid";
-<<<<<<< HEAD
 import UserPage from "./pages/Authentication/User";
 import UserGroupPage from "./pages/Authentication/UserGroup";
 import UserLogOnPage from "./pages/Authentication/UserLogOnPage";
 import MenuPage from "./pages/Authentication/MenuPage";
-=======
 import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
->>>>>>> 41c930d02eb6cafeb7fb75d8820035267c91b231
 
 export default function AppRoutes() {
   return (
