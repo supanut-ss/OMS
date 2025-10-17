@@ -244,6 +244,12 @@ namespace ApiCore.Services.Implementation
             {
                 ValidateSecurityConstraints(request.TableName, request.SchemaName ?? "dbo");
 
+                // Debug logging for Quick Filter
+                _logger.LogInformation("🔍 Processing DataGrid request: {TableName}, QuickFilter: {QuickFilter}, QuickFilterValues: {QuickFilterValues}",
+                    request.TableName,
+                    request.QuickFilter,
+                    request.FilterModel?.QuickFilterValues);
+
                 var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
                 var pageSize = request.End - request.Start;
@@ -256,6 +262,9 @@ namespace ApiCore.Services.Implementation
 
                 // Build WHERE clause
                 var whereClause = BuildDynamicWhereClause(request, metadata);
+
+                // Debug logging for WHERE clause
+                _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
 
                 // Build ORDER BY clause
                 var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
@@ -892,8 +901,12 @@ namespace ApiCore.Services.Implementation
                 conditions.Add(condition);
             }
 
-            // Quick filter
-            if (!string.IsNullOrEmpty(request.FilterModel.QuickFilterValues))
+            // Quick filter - รองรับทั้ง QuickFilterValues (standard) และ QuickFilter (BSDataGrid)
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+                ? request.FilterModel.QuickFilterValues
+                : request.QuickFilter;
+
+            if (!string.IsNullOrEmpty(quickFilterValue))
             {
                 var quickFilterConditions = new List<string>();
                 foreach (var column in metadata.Columns.Where(c => IsSearchableColumn(c)))
@@ -931,10 +944,14 @@ namespace ApiCore.Services.Implementation
                 command.Parameters.Add(new SqlParameter($"@{filter.Field}_Filter", convertedValue));
             }
 
-            // Quick filter parameter
-            if (!string.IsNullOrEmpty(request.FilterModel.QuickFilterValues))
+            // Quick filter parameter - รองรับทั้ง QuickFilterValues และ QuickFilter
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+                ? request.FilterModel.QuickFilterValues
+                : request.QuickFilter;
+
+            if (!string.IsNullOrEmpty(quickFilterValue))
             {
-                command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{request.FilterModel.QuickFilterValues}%"));
+                command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{quickFilterValue}%"));
             }
         }
 

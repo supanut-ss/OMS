@@ -15,6 +15,8 @@ const BSDataGridExamples = () => {
         1. การใช้งานพื้นฐาน
       </Typography>
       <BSDataGrid bsObj="t_tmt_holiday" height={400} />
+
+      <BSDataGrid bsPreObj="sec" bsObj="t_com_user" height={400} />
     </Paper>
   );
 
@@ -28,10 +30,10 @@ const BSDataGridExamples = () => {
         bsLocale="th"
         bsPreObj="tmt"
         bsObj="t_tmt_customer"
-        bsCols="id,name,email,phone,status,created_date"
-        bsObjBy="name asc, created_date desc"
-        bsObjWh="status='active'"
-        bsPinColsLeft="id,name"
+        bsCols="customer_id,customer_name,email,phone,create_date"
+        bsObjBy="customer_name asc, create_date desc"
+        bsObjWh="is_active='YES'"
+        bsPinColsLeft="customer_id,customer_name"
         bsPinColsRight="actions"
         bsRowPerPage={20}
         bsBulkEdit={true}
@@ -73,7 +75,7 @@ const BSDataGridExamples = () => {
         3. ใช้กับ Legacy API (เก่า)
       </Typography>
       <BSDataGrid
-        tableName="tmt.t_tmt_customer"
+        tableName="t_tmt_customer"
         onEdit={(row) => console.log("Legacy Edit:", row)}
         onDelete={(id) => console.log("Legacy Delete:", id)}
         onAdd={() => console.log("Legacy Add")}
@@ -92,7 +94,7 @@ const BSDataGridExamples = () => {
         bsObj="t_tmt_customer"
         readOnly={true}
         showAdd={false}
-        bsCols="name,email,phone"
+        bsCols="customer_name,email,phone"
         height={350}
       />
     </Paper>
