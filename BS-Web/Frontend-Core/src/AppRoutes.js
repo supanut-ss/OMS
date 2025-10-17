@@ -3,10 +3,12 @@ import MainLayout from "./layout/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import AssignMenu from "./pages/Authentication/AssignMenu";
+import ImportMaster from "./pages/Import/ImportMaster";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
 import TestBSDataGrid from "./test/TestBSDataGrid";
+import ImportExcel from "./pages/Import/ImportExcel";
 
 export default function AppRoutes() {
   return (
@@ -39,6 +41,8 @@ export default function AppRoutes() {
         <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
         <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
+        <Route path="ImportMaster" element={<ImportMaster />} />
+        <Route path="ImportExcel" element={<ImportExcel />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
