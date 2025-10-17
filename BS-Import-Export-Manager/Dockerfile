@@ -10,7 +10,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy โปรเจกต์ทั้งหมด
-COPY ["../BS-Import-Export-Manager/Import-Export-Manager", "BS-Platform/BS-Import-Export-Manager/"]
+COPY ["../BS-Import-Export-Manager/Import-Export-Manager", "BS-Platform/BS-Import-Export-Manager/Import-Export-Manager/"]
 COPY ["../BS-API-Secure/TokenManagement", "BS-Platform/BS-API-Secure/TokenManagement/"]
 
 RUN dotnet restore "BS-Platform/BS-Import-Export-Manager/Import-Export-Manager/Import-Export-Manager.csproj"
