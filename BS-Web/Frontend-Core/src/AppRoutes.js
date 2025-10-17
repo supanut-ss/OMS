@@ -9,6 +9,8 @@ import BSDataGridExamples from "./examples/BSDataGridExamples";
 import TestBSDataGrid from "./test/TestBSDataGrid";
 import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
+import ImportExcel from "./pages/Import/ImportExcel";
+import ImportMaster from "./pages/Import/ImportMaster";
 
 export default function AppRoutes() {
   return (
@@ -45,6 +47,8 @@ export default function AppRoutes() {
         <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
         <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
+        <Route path="importExcel" element={<ImportExcel />} />
+        <Route path="importMaster" element={<ImportMaster />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
