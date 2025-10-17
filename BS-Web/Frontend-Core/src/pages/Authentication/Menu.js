@@ -15,15 +15,11 @@ const MenuPage = () => {
         <BSDataGrid
           bsLocale="th"
           bsPreObj="sec"
-          bsObj="t_com_user_group"
-          bsCols="user_id,first_name,last_name,locale_id,domain,is_active,create_by,create_date,update_by,update_date"
-          bsObjBy="user_id asc"
+          bsObj="t_com_menu"
+          bsCols="menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
+          bsObjBy="menu_group_sequence asc, menu_sequence asc"
           //   bsObjWh="status='active'"
-          bsPinColsLeft="user_id,first_name,last_name"
-          bsPinColsRight="actions"
           bsRowPerPage={20}
-          bsBulkEdit={true}
-          bsBulkAdd={true}
           bsShowDescColumn={false}
           //   bsComboBox={[
           //     {
@@ -46,9 +42,9 @@ const MenuPage = () => {
             console.log("Selected rows:", rows);
             setSelectedRows(rows);
           }}
-          onEdit={(row) => console.log("Edit:", row)}
-          onDelete={(id) => console.log("Delete:", id)}
-          onAdd={() => console.log("Add new record")}
+          //   onEdit={(row) => console.log("Edit:", row)}
+          //   onDelete={(id) => console.log("Delete:", id)}
+          //   onAdd={() => console.log("Add new record")}
           height={500}
         />
       </Paper>

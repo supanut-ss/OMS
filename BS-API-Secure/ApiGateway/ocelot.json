@@ -175,7 +175,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/schema",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/schema",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -197,7 +197,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/metadata/{tableName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/metadata/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -213,7 +213,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/datagrid",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -235,7 +235,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bs-datagrid",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bs-datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -257,7 +257,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/record/{tableName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/record/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -273,7 +273,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/create",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -295,7 +295,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/update",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -317,7 +317,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/delete",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -339,7 +339,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bulk-create",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -361,7 +361,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bulk-update",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -383,7 +383,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bulk-delete",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -405,7 +405,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/combobox",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/combobox",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -427,7 +427,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/procedure/{procedureName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -449,7 +449,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/procedure-metadata/{procedureName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure-metadata/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -465,7 +465,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/query",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/query",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -487,7 +487,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/exists/{tableName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/exists/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
