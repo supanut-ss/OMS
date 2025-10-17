@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 services:
   api_gateway:
     build:
@@ -67,9 +67,30 @@ services:
     networks:
       - internal
     restart: always
+  bs_import_export_manager:
+    build:
+      context: .
+      dockerfile: ./BS-Import-Export-Manager/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    environment:
+      - TZ=Asia/Bangkok
+      - ASPNETCORE_ENVIRONMENT=Production
+      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
+      - VALID_ISSUER=http://10.10.60.66
+      - VALID_AUDIENCE=http://10.10.60.66
+      - EXPIRES=15
+      - REFRESH=30
+      - ACCESS_FAILURE_LIMIT=5
+      - ALLOWIP_WEB=*
+      - KEY_WEB=API_KEY_WEB
+      - DB_SCHEMA=sec
+      - USERNAME_ADMIN=Wau7MCRQswc=
+    networks:
+      - internal
+    restart: always
 networks:
   internal:
     driver: bridge
-
-
-
