@@ -170,9 +170,29 @@ export const useDynamicCrud = (tableName) => {
 
   // Create new record
   const createRecord = useCallback(
-    async (recordData) => {
+    async (recordData, preObj = null) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for CREATE:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for CREATE:", {
+            schema,
+            table,
+          });
+        }
 
         // Get user ID from auth context
         let userId = null;
@@ -225,9 +245,29 @@ export const useDynamicCrud = (tableName) => {
 
   // Update existing record
   const updateRecord = useCallback(
-    async ({ id, data: recordData, whereConditions }) => {
+    async ({ id, data: recordData, whereConditions, preObj = null }) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for UPDATE:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for UPDATE:", {
+            schema,
+            table,
+          });
+        }
 
         // If no custom whereConditions provided, use the primary key from metadata
         let conditions = whereConditions;
@@ -283,9 +323,29 @@ export const useDynamicCrud = (tableName) => {
 
   // Delete record
   const deleteRecord = useCallback(
-    async (id, whereConditions) => {
+    async (id, whereConditions, preObj = null) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for DELETE:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for DELETE:", {
+            schema,
+            table,
+          });
+        }
 
         // If no custom whereConditions provided, use the primary key from metadata
         let conditions = whereConditions;
@@ -319,9 +379,29 @@ export const useDynamicCrud = (tableName) => {
 
   // Execute stored procedure
   const executeStoredProcedure = useCallback(
-    async (procedureName, parameters = {}) => {
+    async (procedureName, parameters = {}, preObj = null) => {
       try {
-        const { schema, table: procName } = parseTableName(procedureName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from procedureName
+        let schema, procName;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          procName = procedureName; // procedureName should be just the procedure name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for PROCEDURE:", {
+            preObj,
+            schema,
+            procedureName: procName,
+          });
+        } else {
+          // Parse procedureName for schema.procedure format
+          const parsed = parseTableName(procedureName);
+          schema = parsed.schema;
+          procName = parsed.table;
+          Logger.log("📊 Using parsed procedureName for PROCEDURE:", {
+            schema,
+            procedureName: procName,
+          });
+        }
 
         const response = await AxiosMaster.post(
           `/dynamic/procedure/${procName}?schemaName=${schema}`,
@@ -365,9 +445,29 @@ export const useDynamicCrud = (tableName) => {
 
   // Bulk operations
   const bulkCreate = useCallback(
-    async (dataItems) => {
+    async (dataItems, preObj = null) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for BULK CREATE:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for BULK CREATE:", {
+            schema,
+            table,
+          });
+        }
 
         const response = await AxiosMaster.post("/dynamic/bulk-create", {
           tableName: table,
@@ -390,9 +490,29 @@ export const useDynamicCrud = (tableName) => {
   );
 
   const bulkUpdate = useCallback(
-    async (updates) => {
+    async (updates, preObj = null) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for BULK UPDATE:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for BULK UPDATE:", {
+            schema,
+            table,
+          });
+        }
 
         const response = await AxiosMaster.post("/dynamic/bulk-update", {
           tableName: table,
@@ -415,9 +535,29 @@ export const useDynamicCrud = (tableName) => {
   );
 
   const bulkDelete = useCallback(
-    async (conditions) => {
+    async (conditions, preObj = null) => {
       try {
-        const { schema, table } = parseTableName(tableName);
+        // Determine schema: use preObj mapping if provided, otherwise parse from tableName
+        let schema, table;
+        if (preObj) {
+          // Use schema mapping from preObj
+          schema = getSchemaFromPreObj(preObj);
+          table = tableName; // tableName should be just the table name when preObj is used
+          Logger.log("🗺️ Using preObj schema mapping for BULK DELETE:", {
+            preObj,
+            schema,
+            table,
+          });
+        } else {
+          // Parse tableName for schema.table format
+          const parsed = parseTableName(tableName);
+          schema = parsed.schema;
+          table = parsed.table;
+          Logger.log("📊 Using parsed tableName for BULK DELETE:", {
+            schema,
+            table,
+          });
+        }
 
         const response = await AxiosMaster.post("/dynamic/bulk-delete", {
           tableName: table,

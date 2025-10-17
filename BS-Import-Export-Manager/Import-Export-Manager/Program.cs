@@ -3,7 +3,9 @@ using Import_Export_Manager.Interfaces;
 using Import_Export_Manager.Services;
 using Microsoft.EntityFrameworkCore;
 using TokenManagement.Extensions;
+using TokenManagement.Interfaces;
 using TokenManagement.Middleware;
+using TokenManagement.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +28,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<IImportMaster, ImportMasterService>();
 builder.Services.AddScoped<IExcelImport, ExcelImportService>();
-
+builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();

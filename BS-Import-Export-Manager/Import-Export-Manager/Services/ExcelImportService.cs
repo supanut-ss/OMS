@@ -22,7 +22,7 @@ namespace Import_Export_Manager.Services
             {
                 return new ExcelImportResponse
                 {
-                    code = "500",
+                    code = "1",
                     message = ex.Message,
                     records = 0
                 };

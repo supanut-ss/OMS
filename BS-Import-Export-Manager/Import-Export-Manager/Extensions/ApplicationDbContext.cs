@@ -217,7 +217,7 @@ namespace Import_Export_Manager.Extensions
             {
                 return new ExcelImportResponse
                 {
-                    code = "404",
+                    code = "1",
                     message = "Import configuration not found.",
                 };
             }

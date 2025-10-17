@@ -21,7 +21,7 @@ namespace Import_Export_Manager.Controllers
             _excelImport = excelImport;
         }
         // POST api/import Excel file upload from frontend
-        [HttpPost]
+        [HttpPost("UploadExcel")]
         public async Task<ExcelImportResponse> UploadExcel(IFormFile file, [FromForm] ExcelImportRequest request)
         {
             if (file == null || file.Length == 0)
