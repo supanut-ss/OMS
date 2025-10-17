@@ -10,10 +10,10 @@ services:
       - "8080:8080"
     environment:
       - TZ=Asia/Bangkok
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.172
+      - VALID_AUDIENCE=http://10.10.60.172
       - ALLOWIP_WEB=*
       - KEY_WEB=API_KEY_WEB
     networks:
@@ -28,11 +28,11 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.172
+      - VALID_AUDIENCE=http://10.10.60.172
       - EXPIRES=15
       - REFRESH=30
       - ACCESS_FAILURE_LIMIT=5
@@ -52,11 +52,11 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.172
+      - VALID_AUDIENCE=http://10.10.60.172
       - EXPIRES=15
       - REFRESH=30
       - ACCESS_FAILURE_LIMIT=5
@@ -76,11 +76,11 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.172
+      - VALID_AUDIENCE=http://10.10.60.172
       - EXPIRES=15
       - REFRESH=30
       - ACCESS_FAILURE_LIMIT=5
