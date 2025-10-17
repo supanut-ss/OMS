@@ -7,6 +7,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
 import TestBSDataGrid from "./test/TestBSDataGrid";
+import UserPage from "./pages/Authentication/User";
+import UserGroupPage from "./pages/Authentication/UserGroup";
+import UserLogOnPage from "./pages/Authentication/UserLogOnPage";
+import MenuPage from "./pages/Authentication/MenuPage";
 
 export default function AppRoutes() {
   return (
@@ -39,6 +43,10 @@ export default function AppRoutes() {
         <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
         <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
+        <Route path="user" element={<UserPage />} />
+        <Route path="user_group" element={<UserGroupPage />} />
+        <Route path="menu" element={<MenuPage />} />
+        <Route path="user_logon" element={<UserLogOnPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
