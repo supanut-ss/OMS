@@ -16,7 +16,7 @@ const BSDataGridExamples = () => {
       </Typography>
       <BSDataGrid bsObj="t_tmt_holiday" height={400} />
 
-      <BSDataGrid bsPreObj="sec" bsObj="t_com_user" height={400} />
+      <BSDataGrid bsPreObj="sec" bsObj="t_com_user_group" height={400} />
     </Paper>
   );
 
