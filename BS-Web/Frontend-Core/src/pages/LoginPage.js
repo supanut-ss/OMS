@@ -22,6 +22,7 @@ import { useTheme } from "@mui/material/styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import logoSvg from "../assets/logo.svg";
+import Config from "../utils/Config";
 
 export default function LoginPage() {
   const theme = useTheme();
@@ -153,7 +154,7 @@ export default function LoginPage() {
                 mb: 1,
               }}
             >
-              Timesheet System
+              {Config.APP_NAME}
             </Typography>
             <Typography
               variant="body1"

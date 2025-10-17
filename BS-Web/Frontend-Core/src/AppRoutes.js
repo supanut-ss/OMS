@@ -7,6 +7,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
 import TestBSDataGrid from "./test/TestBSDataGrid";
+import UserPage from "./pages/Authentication/User";
+import UserGroupPage from "./pages/Authentication/UserGroup";
+import UserLogOnPage from "./pages/Authentication/UserLogOnPage";
+import MenuPage from "./pages/Authentication/MenuPage";
 import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
 import ImportExcel from "./pages/Import/ImportExcel";
@@ -49,6 +53,10 @@ export default function AppRoutes() {
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
         <Route path="importMaster" element={<ImportMaster />} />
+        <Route path="user" element={<UserPage />} />
+        <Route path="user_group" element={<UserGroupPage />} />
+        <Route path="menu" element={<MenuPage />} />
+        <Route path="user_logon" element={<UserLogOnPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

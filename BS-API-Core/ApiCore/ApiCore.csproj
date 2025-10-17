@@ -38,4 +38,10 @@
     <ProjectReference Include="..\..\BS-API-Secure\TokenManagement\TokenManagement.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update=".env">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

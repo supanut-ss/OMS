@@ -30,10 +30,10 @@ namespace Authentication.Controllers.Application
                 {
                     return ResponseUnauthorized("Unauthorized");
                 }
-                if (userId != Encryption.Decrypt(Environment.GetEnvironmentVariable("USERNAME_ADMIN") ?? ""))
-                {
-                    return ResponseForbidden("Forbidden");
-                }
+                //if (userId != Encryption.Decrypt(Environment.GetEnvironmentVariable("USERNAME_ADMIN") ?? ""))
+                //{
+                //    return ResponseForbidden("Forbidden");
+                //}
                 return _iapplication == null
                     ? ResponseUnauthorized("Application service is not available.")
                     : request == null

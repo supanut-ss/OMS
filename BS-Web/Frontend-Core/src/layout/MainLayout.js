@@ -45,6 +45,7 @@ import SidebarMenu from "./SidebarMenu";
 import TopLinearProgress from "../components/TopLinearProgress";
 import SecureStorage from "../utils/SecureStorage";
 import BSAlertSwal2 from "../components/BSAlertSwal2";
+import Config from "../utils/Config";
 
 const drawerWidth = 280;
 const collapsedWidth = 72;
@@ -254,7 +255,7 @@ export default function MainLayout() {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <img
                   src={logoHorizontalSvg}
-                  alt="Timesheet System"
+                  alt={Config.APP_NAME}
                   style={{ height: 32 }}
                 />
               </Box>
@@ -512,7 +513,7 @@ export default function MainLayout() {
                   variant="h6"
                   sx={{ fontWeight: 600, color: "text.primary" }}
                 >
-                  Timesheet
+                  {Config.APP_NAME}
                 </Typography>
               </Box>
             )}
