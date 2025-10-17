@@ -97,7 +97,7 @@ namespace Import_Export_Manager.Services
                 }
                 else
                 {
-                    response.code = "404";
+                    response.code = "1";
                     response.message = "Data not found";
                 }
 
@@ -107,7 +107,7 @@ namespace Import_Export_Manager.Services
             {
                 return new ImportMasterResponse
                 {
-                    code = "500",
+                    code = "1",
                     message = ex.Message,
                     data = null,
                     total = 0
@@ -143,7 +143,7 @@ namespace Import_Export_Manager.Services
                 }
                 else
                 {
-                    response.code = "404";
+                    response.code = "1";
                     response.message = "Data not found";
                     response.data = null;
                     response.total = 0;
@@ -155,7 +155,7 @@ namespace Import_Export_Manager.Services
             {
                 return new ImportMasterResponse
                 {
-                    code = "500",
+                    code = "1",
                     message = ex.Message,
                     data = null,
                     total = 0
@@ -172,7 +172,7 @@ namespace Import_Export_Manager.Services
             {
                 return new ImportMasterResponse
                 {
-                    code = "500",
+                    code = "1",
                     message = ex.Message,
                     data = null,
                     total = 0
@@ -189,7 +189,7 @@ namespace Import_Export_Manager.Services
             {
                 return new ImportMasterResponse
                 {
-                    code = "500",
+                    code = "1",
                     message = ex.Message,
                     data = null,
                     total = 0
@@ -206,7 +206,7 @@ namespace Import_Export_Manager.Services
             {
                 return new ImportMasterResponse
                 {
-                    code = "500",
+                    code = "1",
                     message = ex.Message,
                     data = null,
                     total = 0

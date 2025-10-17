@@ -76,6 +76,9 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
+      - DATABASE_CONNECTION=Server=10.10.60.66;Database=Timesheet;User Id=sa;Password=Local@dmin;Encrypt=False;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=

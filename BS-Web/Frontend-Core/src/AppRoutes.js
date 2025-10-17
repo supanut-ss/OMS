@@ -13,6 +13,8 @@ import UserLogOnPage from "./pages/Authentication/UserLogOn";
 import MenuPage from "./pages/Authentication/Menu";
 import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
+import ImportExcel from "./pages/Import/ImportExcel";
+import ImportMaster from "./pages/Import/ImportMaster";
 
 export default function AppRoutes() {
   return (
@@ -49,6 +51,8 @@ export default function AppRoutes() {
         <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
         <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
+        <Route path="importExcel" element={<ImportExcel />} />
+        <Route path="importMaster" element={<ImportMaster />} />
         <Route path="user" element={<UserPage />} />
         <Route path="user_group" element={<UserGroupPage />} />
         <Route path="menu" element={<MenuPage />} />

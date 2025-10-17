@@ -17,27 +17,27 @@ namespace Import_Export_Manager.Controllers
         {
             _importMasterService = importMasterService;
         }
-        [HttpGet]
+        [HttpGet("GetImportMasters")]
         public async Task<IActionResult> GetImportMasters(int page = 1, int limit = 10, string search = "", string sortBy = "import_id", string sortOrder = "asc")
         {
             var result = await _importMasterService.GetImportMasters(page, limit, search, sortBy, sortOrder);
-            if (result.code == "200")
+            if (result.code == "0")
             {
                 return Ok(result);
             }
-            return StatusCode(int.Parse(result.code), result);
+            return NotFound(result);
         }
-        [HttpGet("{import_id}")]
+        [HttpGet("GetImportMaster")]
         public async Task<IActionResult> GetImportMasterById(int import_id)
         {
             var result = await _importMasterService.GetImportMasterById(import_id);
-            if (result.code == "200")
+            if (result.code == "0")
             {
                 return Ok(result);
             }
-            return StatusCode(int.Parse(result.code), result);
+            return NotFound(result);
         }
-        [HttpPost]
+        [HttpPost("CreateImportMaster")]
         public async Task<IActionResult> CreateImportMaster([FromBody] ImportMasterRequest request)
         {
             var result = await _importMasterService.CreateImportMaster(request);
@@ -47,10 +47,10 @@ namespace Import_Export_Manager.Controllers
             }
             else
             {
-                return Ok(result.message);
+                return NotFound(result);
             }
         }
-        [HttpPut("{import_id}")]
+        [HttpPost("UpdateImportMaster")]
         public async Task<IActionResult> UpdateImportMaster(int import_id, [FromBody] ImportMasterRequest request)
         {
             var result = await _importMasterService.UpdateImportMaster(import_id, request);
@@ -60,10 +60,10 @@ namespace Import_Export_Manager.Controllers
             }
             else
             {
-                return Ok(result.message);
+                return NotFound(result);
             }
         }
-        [HttpDelete("{import_id}")]
+        [HttpPost("DeleteImportMaster")]
         public async Task<IActionResult> DeleteImportMaster(int import_id)
         {
             var result = await _importMasterService.DeleteImportMaster(import_id);
@@ -73,7 +73,7 @@ namespace Import_Export_Manager.Controllers
             }
             else
             {
-                return Ok(result.message);
+                return NotFound(result);
             }
         }
     }
