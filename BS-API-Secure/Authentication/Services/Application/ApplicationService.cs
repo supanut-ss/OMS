@@ -233,7 +233,7 @@ namespace Authentication.Services.Application
             {
                 using (var conn = new SqlConnection(_connectionString))
                 {
-                    using (var cmd = new SqlCommand($"select * from [{schema}].v_com_application WHERE license_key = @in_vchLicenseKey ", conn))
+                    using (var cmd = new SqlCommand($"select * from sec.v_com_application WHERE license_key = @in_vchLicenseKey ", conn))
                     {
                         cmd.Parameters.AddWithValue("@in_vchLicenseKey", license_key);
 
