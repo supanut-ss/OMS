@@ -473,10 +473,10 @@ const ComboBoxField = ({
           schemaName: config.PreObj
             ? getSchemaFromPreObj(config.PreObj)
             : "tmt",
-          valueColumn: config.Value,
-          displayColumn: config.Display,
-          whereClause: config.ObjWh || null,
-          orderBy: config.ObjBy || null,
+          valueField: config.Value, // ✅ Fixed: valueColumn → valueField
+          displayField: config.Display, // ✅ Fixed: displayColumn → displayField
+          customWhere: config.ObjWh || null, // ✅ Fixed: whereClause → customWhere
+          customOrderBy: config.ObjBy || null, // ✅ Fixed: orderBy → customOrderBy
         };
 
         Logger.log("🔍 Loading combobox options:", comboConfig);
