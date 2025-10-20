@@ -46,6 +46,7 @@ import {
   ArrowDropDown,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
+import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import Logger from "../utils/logger";
 import muiLicenseManager from "../utils/muiLicenseManager";
 
@@ -434,6 +435,92 @@ const DynamicGridToolbar = ({
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
     </GridToolbarContainer>
+  );
+};
+
+/**
+ * ComboBox Field Component for Form
+ * Renders a dropdown with options from API
+ */
+const ComboBoxField = ({
+  columnName,
+  config,
+  value,
+  onChange,
+  required,
+  dataType,
+  isNullable,
+}) => {
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { getComboBoxData } = useDynamicCrud(config.Obj || "dummy");
+
+  const formatColumnName = (name) => {
+    return name
+      .replace(/[_-]/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!config.Obj) return;
+
+      setLoading(true);
+      try {
+        const comboConfig = {
+          tableName: config.Obj,
+          schemaName: config.PreObj
+            ? getSchemaFromPreObj(config.PreObj)
+            : "tmt",
+          valueColumn: config.Value,
+          displayColumn: config.Display,
+          whereClause: config.ObjWh || null,
+          orderBy: config.ObjBy || null,
+        };
+
+        Logger.log("🔍 Loading combobox options:", comboConfig);
+        const result = await getComboBoxData(comboConfig);
+        setOptions(result || []);
+        Logger.log("✅ Combobox options loaded:", result?.length || 0, "items");
+      } catch (error) {
+        Logger.error("❌ Failed to load combobox options:", error);
+        setOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOptions();
+  }, [config, getComboBoxData]);
+
+  return (
+    <FormControl fullWidth size="small" required={required}>
+      <InputLabel>
+        {formatColumnName(columnName)} {required ? "*" : ""}
+      </InputLabel>
+      <Select
+        value={value || ""}
+        label={`${formatColumnName(columnName)} ${required ? "*" : ""}`}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={loading}
+      >
+        {config.Default && (
+          <MenuItem value="">
+            <em>{config.Default}</em>
+          </MenuItem>
+        )}
+        {options.map((option) => (
+          <MenuItem key={option[config.Value]} value={option[config.Value]}>
+            {option[config.Display]}
+          </MenuItem>
+        ))}
+      </Select>
+      <FormHelperText>
+        {loading
+          ? "Loading options..."
+          : `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+      </FormHelperText>
+    </FormControl>
   );
 };
 
@@ -1244,6 +1331,26 @@ const BSDataGrid = ({
         let inputType = "text";
         let multiline = false;
 
+        // Check if this column has a combobox configuration
+        const comboConfig = comboBoxConfig[columnName];
+        if (comboConfig) {
+          return (
+            <Grid item xs={12} sm={6} md={4} key={columnName}>
+              <ComboBoxField
+                columnName={columnName}
+                config={comboConfig}
+                value={val}
+                onChange={(value) =>
+                  setFormData((p) => ({ ...p, [columnName]: value }))
+                }
+                required={!isNullable}
+                dataType={dataType}
+                isNullable={isNullable}
+              />
+            </Grid>
+          );
+        }
+
         // Special handling for is_active field
         if (isActiveField(columnName)) {
           return (
@@ -1379,6 +1486,7 @@ const BSDataGrid = ({
     dialogMode,
     isActiveField,
     getIsActiveOptions,
+    comboBoxConfig,
   ]);
 
   // Function to restore a single row to its original state

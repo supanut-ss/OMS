@@ -17,6 +17,35 @@ const BSDataGridExamples = () => {
       <BSDataGrid bsObj="t_tmt_holiday" height={400} />
 
       <BSDataGrid bsPreObj="sec" bsObj="t_com_user_group" height={400} />
+
+      <BSDataGrid
+        bsPreObj="sec"
+        bsObj="t_com_user_group"
+        bsCols="name,description,is_active,create_by,create_date,update_by,update_date"
+        bsObjBy="name asc"
+        bsRowPerPage={20}
+        bsShowDescColumn={false}
+        bsComboBox={[
+          {
+            Column: "app_id",
+            Display: "application_name",
+            Value: "app_id",
+            Default: "--- Select Application ---",
+            PreObj: "sec",
+            Obj: "t_com_application",
+            ObjWh: "is_active='YES'",
+            ObjBy: "application_name asc",
+          },
+        ]}
+        onCheckBoxSelected={(rows) => {
+          console.log("Selected rows:", rows);
+          setSelectedRows(rows);
+        }}
+        //   onEdit={(row) => console.log("Edit:", row)}
+        //   onDelete={(id) => console.log("Delete:", id)}
+        //   onAdd={() => console.log("Add new record")}
+        height={500}
+      />
     </Paper>
   );
 
