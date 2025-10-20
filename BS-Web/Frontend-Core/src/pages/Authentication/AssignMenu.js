@@ -222,16 +222,17 @@ const MenuTreeView = () => {
             <BsAutoComplete
               bsModel="select"
               bsTitle="เลือก Group"
-              bsPreObj="sec."
-              bsObj="t_com_user_group"
+              bsPreObj="sec.t_com_"
+              bsObj="user_group"
               bsColumes={[
-                { field: "user_group_id", display: false },
-                { field: "name", display: true, order_by: "ASC" },
+                { field: "user_group_id", display: false,filter: false, key: true },
+                { field: "name", display: true ,filter: false, key: false },
               ]}
-              bsFilters={[]}
+              bsObjBy="name asc"
+              bsObjWh=""
               bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
               cacheKey="group"
-              loadOnOpen={true}
+              bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedGroup(val)}
             />
           </FormControl>
@@ -239,17 +240,17 @@ const MenuTreeView = () => {
             <BsAutoComplete
               bsModel="select"
               bsTitle="เลือก Platform"
-              bsPreObj="sec."
-              bsObj="t_com_combobox_item"
+              bsPreObj="sec.t_com_"
+              bsObj="combobox_item"
               bsColumes={[
-                { field: "display_member", display: true },
-                { field: "group_name", display: false },
+                { field: "display_member", display: true, filter: false, key: false},
+                { field: "group_name", display: false ,filter: false, key: true},
               ]}
-              bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
-              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
+              bsObjBy=""
               bsObjWh="group_name='platform'"
+              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
               cacheKey="platform"
-              loadOnOpen={true}
+              bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedPlatform(val)}
             />
           </FormControl>
