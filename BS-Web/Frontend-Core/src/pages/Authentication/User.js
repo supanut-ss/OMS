@@ -93,44 +93,44 @@ const UserPage = () => {
 
   const handleSave = async () => {
     // Validate required fields
-    // if (
-    //   !form.user_id ||
-    //   !form.user_group_id ||
-    //   !form.first_name ||
-    //   !form.last_name ||
-    //   !form.locale_id ||
-    //   !form.is_active
-    // ) {
-    //   alert("Please fill all required fields.");
-    //   return;
-    // }
+    if (
+      !form.user_id ||
+      !form.user_group_id ||
+      !form.first_name ||
+      !form.last_name ||
+      !form.locale_id ||
+      !form.is_active
+    ) {
+      BSAlertSwal2.show("warning", "Please fill all required fields.");
+      return;
+    }
     if (editMode) {
       Logger.log("Edit:", form);
-      // const result = await update(form);
-      // if (result && result.message_code === "0") {
-      //   BSAlertSwal2.show("success", result.message_text, {
-      //     timer: 2000,
-      //   });
-      // } else {
-      //   BSAlertSwal2.show(
-      //     "error",
-      //     result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
-      //   );
-      // }
+      const result = await update(form);
+      if (result && result.message_code === "0") {
+        BSAlertSwal2.show("success", result.message_text, {
+          timer: 2000,
+        });
+      } else {
+        BSAlertSwal2.show(
+          "error",
+          result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+        );
+      }
     } else {
       Logger.log("Add:", form);
       form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
-      // const result = await register(form);
-      // if (result && result.message_code === "0") {
-      //   BSAlertSwal2.show("success", result.message_text, {
-      //     timer: 2000,
-      //   });
-      // } else {
-      //   BSAlertSwal2.show(
-      //     "error",
-      //     result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
-      //   );
-      // }
+      const result = await register(form);
+      if (result && result.message_code === "0") {
+        BSAlertSwal2.show("success", result.message_text, {
+          timer: 2000,
+        });
+      } else {
+        BSAlertSwal2.show(
+          "error",
+          result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+        );
+      }
     }
     setOpen(false);
   };
