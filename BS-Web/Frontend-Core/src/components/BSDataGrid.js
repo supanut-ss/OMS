@@ -482,11 +482,39 @@ const ComboBoxField = ({
         Logger.log("🔍 Loading combobox options:", comboConfig);
         const result = await getComboBoxData(comboConfig);
         setOptions(result || []);
+
+        // Auto-select if only one option available and current value is empty
+        if (
+          result &&
+          result.length === 1 &&
+          (!value || value === "" || value === 0)
+        ) {
+          const singleOption = result[0];
+          const valueData = singleOption.data || singleOption;
+          const autoSelectValue = valueData[config.Value] || singleOption.value;
+
+          Logger.log("🎯 Auto-selecting single ComboBox option:", {
+            columnName,
+            currentValue: value,
+            autoSelectValue,
+            optionDisplay: valueData[config.Display] || singleOption.display,
+            reason: "only_one_option_available_and_value_empty",
+          });
+
+          // Call onChange to update the form
+          onChange(autoSelectValue);
+        }
+
         Logger.log("✅ Combobox options loaded:", {
           count: result?.length || 0,
           data: result,
           valueField: config.Value,
           displayField: config.Display,
+          sampleOption: result?.[0],
+          sampleKeys: result?.[0] ? Object.keys(result[0]) : [],
+          fullFirstOption: JSON.stringify(result?.[0], null, 2),
+          autoSelectedSingle:
+            result?.length === 1 && (!value || value === "" || value === 0),
         });
       } catch (error) {
         Logger.error("❌ Failed to load combobox options:", error);
@@ -497,17 +525,39 @@ const ComboBoxField = ({
     };
 
     loadOptions();
-  }, [config, getComboBoxData]);
+  }, [config, getComboBoxData, columnName, value, onChange]);
 
   // Debug logging
   Logger.log("🎯 ComboBoxField render:", {
     columnName,
     value,
+    valueType: typeof value,
     optionsCount: options.length,
     options: options,
     valueField: config.Value,
     displayField: config.Display,
     loading,
+  });
+
+  // Debug value matching
+  const matchingOption = options.find((option) => {
+    const valueData = option.data || option;
+    const itemValue = valueData[config.Value] || option.value;
+    return itemValue === value || String(itemValue) === String(value);
+  });
+
+  Logger.log("🔍 Value matching debug:", {
+    value,
+    valueType: typeof value,
+    matchingOption,
+    optionValues: options.map((opt) => {
+      const valueData = opt.data || opt;
+      return {
+        itemValue: valueData[config.Value] || opt.value,
+        itemType: typeof (valueData[config.Value] || opt.value),
+        raw: opt,
+      };
+    }),
   });
 
   return (
@@ -527,15 +577,29 @@ const ComboBoxField = ({
           </MenuItem>
         )}
         {options.map((option) => {
+          // Handle both direct field access and nested data structure
+          const valueData = option.data || option;
+          const displayData = option.data || option;
+
+          const itemValue = valueData[config.Value] || option.value;
+          const itemDisplay = displayData[config.Display] || option.display;
+
           Logger.log("🔹 Rendering MenuItem:", {
-            key: option[config.Value],
-            value: option[config.Value],
-            display: option[config.Display],
+            key: itemValue,
+            value: itemValue,
+            display: itemDisplay,
             option,
+            configValue: config.Value,
+            configDisplay: config.Display,
+            optionKeys: Object.keys(option || {}),
+            rawOption: JSON.stringify(option),
+            extractedValue: itemValue,
+            extractedDisplay: itemDisplay,
           });
+
           return (
-            <MenuItem key={option[config.Value]} value={option[config.Value]}>
-              {option[config.Display]}
+            <MenuItem key={itemValue} value={itemValue}>
+              {itemDisplay}
             </MenuItem>
           );
         })}
@@ -800,6 +864,21 @@ const BSDataGrid = ({
       sort: sort.sort,
     }));
 
+    // Include ComboBox fields in the query even if they're not in bsCols for display
+    // This ensures form fields have data when editing
+    let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
+    if (columnsForQuery && comboBoxConfig) {
+      const comboBoxFields = Object.keys(comboBoxConfig);
+      comboBoxFields.forEach((field) => {
+        if (!columnsForQuery.includes(field)) {
+          columnsForQuery.push(field);
+          Logger.log(
+            `📋 Adding ComboBox field to query: ${field} (not in bsCols but needed for form)`
+          );
+        }
+      });
+    }
+
     const request = {
       tableName: effectiveTableName,
       page: paginationModel.page + 1, // API uses 1-based pagination
@@ -812,7 +891,7 @@ const BSDataGrid = ({
       },
       // Additional BS properties
       preObj: bsPreObj,
-      columns: parsedCols ? parsedCols.join(",") : undefined,
+      columns: columnsForQuery ? columnsForQuery.join(",") : undefined,
       customWhere: bsObjWh,
       customOrderBy: bsObjBy,
     };
@@ -821,6 +900,12 @@ const BSDataGrid = ({
       filterItems: filterItems.length,
       quickFilter: quickFilterValue,
       hasCustomWhere: !!bsObjWh,
+      originalCols: parsedCols,
+      finalCols: columnsForQuery,
+      addedComboBoxFields:
+        columnsForQuery && parsedCols
+          ? columnsForQuery.filter((col) => !parsedCols.includes(col))
+          : [],
     });
 
     return request;
@@ -834,6 +919,7 @@ const BSDataGrid = ({
     bsObjWh,
     parsedCols,
     bsFilterMode,
+    comboBoxConfig,
   ]);
 
   // Load data from API
@@ -1119,12 +1205,52 @@ const BSDataGrid = ({
     (existing = null) => {
       if (!metadata?.columns) return {};
       const init = {};
+
+      Logger.log("🔧 Initializing form data:", {
+        existing,
+        existingKeys: existing ? Object.keys(existing) : [],
+        hasMetadata: !!metadata?.columns,
+      });
+
       metadata.columns
         .filter((c) => isFieldInForm(c.columnName, c.dataType, c.isIdentity))
         .forEach((c) => {
           if (existing && existing[c.columnName] !== undefined) {
             init[c.columnName] = existing[c.columnName];
+            Logger.log(`🔧 Setting ${c.columnName} from existing:`, {
+              value: existing[c.columnName],
+              type: typeof existing[c.columnName],
+            });
           } else {
+            // For edit mode, if field is missing from row data, check if we should skip defaulting
+            // This happens when the field exists in metadata but wasn't included in the grid columns
+            if (existing !== null) {
+              // Edit mode - check if this field might have a value that wasn't loaded in the grid
+              Logger.log(
+                `⚠️ Field ${c.columnName} missing from row data in edit mode`,
+                {
+                  columnName: c.columnName,
+                  existingKeys: Object.keys(existing || {}),
+                  dataType: c.dataType,
+                }
+              );
+
+              // For ComboBox fields in edit mode, don't default to 0 - leave empty until we can determine the real value
+              const comboConfig = comboBoxConfig[c.columnName];
+              if (comboConfig) {
+                init[c.columnName] = ""; // Leave empty for ComboBox fields
+                Logger.log(
+                  `🔧 Setting ${c.columnName} empty for ComboBox (missing from row):`,
+                  {
+                    value: "",
+                    type: "string",
+                    reason: "missing_from_row_data",
+                  }
+                );
+                return; // Skip default value assignment
+              }
+            }
+
             // Special handling for is_active field - default to YES for new records
             if (isActiveField(c.columnName)) {
               init[c.columnName] = "YES";
@@ -1153,11 +1279,18 @@ const BSDataGrid = ({
                   init[c.columnName] = "";
               }
             }
+            Logger.log(`🔧 Setting ${c.columnName} default:`, {
+              value: init[c.columnName],
+              type: typeof init[c.columnName],
+              dataType: c.dataType,
+            });
           }
         });
+
+      Logger.log("🔧 Final initialized form data:", init);
       return init;
     },
-    [metadata, isFieldInForm, isActiveField]
+    [metadata, isFieldInForm, isActiveField, comboBoxConfig]
   );
 
   // Open Add dialog or delegate to external handler
@@ -1188,9 +1321,32 @@ const BSDataGrid = ({
         onEdit(row);
         return;
       }
+
+      Logger.log("🎯 Edit clicked - row data:", {
+        row,
+        rowKeys: Object.keys(row || {}),
+        app_id: row?.app_id,
+        appIdType: typeof row?.app_id,
+        allRowData: row,
+        missingFields: ["user_group_id", "app_id"].filter(
+          (field) => row?.[field] === undefined
+        ),
+        presentFields: Object.keys(row || {}).filter(
+          (key) => row[key] !== undefined
+        ),
+      });
+
       setDialogMode("edit");
       setSelectedRow(row);
-      setFormData(initializeFormData(row));
+      const initialFormData = initializeFormData(row);
+
+      Logger.log("🎯 Edit form data initialized:", {
+        initialFormData,
+        app_id: initialFormData?.app_id,
+        appIdType: typeof initialFormData?.app_id,
+      });
+
+      setFormData(initialFormData);
       setDialogOpen(true);
     },
     [onEdit, initializeFormData]
@@ -1365,6 +1521,8 @@ const BSDataGrid = ({
             value: val,
             config: comboConfig,
             formData: formData[columnName],
+            originalRowData: dialogMode === "edit" ? selectedRow : null,
+            dialogMode,
           });
           return (
             <Grid item xs={12} sm={6} md={4} key={columnName}>
@@ -1522,6 +1680,7 @@ const BSDataGrid = ({
     isActiveField,
     getIsActiveOptions,
     comboBoxConfig,
+    selectedRow,
   ]);
 
   // Function to restore a single row to its original state
