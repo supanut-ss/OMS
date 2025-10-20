@@ -20,23 +20,18 @@ const UserGroupPage = () => {
           bsObjBy="name asc"
           bsRowPerPage={20}
           bsShowDescColumn={false}
-          //   bsComboBox={[
-          //     {
-          //       Column: "status",
-          //       Display: "name",
-          //       Value: "id",
-          //       Default: "--- Select Status ---",
-          //       PreObj: "default",
-          //       Obj: "t_wms_status",
-          //       ObjWh: "active=1",
-          //       ObjBy: "name asc",
-          //       valueOptions: [
-          //         { value: "active", label: "Active" },
-          //         { value: "inactive", label: "Inactive" },
-          //         { value: "pending", label: "Pending" },
-          //       ],
-          //     },
-          //   ]}
+          bsComboBox={[
+            {
+              Column: "app_id",
+              Display: "application_name",
+              Value: "app_id",
+              Default: "--- Select Application ---",
+              PreObj: "sec",
+              Obj: "t_com_application",
+              ObjWh: "is_active='YES'",
+              ObjBy: "application_name asc",
+            },
+          ]}
           onCheckBoxSelected={(rows) => {
             console.log("Selected rows:", rows);
             setSelectedRows(rows);
