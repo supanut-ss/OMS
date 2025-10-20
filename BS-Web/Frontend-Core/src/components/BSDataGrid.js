@@ -2571,30 +2571,33 @@ const BSDataGrid = ({
       )}
 
       {/* Table Info */}
-      {showToolbar && !bulkEditMode && (
-        <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography variant="h6" component="div">
-              {metadata.displayName || effectiveTableName}
-            </Typography>
-            {/* License status indicator */}
-            <Chip
-              label={
-                licenseStatus.hasLicenseKey ? "MUI X Pro" : "MUI X Community"
-              }
-              size="small"
-              color={licenseStatus.hasLicenseKey ? "success" : "default"}
-              variant="outlined"
-            />
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            {rowCount.toLocaleString()} records • {metadata.columns?.length}{" "}
-            columns
-            {!licenseStatus.hasLicenseKey &&
-              " • Limited features (Community version)"}
-          </Typography>
-        </Box>
-      )}
+      {
+        showToolbar && !bulkEditMode
+        // && (
+        //   <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+        //     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        //       <Typography variant="h6" component="div">
+        //         {metadata.displayName || effectiveTableName}
+        //       </Typography>
+        //       {/* License status indicator */}
+        //       <Chip
+        //         label={
+        //           licenseStatus.hasLicenseKey ? "MUI X Pro" : "MUI X Community"
+        //         }
+        //         size="small"
+        //         color={licenseStatus.hasLicenseKey ? "success" : "default"}
+        //         variant="outlined"
+        //       />
+        //     </Box>
+        //     <Typography variant="body2" color="text.secondary">
+        //       {rowCount.toLocaleString()} records • {metadata.columns?.length}{" "}
+        //       columns
+        //       {!licenseStatus.hasLicenseKey &&
+        //         " • Limited features (Community version)"}
+        //     </Typography>
+        //   </Box>
+        // )
+      }
 
       {/* DataGrid */}
       {(() => {
