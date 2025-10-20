@@ -20,19 +20,38 @@ namespace ApiCore.Services.Implementation
         private readonly ApplicationDbContext _context;
         private readonly ISqlConnectionFactory _connectionFactory;
         private readonly ILogger<DynamicCrudService> _logger;
+        private readonly IConfiguration _configuration;
 
-        // Security: Allowed schemas and forbidden tables
-        private readonly HashSet<string> _allowedSchemas = new() { "dbo", "sec", "tmt" };
-        private readonly HashSet<string> _forbiddenTables = new() { "sysdiagrams", "__efmigrationshistory", "aspnetusers", "aspnetuserroles" };
+        // Security: Allowed schemas and forbidden tables (loaded from configuration)
+        private readonly HashSet<string> _allowedSchemas;
+        private readonly HashSet<string> _forbiddenTables;
 
         public DynamicCrudService(
             ApplicationDbContext context,
             ISqlConnectionFactory connectionFactory,
-            ILogger<DynamicCrudService> logger)
+            ILogger<DynamicCrudService> logger,
+            IConfiguration configuration)
         {
             _context = context;
             _connectionFactory = connectionFactory;
             _logger = logger;
+            _configuration = configuration;
+
+            // Load allowed schemas from configuration, with fallback defaults
+            var configSchemas = _configuration.GetSection("DynamicCrud:AllowedSchemas").Get<string[]>();
+            _allowedSchemas = configSchemas != null && configSchemas.Length > 0
+                ? new HashSet<string>(configSchemas, StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(new[] { "dbo", "sec", "tmt", "imp", "ams" }, StringComparer.OrdinalIgnoreCase);
+
+            // Load forbidden tables from configuration, with fallback defaults
+            var configForbidden = _configuration.GetSection("DynamicCrud:ForbiddenTables").Get<string[]>();
+            _forbiddenTables = configForbidden != null && configForbidden.Length > 0
+                ? new HashSet<string>(configForbidden, StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(new[] { "sysdiagrams", "__efmigrationshistory", "aspnetusers", "aspnetuserroles" }, StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogInformation("🔒 DynamicCrud Security Configuration:");
+            _logger.LogInformation("   ✅ Allowed Schemas: {AllowedSchemas}", string.Join(", ", _allowedSchemas));
+            _logger.LogInformation("   ❌ Forbidden Tables: {ForbiddenTables}", string.Join(", ", _forbiddenTables));
         }
 
         public async Task<DynamicTableMetadata> GetTableMetadataAsync(string tableName, string schemaName = "dbo")
