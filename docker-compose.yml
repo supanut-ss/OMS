@@ -10,7 +10,7 @@ services:
       - "8080:8080"
     environment:
       - TZ=Asia/Bangkok
-      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
       - VALID_ISSUER=http://10.10.60.172
       - VALID_AUDIENCE=http://10.10.60.172
@@ -28,8 +28,8 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
       - VALID_ISSUER=http://10.10.60.172
       - VALID_AUDIENCE=http://10.10.60.172
@@ -52,8 +52,8 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
       - VALID_ISSUER=http://10.10.60.172
       - VALID_AUDIENCE=http://10.10.60.172
@@ -77,10 +77,10 @@ services:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
       - DATABASE_CONNECTION=Server=10.10.60.66;Database=Timesheet;User Id=sa;Password=Local@dmin;Encrypt=False;TrustServerCertificate=True;
-      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.172;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.66;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
       - VALID_ISSUER=http://10.10.60.172
       - VALID_AUDIENCE=http://10.10.60.172

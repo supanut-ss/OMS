@@ -21,7 +21,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import logoSvg from "../assets/logo.svg";
+import logoSvg from "../assets/logo.jpg";
 import Config from "../utils/Config";
 
 export default function LoginPage() {
@@ -130,8 +130,8 @@ export default function LoginPage() {
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Box
               sx={{
-                width: 80,
-                height: 80,
+                width: "50%",
+                height: "auto",
                 mx: "auto",
                 mb: 2,
                 display: "flex",
@@ -161,7 +161,7 @@ export default function LoginPage() {
               color="text.secondary"
               sx={{ fontSize: "1.1rem" }}
             >
-              เข้าสู่ระบบเพื่อจัดการงานของคุณ
+              Log in to manage your tasks.
             </Typography>
           </Box>
 
@@ -179,7 +179,7 @@ export default function LoginPage() {
             <TextField
               fullWidth
               name="usersname"
-              label="ผู้ใช้งาน"
+              label="Username"
               type="text"
               value={formData.usersname}
               onChange={handleChange}
@@ -205,7 +205,7 @@ export default function LoginPage() {
             <TextField
               fullWidth
               name="password"
-              label="รหัสผ่าน"
+              label="Password"
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={handleChange}
@@ -257,10 +257,11 @@ export default function LoginPage() {
                 },
               }}
             >
-              {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+              {/* {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"} */}
+               {loading ? "Logging in..." : "Login"}
             </Button>
 
-            <Box sx={{ textAlign: "center" }}>
+            {/* <Box sx={{ textAlign: "center" }}>
               <Link
                 href="#"
                 variant="body2"
@@ -274,7 +275,7 @@ export default function LoginPage() {
               >
                 ลืมรหัสผ่าน?
               </Link>
-            </Box>
+            </Box> */}
           </Box>
 
           {/* Demo Info */}
@@ -287,13 +288,13 @@ export default function LoginPage() {
               border: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <Typography
+            {/* <Typography
               variant="caption"
               color="text.secondary"
               sx={{ fontWeight: 500 }}
             >
               📌 สำหรับการทดสอบ: ใส่อีเมลและรหัสผ่านอะไรก็ได้เพื่อเข้าสู่ระบบ
-            </Typography>
+            </Typography> */}
           </Box>
         </CardContent>
       </Card>
