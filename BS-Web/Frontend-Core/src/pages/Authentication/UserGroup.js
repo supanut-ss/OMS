@@ -13,42 +13,32 @@ const UserGroupPage = () => {
           User Group Management
         </Typography>
         <BSDataGrid
-          bsLocale="th"
+          bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="t_com_user_group"
-          bsCols="user_id,first_name,last_name,locale_id,domain,is_active,create_by,create_date,update_by,update_date"
-          bsObjBy="user_id asc"
-          //   bsObjWh="status='active'"
-          bsPinColsLeft="user_id,first_name,last_name"
-          bsPinColsRight="actions"
+          bsCols="name,description,is_active,create_by,create_date,update_by,update_date"
+          bsObjBy="name asc"
           bsRowPerPage={20}
-          bsBulkEdit={true}
-          bsBulkAdd={true}
           bsShowDescColumn={false}
-          //   bsComboBox={[
-          //     {
-          //       Column: "status",
-          //       Display: "name",
-          //       Value: "id",
-          //       Default: "--- Select Status ---",
-          //       PreObj: "default",
-          //       Obj: "t_wms_status",
-          //       ObjWh: "active=1",
-          //       ObjBy: "name asc",
-          //       valueOptions: [
-          //         { value: "active", label: "Active" },
-          //         { value: "inactive", label: "Inactive" },
-          //         { value: "pending", label: "Pending" },
-          //       ],
-          //     },
-          //   ]}
+          bsComboBox={[
+            {
+              Column: "app_id",
+              Display: "application_name",
+              Value: "app_id",
+              Default: "--- Select Application ---",
+              PreObj: "sec",
+              Obj: "t_com_application",
+              ObjWh: "is_active='YES'",
+              ObjBy: "application_name asc",
+            },
+          ]}
           onCheckBoxSelected={(rows) => {
             console.log("Selected rows:", rows);
             setSelectedRows(rows);
           }}
-          onEdit={(row) => console.log("Edit:", row)}
-          onDelete={(id) => console.log("Delete:", id)}
-          onAdd={() => console.log("Add new record")}
+          //   onEdit={(row) => console.log("Edit:", row)}
+          //   onDelete={(id) => console.log("Delete:", id)}
+          //   onAdd={() => console.log("Add new record")}
           height={500}
         />
       </Paper>

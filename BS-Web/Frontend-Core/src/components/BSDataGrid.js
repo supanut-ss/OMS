@@ -46,6 +46,7 @@ import {
   ArrowDropDown,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
+import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import Logger from "../utils/logger";
 import muiLicenseManager from "../utils/muiLicenseManager";
 
@@ -434,6 +435,94 @@ const DynamicGridToolbar = ({
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
     </GridToolbarContainer>
+  );
+};
+
+/**
+ * ComboBox Field Component for Form
+ * Renders a dropdown with options from API
+ */
+const ComboBoxField = ({
+  columnName,
+  config,
+  value,
+  onChange,
+  required,
+  dataType,
+  isNullable,
+  description,
+}) => {
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { getComboBoxData } = useDynamicCrud(config.Obj || "dummy");
+
+  const formatColumnName = (name) => {
+    return name
+      .replace(/[_-]/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!config.Obj) return;
+
+      setLoading(true);
+      try {
+        const comboConfig = {
+          tableName: config.Obj,
+          schemaName: config.PreObj
+            ? getSchemaFromPreObj(config.PreObj)
+            : "tmt",
+          valueField: config.Value, // ✅ Fixed: valueColumn → valueField
+          displayField: config.Display, // ✅ Fixed: displayColumn → displayField
+          customWhere: config.ObjWh || null, // ✅ Fixed: whereClause → customWhere
+          customOrderBy: config.ObjBy || null, // ✅ Fixed: orderBy → customOrderBy
+        };
+
+        Logger.log("🔍 Loading combobox options:", comboConfig);
+        const result = await getComboBoxData(comboConfig);
+        setOptions(result || []);
+        Logger.log("✅ Combobox options loaded:", result?.length || 0, "items");
+      } catch (error) {
+        Logger.error("❌ Failed to load combobox options:", error);
+        setOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOptions();
+  }, [config, getComboBoxData]);
+
+  return (
+    <FormControl fullWidth size="small" required={required}>
+      <InputLabel>
+        {formatColumnName(columnName)} {required ? "*" : ""}
+      </InputLabel>
+      <Select
+        value={value || ""}
+        label={`${formatColumnName(columnName)} ${required ? "*" : ""}`}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={loading}
+      >
+        {config.Default && (
+          <MenuItem value="">
+            <em>{config.Default}</em>
+          </MenuItem>
+        )}
+        {options.map((option) => (
+          <MenuItem key={option[config.Value]} value={option[config.Value]}>
+            {option[config.Display]}
+          </MenuItem>
+        ))}
+      </Select>
+      <FormHelperText>
+        {loading
+          ? "Loading options..."
+          : description ||
+            `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+      </FormHelperText>
+    </FormControl>
   );
 };
 
@@ -1103,7 +1192,7 @@ const BSDataGrid = ({
 
       if (window.confirm("Are you sure you want to delete this record?")) {
         try {
-          await deleteRecord(id);
+          await deleteRecord(id, null, bsPreObj);
           await loadData();
           Logger.log("✅ Record deleted and data reloaded");
         } catch (err) {
@@ -1112,7 +1201,7 @@ const BSDataGrid = ({
         }
       }
     },
-    [metadata, onDelete, deleteRecord, loadData]
+    [metadata, onDelete, deleteRecord, loadData, bsPreObj]
   );
 
   // Save (create/update) from dialog
@@ -1120,13 +1209,13 @@ const BSDataGrid = ({
     try {
       setFormLoading(true);
       if (dialogMode === "add") {
-        await createRecord(formData);
+        await createRecord(formData, bsPreObj);
       } else {
         const primaryKey = metadata?.primaryKeys?.[0] || "Id";
         const id =
           selectedRow?.[primaryKey] ?? selectedRow?.id ?? selectedRow?.Id;
         if (!id) throw new Error("No primary key for update");
-        await updateRecord({ id, data: formData });
+        await updateRecord({ id, data: formData, preObj: bsPreObj });
       }
       setDialogOpen(false);
       setFormData({});
@@ -1146,6 +1235,7 @@ const BSDataGrid = ({
     createRecord,
     updateRecord,
     loadData,
+    bsPreObj,
   ]);
 
   const handleDialogClose = useCallback(() => {
@@ -1238,10 +1328,31 @@ const BSDataGrid = ({
         return isFieldInForm(c.columnName, c.dataType, c.isIdentity);
       })
       .map((c) => {
-        const { columnName, dataType, isNullable } = c;
+        const { columnName, dataType, isNullable, description } = c;
         const val = formData[columnName] ?? "";
         let inputType = "text";
         let multiline = false;
+
+        // Check if this column has a combobox configuration
+        const comboConfig = comboBoxConfig[columnName];
+        if (comboConfig) {
+          return (
+            <Grid item xs={12} sm={6} md={4} key={columnName}>
+              <ComboBoxField
+                columnName={columnName}
+                config={comboConfig}
+                value={val}
+                onChange={(value) =>
+                  setFormData((p) => ({ ...p, [columnName]: value }))
+                }
+                required={!isNullable}
+                dataType={dataType}
+                isNullable={isNullable}
+                description={description}
+              />
+            </Grid>
+          );
+        }
 
         // Special handling for is_active field
         if (isActiveField(columnName)) {
@@ -1281,7 +1392,8 @@ const BSDataGrid = ({
                   ))}
                 </Select>
                 <FormHelperText>
-                  {dataType} {isNullable ? "(nullable)" : "(required)"}
+                  {description ||
+                    `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
                 </FormHelperText>
               </FormControl>
             </Grid>
@@ -1357,9 +1469,10 @@ const BSDataGrid = ({
               required={!isNullable}
               multiline={multiline}
               rows={multiline ? 3 : 1}
-              helperText={`${dataType} ${
-                isNullable ? "(nullable)" : "(required)"
-              }`}
+              helperText={
+                description ||
+                `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
+              }
             />
           </Grid>
         );
@@ -1378,6 +1491,7 @@ const BSDataGrid = ({
     dialogMode,
     isActiveField,
     getIsActiveOptions,
+    comboBoxConfig,
   ]);
 
   // Function to restore a single row to its original state
@@ -1850,7 +1964,7 @@ const BSDataGrid = ({
           const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
           const id = row[primaryKey] || row.id || row.Id;
           if (id) {
-            await deleteRecord(id);
+            await deleteRecord(id, null, bsPreObj);
           }
         }
 
@@ -1862,7 +1976,7 @@ const BSDataGrid = ({
         setError(err.message || "Failed to delete records");
       }
     }
-  }, [rows, rowSelectionModel, metadata, deleteRecord, loadData]);
+  }, [rows, rowSelectionModel, metadata, deleteRecord, loadData, bsPreObj]);
 
   // Bulk Add specific functions
   const handleBulkSave = useCallback(async () => {
@@ -1887,7 +2001,7 @@ const BSDataGrid = ({
       // Save each row individually
       for (const row of validRows) {
         const { _id, ...data } = row;
-        await createRecord(data);
+        await createRecord(data, bsPreObj);
       }
 
       setBulkAddDialogOpen(false);
@@ -1900,7 +2014,7 @@ const BSDataGrid = ({
     } finally {
       setFormLoading(false);
     }
-  }, [bulkAddRows, createRecord, loadData]);
+  }, [bulkAddRows, createRecord, loadData, bsPreObj]);
 
   const handleBulkDialogClose = useCallback(() => {
     setBulkAddDialogOpen(false);
