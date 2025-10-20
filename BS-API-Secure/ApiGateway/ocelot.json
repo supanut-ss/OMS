@@ -10,7 +10,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/login",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -28,7 +28,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/logout",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -44,7 +44,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/reset_password",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -60,7 +60,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/refresh",
-      "UpstreamHttpMethod": ["post"]
+      "UpstreamHttpMethod": [ "post" ]
     },
     {
       "DownstreamPathTemplate": "/alive/user",
@@ -72,7 +72,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/alive",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -88,7 +88,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/alive/status",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -104,7 +104,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/resource",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -120,7 +120,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/menu",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -136,7 +136,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/menu/menuAssign",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -152,7 +152,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/menu/saveAssign",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -168,7 +168,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/autocomplete",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -184,7 +184,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/schema",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -206,7 +206,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/metadata/{tableName}",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -222,7 +222,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/datagrid",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -244,7 +244,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bs-datagrid",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -266,7 +266,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/record/{tableName}",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -282,7 +282,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/create",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -304,7 +304,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/update",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -326,7 +326,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/delete",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -348,7 +348,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bulk-create",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -370,7 +370,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bulk-update",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -392,7 +392,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bulk-delete",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -414,7 +414,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/combobox",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -436,7 +436,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/procedure/{procedureName}",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -458,7 +458,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/procedure-metadata/{procedureName}",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -474,7 +474,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/query",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -496,7 +496,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/exists/{tableName}",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -512,7 +512,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/UploadExcel",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -534,7 +534,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/GetImportMasters",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -556,7 +556,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/GetImportMaster",
-      "UpstreamHttpMethod": ["get"],
+      "UpstreamHttpMethod": [ "get" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -578,7 +578,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/CreateImportMaster",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -600,7 +600,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/UpdateImportMaster",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -622,7 +622,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/DeleteImportMaster",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -632,6 +632,38 @@
         "EnableRateLimiting": true,
         "Period": "10s",
         "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/users/register",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/users/register",
+      "UpstreamHttpMethod": [ "post" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/users/update",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/users/update",
+      "UpstreamHttpMethod": [ "post" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
       }
     }
   ],
