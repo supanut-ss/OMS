@@ -450,6 +450,7 @@ const ComboBoxField = ({
   required,
   dataType,
   isNullable,
+  description,
 }) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -518,7 +519,8 @@ const ComboBoxField = ({
       <FormHelperText>
         {loading
           ? "Loading options..."
-          : `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+          : description ||
+            `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
       </FormHelperText>
     </FormControl>
   );
@@ -1326,7 +1328,7 @@ const BSDataGrid = ({
         return isFieldInForm(c.columnName, c.dataType, c.isIdentity);
       })
       .map((c) => {
-        const { columnName, dataType, isNullable } = c;
+        const { columnName, dataType, isNullable, description } = c;
         const val = formData[columnName] ?? "";
         let inputType = "text";
         let multiline = false;
@@ -1346,6 +1348,7 @@ const BSDataGrid = ({
                 required={!isNullable}
                 dataType={dataType}
                 isNullable={isNullable}
+                description={description}
               />
             </Grid>
           );
@@ -1389,7 +1392,8 @@ const BSDataGrid = ({
                   ))}
                 </Select>
                 <FormHelperText>
-                  {dataType} {isNullable ? "(nullable)" : "(required)"}
+                  {description ||
+                    `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
                 </FormHelperText>
               </FormControl>
             </Grid>
@@ -1465,9 +1469,10 @@ const BSDataGrid = ({
               required={!isNullable}
               multiline={multiline}
               rows={multiline ? 3 : 1}
-              helperText={`${dataType} ${
-                isNullable ? "(nullable)" : "(required)"
-              }`}
+              helperText={
+                description ||
+                `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
+              }
             />
           </Grid>
         );
