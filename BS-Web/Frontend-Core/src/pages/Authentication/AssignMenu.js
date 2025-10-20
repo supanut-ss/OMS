@@ -13,6 +13,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import CustomTreeView from "../../components/CustomTreeView";
+import Logger from "../../utils/logger";
 
 const MenuTreeView = () => {
   const { getMenuAssign, saveMenuAssign } = useMenuContext();
@@ -120,7 +121,10 @@ const MenuTreeView = () => {
       if (selectedGroup && selectedPlatform) {
         setLoading(true);
         try {
-          const result = await getMenuAssign(selectedGroup, selectedPlatform);
+          const result = await getMenuAssign(
+            selectedGroup.code ?? "",
+            selectedPlatform.code ?? ""
+          );
           const tree = buildMenuTree(result?.data || []);
           setMenuData(tree);
           setTabIndex(0);
@@ -154,18 +158,22 @@ const MenuTreeView = () => {
     userGroupId,
     result = []
   ) => {
+    // ดึงค่า id ที่ backend ต้องการ
+    const userGroupIdValue = userGroupId?.user_group_id
+      ? parseInt(userGroupId.user_group_id, 10)
+      : parseInt(userGroupId, 10);
+    const platformValue =
+      platform?.code || platform?.display_member || platform || "";
+
     items.forEach((item) => {
-      // เฉพาะ permission leaf เท่านั้น (id รูปแบบ add-xxx, edit-xxx, ...)
       if (/^(add|edit|delete|view)-/.test(item.id)) {
-        // แยก menuId จาก id
         const [type, menuId] = item.id.split("-");
-        // หา record ใน result ที่ตรง menuId อยู่แล้วหรือยัง
         let rec = result.find((r) => r.menu_id === menuId);
         if (!rec) {
           rec = {
-            userGroupId,
+            userGroupId: userGroupIdValue,
             menu_id: menuId,
-            platform,
+            platform: platformValue,
             isAddView: "NO",
             isEditView: "NO",
             isDeleteView: "NO",
@@ -173,13 +181,11 @@ const MenuTreeView = () => {
           };
           result.push(rec);
         }
-        // เซ็ต flag ตาม type
         if (type === "add") rec.isAddView = item.isCheck ? "YES" : "NO";
         if (type === "edit") rec.isEditView = item.isCheck ? "YES" : "NO";
         if (type === "delete") rec.isDeleteView = item.isCheck ? "YES" : "NO";
         if (type === "view") rec.isView = item.isCheck ? "YES" : "NO";
       }
-      // recursive children
       if (Array.isArray(item.children) && item.children.length) {
         collectCheckedMenus(item.children, platform, userGroupId, result);
       }
@@ -188,6 +194,7 @@ const MenuTreeView = () => {
   };
 
   const handleSave = async () => {
+    Logger.log(selectedGroup);
     setSaving(true);
     setLoading(true);
     try {
@@ -220,36 +227,52 @@ const MenuTreeView = () => {
         <Box display="flex" gap={3} alignItems="center">
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
-              bsModel="select"
-              bsTitle="Select Group"
-              bsPreObj="sec."
-              bsObj="t_com_user_group"
+              bsMode="single"
+              bsTitle="เลือก Group"
+              bsPreObj="sec.t_com_"
+              bsObj="user_group"
               bsColumes={[
-                { field: "user_group_id", display: false },
-                { field: "name", display: true, order_by: "ASC" },
+                {
+                  field: "user_group_id",
+                  display: false,
+                  filter: false,
+                  key: true,
+                },
+                { field: "name", display: true, filter: false, key: false },
               ]}
-              bsFilters={[]}
+              bsObjBy="name asc"
+              bsObjWh=""
               bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
               cacheKey="group"
-              loadOnOpen={true}
+              bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedGroup(val)}
             />
           </FormControl>
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
-              bsModel="select"
-              bsTitle="Select Platform"
-              bsPreObj="sec."
-              bsObj="t_com_combobox_item"
+              bsMode="single"
+              bsTitle="เลือก Platform"
+              bsPreObj="sec.t_com_"
+              bsObj="combobox_item"
               bsColumes={[
-                { field: "display_member", display: true },
-                { field: "group_name", display: false },
+                {
+                  field: "display_member",
+                  display: true,
+                  filter: false,
+                  key: true,
+                },
+                {
+                  field: "group_name",
+                  display: false,
+                  filter: false,
+                  key: false,
+                },
               ]}
-              bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
-              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
+              bsObjBy=""
               bsObjWh="group_name='platform'"
+              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
               cacheKey="platform"
-              loadOnOpen={true}
+              bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedPlatform(val)}
             />
           </FormControl>
