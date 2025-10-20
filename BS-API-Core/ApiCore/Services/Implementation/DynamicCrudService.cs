@@ -22,7 +22,7 @@ namespace ApiCore.Services.Implementation
         private readonly ILogger<DynamicCrudService> _logger;
 
         // Security: Allowed schemas and forbidden tables
-        private readonly HashSet<string> _allowedSchemas = new() { "dbo", "sec", "tmt" };
+        private readonly HashSet<string> _allowedSchemas = new() { "dbo", "sec", "tmt","imp" };
         private readonly HashSet<string> _forbiddenTables = new() { "sysdiagrams", "__efmigrationshistory", "aspnetusers", "aspnetuserroles" };
 
         public DynamicCrudService(
