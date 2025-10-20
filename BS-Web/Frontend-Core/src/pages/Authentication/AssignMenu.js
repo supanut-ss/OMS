@@ -221,7 +221,7 @@ const MenuTreeView = () => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsModel="select"
-              bsTitle="เลือก Group"
+              bsTitle="Select Group"
               bsPreObj="sec."
               bsObj="t_com_user_group"
               bsColumes={[
@@ -238,7 +238,7 @@ const MenuTreeView = () => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsModel="select"
-              bsTitle="เลือก Platform"
+              bsTitle="Select Platform"
               bsPreObj="sec."
               bsObj="t_com_combobox_item"
               bsColumes={[
