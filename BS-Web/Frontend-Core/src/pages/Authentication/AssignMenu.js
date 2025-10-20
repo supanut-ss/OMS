@@ -120,7 +120,7 @@ const MenuTreeView = () => {
       if (selectedGroup && selectedPlatform) {
         setLoading(true);
         try {
-          const result = await getMenuAssign(selectedGroup, selectedPlatform);
+          const result = await getMenuAssign(selectedGroup.code ?? "", selectedPlatform.code ?? "");
           const tree = buildMenuTree(result?.data || []);
           setMenuData(tree);
           setTabIndex(0);
@@ -220,7 +220,7 @@ const MenuTreeView = () => {
         <Box display="flex" gap={3} alignItems="center">
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
-              bsModel="select"
+              bsMode="single"
               bsTitle="เลือก Group"
               bsPreObj="sec.t_com_"
               bsObj="user_group"
@@ -238,13 +238,13 @@ const MenuTreeView = () => {
           </FormControl>
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
-              bsModel="select"
+            bsMode="single"
               bsTitle="เลือก Platform"
               bsPreObj="sec.t_com_"
               bsObj="combobox_item"
               bsColumes={[
-                { field: "display_member", display: true, filter: false, key: false},
-                { field: "group_name", display: false ,filter: false, key: true},
+                { field: "display_member", display: true, filter: false, key: true},
+                { field: "group_name", display: false ,filter: false, key: false},
               ]}
               bsObjBy=""
               bsObjWh="group_name='platform'"
