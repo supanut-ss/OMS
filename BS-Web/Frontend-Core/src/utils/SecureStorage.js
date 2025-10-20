@@ -6,8 +6,7 @@ import Config from "./Config";
 const ls = new SecureLS({
   encodingType: "aes",
   isCompression: true, // บีบอัดข้อมูลเพื่อประสิทธิภาพ
-  encryptionSecret:
-    Config.LICENSE_KEY || "default-secret-2025",
+  encryptionSecret: Config.LICENSE_KEY || "default-secret-2025",
   encryptionNamespace: Config.ENCRYPYION,
 });
 
@@ -66,6 +65,20 @@ const secureStorage = {
       return data;
     } catch (error) {
       Logger.warn(`Error getting key ${key} from SecureLS:`, error);
+
+      // Check if this is a Malformed UTF-8 error
+      if (error.message && error.message.includes("Malformed UTF-8")) {
+        Logger.error(
+          `🚨 Detected corrupted data for key ${key}, removing it...`
+        );
+        try {
+          // Remove corrupted data
+          this.remove(key);
+        } catch (removeError) {
+          Logger.error(`Failed to remove corrupted key ${key}:`, removeError);
+        }
+      }
+
       return null;
     }
   },
