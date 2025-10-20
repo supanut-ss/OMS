@@ -21,7 +21,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import logoSvg from "../assets/logo.svg";
+import logoSvg from "../assets/logo.jpg";
 import Config from "../utils/Config";
 
 export default function LoginPage() {
@@ -130,8 +130,8 @@ export default function LoginPage() {
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Box
               sx={{
-                width: 80,
-                height: 80,
+                width: "50%",
+                height: "auto",
                 mx: "auto",
                 mb: 2,
                 display: "flex",

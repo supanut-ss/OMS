@@ -5,6 +5,7 @@ using Authentication.Services.Auth;
 using Authentication.Services.Resource;
 using Authentication.Services.Users;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Data.SqlClient;
 using TokenManagement.Extensions;
 using TokenManagement.Handler;
 using TokenManagement.Interfaces;
@@ -31,7 +32,7 @@ builder.Services.AddCors(options => {
                            .AllowAnyMethod();
         });
 });
-var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB") ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB") ?? throw new ArgumentNullException("Environment.GetEnvironmentVariable(SERVERDB) ");
 // Update the registration of JwtHelper to use IOptions<JwtSettings>
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
@@ -85,7 +86,36 @@ builder.Services.AddOpenApi();
 //})
 //.AddScheme<AuthenticationSchemeOptions, CustomJwtAuthenticationHandler>("CustomJwtAuthentication", null);
 var app = builder.Build();
+app.MapGet("/test-db", async () =>
+{
+    string connectionString = defaultConnection;
+    string message;
+    bool connected = false;
 
+    try
+    {
+        using (SqlConnection conn = new SqlConnection(connectionString))
+        {
+            await conn.OpenAsync();
+            connected = true;
+            message = $"Connected to {conn.DataSource}, DB: {conn.Database}";
+        }
+    }
+    catch (SqlException ex)
+    {
+        message = $"SQL Error: {ex.Message}";
+    }
+    catch (Exception ex)
+    {
+        message = $"General Error: {ex.Message}";
+    }
+
+    return Results.Json(new
+    {
+        connected,
+        message
+    });
+});
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
