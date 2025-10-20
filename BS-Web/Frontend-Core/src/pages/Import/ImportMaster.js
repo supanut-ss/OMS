@@ -4,7 +4,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 const ImportMaster = () => {
   return (
     <Box>
-      <BSDataGrid bsObj="t_mas_import_master" />
+      <BSDataGrid bsObj="t_mas_import_master" bsPreObj="imp" />
     </Box>
   );
 };

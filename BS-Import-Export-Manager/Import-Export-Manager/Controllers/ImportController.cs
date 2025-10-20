@@ -22,19 +22,19 @@ namespace Import_Export_Manager.Controllers
         }
         // POST api/import Excel file upload from frontend
         [HttpPost("UploadExcel")]
-        public async Task<ExcelImportResponse> UploadExcel(IFormFile file, [FromForm] ExcelImportRequest request)
+        public async Task<ExcelImportResponse> UploadExcel([FromForm] ExcelImportRequest request)
         {
-            if (file == null || file.Length == 0)
+            if (request.file == null || request.file.Length == 0)
                 return new ExcelImportResponse { code = "400", message = "No file uploaded." };
 
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var ext = Path.GetExtension(request.file.FileName).ToLowerInvariant();
             if (ext != ".xls" && ext != ".xlsx")
                 return new ExcelImportResponse { code = "400", message = "Invalid file type. Please upload an Excel file." };
 
             try
             {
                 string xmlData;
-                using (var stream = file.OpenReadStream())
+                using (var stream = request.file.OpenReadStream())
                 {
                     xmlData = ConvertExcelToXML(stream);
                 }

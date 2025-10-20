@@ -3,8 +3,8 @@
     public class ExcelImportRequest
     {
         public string user_id { get; set; }
-        public string device { get; set; }
         public int import_id { get; set; }
         public string? xml_import_data { get; set; }
+        public IFormFile file { get; set; }
     }
 }

@@ -482,7 +482,12 @@ const ComboBoxField = ({
         Logger.log("🔍 Loading combobox options:", comboConfig);
         const result = await getComboBoxData(comboConfig);
         setOptions(result || []);
-        Logger.log("✅ Combobox options loaded:", result?.length || 0, "items");
+        Logger.log("✅ Combobox options loaded:", {
+          count: result?.length || 0,
+          data: result,
+          valueField: config.Value,
+          displayField: config.Display,
+        });
       } catch (error) {
         Logger.error("❌ Failed to load combobox options:", error);
         setOptions([]);
@@ -493,6 +498,17 @@ const ComboBoxField = ({
 
     loadOptions();
   }, [config, getComboBoxData]);
+
+  // Debug logging
+  Logger.log("🎯 ComboBoxField render:", {
+    columnName,
+    value,
+    optionsCount: options.length,
+    options: options,
+    valueField: config.Value,
+    displayField: config.Display,
+    loading,
+  });
 
   return (
     <FormControl fullWidth size="small" required={required}>
@@ -510,11 +526,19 @@ const ComboBoxField = ({
             <em>{config.Default}</em>
           </MenuItem>
         )}
-        {options.map((option) => (
-          <MenuItem key={option[config.Value]} value={option[config.Value]}>
-            {option[config.Display]}
-          </MenuItem>
-        ))}
+        {options.map((option) => {
+          Logger.log("🔹 Rendering MenuItem:", {
+            key: option[config.Value],
+            value: option[config.Value],
+            display: option[config.Display],
+            option,
+          });
+          return (
+            <MenuItem key={option[config.Value]} value={option[config.Value]}>
+              {option[config.Display]}
+            </MenuItem>
+          );
+        })}
       </Select>
       <FormHelperText>
         {loading
@@ -1336,6 +1360,12 @@ const BSDataGrid = ({
         // Check if this column has a combobox configuration
         const comboConfig = comboBoxConfig[columnName];
         if (comboConfig) {
+          Logger.log("🎨 Rendering ComboBox for column:", {
+            columnName,
+            value: val,
+            config: comboConfig,
+            formData: formData[columnName],
+          });
           return (
             <Grid item xs={12} sm={6} md={4} key={columnName}>
               <ComboBoxField

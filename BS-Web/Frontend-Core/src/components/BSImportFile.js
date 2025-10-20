@@ -9,6 +9,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import IconButton from "@mui/material/IconButton";
@@ -34,6 +36,10 @@ const BSImportFile = ({
   const [isDragActive, setIsDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [open, setOpen] = useState(false);
+
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const thumbSize = useMediaQuery(theme.breakpoints.down("sm")) ? 32 : 40;
 
   const handleButtonClick = () => {
     fileInputRef.current.click();
@@ -128,12 +134,20 @@ const BSImportFile = ({
       <Button variant="contained" onClick={handleOpen} {...otherProps}>
         {mode === "single" ? "CHOOSE FILE" : "CHOOSE FILES"}
       </Button>
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+
+      {/* Use fullScreen on small devices for responsive dialog */}
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={fullScreen}
+      >
         <DialogTitle>{dialogTitle}</DialogTitle>
         <DialogContent>
           <Box
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               border: "2px dashed #1976d2",
               borderColor: isDragActive ? "primary.main" : "grey.400",
               borderRadius: 2,
@@ -141,7 +155,7 @@ const BSImportFile = ({
               backgroundColor: isDragActive ? "grey.100" : "inherit",
               transition: "background-color 0.2s",
               position: "relative",
-              minHeight: 180,
+              minHeight: { xs: 240, sm: 180 },
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -154,13 +168,14 @@ const BSImportFile = ({
             {selectedFiles.length === 0 && (
               <>
                 <CloudUploadIcon
-                  sx={{ fontSize: 48, color: "#1976d2", mb: 1 }}
+                  sx={{ fontSize: { xs: 44, sm: 48 }, color: "#1976d2", mb: 1 }}
                 />
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   Drag and drop files here, or click the button to select.
                 </Typography>
               </>
             )}
+
             <input
               type="file"
               accept={accept.join(",")}
@@ -169,12 +184,19 @@ const BSImportFile = ({
               onChange={handleFileChange}
               style={{ display: "none" }}
             />
+
             {selectedFiles.length > 0 && (
               <Box sx={{ mt: 2, width: "100%" }}>
                 <List dense>
                   {selectedFiles.map((file, idx) => (
                     <ListItem
                       key={idx}
+                      sx={{
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        py: { xs: 0.5, sm: 1 },
+                      }}
                       secondaryAction={
                         <IconButton
                           edge="end"
@@ -190,8 +212,8 @@ const BSImportFile = ({
                           src={URL.createObjectURL(file)}
                           alt={file.name}
                           style={{
-                            width: 40,
-                            height: 40,
+                            width: thumbSize,
+                            height: thumbSize,
                             objectFit: "cover",
                             marginRight: 8,
                             borderRadius: 4,
@@ -200,7 +222,16 @@ const BSImportFile = ({
                           onLoad={(e) => URL.revokeObjectURL(e.target.src)}
                         />
                       ) : null}
-                      {file.name}
+                      <Box
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: { xs: "60%", sm: "80%" },
+                        }}
+                      >
+                        {file.name}
+                      </Box>
                     </ListItem>
                   ))}
                 </List>
@@ -208,20 +239,30 @@ const BSImportFile = ({
             )}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Box sx={{ flex: 1, display: "flex", justifyContent: "flex-start" }}>
+
+        <DialogActions sx={{ flexWrap: "wrap", gap: 1 }}>
+          <Box
+            sx={{
+              flex: fullScreen ? "0 1 100%" : 1,
+              display: "flex",
+              justifyContent: fullScreen ? "center" : "flex-start",
+            }}
+          >
             <Button variant="contained" onClick={handleButtonClick}>
               {buttonLabel}
             </Button>
           </Box>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button
-            onClick={handleImport}
-            variant="contained"
-            disabled={selectedFiles.length === 0}
-          >
-            Import
-          </Button>
+
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button
+              onClick={handleImport}
+              variant="contained"
+              disabled={selectedFiles.length === 0}
+            >
+              Import
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
     </>
