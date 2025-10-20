@@ -1,6 +1,18 @@
 {
   "Routes": [
     {
+      "DownstreamPathTemplate": "/test-db",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/test",
+      "UpstreamHttpMethod": [ "get" ]
+    },
+    {
       "DownstreamPathTemplate": "/auth/login",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -175,7 +187,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/schema",
+      "DownstreamPathTemplate": "/api/dynamic/schema",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -197,7 +209,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/metadata/{tableName}",
+      "DownstreamPathTemplate": "/api/dynamic/metadata/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -213,7 +225,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/datagrid",
+      "DownstreamPathTemplate": "/api/dynamic/datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -235,7 +247,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bs-datagrid",
+      "DownstreamPathTemplate": "/api/dynamic/bs-datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -257,7 +269,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/record/{tableName}",
+      "DownstreamPathTemplate": "/api/dynamic/record/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -273,7 +285,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/create",
+      "DownstreamPathTemplate": "/api/dynamic/create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -295,7 +307,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/update",
+      "DownstreamPathTemplate": "/api/dynamic/update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -317,7 +329,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/delete",
+      "DownstreamPathTemplate": "/api/dynamic/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -339,7 +351,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-create",
+      "DownstreamPathTemplate": "/api/dynamic/bulk-create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -361,7 +373,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-update",
+      "DownstreamPathTemplate": "/api/dynamic/bulk-update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -383,7 +395,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-delete",
+      "DownstreamPathTemplate": "/api/dynamic/bulk-delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -405,7 +417,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/combobox",
+      "DownstreamPathTemplate": "/api/dynamic/combobox",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -427,7 +439,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure/{procedureName}",
+      "DownstreamPathTemplate": "/api/dynamic/procedure/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -449,7 +461,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure-metadata/{procedureName}",
+      "DownstreamPathTemplate": "/api/dynamic/procedure-metadata/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -465,7 +477,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/query",
+      "DownstreamPathTemplate": "/api/dynamic/query",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -487,7 +499,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/exists/{tableName}",
+      "DownstreamPathTemplate": "/api/dynamic/exists/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -668,6 +680,6 @@
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://192.168.1.109:8080"
+    "BaseUrl": "http://192.168.254.151:8080"
   }
 }

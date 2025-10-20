@@ -15,6 +15,8 @@ import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
 import ImportExcel from "./pages/Import/ImportExcel";
 import ImportMaster from "./pages/Import/ImportMaster";
+import CountTag from "./pages/Count/CountTagPage";
+import CountReconcile from "./pages/Count/CountReconcile";
 
 export default function AppRoutes() {
   return (
@@ -57,6 +59,8 @@ export default function AppRoutes() {
         <Route path="user_group" element={<UserGroupPage />} />
         <Route path="menu" element={<MenuPage />} />
         <Route path="user_logon" element={<UserLogOnPage />} />
+        <Route path="count_tag" element={<CountTag />} />
+         <Route path="count_record" element={<CountReconcile />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
