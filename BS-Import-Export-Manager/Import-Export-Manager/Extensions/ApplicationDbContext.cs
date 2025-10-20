@@ -23,7 +23,7 @@ namespace Import_Export_Manager.Extensions
             builder.UseCollation("Thai_CI_AS");
             builder.Entity<TImportMaster>(entity =>
             {
-                entity.ToTable("v_import_masters", "tmt");
+                entity.ToTable("t_import_master", "imp");
                 entity.HasKey(e => e.ImportId);
                 entity.Property(e => e.ImportId).HasColumnName("import_id");
                 entity.Property(e => e.ImportName).HasColumnName("import_name").HasMaxLength(200).IsRequired();
@@ -85,7 +85,7 @@ namespace Import_Export_Manager.Extensions
                 Value = request.create_by
             };
             await Database.ExecuteSqlRawAsync(
-                $"EXEC tmt.usp_insert_import_master " +
+                $"EXEC imp.usp_insert_import_master " +
                 $"@in_vchImportName, @in_vchDescription, @in_vchExecSqlCommand, @in_vchExcelExampleFilePath, @in_intSeq, @in_vchIsActive, @in_vchCreateBy, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
                 in_vchImportName, in_vchDescription, in_vchExecSqlCommand, in_vchExcelExampleFilePath, in_intSeq, in_vchIsActive, in_vchCreateBy, errorCodeParam, errorMessageParam);
             return new ImportMasterResponse
@@ -147,7 +147,7 @@ namespace Import_Export_Manager.Extensions
                 Value = request.update_by
             };
             await Database.ExecuteSqlRawAsync(
-                $"EXEC tmt.usp_update_import_master " +
+                $"EXEC imp.usp_update_import_master " +
                 $"@in_intImportId, @in_vchImportName, @in_vchDescription, @in_vchExecSqlCommand, @in_vchExcelExampleFilePath, @in_intSeq, @in_vchIsActive, @in_vchUpdateBy, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
                 in_intImportId, in_vchImportName, in_vchDescription, in_vchExecSqlCommand, in_vchExcelExampleFilePath, in_intSeq, in_vchIsActive, in_vchUpdateBy, errorCodeParam, errorMessageParam);
 
@@ -175,7 +175,7 @@ namespace Import_Export_Manager.Extensions
                 Value = importId
             };
             await Database.ExecuteSqlRawAsync(
-                $"EXEC tmt.usp_delete_import_master " +
+                $"EXEC imp.usp_delete_import_master " +
                 $"@in_intImportId, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
                 in_intImportId, errorCodeParam, errorMessageParam);
             return new ImportMasterResponse
@@ -219,6 +219,7 @@ namespace Import_Export_Manager.Extensions
                 {
                     code = "1",
                     message = "Import configuration not found.",
+                    data = null
                 };
             }
             var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 10)
@@ -238,28 +239,40 @@ namespace Import_Export_Manager.Extensions
                 Direction = ParameterDirection.Input,
                 Value = request.user_id
             };
-            var in_vchDevice = new SqlParameter("@in_vchDevice", SqlDbType.NVarChar, 50)
-            {
-                Direction = ParameterDirection.Input,
-                Value = request.device
-            };
             var in_XMLData = new SqlParameter("@in_XMLData", SqlDbType.NVarChar, -1)
             {
                 Direction = ParameterDirection.Input,
                 Value = (object?)request.xml_import_data ?? DBNull.Value
             };
-            await Database.ExecuteSqlRawAsync(
-                $"EXEC {execSqlCommand} " +
-                $"@in_vchUserId, @in_vchDevice, @in_XMLData, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT, @out_intErrorRecord OUTPUT",
-                in_vchUserId, in_vchDevice, in_XMLData, errorCodeParam, errorMessageParam, errorRecordParam);
-            return new ExcelImportResponse
+            try
             {
-                code = errorCodeParam.Value?.ToString(),
-                message = errorMessageParam.Value?.ToString(),
-                records = errorRecordParam.Value != DBNull.Value
-                    ? (int)errorRecordParam.Value
-                    : 0
-            };
+                await Database.ExecuteSqlRawAsync(
+                $"EXEC {execSqlCommand} " +
+                $"@in_vchUserId, @in_XMLData, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT, @out_intErrorRecord OUTPUT",
+                in_vchUserId, in_XMLData, errorCodeParam, errorMessageParam, errorRecordParam);
+                return new ExcelImportResponse
+                {
+                    code = "0",
+                    message = "import success",
+                    data = new ExcelImportListResponse
+                    {
+                        code = errorCodeParam.Value?.ToString(),
+                        message = errorMessageParam.Value?.ToString(),
+                        records = errorRecordParam.Value != DBNull.Value
+                            ? (int)errorRecordParam.Value
+                            : 0
+                    }
+                };
+            }
+            catch (Exception ex) 
+            {
+                return new ExcelImportResponse
+                {
+                    code = "1",
+                    message = ex.Message,
+                    data = null
+                };
+            }
         }
     }
 }
