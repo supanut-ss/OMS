@@ -24,7 +24,7 @@ namespace Import_Export_Manager.Services
                 {
                     code = "1",
                     message = ex.Message,
-                    records = 0
+                    data = null
                 };
             }
         }
