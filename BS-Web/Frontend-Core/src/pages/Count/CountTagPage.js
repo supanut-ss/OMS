@@ -1,4 +1,4 @@
-import { Box, Button, FormControl, Grid, Paper, Typography } from "@mui/material";
+import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import { useState } from "react";
@@ -21,6 +21,8 @@ const CountTag = () => {
                 "Please select at least one tag to re-count.")
             return;
         }
+        console.log("Selected User:", selectedUser);
+        console.log("Selected Rows:", selectedRows);
         for (let row of selectedRows) {
             await AxiosMaster.post("/ams/notify/recount-tags", {
                 user_id: selectedUser,
@@ -75,7 +77,7 @@ const CountTag = () => {
                                 bsOnChange={(val) => setSelectedUser(val)}
                             /></Grid>
                         <Grid size={3}>
-                            <Button variant="contained" color="warning" sx={{ mb: 2 }} onClick={CallNoti}>
+                            <Button variant="contained" color="warning" sx={{ mb: 2, height: '90%' }} onClick={CallNoti} >
                                 Re-Count Tags
                             </Button>
                         </Grid>
@@ -107,17 +109,16 @@ const CountTag = () => {
                     bsPinColsLeft=""
                     bsPinColsRight=""
                     bsRowPerPage={20}
-                    bsBulkEdit={true}
-                    bsBulkAdd={true}
+                    bsBulkEdit={false}
+                    bsBulkAdd={false}
+                    bsBulkDelete={false}
                     bsShowDescColumn={false}
-
+                    showAdd={false}
+                    readOnly={true}
                     onCheckBoxSelected={(rows) => {
                         console.log("Selected rows:", rows);
                         setSelectedRows(rows);
                     }}
-                    onEdit={(row) => console.log("Edit:", row)}
-                    onDelete={(id) => console.log("Delete:", id)}
-                    onAdd={() => console.log("Add new record")}
                     height={500}
                 />
             </Box>
