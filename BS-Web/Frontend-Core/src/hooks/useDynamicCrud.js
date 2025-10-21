@@ -199,8 +199,14 @@ export const useDynamicCrud = (tableName) => {
         if (user) {
           try {
             const userObj = typeof user === "string" ? JSON.parse(user) : user;
-            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
-            Logger.log("🔐 User data for CREATE audit:", { userObj, userId });
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for CREATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
           } catch (e) {
             Logger.warn("Failed to parse user data for audit fields:", e);
           }
@@ -284,8 +290,14 @@ export const useDynamicCrud = (tableName) => {
         if (user) {
           try {
             const userObj = typeof user === "string" ? JSON.parse(user) : user;
-            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
-            Logger.log("🔐 User data for UPDATE audit:", { userObj, userId });
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for UPDATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
           } catch (e) {
             Logger.warn("Failed to parse user data for audit fields:", e);
           }
