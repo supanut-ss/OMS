@@ -287,7 +287,7 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
 
                 // Build ORDER BY clause
-                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
+                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata, request.CustomOrderBy);
 
                 // Build final query
                 var query = $@"
@@ -897,6 +897,13 @@ namespace ApiCore.Services.Implementation
         {
             var conditions = new List<string>();
 
+            // Custom WHERE clause (from BSDataGrid ObjWh or ComboBox ObjWh)
+            if (!string.IsNullOrEmpty(request.CustomWhere))
+            {
+                conditions.Add($"({request.CustomWhere})");
+                _logger.LogInformation("🎯 Added CustomWhere condition: {CustomWhere}", request.CustomWhere);
+            }
+
             // Column filters
             foreach (var filter in request.FilterModel.Items)
             {
@@ -988,21 +995,33 @@ namespace ApiCore.Services.Implementation
             }
         }
 
-        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata)
+        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata, string customOrderBy = null)
         {
-            if (sortModel == null || !sortModel.Any())
+            // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
+            if (!string.IsNullOrEmpty(customOrderBy))
             {
-                // Default sort by first primary key or first column
-                var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
-                return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
+                _logger.LogInformation("🎯 Using CustomOrderBy: {CustomOrderBy}", customOrderBy);
+                return $"ORDER BY {customOrderBy}";
             }
 
-            var orderItems = sortModel
-                .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
-                .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
+            // Priority 2: Sort model from DataGrid
+            if (sortModel != null && sortModel.Any())
+            {
+                var orderItems = sortModel
+                    .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
+                    .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
 
-            return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
+                if (orderItems.Any())
+                {
+                    return $"ORDER BY {string.Join(", ", orderItems)}";
+                }
+            }
+
+            // Priority 3: Default sort by first primary key or first column
+            var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
+            return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
         }
+
 
         private bool IsSearchableColumn(DynamicColumnInfo column)
         {
