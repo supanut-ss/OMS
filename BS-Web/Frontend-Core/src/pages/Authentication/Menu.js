@@ -3,7 +3,6 @@ import { Box, Typography, Paper, Divider } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const MenuPage = () => {
-  const [selectedRows, setSelectedRows] = useState([]);
   const [locale_id, setLocale_id] = useState("en");
 
   return (
@@ -13,10 +12,10 @@ const MenuPage = () => {
           Menu
         </Typography>
         <BSDataGrid
-          bsLocale="th"
+          bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="t_com_menu"
-          bsCols="menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
+          bsCols="menu_id,menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="menu_group_sequence asc, menu_sequence asc"
           //   bsObjWh="status='active'"
           bsRowPerPage={20}
@@ -35,7 +34,7 @@ const MenuPage = () => {
             {
               Column: "platform",
               Display: "display_member",
-              Value: "value_member",
+              Value: "display_member",
               Default: "--- Select Platform ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
@@ -48,19 +47,10 @@ const MenuPage = () => {
               Value: "menu_group",
               Default: "--- Select Menu Group ---",
               PreObj: "sec",
-              Obj: "t_com_menu",
-              ObjWh: "GROUP BY menu_group",
+              Obj: "v_com_menu_group",
               ObjBy: "menu_group asc",
             },
           ]}
-          onCheckBoxSelected={(rows) => {
-            console.log("Selected rows:", rows);
-            setSelectedRows(rows);
-          }}
-          //   onEdit={(row) => console.log("Edit:", row)}
-          //   onDelete={(id) => console.log("Delete:", id)}
-          //   onAdd={() => console.log("Add new record")}
-          height={500}
         />
       </Paper>
     </>
