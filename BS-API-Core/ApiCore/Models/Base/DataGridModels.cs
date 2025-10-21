@@ -86,9 +86,14 @@ namespace ApiCore.Models.Base
         public string LogicOperator { get; set; } = "and";
 
         /// <summary>
-        /// Quick filter value for global search
+        /// Quick filter value for global search (standard MUI format)
         /// </summary>
         public string? QuickFilterValues { get; set; }
+
+        /// <summary>
+        /// Quick filter value for BSDataGrid compatibility
+        /// </summary>
+        public string? QuickFilter { get; set; }
     }
 
     /// <summary>
