@@ -1173,6 +1173,8 @@ const BSDataGrid = ({
     if (value === null || value === undefined) return "";
 
     switch (dataType?.toLowerCase()) {
+      case "int":
+        return Number(value).toLocaleString();
       case "bit":
         return value ? "Yes" : "No";
       case "datetime":
@@ -1184,7 +1186,7 @@ const BSDataGrid = ({
         return new Date(`1970-01-01T${value}`).toLocaleTimeString();
       case "money":
       case "decimal":
-        return `₿${Number(value).toLocaleString()}`;
+        return `${Number(value).toLocaleString()}`;
       default:
         return String(value);
     }
