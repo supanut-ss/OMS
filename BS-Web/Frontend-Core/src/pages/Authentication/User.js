@@ -10,12 +10,14 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  IconButton,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BsAutoComplete from "../../components/BSAutoComplete";
-import Logger from "../../utils/logger";
+import Logger, { log } from "../../utils/logger";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 const activeOptions = [
   { value: "YES", label: "YES" },
@@ -27,12 +29,12 @@ const initialForm = {
   user_group_id: "",
   first_name: "",
   last_name: "",
-  locale_id: "",
+  locale_id: "en",
   department: "",
   supervisor: "",
   email_address: "",
   domain: "",
-  is_active: "",
+  is_active: "YES",
   password: "",
 };
 
@@ -42,10 +44,11 @@ const UserPage = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
-  const { register, update } = UserContext();
+  const { registerUser, updateUser } = UserContext();
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleOpenAdd = () => {
     setForm(initialForm);
@@ -63,30 +66,45 @@ const UserPage = () => {
 
   const handleClose = () => setOpen(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+  const handleChange = (eOrName, value) => {
+    let name, val;
+
+    // กรณีเป็น event จาก TextField
+    if (eOrName?.target) {
+      name = eOrName.target.name;
+      val = eOrName.target.value;
+    }
+    // กรณีมาจาก BsAutoComplete
+    else {
+      if (eOrName === "user_group_id") {
+        name = eOrName;
+        val = value?.user_group_id ?? null;
+        Logger.log("handleChange:", name, val);
+      } else if (eOrName === "locale_id") {
+        name = eOrName;
+        val = value?.value ?? null;
+        Logger.log("handleChange:", name, val);
+      }
+    }
+
+    setForm({ ...form, [name]: val });
 
     // Email validation
     if (name === "email_address") {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       setEmailError(
-        value && !emailPattern.test(value) ? "Invalid email address" : ""
+        val && !emailPattern.test(val) ? "Invalid email address" : ""
       );
     }
 
-    // Sync dropdown value for user_group_id
-    if (e.target.name === "user_group_id") {
-      setSelectedGroup(value);
-    }
-
     // // Sync dropdown value for user_group_id
-    // if (e.target.name === "locale_id") {
-    //   setselelo(value);
+    // if (name === "user_group_id") {
+    //   setSelectedGroup(val);
     // }
   };
 
   const handleGroupChange = (val) => {
+    log("handleGroupChange:", val);
     setSelectedGroup(val);
     setForm({ ...form, user_group_id: val });
   };
@@ -105,12 +123,13 @@ const UserPage = () => {
       return;
     }
     if (editMode) {
-      Logger.log("Edit:", form);
-      const result = await update(form);
+      //Logger.log("Edit:", form);
+      const result = await updateUser(form);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
           timer: 2000,
         });
+        setOpen(false);
       } else {
         BSAlertSwal2.show(
           "error",
@@ -119,12 +138,13 @@ const UserPage = () => {
       }
     } else {
       Logger.log("Add:", form);
-      form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
-      const result = await register(form);
+      //form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
+      const result = await registerUser(form);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
           timer: 2000,
         });
+        setOpen(false);
       } else {
         BSAlertSwal2.show(
           "error",
@@ -132,7 +152,6 @@ const UserPage = () => {
         );
       }
     }
-    setOpen(false);
   };
 
   return (
@@ -190,53 +209,41 @@ const UserPage = () => {
             {/* Row 1 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
-                fullWidth
-                label="User ID *"
+                sx={{ flex: 1 }}
+                label="User ID"
                 name="user_id"
                 value={form.user_id}
                 onChange={handleChange}
                 required
                 disabled={editMode}
               />
-              <BsAutoComplete
-                bsModel="select"
-                bsTitle="Select Group *"
-                bsPreObj="sec."
-                bsObj="t_com_user_group"
-                bsColumes={[
-                  { field: "name", display: true },
-                  { field: "user_group_id", display: false },
-                ]}
-                // bsFilters={[
-                //   { field: "group_name", op: "=", value: "locale_id" },
-                // ]}
-                //bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-                bsObjWh="is_active='YES'"
-                cacheKey="user_group_id"
-                loadOnOpen={true}
-                bsOnChange={(val) => handleChange("user_group_id", val)}
-              />
-              {/* <TextField
-                fullWidth
-                select
-                label="User Group *"
-                name="user_group_id"
-                value={form.user_group_id}
+              <TextField
+                label="Password"
+                name="password"
+                value={form.password}
                 onChange={handleChange}
                 required
-              >
-                {userGroups.map((g) => (
-                  <MenuItem key={g.value} value={g.value}>
-                    {g.label}
-                  </MenuItem>
-                ))}
-              </TextField> */}
+                disabled={editMode}
+                type={showPassword ? "text" : "password"}
+                sx={{ flex: 1 }}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  ),
+                }}
+              />
             </Box>
             {/* Row 2 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label="First Name *"
+                label="First Name"
                 name="first_name"
                 value={form.first_name}
                 onChange={handleChange}
@@ -244,7 +251,7 @@ const UserPage = () => {
               />
               <TextField
                 fullWidth
-                label="Last Name *"
+                label="Last Name"
                 name="last_name"
                 value={form.last_name}
                 onChange={handleChange}
@@ -253,39 +260,65 @@ const UserPage = () => {
             </Box>
             {/* Row 3 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <BsAutoComplete
-                bsModel="select"
-                bsTitle="Select Language *"
-                bsPreObj="sec."
-                bsObj="t_com_combobox_item"
-                bsColumes={[
-                  { field: "display_member", display: true },
-                  { field: "group_name", display: false },
-                ]}
-                bsFilters={[
-                  { field: "group_name", op: "=", value: "locale_id" },
-                ]}
-                //bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-                bsObjWh="group_name='locale_id'"
-                cacheKey="locale_id"
-                loadOnOpen={true}
-                bsOnChange={(val) => handleChange("locale_id", val)}
-              />
-              {/* <TextField
-                fullWidth
-                select
-                label="Locale *"
-                name="locale_id"
-                value={form.locale_id}
-                onChange={handleChange}
-                required
-              >
-                {locales.map((l) => (
-                  <MenuItem key={l.value} value={l.value}>
-                    {l.label}
-                  </MenuItem>
-                ))}
-              </TextField> */}
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="select"
+                  bsTitle="Select Group *"
+                  bsPreObj="sec.t_com_"
+                  bsObj="user_group"
+                  bsColumes={[
+                    {
+                      field: "user_group_id",
+                      display: false,
+                      filter: false,
+                      key: true,
+                    },
+                    {
+                      field: "name",
+                      display: true,
+                      filter: true,
+                      key: false,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh="is_active='YES'"
+                  cacheKey="group_name"
+                  //bsLoadOnOpen={true}
+                  bsOnChange={(val) => handleGroupChange(val)}
+                  bsValue={selectedGroup}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="select"
+                  bsTitle="Select Language *"
+                  bsPreObj="sec.t_com_"
+                  bsObj="combobox_item"
+                  bsColumes={[
+                    {
+                      field: "display_member",
+                      display: true,
+                      filter: false,
+                      key: true,
+                    },
+                    {
+                      field: "group_name",
+                      display: false,
+                      filter: false,
+                      key: false,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh="group_name='locale_id'"
+                  cacheKey="locale_id"
+                  //bsLoadOnOpen={frue}
+                  bsOnChange={(val) => handleChange("locale_id", val)}
+                  bsValue={form.locale_id}
+                />
+              </Box>
+            </Box>
+            {/* Row 4 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Department"
@@ -293,9 +326,6 @@ const UserPage = () => {
                 value={form.department}
                 onChange={handleChange}
               />
-            </Box>
-            {/* Row 4 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Supervisor"
@@ -303,6 +333,9 @@ const UserPage = () => {
                 value={form.supervisor}
                 onChange={handleChange}
               />
+            </Box>
+            {/* Row 5 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Email Address"
@@ -313,9 +346,6 @@ const UserPage = () => {
                 error={!!emailError}
                 helperText={emailError}
               />
-            </Box>
-            {/* Row 5 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Domain"
@@ -323,10 +353,12 @@ const UserPage = () => {
                 value={form.domain}
                 onChange={handleChange}
               />
+            </Box>
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 select
-                label="Is Active *"
+                label="Is Active"
                 name="is_active"
                 value={form.is_active}
                 onChange={handleChange}
@@ -342,10 +374,10 @@ const UserPage = () => {
           </Box>
         </DialogContent>
         <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSave} variant="contained" color="primary">
             {editMode ? "Save Changes" : "Add"}
           </Button>
-          <Button onClick={handleClose}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </>
