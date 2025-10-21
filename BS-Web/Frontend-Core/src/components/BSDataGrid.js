@@ -1159,18 +1159,49 @@ const BSDataGrid = ({
 
   // Helper: Check if field should be shown in form
   const isFieldInForm = useCallback(
-    (columnName, dataType, isIdentity, hasDefault) => {
+    (columnName, dataType, isIdentity, hasDefault, defaultValue) => {
       // Skip identity columns (auto increment)
-      if (isIdentity) return false;
+      if (isIdentity) {
+        return false;
+      }
 
       // Skip GUID columns (auto generate with NEWID())
       if (dataType?.toLowerCase() === "uniqueidentifier") {
         return false;
       }
 
-      // Skip fields that have default values (will be auto-generated)
-      if (hasDefault && dialogMode === "add") {
+      // Skip fields that have default values (will be auto-generated) - check both hasDefault and defaultValue
+      if ((hasDefault || !!defaultValue) && dialogMode === "add") {
         return false;
+      }
+
+      // Additional check: Skip primary key fields that use sequences (like SQL Server NEXT VALUE FOR)
+      // This is a fallback for when metadata doesn't properly indicate hasDefault or isIdentity
+      if (dialogMode === "add") {
+        // Check if this field is in the primaryKeys array from metadata
+        const isPrimaryKey = metadata?.primaryKeys?.includes(columnName);
+
+        if (isPrimaryKey) {
+          Logger.log(
+            `❌ Skipping ${columnName} - is primary key from metadata`
+          );
+          return false;
+        }
+
+        // Fallback: Check if this is likely a sequence-generated primary key by naming pattern
+        const isSequencePrimaryKey =
+          columnName.toLowerCase().endsWith("_id") &&
+          dataType?.toLowerCase() === "int" &&
+          (columnName.toLowerCase().includes("group") ||
+            columnName.toLowerCase().includes("user") ||
+            columnName.toLowerCase().includes("app"));
+
+        if (isSequencePrimaryKey) {
+          Logger.log(
+            `❌ Skipping ${columnName} - detected as sequence-generated primary key by pattern`
+          );
+          return false;
+        }
       }
 
       // Skip audit fields
@@ -1200,7 +1231,7 @@ const BSDataGrid = ({
 
       return true;
     },
-    [dialogMode]
+    [dialogMode, metadata?.primaryKeys]
   );
 
   // Helper: Check if field is is_active
@@ -1223,7 +1254,13 @@ const BSDataGrid = ({
 
       metadata.columns
         .filter((c) =>
-          isFieldInForm(c.columnName, c.dataType, c.isIdentity, c.hasDefault)
+          isFieldInForm(
+            c.columnName,
+            c.dataType,
+            c.isIdentity,
+            c.hasDefault,
+            c.defaultValue
+          )
         )
         .forEach((c) => {
           if (existing && existing[c.columnName] !== undefined) {
@@ -1332,20 +1369,6 @@ const BSDataGrid = ({
         onEdit(row);
         return;
       }
-
-      Logger.log("🎯 Edit clicked - row data:", {
-        row,
-        rowKeys: Object.keys(row || {}),
-        app_id: row?.app_id,
-        appIdType: typeof row?.app_id,
-        allRowData: row,
-        missingFields: ["user_group_id", "app_id"].filter(
-          (field) => row?.[field] === undefined
-        ),
-        presentFields: Object.keys(row || {}).filter(
-          (key) => row[key] !== undefined
-        ),
-      });
 
       setDialogMode("edit");
       setSelectedRow(row);
@@ -1552,177 +1575,210 @@ const BSDataGrid = ({
   const renderFormFields = useCallback(() => {
     if (!metadata?.columns) return null;
 
-    const formFields = metadata.columns
-      .filter((c) => {
-        // Filter out is_active field in add mode
-        if (dialogMode === "add" && isActiveField(c.columnName)) {
-          return false;
-        }
-        return isFieldInForm(
-          c.columnName,
-          c.dataType,
-          c.isIdentity,
-          c.hasDefault
+    // Get all columns that should be in the form
+    let formColumns = metadata.columns.filter((c) => {
+      // Filter out is_active field in add mode
+      if (dialogMode === "add" && isActiveField(c.columnName)) {
+        return false;
+      }
+      return isFieldInForm(
+        c.columnName,
+        c.dataType,
+        c.isIdentity,
+        c.hasDefault,
+        c.defaultValue
+      );
+    });
+
+    // Add ComboBox fields that might not be in the filtered columns
+    // This ensures ComboBox fields are available in forms even if not in bsCols
+    if (comboBoxConfig && Object.keys(comboBoxConfig).length > 0) {
+      Object.keys(comboBoxConfig).forEach((comboFieldName) => {
+        const alreadyIncluded = formColumns.some(
+          (c) => c.columnName === comboFieldName
         );
-      })
-      .map((c) => {
-        const { columnName, dataType, isNullable, description } = c;
-        const val = formData[columnName] ?? "";
-        let inputType = "text";
-        let multiline = false;
-
-        // Check if this column has a combobox configuration
-        const comboConfig = comboBoxConfig[columnName];
-        if (comboConfig) {
-          Logger.log("🎨 Rendering ComboBox for column:", {
-            columnName,
-            value: val,
-            config: comboConfig,
-            formData: formData[columnName],
-            originalRowData: dialogMode === "edit" ? selectedRow : null,
-            dialogMode,
-          });
-          return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <ComboBoxField
-                columnName={columnName}
-                config={comboConfig}
-                value={val}
-                onChange={(value) =>
-                  setFormData((p) => ({ ...p, [columnName]: value }))
-                }
-                required={!isNullable}
-                dataType={dataType}
-                isNullable={isNullable}
-                description={description}
-              />
-            </Grid>
+        if (!alreadyIncluded) {
+          // Find the column in metadata
+          const comboColumn = metadata.columns.find(
+            (c) => c.columnName === comboFieldName
           );
+          if (comboColumn) {
+            // Check if it should be in form (excluding bsCols logic)
+            const shouldInclude = isFieldInForm(
+              comboColumn.columnName,
+              comboColumn.dataType,
+              comboColumn.isIdentity,
+              comboColumn.hasDefault,
+              comboColumn.defaultValue
+            );
+            if (shouldInclude) {
+              formColumns.push(comboColumn);
+              Logger.log(`✅ Added ComboBox field to form: ${comboFieldName}`, {
+                column: comboColumn,
+                comboConfig: comboBoxConfig[comboFieldName],
+              });
+            }
+          }
         }
+      });
+    }
 
-        // Special handling for is_active field
-        if (isActiveField(columnName)) {
-          return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <FormControl fullWidth size="small" required={!isNullable}>
-                <InputLabel>
-                  {formatColumnName(columnName)} {!isNullable ? "*" : ""}
-                </InputLabel>
-                <Select
-                  value={val || "YES"}
-                  label={`${formatColumnName(columnName)} ${
-                    !isNullable ? "*" : ""
-                  }`}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, [columnName]: e.target.value }))
-                  }
-                >
-                  {getIsActiveOptions().map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-start",
-                          width: "100%",
-                        }}
-                      >
-                        <Chip
-                          label={option.label}
-                          size="small"
-                          color={option.value === "YES" ? "success" : "error"}
-                          variant="outlined"
-                        />
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  {description ||
-                    `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
-                </FormHelperText>
-              </FormControl>
-            </Grid>
-          );
-        }
+    const formFields = formColumns.map((c) => {
+      const { columnName, dataType, isNullable, description } = c;
+      const val = formData[columnName] ?? "";
+      let inputType = "text";
+      let multiline = false;
 
-        switch (dataType?.toLowerCase()) {
-          case "int":
-          case "smallint":
-          case "tinyint":
-          case "bigint":
-          case "decimal":
-          case "float":
-          case "real":
-          case "money":
-            inputType = "number";
-            break;
-          case "datetime":
-          case "datetime2":
-          case "date":
-            inputType = "datetime-local";
-            break;
-          case "text":
-          case "ntext":
-            multiline = true;
-            break;
-          case "bit":
-            inputType = "checkbox";
-            break;
-          default:
-            inputType = "text";
-        }
-
-        if (inputType === "checkbox") {
-          return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={Boolean(val)}
-                    onChange={(e) =>
-                      setFormData((p) => ({
-                        ...p,
-                        [columnName]: e.target.checked,
-                      }))
-                    }
-                  />
-                }
-                label={`${formatColumnName(columnName)} ${
-                  !isNullable ? "*" : ""
-                }`}
-              />
-            </Grid>
-          );
-        }
-
-        // For text/ntext fields, use full width
-        const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
-
+      // Check if this column has a combobox configuration
+      const comboConfig = comboBoxConfig[columnName];
+      if (comboConfig) {
+        Logger.log("🎨 Rendering ComboBox for column:", {
+          columnName,
+          value: val,
+          config: comboConfig,
+          formData: formData[columnName],
+          originalRowData: dialogMode === "edit" ? selectedRow : null,
+          dialogMode,
+        });
         return (
-          <Grid item {...gridSize} key={columnName}>
-            <TextField
-              fullWidth
-              size="small"
-              label={`${formatColumnName(columnName)} ${
-                !isNullable ? "*" : ""
-              }`}
-              type={inputType}
+          <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <ComboBoxField
+              columnName={columnName}
+              config={comboConfig}
               value={val}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+              onChange={(value) =>
+                setFormData((p) => ({ ...p, [columnName]: value }))
               }
               required={!isNullable}
-              multiline={multiline}
-              rows={multiline ? 3 : 1}
-              helperText={
-                description ||
-                `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
-              }
+              dataType={dataType}
+              isNullable={isNullable}
+              description={description}
             />
           </Grid>
         );
-      });
+      }
+
+      // Special handling for is_active field
+      if (isActiveField(columnName)) {
+        return (
+          <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <FormControl fullWidth size="small" required={!isNullable}>
+              <InputLabel>
+                {formatColumnName(columnName)} {!isNullable ? "*" : ""}
+              </InputLabel>
+              <Select
+                value={val || "YES"}
+                label={`${formatColumnName(columnName)} ${
+                  !isNullable ? "*" : ""
+                }`}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+                }
+              >
+                {getIsActiveOptions().map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        width: "100%",
+                      }}
+                    >
+                      <Chip
+                        label={option.label}
+                        size="small"
+                        color={option.value === "YES" ? "success" : "error"}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                {description ||
+                  `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+        );
+      }
+
+      switch (dataType?.toLowerCase()) {
+        case "int":
+        case "smallint":
+        case "tinyint":
+        case "bigint":
+        case "decimal":
+        case "float":
+        case "real":
+        case "money":
+          inputType = "number";
+          break;
+        case "datetime":
+        case "datetime2":
+        case "date":
+          inputType = "datetime-local";
+          break;
+        case "text":
+        case "ntext":
+          multiline = true;
+          break;
+        case "bit":
+          inputType = "checkbox";
+          break;
+        default:
+          inputType = "text";
+      }
+
+      if (inputType === "checkbox") {
+        return (
+          <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(val)}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      [columnName]: e.target.checked,
+                    }))
+                  }
+                />
+              }
+              label={`${formatColumnName(columnName)} ${
+                !isNullable ? "*" : ""
+              }`}
+            />
+          </Grid>
+        );
+      }
+
+      // For text/ntext fields, use full width
+      const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
+
+      return (
+        <Grid item {...gridSize} key={columnName}>
+          <TextField
+            fullWidth
+            size="small"
+            label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""}`}
+            type={inputType}
+            value={val}
+            onChange={(e) =>
+              setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+            }
+            required={!isNullable}
+            multiline={multiline}
+            rows={multiline ? 3 : 1}
+            helperText={
+              description ||
+              `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
+            }
+          />
+        </Grid>
+      );
+    });
 
     return (
       <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -3022,7 +3078,8 @@ const BSDataGrid = ({
                             c.columnName,
                             c.dataType,
                             c.isIdentity,
-                            c.hasDefault
+                            c.hasDefault,
+                            c.defaultValue
                           )
                         )
                         .map((c) => {
