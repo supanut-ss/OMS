@@ -677,7 +677,7 @@ const BSDataGrid = ({
   showToolbar = true,
   showAdd = true,
   height = 600,
-  autoLoad = true,
+  autoLoad = false,
 
   // New BS properties (ใหม่)
   bsLocale = "en",
@@ -1064,7 +1064,7 @@ const BSDataGrid = ({
     if (metadata && autoLoad) {
       loadData();
     }
-  }, [metadata, autoLoad, paginationModel, sortModel, filterModel]);
+  }, [metadata, autoLoad, paginationModel, sortModel, filterModel, loadData]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
@@ -1580,39 +1580,47 @@ const BSDataGrid = ({
     return column && !column.isNullable;
   }, []);
 
-  const isColumnHidden = useCallback((columnName, dataType) => {
-    // Hide GUID columns
-    if (dataType?.toLowerCase() === "uniqueidentifier") {
-      return true;
-    }
+  const isColumnHidden = useCallback(
+    (columnName, dataType) => {
+      // Hide GUID columns
+      if (dataType?.toLowerCase() === "uniqueidentifier") {
+        return true;
+      }
 
-    // Hide audit fields
-    const auditFields = [
-      "create_by",
-      "created_by",
-      "createby",
-      "create_date",
-      "created_date",
-      "createdate",
-      "created_at",
-      "update_by",
-      "updated_by",
-      "updateby",
-      "modified_by",
-      "update_date",
-      "updated_date",
-      "updatedate",
-      "updated_at",
-      "modified_date",
-      "rowversion",
-    ];
+      // Hide primary key columns
+      if (metadata?.primaryKeys?.includes(columnName)) {
+        return true;
+      }
 
-    if (auditFields.includes(columnName.toLowerCase())) {
-      return true;
-    }
+      // Hide audit fields
+      const auditFields = [
+        // "create_by",
+        // "created_by",
+        // "createby",
+        // "create_date",
+        // "created_date",
+        // "createdate",
+        // "created_at",
+        "update_by",
+        "updated_by",
+        "updateby",
+        "modified_by",
+        "update_date",
+        "updated_date",
+        "updatedate",
+        "updated_at",
+        "modified_date",
+        "rowversion",
+      ];
 
-    return false;
-  }, []);
+      if (auditFields.includes(columnName.toLowerCase())) {
+        return true;
+      }
+
+      return false;
+    },
+    [metadata?.primaryKeys]
+  );
 
   // Render form fields from metadata
   const renderFormFields = useCallback(() => {
