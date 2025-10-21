@@ -264,10 +264,11 @@ namespace ApiCore.Services.Implementation
                 ValidateSecurityConstraints(request.TableName, request.SchemaName ?? "dbo");
 
                 // Debug logging for Quick Filter
-                _logger.LogInformation("🔍 Processing DataGrid request: {TableName}, QuickFilter: {QuickFilter}, QuickFilterValues: {QuickFilterValues}",
+                _logger.LogInformation("🔍 Processing DataGrid request: {TableName}, Request.QuickFilter: {QuickFilter}, FilterModel.QuickFilterValues: {QuickFilterValues}, FilterModel.QuickFilter: {FilterModelQuickFilter}",
                     request.TableName,
                     request.QuickFilter,
-                    request.FilterModel?.QuickFilterValues);
+                    request.FilterModel?.QuickFilterValues,
+                    request.FilterModel?.QuickFilter);
 
                 var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
@@ -286,7 +287,7 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
 
                 // Build ORDER BY clause
-                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
+                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata, request.CustomOrderBy);
 
                 // Build final query
                 var query = $@"
@@ -896,6 +897,13 @@ namespace ApiCore.Services.Implementation
         {
             var conditions = new List<string>();
 
+            // Custom WHERE clause (from BSDataGrid ObjWh or ComboBox ObjWh)
+            if (!string.IsNullOrEmpty(request.CustomWhere))
+            {
+                conditions.Add($"({request.CustomWhere})");
+                _logger.LogInformation("🎯 Added CustomWhere condition: {CustomWhere}", request.CustomWhere);
+            }
+
             // Column filters
             foreach (var filter in request.FilterModel.Items)
             {
@@ -920,10 +928,18 @@ namespace ApiCore.Services.Implementation
                 conditions.Add(condition);
             }
 
-            // Quick filter - รองรับทั้ง QuickFilterValues (standard) และ QuickFilter (BSDataGrid)
-            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+            // Quick filter - รองรับทั้ง QuickFilterValues (standard), QuickFilter ใน FilterModel และ QuickFilter ใน Request
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilter)
+                ? request.FilterModel.QuickFilter
+                : !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
                 ? request.FilterModel.QuickFilterValues
                 : request.QuickFilter;
+
+            _logger.LogInformation("🔍 Quick Filter Debug: FilterModel.QuickFilter='{FilterModelQuickFilter}', FilterModel.QuickFilterValues='{QuickFilterValues}', Request.QuickFilter='{RequestQuickFilter}', Final='{FinalValue}'",
+                request.FilterModel.QuickFilter,
+                request.FilterModel.QuickFilterValues,
+                request.QuickFilter,
+                quickFilterValue);
 
             if (!string.IsNullOrEmpty(quickFilterValue))
             {
@@ -936,6 +952,8 @@ namespace ApiCore.Services.Implementation
                 if (quickFilterConditions.Any())
                 {
                     conditions.Add($"({string.Join(" OR ", quickFilterConditions)})");
+                    _logger.LogInformation("🔍 Quick Filter SQL: {QuickFilterSQL} with value '{QuickFilterValue}'",
+                        string.Join(" OR ", quickFilterConditions), quickFilterValue);
                 }
             }
 
@@ -964,31 +982,46 @@ namespace ApiCore.Services.Implementation
             }
 
             // Quick filter parameter - รองรับทั้ง QuickFilterValues และ QuickFilter
-            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilter)
+                ? request.FilterModel.QuickFilter
+                : !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
                 ? request.FilterModel.QuickFilterValues
                 : request.QuickFilter;
 
             if (!string.IsNullOrEmpty(quickFilterValue))
             {
                 command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{quickFilterValue}%"));
+                _logger.LogInformation("🔍 Quick Filter Parameter Added: @QuickFilter = '%{QuickFilterParam}'", $"%{quickFilterValue}%");
             }
         }
 
-        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata)
+        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata, string customOrderBy = null)
         {
-            if (sortModel == null || !sortModel.Any())
+            // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
+            if (!string.IsNullOrEmpty(customOrderBy))
             {
-                // Default sort by first primary key or first column
-                var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
-                return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
+                _logger.LogInformation("🎯 Using CustomOrderBy: {CustomOrderBy}", customOrderBy);
+                return $"ORDER BY {customOrderBy}";
             }
 
-            var orderItems = sortModel
-                .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
-                .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
+            // Priority 2: Sort model from DataGrid
+            if (sortModel != null && sortModel.Any())
+            {
+                var orderItems = sortModel
+                    .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
+                    .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
 
-            return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
+                if (orderItems.Any())
+                {
+                    return $"ORDER BY {string.Join(", ", orderItems)}";
+                }
+            }
+
+            // Priority 3: Default sort by first primary key or first column
+            var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
+            return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
         }
+
 
         private bool IsSearchableColumn(DynamicColumnInfo column)
         {

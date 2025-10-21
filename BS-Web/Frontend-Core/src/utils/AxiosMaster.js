@@ -115,7 +115,11 @@ AxiosMaster.interceptors.response.use(
         // Clear all tokens
         clearCorruptedTokens();
         // Redirect to login if needed
-        window.location.href = "/login";
+        if(Config.BASE_URL && Config.BASE_URL !== "/") {
+          window.location.href = Config.BASE_URL + "/login";
+        } else {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);

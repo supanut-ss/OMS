@@ -199,8 +199,14 @@ export const useDynamicCrud = (tableName) => {
         if (user) {
           try {
             const userObj = typeof user === "string" ? JSON.parse(user) : user;
-            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
-            Logger.log("🔐 User data for CREATE audit:", { userObj, userId });
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for CREATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
           } catch (e) {
             Logger.warn("Failed to parse user data for audit fields:", e);
           }
@@ -249,6 +255,14 @@ export const useDynamicCrud = (tableName) => {
       try {
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
+
+        Logger.log("🔍 UPDATE Schema Resolution Debug:", {
+          preObj,
+          tableName,
+          hasPreObj: !!preObj,
+          preObjType: typeof preObj,
+        });
+
         if (preObj) {
           // Use schema mapping from preObj
           schema = getSchemaFromPreObj(preObj);
@@ -257,6 +271,7 @@ export const useDynamicCrud = (tableName) => {
             preObj,
             schema,
             table,
+            schemaFromMapping: getSchemaFromPreObj(preObj),
           });
         } else {
           // Parse tableName for schema.table format
@@ -266,6 +281,8 @@ export const useDynamicCrud = (tableName) => {
           Logger.log("📊 Using parsed tableName for UPDATE:", {
             schema,
             table,
+            parsed,
+            originalTableName: tableName,
           });
         }
 
@@ -284,8 +301,14 @@ export const useDynamicCrud = (tableName) => {
         if (user) {
           try {
             const userObj = typeof user === "string" ? JSON.parse(user) : user;
-            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
-            Logger.log("🔐 User data for UPDATE audit:", { userObj, userId });
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for UPDATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
           } catch (e) {
             Logger.warn("Failed to parse user data for audit fields:", e);
           }
@@ -299,13 +322,26 @@ export const useDynamicCrud = (tableName) => {
           Logger.log("🔧 Using fallback userId for testing:", userId);
         }
 
-        const response = await AxiosMaster.post("/dynamic/update", {
+        const requestPayload = {
           tableName: table,
           schemaName: schema,
           data: recordData,
           whereConditions: conditions,
           userId: userId, // Add userId for audit fields
+        };
+
+        Logger.log("📡 Final UPDATE Request Payload:", {
+          ...requestPayload,
+          finalSchema: schema,
+          finalTable: table,
+          originalPreObj: preObj,
+          originalTableName: tableName,
         });
+
+        const response = await AxiosMaster.post(
+          "/dynamic/update",
+          requestPayload
+        );
 
         Logger.log("✅ Record updated via Gateway:", response.data);
         return response.data;
@@ -514,10 +550,50 @@ export const useDynamicCrud = (tableName) => {
           });
         }
 
+        // Get user ID from auth context for bulk update
+        let userId = null;
+        if (user) {
+          try {
+            const userObj = typeof user === "string" ? JSON.parse(user) : user;
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for BULK UPDATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
+          } catch (e) {
+            Logger.warn(
+              "Failed to parse user data for bulk update audit fields:",
+              e
+            );
+          }
+        }
+
+        // Fallback for testing
+        if (!userId) {
+          userId = `test_user_${Date.now()}`;
+          Logger.log(
+            "🔧 Using fallback userId for bulk update testing:",
+            userId
+          );
+        }
+
+        Logger.log("📡 BULK UPDATE Request:", {
+          tableName: table,
+          schemaName: schema,
+          updates: updates,
+          userId: userId,
+          originalTableName: tableName,
+          preObj: preObj,
+        });
+
         const response = await AxiosMaster.post("/dynamic/bulk-update", {
           tableName: table,
           schemaName: schema,
           updates,
+          userId: userId, // Add userId for audit fields
         });
 
         Logger.log("✅ Bulk update completed via Gateway:", response.data);
@@ -531,7 +607,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName]
+    [tableName, user]
   );
 
   const bulkDelete = useCallback(
