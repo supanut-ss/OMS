@@ -10,7 +10,7 @@ const MenuPage = () => {
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          User Group Management
+          Menu
         </Typography>
         <BSDataGrid
           bsLocale="th"
@@ -21,23 +21,38 @@ const MenuPage = () => {
           //   bsObjWh="status='active'"
           bsRowPerPage={20}
           bsShowDescColumn={false}
-          //   bsComboBox={[
-          //     {
-          //       Column: "status",
-          //       Display: "name",
-          //       Value: "id",
-          //       Default: "--- Select Status ---",
-          //       PreObj: "default",
-          //       Obj: "t_wms_status",
-          //       ObjWh: "active=1",
-          //       ObjBy: "name asc",
-          //       valueOptions: [
-          //         { value: "active", label: "Active" },
-          //         { value: "inactive", label: "Inactive" },
-          //         { value: "pending", label: "Pending" },
-          //       ],
-          //     },
-          //   ]}
+          bsComboBox={[
+            {
+              Column: "app_id",
+              Display: "application_name",
+              Value: "app_id",
+              Default: "--- Select Application ---",
+              PreObj: "sec",
+              Obj: "t_com_application",
+              ObjWh: "is_active='YES'",
+              ObjBy: "application_name asc",
+            },
+            {
+              Column: "platform",
+              Display: "display_member",
+              Value: "value_member",
+              Default: "--- Select Platform ---",
+              PreObj: "sec",
+              Obj: "t_com_combobox_item",
+              ObjWh: "group_name='platform' AND is_active='YES'",
+              ObjBy: "display_member asc",
+            },
+            {
+              Column: "menu_group",
+              Display: "menu_group",
+              Value: "menu_group",
+              Default: "--- Select Menu Group ---",
+              PreObj: "sec",
+              Obj: "t_com_menu",
+              ObjWh: "GROUP BY menu_group",
+              ObjBy: "menu_group asc",
+            },
+          ]}
           onCheckBoxSelected={(rows) => {
             console.log("Selected rows:", rows);
             setSelectedRows(rows);
