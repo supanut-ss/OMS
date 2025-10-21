@@ -10,12 +10,14 @@ import {
   DialogActions,
   TextField,
   MenuItem,
+  IconButton,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BsAutoComplete from "../../components/BSAutoComplete";
-import Logger from "../../utils/logger";
+import Logger, { log } from "../../utils/logger";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 const activeOptions = [
   { value: "YES", label: "YES" },
@@ -27,12 +29,12 @@ const initialForm = {
   user_group_id: "",
   first_name: "",
   last_name: "",
-  locale_id: "",
+  locale_id: "en",
   department: "",
   supervisor: "",
   email_address: "",
   domain: "",
-  is_active: "",
+  is_active: "YES",
   password: "",
 };
 
@@ -46,6 +48,7 @@ const UserPage = () => {
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleOpenAdd = () => {
     setForm(initialForm);
@@ -101,6 +104,7 @@ const UserPage = () => {
   };
 
   const handleGroupChange = (val) => {
+    log("handleGroupChange:", val);
     setSelectedGroup(val);
     setForm({ ...form, user_group_id: val });
   };
@@ -119,7 +123,7 @@ const UserPage = () => {
       return;
     }
     if (editMode) {
-      Logger.log("Edit:", form);
+      //Logger.log("Edit:", form);
       const result = await updateUser(form);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
@@ -134,7 +138,7 @@ const UserPage = () => {
       }
     } else {
       Logger.log("Add:", form);
-      form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
+      //form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
       const result = await registerUser(form);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
@@ -206,16 +210,59 @@ const UserPage = () => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 sx={{ flex: 1 }}
-                label="User ID *"
+                label="User ID"
                 name="user_id"
                 value={form.user_id}
                 onChange={handleChange}
                 required
                 disabled={editMode}
               />
+              <TextField
+                label="Password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                disabled={editMode}
+                type={showPassword ? "text" : "password"}
+                sx={{ flex: 1 }}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  ),
+                }}
+              />
+            </Box>
+            {/* Row 2 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                label="First Name"
+                name="first_name"
+                value={form.first_name}
+                onChange={handleChange}
+                required
+              />
+              <TextField
+                fullWidth
+                label="Last Name"
+                name="last_name"
+                value={form.last_name}
+                onChange={handleChange}
+                required
+              />
+            </Box>
+            {/* Row 3 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
-                  bsMode="single"
+                  bsMode="select"
                   bsTitle="Select Group *"
                   bsPreObj="sec.t_com_"
                   bsObj="user_group"
@@ -236,36 +283,14 @@ const UserPage = () => {
                   bsObjBy=""
                   bsObjWh="is_active='YES'"
                   cacheKey="group_name"
-                  bsLoadOnOpen={true}
-                  bsOnChange={(val) => handleChange("user_group_id", val)}
+                  //bsLoadOnOpen={true}
+                  bsOnChange={(val) => handleGroupChange(val)}
                   bsValue={selectedGroup}
                 />
               </Box>
-            </Box>
-            {/* Row 2 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                label="First Name *"
-                name="first_name"
-                value={form.first_name}
-                onChange={handleChange}
-                required
-              />
-              <TextField
-                fullWidth
-                label="Last Name *"
-                name="last_name"
-                value={form.last_name}
-                onChange={handleChange}
-                required
-              />
-            </Box>
-            {/* Row 3 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
-                  bsMode="single"
+                  bsMode="select"
                   bsTitle="Select Language *"
                   bsPreObj="sec.t_com_"
                   bsObj="combobox_item"
@@ -286,21 +311,21 @@ const UserPage = () => {
                   bsObjBy=""
                   bsObjWh="group_name='locale_id'"
                   cacheKey="locale_id"
-                  bsLoadOnOpen={true}
+                  //bsLoadOnOpen={frue}
                   bsOnChange={(val) => handleChange("locale_id", val)}
                   bsValue={form.locale_id}
                 />
               </Box>
+            </Box>
+            {/* Row 4 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
-                sx={{ flex: 1 }}
+                fullWidth
                 label="Department"
                 name="department"
                 value={form.department}
                 onChange={handleChange}
               />
-            </Box>
-            {/* Row 4 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Supervisor"
@@ -308,6 +333,9 @@ const UserPage = () => {
                 value={form.supervisor}
                 onChange={handleChange}
               />
+            </Box>
+            {/* Row 5 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Email Address"
@@ -318,9 +346,6 @@ const UserPage = () => {
                 error={!!emailError}
                 helperText={emailError}
               />
-            </Box>
-            {/* Row 5 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 label="Domain"
@@ -328,10 +353,12 @@ const UserPage = () => {
                 value={form.domain}
                 onChange={handleChange}
               />
+            </Box>
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 select
-                label="Is Active *"
+                label="Is Active"
                 name="is_active"
                 value={form.is_active}
                 onChange={handleChange}
@@ -347,10 +374,10 @@ const UserPage = () => {
           </Box>
         </DialogContent>
         <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSave} variant="contained" color="primary">
             {editMode ? "Save Changes" : "Add"}
           </Button>
-          <Button onClick={handleClose}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </>
