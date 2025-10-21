@@ -1158,42 +1158,50 @@ const BSDataGrid = ({
   }, []);
 
   // Helper: Check if field should be shown in form
-  const isFieldInForm = useCallback((columnName, dataType, isIdentity) => {
-    // Skip identity columns
-    if (isIdentity) return false;
+  const isFieldInForm = useCallback(
+    (columnName, dataType, isIdentity, hasDefault) => {
+      // Skip identity columns (auto increment)
+      if (isIdentity) return false;
 
-    // Skip GUID columns
-    if (dataType?.toLowerCase() === "uniqueidentifier") {
-      return false;
-    }
+      // Skip GUID columns (auto generate with NEWID())
+      if (dataType?.toLowerCase() === "uniqueidentifier") {
+        return false;
+      }
 
-    // Skip audit fields
-    const auditFields = [
-      "create_by",
-      "created_by",
-      "createby",
-      "create_date",
-      "created_date",
-      "createdate",
-      "created_at",
-      "update_by",
-      "updated_by",
-      "updateby",
-      "modified_by",
-      "update_date",
-      "updated_date",
-      "updatedate",
-      "updated_at",
-      "modified_date",
-      "rowversion",
-    ];
+      // Skip fields that have default values (will be auto-generated)
+      if (hasDefault && dialogMode === "add") {
+        return false;
+      }
 
-    if (auditFields.includes(columnName.toLowerCase())) {
-      return false;
-    }
+      // Skip audit fields
+      const auditFields = [
+        "create_by",
+        "created_by",
+        "createby",
+        "create_date",
+        "created_date",
+        "createdate",
+        "created_at",
+        "update_by",
+        "updated_by",
+        "updateby",
+        "modified_by",
+        "update_date",
+        "updated_date",
+        "updatedate",
+        "updated_at",
+        "modified_date",
+        "rowversion",
+      ];
 
-    return true;
-  }, []);
+      if (auditFields.includes(columnName.toLowerCase())) {
+        return false;
+      }
+
+      return true;
+    },
+    [dialogMode]
+  );
 
   // Helper: Check if field is is_active
   const isActiveField = useCallback((columnName) => {
@@ -1210,10 +1218,13 @@ const BSDataGrid = ({
         existing,
         existingKeys: existing ? Object.keys(existing) : [],
         hasMetadata: !!metadata?.columns,
+        dialogMode,
       });
 
       metadata.columns
-        .filter((c) => isFieldInForm(c.columnName, c.dataType, c.isIdentity))
+        .filter((c) =>
+          isFieldInForm(c.columnName, c.dataType, c.isIdentity, c.hasDefault)
+        )
         .forEach((c) => {
           if (existing && existing[c.columnName] !== undefined) {
             init[c.columnName] = existing[c.columnName];
@@ -1290,7 +1301,7 @@ const BSDataGrid = ({
       Logger.log("🔧 Final initialized form data:", init);
       return init;
     },
-    [metadata, isFieldInForm, isActiveField, comboBoxConfig]
+    [metadata, isFieldInForm, isActiveField, comboBoxConfig, dialogMode]
   );
 
   // Open Add dialog or delegate to external handler
@@ -1388,15 +1399,57 @@ const BSDataGrid = ({
   const handleSave = useCallback(async () => {
     try {
       setFormLoading(true);
+
       if (dialogMode === "add") {
-        await createRecord(formData, bsPreObj);
+        // For add mode, prepare form data with auto-generated values
+        const saveData = { ...formData };
+
+        // Add auto-generated values for fields not shown in form
+        if (metadata?.columns) {
+          metadata.columns.forEach((c) => {
+            const { columnName, dataType, isIdentity, hasDefault } = c;
+
+            // Skip if field is already in formData
+            if (saveData[columnName] !== undefined) return;
+
+            // Handle GUID fields - let SQL Server generate with NEWID()
+            if (dataType?.toLowerCase() === "uniqueidentifier") {
+              saveData[columnName] = "NEWID()"; // Special value to trigger server-side generation
+              Logger.log(`🔧 Adding GUID generation for ${columnName}:`, {
+                value: "NEWID()",
+                dataType,
+              });
+            }
+
+            // Handle fields with defaults - let SQL Server use default value
+            else if (hasDefault && !isIdentity) {
+              saveData[columnName] = "DEFAULT"; // Special value to trigger server-side default
+              Logger.log(`🔧 Adding default value for ${columnName}:`, {
+                value: "DEFAULT",
+                dataType,
+                hasDefault,
+              });
+            }
+
+            // Identity fields are handled automatically by SQL Server, no need to send
+          });
+        }
+
+        Logger.log("🔧 Saving with auto-generated values:", {
+          originalFormData: formData,
+          finalSaveData: saveData,
+        });
+
+        await createRecord(saveData, bsPreObj);
       } else {
+        // For edit mode, use formData as is
         const primaryKey = metadata?.primaryKeys?.[0] || "Id";
         const id =
           selectedRow?.[primaryKey] ?? selectedRow?.id ?? selectedRow?.Id;
         if (!id) throw new Error("No primary key for update");
         await updateRecord({ id, data: formData, preObj: bsPreObj });
       }
+
       setDialogOpen(false);
       setFormData({});
       setSelectedRow(null);
@@ -1505,7 +1558,12 @@ const BSDataGrid = ({
         if (dialogMode === "add" && isActiveField(c.columnName)) {
           return false;
         }
-        return isFieldInForm(c.columnName, c.dataType, c.isIdentity);
+        return isFieldInForm(
+          c.columnName,
+          c.dataType,
+          c.isIdentity,
+          c.hasDefault
+        );
       })
       .map((c) => {
         const { columnName, dataType, isNullable, description } = c;
@@ -2960,7 +3018,12 @@ const BSDataGrid = ({
                     <Grid container spacing={2}>
                       {metadata.columns
                         .filter((c) =>
-                          isFieldInForm(c.columnName, c.dataType, c.isIdentity)
+                          isFieldInForm(
+                            c.columnName,
+                            c.dataType,
+                            c.isIdentity,
+                            c.hasDefault
+                          )
                         )
                         .map((c) => {
                           const { columnName, dataType, isNullable } = c;
