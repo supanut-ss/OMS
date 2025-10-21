@@ -32,7 +32,6 @@ const SubPage = () => {
                 bsPreObj="ams"
                 bsObj="tbm_sub"
                 onCheckBoxSelected={(rows) => setSelectedRows(rows)}
-                height={500}
             />
         </Paper>
     );

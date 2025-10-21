@@ -29,7 +29,6 @@ const PartPage = () => {
                 bsPreObj="ams"
                 bsObj="tbm_part"
                 onCheckBoxSelected={(rows) => setSelectedRows(rows)}
-                height={500}
             />
         </Paper>
     );

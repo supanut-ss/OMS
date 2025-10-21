@@ -55,23 +55,7 @@ const TagPage = () => {
                     bsLocale="th"
                     bsPreObj="ams"
                     bsObj="tbm_tag"
-                // bsCols="user_id,first_name,last_name,locale_id,domain,is_active,create_by,create_date,update_by,update_date"
-                // bsObjBy="user_id asc"
-                // //   bsObjWh="status='active'"
-                // bsPinColsLeft="user_id,first_name,last_name"
-                // bsPinColsRight="actions"
-                // bsRowPerPage={20}
-                // bsBulkEdit={true}
-                // bsBulkAdd={true}
-                // bsShowDescColumn={false}
-                // onCheckBoxSelected={(rows) => {
-                //     console.log("Selected rows:", rows);
-                //     setSelectedRows(rows);
-                // }}
-                // onEdit={(row) => console.log("Edit:", row)}
-                // onDelete={(id) => console.log("Delete:", id)}
-                // onAdd={() => console.log("Add new record")}
-                // height={500}
+                    onCheckBoxSelected={(rows) => setSelectedRows(rows)}
                 />
             </Paper>
         </>

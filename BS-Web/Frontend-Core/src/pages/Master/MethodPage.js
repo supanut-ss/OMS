@@ -31,7 +31,6 @@ const MethodPage = () => {
                     bsPreObj="ams"
                     bsObj="tbm_method"
                     onCheckBoxSelected={(rows) => setSelectedRows(rows)}
-                    height={500}
                 />
             </Paper>
         </>
