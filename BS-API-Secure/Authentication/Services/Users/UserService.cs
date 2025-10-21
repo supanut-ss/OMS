@@ -108,8 +108,8 @@ namespace Authentication.Services.Users
                       ",@create_date) ";  
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userReq.UserId);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt("password"));
+                cmd.Parameters.AddWithValue("@user_id", userReq.UserId);
+                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
                 cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
                 cmd.Parameters.AddWithValue("@first_name", userReq.FirstName);
                 cmd.Parameters.AddWithValue("@last_name", userReq.LastName);
@@ -173,9 +173,9 @@ namespace Authentication.Services.Users
                           "update_by = @update_by, " +
                           "update_date = @update_date";
 
-                var includePassword = !string.IsNullOrEmpty(userReq.Password);
-                if (includePassword)
-                    sql += ", password = @password";
+                //var includePassword = !string.IsNullOrEmpty(userReq.Password);
+                //if (includePassword)
+                //    sql += ", password = @password";
 
                 sql += " WHERE user_id = @userId";
 
@@ -193,8 +193,8 @@ namespace Authentication.Services.Users
                 cmd.Parameters.AddWithValue("@update_by", userId);
                 cmd.Parameters.AddWithValue("@update_date", DateTime.Now);
 
-                if (includePassword)
-                    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
+                //if (includePassword)
+                //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
                 if (rowsAffected == 0)

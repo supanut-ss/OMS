@@ -42,7 +42,7 @@ const UserPage = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
-  const { register, update } = UserContext();
+  const { registerUser, updateUser } = UserContext();
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -63,26 +63,40 @@ const UserPage = () => {
 
   const handleClose = () => setOpen(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+  const handleChange = (eOrName, value) => {
+    let name, val;
+
+    // กรณีเป็น event จาก TextField
+    if (eOrName?.target) {
+      name = eOrName.target.name;
+      val = eOrName.target.value;
+    }
+    // กรณีมาจาก BsAutoComplete
+    else {
+      if (eOrName === "user_group_id") {
+        name = eOrName;
+        val = value?.user_group_id ?? null;
+        Logger.log("handleChange:", name, val);
+      } else if (eOrName === "locale_id") {
+        name = eOrName;
+        val = value?.value ?? null;
+        Logger.log("handleChange:", name, val);
+      }
+    }
+
+    setForm({ ...form, [name]: val });
 
     // Email validation
     if (name === "email_address") {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       setEmailError(
-        value && !emailPattern.test(value) ? "Invalid email address" : ""
+        val && !emailPattern.test(val) ? "Invalid email address" : ""
       );
     }
 
-    // Sync dropdown value for user_group_id
-    if (e.target.name === "user_group_id") {
-      setSelectedGroup(value);
-    }
-
     // // Sync dropdown value for user_group_id
-    // if (e.target.name === "locale_id") {
-    //   setselelo(value);
+    // if (name === "user_group_id") {
+    //   setSelectedGroup(val);
     // }
   };
 
@@ -106,11 +120,12 @@ const UserPage = () => {
     }
     if (editMode) {
       Logger.log("Edit:", form);
-      const result = await update(form);
+      const result = await updateUser(form);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
           timer: 2000,
         });
+        setOpen(false);
       } else {
         BSAlertSwal2.show(
           "error",
@@ -120,11 +135,12 @@ const UserPage = () => {
     } else {
       Logger.log("Add:", form);
       form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
-      const result = await register(form);
+      const result = await registerUser(form);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
           timer: 2000,
         });
+        setOpen(false);
       } else {
         BSAlertSwal2.show(
           "error",
@@ -132,7 +148,6 @@ const UserPage = () => {
         );
       }
     }
-    setOpen(false);
   };
 
   return (
@@ -190,7 +205,7 @@ const UserPage = () => {
             {/* Row 1 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
-                fullWidth
+                sx={{ flex: 1 }}
                 label="User ID *"
                 name="user_id"
                 value={form.user_id}
@@ -198,39 +213,34 @@ const UserPage = () => {
                 required
                 disabled={editMode}
               />
-              <BsAutoComplete
-                bsModel="select"
-                bsTitle="Select Group *"
-                bsPreObj="sec."
-                bsObj="t_com_user_group"
-                bsColumes={[
-                  { field: "name", display: true },
-                  { field: "user_group_id", display: false },
-                ]}
-                // bsFilters={[
-                //   { field: "group_name", op: "=", value: "locale_id" },
-                // ]}
-                //bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-                bsObjWh="is_active='YES'"
-                cacheKey="user_group_id"
-                loadOnOpen={true}
-                bsOnChange={(val) => handleChange("user_group_id", val)}
-              />
-              {/* <TextField
-                fullWidth
-                select
-                label="User Group *"
-                name="user_group_id"
-                value={form.user_group_id}
-                onChange={handleChange}
-                required
-              >
-                {userGroups.map((g) => (
-                  <MenuItem key={g.value} value={g.value}>
-                    {g.label}
-                  </MenuItem>
-                ))}
-              </TextField> */}
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="single"
+                  bsTitle="Select Group *"
+                  bsPreObj="sec.t_com_"
+                  bsObj="user_group"
+                  bsColumes={[
+                    {
+                      field: "user_group_id",
+                      display: false,
+                      filter: false,
+                      key: true,
+                    },
+                    {
+                      field: "name",
+                      display: true,
+                      filter: true,
+                      key: false,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh="is_active='YES'"
+                  cacheKey="group_name"
+                  bsLoadOnOpen={true}
+                  bsOnChange={(val) => handleChange("user_group_id", val)}
+                  bsValue={selectedGroup}
+                />
+              </Box>
             </Box>
             {/* Row 2 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -253,41 +263,36 @@ const UserPage = () => {
             </Box>
             {/* Row 3 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <BsAutoComplete
-                bsModel="select"
-                bsTitle="Select Language *"
-                bsPreObj="sec."
-                bsObj="t_com_combobox_item"
-                bsColumes={[
-                  { field: "display_member", display: true },
-                  { field: "group_name", display: false },
-                ]}
-                bsFilters={[
-                  { field: "group_name", op: "=", value: "locale_id" },
-                ]}
-                //bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-                bsObjWh="group_name='locale_id'"
-                cacheKey="locale_id"
-                loadOnOpen={true}
-                bsOnChange={(val) => handleChange("locale_id", val)}
-              />
-              {/* <TextField
-                fullWidth
-                select
-                label="Locale *"
-                name="locale_id"
-                value={form.locale_id}
-                onChange={handleChange}
-                required
-              >
-                {locales.map((l) => (
-                  <MenuItem key={l.value} value={l.value}>
-                    {l.label}
-                  </MenuItem>
-                ))}
-              </TextField> */}
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="single"
+                  bsTitle="Select Language *"
+                  bsPreObj="sec.t_com_"
+                  bsObj="combobox_item"
+                  bsColumes={[
+                    {
+                      field: "display_member",
+                      display: true,
+                      filter: false,
+                      key: true,
+                    },
+                    {
+                      field: "group_name",
+                      display: false,
+                      filter: false,
+                      key: false,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh="group_name='locale_id'"
+                  cacheKey="locale_id"
+                  bsLoadOnOpen={true}
+                  bsOnChange={(val) => handleChange("locale_id", val)}
+                  bsValue={form.locale_id}
+                />
+              </Box>
               <TextField
-                fullWidth
+                sx={{ flex: 1 }}
                 label="Department"
                 name="department"
                 value={form.department}
