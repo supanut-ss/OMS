@@ -677,7 +677,7 @@ const BSDataGrid = ({
   showToolbar = true,
   showAdd = true,
   height = 600,
-  autoLoad = false,
+  autoLoad = true,
 
   // New BS properties (ใหม่)
   bsLocale = "en",
