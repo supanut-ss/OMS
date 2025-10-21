@@ -677,7 +677,7 @@ const BSDataGrid = ({
   showToolbar = true,
   showAdd = true,
   height = 600,
-  autoLoad = true,
+  autoLoad = false,
 
   // New BS properties (ใหม่)
   bsLocale = "en",
@@ -1064,7 +1064,7 @@ const BSDataGrid = ({
     if (metadata && autoLoad) {
       loadData();
     }
-  }, [metadata, autoLoad, paginationModel, sortModel, filterModel]);
+  }, [metadata, autoLoad, paginationModel, sortModel, filterModel, loadData]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
