@@ -676,7 +676,7 @@ const BSDataGrid = ({
   readOnly = false,
   showToolbar = true,
   showAdd = true,
-  height = 600,
+  height = "auto",
   autoLoad = true,
 
   // New BS properties (ใหม่)
@@ -2757,7 +2757,14 @@ const BSDataGrid = ({
   });
 
   return (
-    <Paper sx={{ height, width: "100%" }}>
+    <Paper
+      sx={{
+        height: height === "auto" ? "100%" : height,
+        width: "100%",
+        display: height === "auto" ? "flex" : "block",
+        flexDirection: height === "auto" ? "column" : "initial",
+      }}
+    >
       {/* Error Alert */}
       {error && (
         <Alert
@@ -2879,198 +2886,215 @@ const BSDataGrid = ({
           }
 
           return (
-            <DataGridPro
-              rows={rows.filter(
-                (row) =>
-                  row && typeof row === "object" && Object.keys(row).length > 0
-              )}
-              columns={(() => {
-                // Final validation and cleaning of columns before passing to MUI
-                const safeColumns = Array.isArray(columns) ? columns : [];
-                const validColumns = safeColumns.filter(
-                  (col) =>
-                    col &&
-                    typeof col === "object" &&
-                    typeof col.field === "string" &&
-                    col.field.length > 0 &&
-                    typeof col.headerName === "string"
-                );
-
-                // Return empty array if no valid columns to prevent MUI errors
-                return validColumns.length > 0 ? validColumns : [];
-              })()}
-              rowCount={rowCount}
-              loading={
-                loading ||
-                metadataLoading ||
-                !Array.isArray(columns) ||
-                columns.length === 0
-              }
-              // Ensure we don't render until we have valid data structure
-              // Include rowCount and content hash in key to force re-render when data changes
-              key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length}-${
-                JSON.stringify(rows.slice(0, 1))?.length || 0
-              }-${Array.isArray(columns) ? columns.length : 0}`}
-              // Editing
-              editMode="row"
-              processRowUpdate={processBulkRowUpdate}
-              onRowEditStart={handleRowEditStart}
-              onRowEditStop={handleRowEditStop}
-              // Pagination
-              pagination={true}
-              paginationMode="server"
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              pageSizeOptions={[10, 25, 50, 100]}
-              // Sorting
-              sortingMode="server"
-              sortModel={sortModel}
-              onSortModelChange={setSortModel}
-              // Filtering
-              filterMode={bsFilterMode}
-              filterModel={filterModel}
-              onFilterModelChange={handleFilterModelChange}
-              // Quick Filter Settings
-              filterDebounceMs={500}
-              // Header Filters (Pro feature)
-              headerFilters={headerFiltersEnabled}
-              headerFilterHeight={52}
-              // Row Selection (checkbox selection when enabled)
-              checkboxSelection={
-                bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected
-              }
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={handleRowSelectionChange}
-              disableRowSelectionOnClick={
-                !bsBulkEdit && !bsBulkAdd && !onCheckBoxSelected
-              }
-              // Column Pinning (Pro feature)
-              pinnedColumns={pinnedColumns}
-              onPinnedColumnsChange={setPinnedColumns}
-              // UI Settings
-              getRowId={(row) => {
-                // First try to find primary key from metadata
-                const primaryKey = metadata?.primaryKeys?.[0];
-                if (primaryKey && row[primaryKey] != null) {
-                  return String(row[primaryKey]);
-                }
-
-                // Fallback to common ID fields
-                const idFields = ["id", "Id", "ID", "_id"];
-                for (const field of idFields) {
-                  if (row[field] != null) {
-                    return String(row[field]);
-                  }
-                }
-
-                // Last resort: generate a stable ID based on row content hash
-                const rowString = JSON.stringify(row);
-                const hash = rowString.split("").reduce((a, b) => {
-                  a = (a << 5) - a + b.charCodeAt(0);
-                  return a & a;
-                }, 0);
-                return `generated-${Math.abs(hash)}`;
-              }}
-              // Localization
-              localeText={getLocalization()}
-              // Row styling for unsaved changes
-              getRowClassName={(params) => {
-                const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-                const rowId =
-                  params.row[primaryKey] || params.row.id || params.row.Id;
-                return unsavedChangesRef.current[rowId]
-                  ? "unsaved-changes"
-                  : "";
-              }}
-              // Custom Toolbar (use slots + slotProps for better compatibility)
-              slots={
-                showToolbar && !bulkEditMode
-                  ? { toolbar: DynamicGridToolbar }
-                  : undefined
-              }
-              slotProps={
-                showToolbar && !bulkEditMode
-                  ? {
-                      toolbar: {
-                        onAdd: handleAddClick,
-                        showAdd,
-                        headerFiltersEnabled,
-                        onToggleHeaderFilters: handleToggleHeaderFilters,
-                        bsBulkEdit,
-                        bsBulkAdd,
-                        selectedRowCount: rowSelectionModel.length,
-                        onBulkEdit: handleBulkEdit,
-                        onBulkDelete: handleBulkDelete,
-                        onBulkAdd: handleBulkAdd,
-                        showBulkDelete: bsBulkDelete,
-                      },
-                      // Header filter cell props to show inline clear button
-                      headerFilterCell: {
-                        showClearIcon: true,
-                      },
-                    }
-                  : headerFiltersEnabled
-                  ? {
-                      // Header filter cell props when toolbar is disabled but header filters are enabled
-                      headerFilterCell: {
-                        showClearIcon: true,
-                      },
-                    }
-                  : undefined
-              }
-              // Styling with required field indicator
+            <Box
               sx={{
-                height: height - (showToolbar && !bulkEditMode ? 60 : 0), // Account for toolbar height
-                border: 0,
-                [`& .${gridClasses.cell}`]: {
-                  borderBottom: "1px solid #f0f0f0",
-                  fontSize: "0.875rem",
-                },
-                [`& .${gridClasses.columnHeaders}`]: {
-                  backgroundColor: "#f5f5f5",
-                  borderBottom: "2px solid #e0e0e0",
-                  fontSize: "0.875rem",
-                },
-                // Force header text bold
-                "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                  {
-                    fontWeight: "bold",
-                  },
-                // Required field styling
-                "& .required-field .MuiDataGrid-columnHeaderTitle": {
-                  color: "error.main",
-                  fontWeight: "bold",
-                },
-                [`& .${gridClasses.row}`]: {
-                  "&:hover": {
-                    backgroundColor: "#f9f9f9",
-                  },
-                  // Highlight rows with unsaved changes
-                  "&.unsaved-changes": {
-                    backgroundColor: "#fff3cd",
-                    "&:hover": {
-                      backgroundColor: "#ffeaa7",
-                    },
-                  },
-                },
-                // Header filter styling
-                [`& .MuiDataGrid-headerFilterRow`]: {
-                  backgroundColor: "#f9f9f9",
-                  borderBottom: "1px solid #e0e0e0",
-                  "& .MuiInputBase-root": {
+                flex: height === "auto" ? 1 : "none",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <DataGridPro
+                rows={rows.filter(
+                  (row) =>
+                    row &&
+                    typeof row === "object" &&
+                    Object.keys(row).length > 0
+                )}
+                columns={(() => {
+                  // Final validation and cleaning of columns before passing to MUI
+                  const safeColumns = Array.isArray(columns) ? columns : [];
+                  const validColumns = safeColumns.filter(
+                    (col) =>
+                      col &&
+                      typeof col === "object" &&
+                      typeof col.field === "string" &&
+                      col.field.length > 0 &&
+                      typeof col.headerName === "string"
+                  );
+
+                  // Return empty array if no valid columns to prevent MUI errors
+                  return validColumns.length > 0 ? validColumns : [];
+                })()}
+                rowCount={rowCount}
+                loading={
+                  loading ||
+                  metadataLoading ||
+                  !Array.isArray(columns) ||
+                  columns.length === 0
+                }
+                // Ensure we don't render until we have valid data structure
+                // Include rowCount and content hash in key to force re-render when data changes
+                key={`datagrid-${effectiveTableName}-${rowCount}-${
+                  rows.length
+                }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
+                  Array.isArray(columns) ? columns.length : 0
+                }`}
+                // Editing
+                editMode="row"
+                processRowUpdate={processBulkRowUpdate}
+                onRowEditStart={handleRowEditStart}
+                onRowEditStop={handleRowEditStop}
+                // Pagination
+                pagination={true}
+                paginationMode="server"
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
+                pageSizeOptions={[10, 25, 50, 100]}
+                // Sorting
+                sortingMode="server"
+                sortModel={sortModel}
+                onSortModelChange={setSortModel}
+                // Filtering
+                filterMode={bsFilterMode}
+                filterModel={filterModel}
+                onFilterModelChange={handleFilterModelChange}
+                // Quick Filter Settings
+                filterDebounceMs={500}
+                // Header Filters (Pro feature)
+                headerFilters={headerFiltersEnabled}
+                headerFilterHeight={52}
+                // Row Selection (checkbox selection when enabled)
+                checkboxSelection={
+                  bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected
+                }
+                rowSelectionModel={rowSelectionModel}
+                onRowSelectionModelChange={handleRowSelectionChange}
+                disableRowSelectionOnClick={
+                  !bsBulkEdit && !bsBulkAdd && !onCheckBoxSelected
+                }
+                // Column Pinning (Pro feature)
+                pinnedColumns={pinnedColumns}
+                onPinnedColumnsChange={setPinnedColumns}
+                // UI Settings
+                getRowId={(row) => {
+                  // First try to find primary key from metadata
+                  const primaryKey = metadata?.primaryKeys?.[0];
+                  if (primaryKey && row[primaryKey] != null) {
+                    return String(row[primaryKey]);
+                  }
+
+                  // Fallback to common ID fields
+                  const idFields = ["id", "Id", "ID", "_id"];
+                  for (const field of idFields) {
+                    if (row[field] != null) {
+                      return String(row[field]);
+                    }
+                  }
+
+                  // Last resort: generate a stable ID based on row content hash
+                  const rowString = JSON.stringify(row);
+                  const hash = rowString.split("").reduce((a, b) => {
+                    a = (a << 5) - a + b.charCodeAt(0);
+                    return a & a;
+                  }, 0);
+                  return `generated-${Math.abs(hash)}`;
+                }}
+                // Localization
+                localeText={getLocalization()}
+                // Row styling for unsaved changes
+                getRowClassName={(params) => {
+                  const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+                  const rowId =
+                    params.row[primaryKey] || params.row.id || params.row.Id;
+                  return unsavedChangesRef.current[rowId]
+                    ? "unsaved-changes"
+                    : "";
+                }}
+                // Custom Toolbar (use slots + slotProps for better compatibility)
+                slots={
+                  showToolbar && !bulkEditMode
+                    ? { toolbar: DynamicGridToolbar }
+                    : undefined
+                }
+                slotProps={
+                  showToolbar && !bulkEditMode
+                    ? {
+                        toolbar: {
+                          onAdd: handleAddClick,
+                          showAdd,
+                          headerFiltersEnabled,
+                          onToggleHeaderFilters: handleToggleHeaderFilters,
+                          bsBulkEdit,
+                          bsBulkAdd,
+                          selectedRowCount: rowSelectionModel.length,
+                          onBulkEdit: handleBulkEdit,
+                          onBulkDelete: handleBulkDelete,
+                          onBulkAdd: handleBulkAdd,
+                          showBulkDelete: bsBulkDelete,
+                        },
+                        // Header filter cell props to show inline clear button
+                        headerFilterCell: {
+                          showClearIcon: true,
+                        },
+                      }
+                    : headerFiltersEnabled
+                    ? {
+                        // Header filter cell props when toolbar is disabled but header filters are enabled
+                        headerFilterCell: {
+                          showClearIcon: true,
+                        },
+                      }
+                    : undefined
+                }
+                // Styling with required field indicator
+                sx={{
+                  height:
+                    height === "auto"
+                      ? "100%" // Use full height of flex container
+                      : height - (showToolbar && !bulkEditMode ? 60 : 0), // Fixed height: account for toolbar height
+                  flex: height === "auto" ? 1 : "none", // Flex grow when auto height
+                  minHeight: height === "auto" ? 300 : undefined, // Minimum height for auto mode
+                  border: 0,
+                  [`& .${gridClasses.cell}`]: {
+                    borderBottom: "1px solid #f0f0f0",
                     fontSize: "0.875rem",
                   },
-                  "& .MuiInputBase-input": {
-                    padding: "8px 12px",
+                  [`& .${gridClasses.columnHeaders}`]: {
+                    backgroundColor: "#f5f5f5",
+                    borderBottom: "2px solid #e0e0e0",
+                    fontSize: "0.875rem",
                   },
-                },
-                // Header filter cells
-                "& .MuiDataGrid-headerFilterCell": {
-                  padding: "4px",
-                },
-              }}
-              {...props}
-            />
+                  // Force header text bold
+                  "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
+                    {
+                      fontWeight: "bold",
+                    },
+                  // Required field styling
+                  "& .required-field .MuiDataGrid-columnHeaderTitle": {
+                    color: "error.main",
+                    fontWeight: "bold",
+                  },
+                  [`& .${gridClasses.row}`]: {
+                    "&:hover": {
+                      backgroundColor: "#f9f9f9",
+                    },
+                    // Highlight rows with unsaved changes
+                    "&.unsaved-changes": {
+                      backgroundColor: "#fff3cd",
+                      "&:hover": {
+                        backgroundColor: "#ffeaa7",
+                      },
+                    },
+                  },
+                  // Header filter styling
+                  [`& .MuiDataGrid-headerFilterRow`]: {
+                    backgroundColor: "#f9f9f9",
+                    borderBottom: "1px solid #e0e0e0",
+                    "& .MuiInputBase-root": {
+                      fontSize: "0.875rem",
+                    },
+                    "& .MuiInputBase-input": {
+                      padding: "8px 12px",
+                    },
+                  },
+                  // Header filter cells
+                  "& .MuiDataGrid-headerFilterCell": {
+                    padding: "4px",
+                  },
+                }}
+                {...props}
+              />
+            </Box>
           );
         } catch (error) {
           Logger.error("❌ DataGridPro render error:", error);
