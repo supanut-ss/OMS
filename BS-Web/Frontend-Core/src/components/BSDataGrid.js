@@ -1031,7 +1031,7 @@ const BSDataGrid = ({
     if (metadata && autoLoad) {
       loadData();
     }
-  }, [metadata, autoLoad, paginationModel, sortModel, filterModel, loadData]);
+  }, [metadata, autoLoad, paginationModel, sortModel, filterModel]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
