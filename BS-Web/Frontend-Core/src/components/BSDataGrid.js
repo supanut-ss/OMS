@@ -1179,14 +1179,33 @@ const BSDataGrid = ({
         return value ? "Yes" : "No";
       case "datetime":
       case "datetime2":
-        return new Date(value).toLocaleString();
+        return new Date(value).toLocaleString("th-TH", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false, // ถ้าอยากได้แบบ 24 ชั่วโมง
+        });
       case "date":
-        return new Date(value).toLocaleDateString();
+        return new Date(value).toLocaleDateString("th-TH", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
       case "time":
-        return new Date(`1970-01-01T${value}`).toLocaleTimeString();
+        return new Date(`1970-01-01T${value}`).toLocaleTimeString("th-TH", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        });
       case "money":
       case "decimal":
-        return `${Number(value).toLocaleString()}`;
+        return Number(value).toLocaleString("th-TH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
       default:
         return String(value);
     }
