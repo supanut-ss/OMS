@@ -689,7 +689,7 @@ const BSDataGrid = ({
   bsObjWh,
   bsBulkEdit = false,
   bsBulkAdd = false,
-  bsBulkDelete = true,
+  bsBulkDelete = false,
   bsShowDescColumn = true,
   bsPinColsLeft,
   bsPinColsRight,
