@@ -1792,8 +1792,8 @@ const BSDataGrid = ({
             multiline={multiline}
             rows={multiline ? 3 : 1}
             helperText={
-              description ||
-              `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
+              description
+              // || `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
             }
           />
         </Grid>
