@@ -700,6 +700,15 @@ const BSDataGrid = ({
 
   ...props
 }) => {
+  // Debug: Log received props
+  Logger.log("🎯 BSDataGrid Props:", {
+    bsPreObj,
+    bsObj,
+    tableName,
+    bsPreObjType: typeof bsPreObj,
+    bsPreObjValue: bsPreObj,
+  });
+
   // Determine effective table name (bsObj takes priority over tableName)
   const effectiveTableName = bsObj || tableName;
 
@@ -2424,7 +2433,15 @@ const BSDataGrid = ({
         const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
         const rowId = newRow[primaryKey] || newRow.id || newRow.Id;
 
-        Logger.log("📝 Normal mode update:", { primaryKey, rowId, newRow });
+        Logger.log("📝 Normal mode update:", {
+          primaryKey,
+          rowId,
+          newRow,
+          bsPreObj,
+          effectiveTableName,
+          bsPreObjType: typeof bsPreObj,
+          hasBsPreObj: !!bsPreObj,
+        });
 
         // Remove invalid id fields from data before sending to backend
         const cleanData = { ...newRow };
@@ -2444,6 +2461,7 @@ const BSDataGrid = ({
           id: rowId,
           data: cleanData,
           whereConditions: { [primaryKey]: rowId },
+          preObj: bsPreObj, // Pass preObj for correct schema mapping
         })
           .then((result) => {
             // Refresh data after successful update
@@ -2482,7 +2500,14 @@ const BSDataGrid = ({
       // Return newRow to update the grid display but don't save to backend
       return newRow;
     },
-    [bulkEditMode, metadata, updateRecord, loadData]
+    [
+      bulkEditMode,
+      metadata,
+      updateRecord,
+      loadData,
+      bsPreObj,
+      effectiveTableName,
+    ]
   );
 
   const handleBulkSaveChanges = useCallback(async () => {
@@ -2515,12 +2540,15 @@ const BSDataGrid = ({
           id,
           cleanData,
           whereConditions: { [primaryKey]: id },
+          bsPreObj,
+          preObjPassed: !!bsPreObj,
         });
 
         await updateRecord({
           id,
           data: cleanData,
           whereConditions: { [primaryKey]: id },
+          preObj: bsPreObj,
         });
       }
 
@@ -2543,7 +2571,7 @@ const BSDataGrid = ({
       setFormLoading(false);
       setLoading(false); // Clear loading state
     }
-  }, [metadata, updateRecord, loadData]);
+  }, [metadata, updateRecord, loadData, bsPreObj]);
 
   const handleBulkDiscardChanges = useCallback(() => {
     setLoading(true); // Set loading state
