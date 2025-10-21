@@ -69,6 +69,7 @@ const BulkSplitButton = ({
   onBulkEdit,
   onBulkDelete,
   bsBulkEdit = false,
+  showBulkDelete = true,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -87,7 +88,7 @@ const BulkSplitButton = ({
       icon: <Delete />,
       action: onBulkDelete,
       color: "error",
-      show: true,
+      show: showBulkDelete,
     },
   ].filter((option) => option.show);
 
@@ -335,6 +336,7 @@ const DynamicGridToolbar = ({
   onBulkEdit,
   onBulkDelete,
   onBulkAdd,
+  showBulkDelete = true,
 }) => {
   Logger.log("🔧 DynamicGridToolbar rendering:", {
     onAdd: typeof onAdd,
@@ -405,6 +407,7 @@ const DynamicGridToolbar = ({
           onBulkEdit={onBulkEdit}
           onBulkDelete={onBulkDelete}
           bsBulkEdit={bsBulkEdit}
+          showBulkDelete={showBulkDelete}
         />
       )}
 
@@ -686,6 +689,7 @@ const BSDataGrid = ({
   bsObjWh,
   bsBulkEdit = false,
   bsBulkAdd = false,
+  bsBulkDelete = true,
   bsShowDescColumn = true,
   bsPinColsLeft,
   bsPinColsRight,
@@ -1013,6 +1017,12 @@ const BSDataGrid = ({
           forceRefresh,
           timestamp: new Date().toISOString(),
           sampleData: processedRows.slice(0, 2), // Show first 2 rows for debugging
+          // Pagination debug info
+          currentPage: paginationModel.page,
+          pageSize: paginationModel.pageSize,
+          shouldShowPagination:
+            (result.rowCount || 0) > paginationModel.pageSize,
+          paginationModel,
         });
       } catch (err) {
         Logger.error("❌ Failed to load BS dynamic data:", err);
@@ -1023,7 +1033,7 @@ const BSDataGrid = ({
         setLoading(false);
       }
     },
-    [effectiveTableName, metadata, buildRequest, getTableData]
+    [effectiveTableName, metadata, buildRequest, getTableData, paginationModel]
   );
 
   // Auto-reload data when dependencies change
@@ -1031,7 +1041,7 @@ const BSDataGrid = ({
     if (metadata && autoLoad) {
       loadData();
     }
-  }, [metadata, autoLoad, paginationModel, sortModel, filterModel, loadData]);
+  }, [metadata, autoLoad, paginationModel, sortModel, filterModel]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
@@ -1158,42 +1168,91 @@ const BSDataGrid = ({
   }, []);
 
   // Helper: Check if field should be shown in form
-  const isFieldInForm = useCallback((columnName, dataType, isIdentity) => {
-    // Skip identity columns
-    if (isIdentity) return false;
+  const isFieldInForm = useCallback(
+    (columnName, dataType, isIdentity, hasDefault, defaultValue) => {
+      // Skip identity columns (auto increment)
+      if (isIdentity) {
+        return false;
+      }
 
-    // Skip GUID columns
-    if (dataType?.toLowerCase() === "uniqueidentifier") {
-      return false;
-    }
+      // Skip GUID columns (auto generate with NEWID())
+      if (dataType?.toLowerCase() === "uniqueidentifier") {
+        return false;
+      }
 
-    // Skip audit fields
-    const auditFields = [
-      "create_by",
-      "created_by",
-      "createby",
-      "create_date",
-      "created_date",
-      "createdate",
-      "created_at",
-      "update_by",
-      "updated_by",
-      "updateby",
-      "modified_by",
-      "update_date",
-      "updated_date",
-      "updatedate",
-      "updated_at",
-      "modified_date",
-      "rowversion",
-    ];
+      // Skip fields that have default values (will be auto-generated) - check both hasDefault and defaultValue
+      if ((hasDefault || !!defaultValue) && dialogMode === "add") {
+        return false;
+      }
 
-    if (auditFields.includes(columnName.toLowerCase())) {
-      return false;
-    }
+      // Additional check: Skip primary key fields that use sequences (like SQL Server NEXT VALUE FOR)
+      // This is a fallback for when metadata doesn't properly indicate hasDefault or isIdentity
+      if (dialogMode === "add") {
+        // Check if this field is in the primaryKeys array from metadata
+        const isPrimaryKey = metadata?.primaryKeys?.includes(columnName);
 
-    return true;
-  }, []);
+        if (isPrimaryKey) {
+          Logger.log(
+            `❌ Skipping ${columnName} - is primary key from metadata`
+          );
+          return false;
+        }
+
+        // Fallback: Check if this is likely a sequence-generated primary key by naming pattern
+        // const isSequencePrimaryKey =
+        //   columnName.toLowerCase().endsWith("_id") &&
+        //   dataType?.toLowerCase() === "int" &&
+        //   (columnName.toLowerCase().includes("group") ||
+        //     columnName.toLowerCase().includes("user") ||
+        //     columnName.toLowerCase().includes("app"));
+
+        // if (isSequencePrimaryKey) {
+        //   Logger.log(
+        //     `❌ Skipping ${columnName} - detected as sequence-generated primary key by pattern`
+        //   );
+        //   return false;
+        // }
+      } else if (dialogMode === "edit") {
+        // Check if this field is in the primaryKeys array from metadata
+        const isPrimaryKey = metadata?.primaryKeys?.includes(columnName);
+
+        if (isPrimaryKey) {
+          Logger.log(
+            `❌ Skipping ${columnName} - is primary key from metadata`
+          );
+          return false;
+        }
+      }
+
+      // Skip audit fields
+      const auditFields = [
+        "create_by",
+        "created_by",
+        "createby",
+        "create_date",
+        "created_date",
+        "createdate",
+        "created_at",
+        "update_by",
+        "updated_by",
+        "updateby",
+        "modified_by",
+        "update_date",
+        "updated_date",
+        "updatedate",
+        "updated_at",
+        "modified_date",
+        "rowversion",
+      ];
+
+      if (auditFields.includes(columnName.toLowerCase())) {
+        return false;
+      }
+
+      return true;
+    },
+    [dialogMode, metadata?.primaryKeys]
+  );
 
   // Helper: Check if field is is_active
   const isActiveField = useCallback((columnName) => {
@@ -1210,10 +1269,19 @@ const BSDataGrid = ({
         existing,
         existingKeys: existing ? Object.keys(existing) : [],
         hasMetadata: !!metadata?.columns,
+        dialogMode,
       });
 
       metadata.columns
-        .filter((c) => isFieldInForm(c.columnName, c.dataType, c.isIdentity))
+        .filter((c) =>
+          isFieldInForm(
+            c.columnName,
+            c.dataType,
+            c.isIdentity,
+            c.hasDefault,
+            c.defaultValue
+          )
+        )
         .forEach((c) => {
           if (existing && existing[c.columnName] !== undefined) {
             init[c.columnName] = existing[c.columnName];
@@ -1290,7 +1358,7 @@ const BSDataGrid = ({
       Logger.log("🔧 Final initialized form data:", init);
       return init;
     },
-    [metadata, isFieldInForm, isActiveField, comboBoxConfig]
+    [metadata, isFieldInForm, isActiveField, comboBoxConfig, dialogMode]
   );
 
   // Open Add dialog or delegate to external handler
@@ -1321,20 +1389,6 @@ const BSDataGrid = ({
         onEdit(row);
         return;
       }
-
-      Logger.log("🎯 Edit clicked - row data:", {
-        row,
-        rowKeys: Object.keys(row || {}),
-        app_id: row?.app_id,
-        appIdType: typeof row?.app_id,
-        allRowData: row,
-        missingFields: ["user_group_id", "app_id"].filter(
-          (field) => row?.[field] === undefined
-        ),
-        presentFields: Object.keys(row || {}).filter(
-          (key) => row[key] !== undefined
-        ),
-      });
 
       setDialogMode("edit");
       setSelectedRow(row);
@@ -1388,15 +1442,57 @@ const BSDataGrid = ({
   const handleSave = useCallback(async () => {
     try {
       setFormLoading(true);
+
       if (dialogMode === "add") {
-        await createRecord(formData, bsPreObj);
+        // For add mode, prepare form data with auto-generated values
+        const saveData = { ...formData };
+
+        // Add auto-generated values for fields not shown in form
+        if (metadata?.columns) {
+          metadata.columns.forEach((c) => {
+            const { columnName, dataType, isIdentity, hasDefault } = c;
+
+            // Skip if field is already in formData
+            if (saveData[columnName] !== undefined) return;
+
+            // Handle GUID fields - let SQL Server generate with NEWID()
+            if (dataType?.toLowerCase() === "uniqueidentifier") {
+              saveData[columnName] = "NEWID()"; // Special value to trigger server-side generation
+              Logger.log(`🔧 Adding GUID generation for ${columnName}:`, {
+                value: "NEWID()",
+                dataType,
+              });
+            }
+
+            // Handle fields with defaults - let SQL Server use default value
+            else if (hasDefault && !isIdentity) {
+              saveData[columnName] = "DEFAULT"; // Special value to trigger server-side default
+              Logger.log(`🔧 Adding default value for ${columnName}:`, {
+                value: "DEFAULT",
+                dataType,
+                hasDefault,
+              });
+            }
+
+            // Identity fields are handled automatically by SQL Server, no need to send
+          });
+        }
+
+        Logger.log("🔧 Saving with auto-generated values:", {
+          originalFormData: formData,
+          finalSaveData: saveData,
+        });
+
+        await createRecord(saveData, bsPreObj);
       } else {
+        // For edit mode, use formData as is
         const primaryKey = metadata?.primaryKeys?.[0] || "Id";
         const id =
           selectedRow?.[primaryKey] ?? selectedRow?.id ?? selectedRow?.Id;
         if (!id) throw new Error("No primary key for update");
         await updateRecord({ id, data: formData, preObj: bsPreObj });
       }
+
       setDialogOpen(false);
       setFormData({});
       setSelectedRow(null);
@@ -1499,172 +1595,210 @@ const BSDataGrid = ({
   const renderFormFields = useCallback(() => {
     if (!metadata?.columns) return null;
 
-    const formFields = metadata.columns
-      .filter((c) => {
-        // Filter out is_active field in add mode
-        if (dialogMode === "add" && isActiveField(c.columnName)) {
-          return false;
-        }
-        return isFieldInForm(c.columnName, c.dataType, c.isIdentity);
-      })
-      .map((c) => {
-        const { columnName, dataType, isNullable, description } = c;
-        const val = formData[columnName] ?? "";
-        let inputType = "text";
-        let multiline = false;
+    // Get all columns that should be in the form
+    let formColumns = metadata.columns.filter((c) => {
+      // Filter out is_active field in add mode
+      if (dialogMode === "add" && isActiveField(c.columnName)) {
+        return false;
+      }
+      return isFieldInForm(
+        c.columnName,
+        c.dataType,
+        c.isIdentity,
+        c.hasDefault,
+        c.defaultValue
+      );
+    });
 
-        // Check if this column has a combobox configuration
-        const comboConfig = comboBoxConfig[columnName];
-        if (comboConfig) {
-          Logger.log("🎨 Rendering ComboBox for column:", {
-            columnName,
-            value: val,
-            config: comboConfig,
-            formData: formData[columnName],
-            originalRowData: dialogMode === "edit" ? selectedRow : null,
-            dialogMode,
-          });
-          return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <ComboBoxField
-                columnName={columnName}
-                config={comboConfig}
-                value={val}
-                onChange={(value) =>
-                  setFormData((p) => ({ ...p, [columnName]: value }))
-                }
-                required={!isNullable}
-                dataType={dataType}
-                isNullable={isNullable}
-                description={description}
-              />
-            </Grid>
+    // Add ComboBox fields that might not be in the filtered columns
+    // This ensures ComboBox fields are available in forms even if not in bsCols
+    if (comboBoxConfig && Object.keys(comboBoxConfig).length > 0) {
+      Object.keys(comboBoxConfig).forEach((comboFieldName) => {
+        const alreadyIncluded = formColumns.some(
+          (c) => c.columnName === comboFieldName
+        );
+        if (!alreadyIncluded) {
+          // Find the column in metadata
+          const comboColumn = metadata.columns.find(
+            (c) => c.columnName === comboFieldName
           );
+          if (comboColumn) {
+            // Check if it should be in form (excluding bsCols logic)
+            const shouldInclude = isFieldInForm(
+              comboColumn.columnName,
+              comboColumn.dataType,
+              comboColumn.isIdentity,
+              comboColumn.hasDefault,
+              comboColumn.defaultValue
+            );
+            if (shouldInclude) {
+              formColumns.push(comboColumn);
+              Logger.log(`✅ Added ComboBox field to form: ${comboFieldName}`, {
+                column: comboColumn,
+                comboConfig: comboBoxConfig[comboFieldName],
+              });
+            }
+          }
         }
+      });
+    }
 
-        // Special handling for is_active field
-        if (isActiveField(columnName)) {
-          return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <FormControl fullWidth size="small" required={!isNullable}>
-                <InputLabel>
-                  {formatColumnName(columnName)} {!isNullable ? "*" : ""}
-                </InputLabel>
-                <Select
-                  value={val || "YES"}
-                  label={`${formatColumnName(columnName)} ${
-                    !isNullable ? "*" : ""
-                  }`}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, [columnName]: e.target.value }))
-                  }
-                >
-                  {getIsActiveOptions().map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-start",
-                          width: "100%",
-                        }}
-                      >
-                        <Chip
-                          label={option.label}
-                          size="small"
-                          color={option.value === "YES" ? "success" : "error"}
-                          variant="outlined"
-                        />
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  {description ||
-                    `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
-                </FormHelperText>
-              </FormControl>
-            </Grid>
-          );
-        }
+    const formFields = formColumns.map((c) => {
+      const { columnName, dataType, isNullable, description } = c;
+      const val = formData[columnName] ?? "";
+      let inputType = "text";
+      let multiline = false;
 
-        switch (dataType?.toLowerCase()) {
-          case "int":
-          case "smallint":
-          case "tinyint":
-          case "bigint":
-          case "decimal":
-          case "float":
-          case "real":
-          case "money":
-            inputType = "number";
-            break;
-          case "datetime":
-          case "datetime2":
-          case "date":
-            inputType = "datetime-local";
-            break;
-          case "text":
-          case "ntext":
-            multiline = true;
-            break;
-          case "bit":
-            inputType = "checkbox";
-            break;
-          default:
-            inputType = "text";
-        }
-
-        if (inputType === "checkbox") {
-          return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={Boolean(val)}
-                    onChange={(e) =>
-                      setFormData((p) => ({
-                        ...p,
-                        [columnName]: e.target.checked,
-                      }))
-                    }
-                  />
-                }
-                label={`${formatColumnName(columnName)} ${
-                  !isNullable ? "*" : ""
-                }`}
-              />
-            </Grid>
-          );
-        }
-
-        // For text/ntext fields, use full width
-        const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
-
+      // Check if this column has a combobox configuration
+      const comboConfig = comboBoxConfig[columnName];
+      if (comboConfig) {
+        Logger.log("🎨 Rendering ComboBox for column:", {
+          columnName,
+          value: val,
+          config: comboConfig,
+          formData: formData[columnName],
+          originalRowData: dialogMode === "edit" ? selectedRow : null,
+          dialogMode,
+        });
         return (
-          <Grid item {...gridSize} key={columnName}>
-            <TextField
-              fullWidth
-              size="small"
-              label={`${formatColumnName(columnName)} ${
-                !isNullable ? "*" : ""
-              }`}
-              type={inputType}
+          <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <ComboBoxField
+              columnName={columnName}
+              config={comboConfig}
               value={val}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+              onChange={(value) =>
+                setFormData((p) => ({ ...p, [columnName]: value }))
               }
               required={!isNullable}
-              multiline={multiline}
-              rows={multiline ? 3 : 1}
-              helperText={
-                description ||
-                `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
-              }
+              dataType={dataType}
+              isNullable={isNullable}
+              description={description}
             />
           </Grid>
         );
-      });
+      }
+
+      // Special handling for is_active field
+      if (isActiveField(columnName)) {
+        return (
+          <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <FormControl fullWidth size="small" required={!isNullable}>
+              <InputLabel>
+                {formatColumnName(columnName)} {!isNullable ? "*" : ""}
+              </InputLabel>
+              <Select
+                value={val || "YES"}
+                label={`${formatColumnName(columnName)} ${
+                  !isNullable ? "*" : ""
+                }`}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+                }
+              >
+                {getIsActiveOptions().map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        width: "100%",
+                      }}
+                    >
+                      <Chip
+                        label={option.label}
+                        size="small"
+                        color={option.value === "YES" ? "success" : "error"}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                {description ||
+                  `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+        );
+      }
+
+      switch (dataType?.toLowerCase()) {
+        case "int":
+        case "smallint":
+        case "tinyint":
+        case "bigint":
+        case "decimal":
+        case "float":
+        case "real":
+        case "money":
+          inputType = "number";
+          break;
+        case "datetime":
+        case "datetime2":
+        case "date":
+          inputType = "datetime-local";
+          break;
+        case "text":
+        case "ntext":
+          multiline = true;
+          break;
+        case "bit":
+          inputType = "checkbox";
+          break;
+        default:
+          inputType = "text";
+      }
+
+      if (inputType === "checkbox") {
+        return (
+          <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(val)}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      [columnName]: e.target.checked,
+                    }))
+                  }
+                />
+              }
+              label={`${formatColumnName(columnName)} ${
+                !isNullable ? "*" : ""
+              }`}
+            />
+          </Grid>
+        );
+      }
+
+      // For text/ntext fields, use full width
+      const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
+
+      return (
+        <Grid item {...gridSize} key={columnName}>
+          <TextField
+            fullWidth
+            size="small"
+            label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""}`}
+            type={inputType}
+            value={val}
+            onChange={(e) =>
+              setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+            }
+            required={!isNullable}
+            multiline={multiline}
+            rows={multiline ? 3 : 1}
+            helperText={
+              description ||
+              `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
+            }
+          />
+        </Grid>
+      );
+    });
 
     return (
       <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -2571,30 +2705,33 @@ const BSDataGrid = ({
       )}
 
       {/* Table Info */}
-      {showToolbar && !bulkEditMode && (
-        <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Typography variant="h6" component="div">
-              {metadata.displayName || effectiveTableName}
-            </Typography>
-            {/* License status indicator */}
-            <Chip
-              label={
-                licenseStatus.hasLicenseKey ? "MUI X Pro" : "MUI X Community"
-              }
-              size="small"
-              color={licenseStatus.hasLicenseKey ? "success" : "default"}
-              variant="outlined"
-            />
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            {rowCount.toLocaleString()} records • {metadata.columns?.length}{" "}
-            columns
-            {!licenseStatus.hasLicenseKey &&
-              " • Limited features (Community version)"}
-          </Typography>
-        </Box>
-      )}
+      {
+        showToolbar && !bulkEditMode
+        // && (
+        //   <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+        //     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        //       <Typography variant="h6" component="div">
+        //         {metadata.displayName || effectiveTableName}
+        //       </Typography>
+        //       {/* License status indicator */}
+        //       <Chip
+        //         label={
+        //           licenseStatus.hasLicenseKey ? "MUI X Pro" : "MUI X Community"
+        //         }
+        //         size="small"
+        //         color={licenseStatus.hasLicenseKey ? "success" : "default"}
+        //         variant="outlined"
+        //       />
+        //     </Box>
+        //     <Typography variant="body2" color="text.secondary">
+        //       {rowCount.toLocaleString()} records • {metadata.columns?.length}{" "}
+        //       columns
+        //       {!licenseStatus.hasLicenseKey &&
+        //         " • Limited features (Community version)"}
+        //     </Typography>
+        //   </Box>
+        // )
+      }
 
       {/* DataGrid */}
       {(() => {
@@ -2631,6 +2768,11 @@ const BSDataGrid = ({
             filtered: safeColumns.length - validColumns.length,
             isDataReady: validColumns.length > 0 && !metadataLoading,
             loading: loading || metadataLoading || validColumns.length === 0,
+            // Pagination debug info
+            rowCount,
+            paginationModel,
+            rowsLength: rows.length,
+            hasValidRows: rows.length > 0,
           });
 
           // If no valid columns, show loading state
@@ -2779,6 +2921,7 @@ const BSDataGrid = ({
                         onBulkEdit: handleBulkEdit,
                         onBulkDelete: handleBulkDelete,
                         onBulkAdd: handleBulkAdd,
+                        showBulkDelete: bsBulkDelete,
                       },
                       // Header filter cell props to show inline clear button
                       headerFilterCell: {
@@ -2796,6 +2939,7 @@ const BSDataGrid = ({
               }
               // Styling with required field indicator
               sx={{
+                height: height - (showToolbar && !bulkEditMode ? 60 : 0), // Account for toolbar height
                 border: 0,
                 [`& .${gridClasses.cell}`]: {
                   borderBottom: "1px solid #f0f0f0",
@@ -2957,7 +3101,13 @@ const BSDataGrid = ({
                     <Grid container spacing={2}>
                       {metadata.columns
                         .filter((c) =>
-                          isFieldInForm(c.columnName, c.dataType, c.isIdentity)
+                          isFieldInForm(
+                            c.columnName,
+                            c.dataType,
+                            c.isIdentity,
+                            c.hasDefault,
+                            c.defaultValue
+                          )
                         )
                         .map((c) => {
                           const { columnName, dataType, isNullable } = c;
