@@ -36,6 +36,7 @@ const UserGroupPage = () => {
             console.log("Selected rows:", rows);
             setSelectedRows(rows);
           }}
+          bsBulkDelete={false}
           //   onEdit={(row) => console.log("Edit:", row)}
           //   onDelete={(id) => console.log("Delete:", id)}
           //   onAdd={() => console.log("Add new record")}

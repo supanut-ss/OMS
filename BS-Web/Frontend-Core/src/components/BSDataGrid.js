@@ -69,6 +69,7 @@ const BulkSplitButton = ({
   onBulkEdit,
   onBulkDelete,
   bsBulkEdit = false,
+  showBulkDelete = true,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -87,7 +88,7 @@ const BulkSplitButton = ({
       icon: <Delete />,
       action: onBulkDelete,
       color: "error",
-      show: true,
+      show: showBulkDelete,
     },
   ].filter((option) => option.show);
 
@@ -335,6 +336,7 @@ const DynamicGridToolbar = ({
   onBulkEdit,
   onBulkDelete,
   onBulkAdd,
+  showBulkDelete = true,
 }) => {
   Logger.log("🔧 DynamicGridToolbar rendering:", {
     onAdd: typeof onAdd,
@@ -405,6 +407,7 @@ const DynamicGridToolbar = ({
           onBulkEdit={onBulkEdit}
           onBulkDelete={onBulkDelete}
           bsBulkEdit={bsBulkEdit}
+          showBulkDelete={showBulkDelete}
         />
       )}
 
@@ -686,6 +689,7 @@ const BSDataGrid = ({
   bsObjWh,
   bsBulkEdit = false,
   bsBulkAdd = false,
+  bsBulkDelete = true,
   bsShowDescColumn = true,
   bsPinColsLeft,
   bsPinColsRight,
@@ -1029,7 +1033,7 @@ const BSDataGrid = ({
         setLoading(false);
       }
     },
-    [effectiveTableName, metadata, buildRequest, getTableData]
+    [effectiveTableName, metadata, buildRequest, getTableData, paginationModel]
   );
 
   // Auto-reload data when dependencies change
@@ -2917,6 +2921,7 @@ const BSDataGrid = ({
                         onBulkEdit: handleBulkEdit,
                         onBulkDelete: handleBulkDelete,
                         onBulkAdd: handleBulkAdd,
+                        showBulkDelete: bsBulkDelete,
                       },
                       // Header filter cell props to show inline clear button
                       headerFilterCell: {
