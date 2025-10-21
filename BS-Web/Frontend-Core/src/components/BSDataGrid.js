@@ -1013,6 +1013,12 @@ const BSDataGrid = ({
           forceRefresh,
           timestamp: new Date().toISOString(),
           sampleData: processedRows.slice(0, 2), // Show first 2 rows for debugging
+          // Pagination debug info
+          currentPage: paginationModel.page,
+          pageSize: paginationModel.pageSize,
+          shouldShowPagination:
+            (result.rowCount || 0) > paginationModel.pageSize,
+          paginationModel,
         });
       } catch (err) {
         Logger.error("❌ Failed to load BS dynamic data:", err);
@@ -2758,6 +2764,11 @@ const BSDataGrid = ({
             filtered: safeColumns.length - validColumns.length,
             isDataReady: validColumns.length > 0 && !metadataLoading,
             loading: loading || metadataLoading || validColumns.length === 0,
+            // Pagination debug info
+            rowCount,
+            paginationModel,
+            rowsLength: rows.length,
+            hasValidRows: rows.length > 0,
           });
 
           // If no valid columns, show loading state
@@ -2923,6 +2934,7 @@ const BSDataGrid = ({
               }
               // Styling with required field indicator
               sx={{
+                height: height - (showToolbar && !bulkEditMode ? 60 : 0), // Account for toolbar height
                 border: 0,
                 [`& .${gridClasses.cell}`]: {
                   borderBottom: "1px solid #f0f0f0",
