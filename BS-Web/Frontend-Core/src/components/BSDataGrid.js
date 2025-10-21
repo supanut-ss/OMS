@@ -413,7 +413,7 @@ const DynamicGridToolbar = ({
 
       {/* Quick Filter */}
       <Box sx={{ flexGrow: 1 }} />
-      <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={300} />
+      <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={500} />
 
       {/* {headerFiltersEnabled && (
         <Chip
@@ -2903,7 +2903,7 @@ const BSDataGrid = ({
               filterModel={filterModel}
               onFilterModelChange={handleFilterModelChange}
               // Quick Filter Settings
-              filterDebounceMs={300}
+              filterDebounceMs={500}
               // Header Filters (Pro feature)
               headerFilters={headerFiltersEnabled}
               headerFilterHeight={52}
