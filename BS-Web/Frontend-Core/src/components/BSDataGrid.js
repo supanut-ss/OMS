@@ -1023,7 +1023,30 @@ const BSDataGrid = ({
           shouldShowPagination:
             (result.rowCount || 0) > paginationModel.pageSize,
           paginationModel,
+          totalPages: Math.ceil(
+            (result.rowCount || 0) / paginationModel.pageSize
+          ),
         });
+
+        // Extra debug for pagination issues
+        if ((result.rowCount || 0) > paginationModel.pageSize) {
+          Logger.log("🔢 Pagination should be visible:", {
+            rowCount: result.rowCount,
+            pageSize: paginationModel.pageSize,
+            totalPages: Math.ceil(
+              (result.rowCount || 0) / paginationModel.pageSize
+            ),
+            currentPageIndex: paginationModel.page,
+            message:
+              "Pagination controls should be displayed at bottom of DataGrid",
+          });
+        } else {
+          Logger.log("⚠️ Pagination hidden (not enough data):", {
+            rowCount: result.rowCount,
+            pageSize: paginationModel.pageSize,
+            message: "Need more data than pageSize to show pagination",
+          });
+        }
       } catch (err) {
         Logger.error("❌ Failed to load BS dynamic data:", err);
         setError(err.message || "Failed to load data");
@@ -1041,7 +1064,7 @@ const BSDataGrid = ({
     if (metadata && autoLoad) {
       loadData();
     }
-  }, [metadata, autoLoad, paginationModel, sortModel, filterModel]);
+  }, [metadata, autoLoad, paginationModel, sortModel, filterModel, loadData]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
@@ -2837,6 +2860,7 @@ const BSDataGrid = ({
               onRowEditStart={handleRowEditStart}
               onRowEditStop={handleRowEditStop}
               // Pagination
+              pagination={true}
               paginationMode="server"
               paginationModel={paginationModel}
               onPaginationModelChange={setPaginationModel}
