@@ -1189,16 +1189,26 @@ const BSDataGrid = ({
         }
 
         // Fallback: Check if this is likely a sequence-generated primary key by naming pattern
-        const isSequencePrimaryKey =
-          columnName.toLowerCase().endsWith("_id") &&
-          dataType?.toLowerCase() === "int" &&
-          (columnName.toLowerCase().includes("group") ||
-            columnName.toLowerCase().includes("user") ||
-            columnName.toLowerCase().includes("app"));
+        // const isSequencePrimaryKey =
+        //   columnName.toLowerCase().endsWith("_id") &&
+        //   dataType?.toLowerCase() === "int" &&
+        //   (columnName.toLowerCase().includes("group") ||
+        //     columnName.toLowerCase().includes("user") ||
+        //     columnName.toLowerCase().includes("app"));
 
-        if (isSequencePrimaryKey) {
+        // if (isSequencePrimaryKey) {
+        //   Logger.log(
+        //     `❌ Skipping ${columnName} - detected as sequence-generated primary key by pattern`
+        //   );
+        //   return false;
+        // }
+      } else if (dialogMode === "edit") {
+        // Check if this field is in the primaryKeys array from metadata
+        const isPrimaryKey = metadata?.primaryKeys?.includes(columnName);
+
+        if (isPrimaryKey) {
           Logger.log(
-            `❌ Skipping ${columnName} - detected as sequence-generated primary key by pattern`
+            `❌ Skipping ${columnName} - is primary key from metadata`
           );
           return false;
         }
