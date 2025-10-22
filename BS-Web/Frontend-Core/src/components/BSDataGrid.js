@@ -853,6 +853,16 @@ const BSDataGrid = ({
     }
   }, [effectiveTableName, autoLoad, loadMetadata, bsPreObj]);
 
+  // Use refs to store current state values to avoid dependency issues
+  const paginationModelRef = useRef(paginationModel);
+  const sortModelRef = useRef(sortModel);
+  const filterModelRef = useRef(filterModel);
+
+  // Keep refs up to date
+  paginationModelRef.current = paginationModel;
+  sortModelRef.current = sortModel;
+  filterModelRef.current = filterModel;
+
   // Load data from API
   const loadData = useCallback(
     async (forceRefresh = false) => {
@@ -862,13 +872,18 @@ const BSDataGrid = ({
       setError(null);
 
       try {
+        // Get current values from refs to avoid stale closures
+        const currentPaginationModel = paginationModelRef.current;
+        const currentSortModel = sortModelRef.current;
+        const currentFilterModel = filterModelRef.current;
+
         // Build request inline to avoid dependency issues
         let filterItems = [];
         let quickFilterValue = null;
 
         if (bsFilterMode === "server") {
           // Build filter model for backend
-          filterItems = filterModel.items
+          filterItems = currentFilterModel.items
             .filter((item) => item.value !== undefined && item.value !== "")
             .map((item) => ({
               field: item.field,
@@ -878,15 +893,15 @@ const BSDataGrid = ({
 
           // Handle Quick Filter (search box)
           if (
-            filterModel.quickFilterValues &&
-            filterModel.quickFilterValues.length > 0
+            currentFilterModel.quickFilterValues &&
+            currentFilterModel.quickFilterValues.length > 0
           ) {
-            quickFilterValue = filterModel.quickFilterValues.join(" ");
+            quickFilterValue = currentFilterModel.quickFilterValues.join(" ");
           }
         }
 
         // Build sort model for backend
-        const sortModelForApi = sortModel.map((sort) => ({
+        const sortModelForApi = currentSortModel.map((sort) => ({
           field: sort.field,
           sort: sort.sort,
         }));
@@ -904,12 +919,12 @@ const BSDataGrid = ({
 
         const request = {
           tableName: effectiveTableName,
-          page: paginationModel.page + 1, // API uses 1-based pagination
-          pageSize: paginationModel.pageSize,
+          page: currentPaginationModel.page + 1, // API uses 1-based pagination
+          pageSize: currentPaginationModel.pageSize,
           sortModel: sortModelForApi,
           filterModel: {
             items: filterItems,
-            logicOperator: filterModel.logicOperator || "and",
+            logicOperator: currentFilterModel.logicOperator || "and",
             quickFilter: quickFilterValue, // Add quick filter to the request
           },
           // Additional BS properties
@@ -1000,32 +1015,32 @@ const BSDataGrid = ({
           timestamp: new Date().toISOString(),
           sampleData: processedRows.slice(0, 2), // Show first 2 rows for debugging
           // Pagination debug info
-          currentPage: paginationModel.page,
-          pageSize: paginationModel.pageSize,
+          currentPage: currentPaginationModel.page,
+          pageSize: currentPaginationModel.pageSize,
           shouldShowPagination:
-            (result.rowCount || 0) > paginationModel.pageSize,
-          paginationModel,
+            (result.rowCount || 0) > currentPaginationModel.pageSize,
+          paginationModel: currentPaginationModel,
           totalPages: Math.ceil(
-            (result.rowCount || 0) / paginationModel.pageSize
+            (result.rowCount || 0) / currentPaginationModel.pageSize
           ),
         });
 
         // Extra debug for pagination issues
-        if ((result.rowCount || 0) > paginationModel.pageSize) {
+        if ((result.rowCount || 0) > currentPaginationModel.pageSize) {
           Logger.log("🔢 Pagination should be visible:", {
             rowCount: result.rowCount,
-            pageSize: paginationModel.pageSize,
+            pageSize: currentPaginationModel.pageSize,
             totalPages: Math.ceil(
-              (result.rowCount || 0) / paginationModel.pageSize
+              (result.rowCount || 0) / currentPaginationModel.pageSize
             ),
-            currentPageIndex: paginationModel.page,
+            currentPageIndex: currentPaginationModel.page,
             message:
               "Pagination controls should be displayed at bottom of DataGrid",
           });
         } else {
           Logger.log("⚠️ Pagination hidden (not enough data):", {
             rowCount: result.rowCount,
-            pageSize: paginationModel.pageSize,
+            pageSize: currentPaginationModel.pageSize,
             message: "Need more data than pageSize to show pagination",
           });
         }
@@ -1042,9 +1057,6 @@ const BSDataGrid = ({
       effectiveTableName,
       metadata,
       getTableData,
-      paginationModel,
-      sortModel,
-      filterModel,
       bsFilterMode,
       bsPreObj,
       bsObjBy,
