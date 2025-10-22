@@ -251,7 +251,7 @@ export const useDynamicCrud = (tableName) => {
 
   // Update existing record
   const updateRecord = useCallback(
-    async ({ id, data: recordData, whereConditions, preObj = null }) => {
+    async (id, recordData, preObj = null, whereConditions = null) => {
       try {
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;

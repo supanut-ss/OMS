@@ -649,6 +649,9 @@ const ComboBoxField = ({
  *   bsBulkAddInline={true}
  *   bsShowCheckbox={true}
  *   bsShowDescColumn={false}
+ *   bsShowRowNumber={true}
+ *   bsVisibleEdit={true}
+ *   bsVisibleDelete={true}
  *   bsShowCharacterCount={true}
  *   bsComboBox={[
  *     {
@@ -691,6 +694,25 @@ const ComboBoxField = ({
  * - bsShowCheckbox={true}: Force show checkbox selection column
  *   * Checkbox will also auto-show when bsBulkEdit, bsBulkDelete is true or onCheckBoxSelected is provided
  *   * Use this prop when you need checkbox selection without bulk operations
+ *
+ * @bsShowRowNumber Configuration:
+ * - bsShowRowNumber={false}: Row number column is hidden
+ * - bsShowRowNumber={true} (default): Shows row number column as the first column after action column
+ *   * Displays sequential numbers starting from 1 for each page
+ *   * Automatically adjusts for pagination (e.g., page 2 starts from 26)
+ *   * Useful for data reference and user navigation
+ *
+ * @bsVisibleEdit Configuration:
+ * - bsVisibleEdit={false}: Hide edit button in actions column
+ * - bsVisibleEdit={true} (default): Show edit button in actions column
+ *   * Only applies to regular mode (not bulk edit or inline bulk add mode)
+ *   * Button will trigger onEdit callback or open built-in edit dialog
+ *
+ * @bsVisibleDelete Configuration:
+ * - bsVisibleDelete={false}: Hide delete button in actions column
+ * - bsVisibleDelete={true} (default): Show delete button in actions column
+ *   * Only applies to regular mode (not bulk edit or inline bulk add mode)
+ *   * Button will trigger onDelete callback or built-in delete confirmation
  */
 const BSDataGrid = ({
   // Legacy props (เก่า)
@@ -719,6 +741,9 @@ const BSDataGrid = ({
   bsBulkAddInline = false, // Inline bulk add mode
   bsShowCheckbox = false, // Show checkbox selection
   bsShowDescColumn = true,
+  bsShowRowNumber = true, // Show row number column
+  bsVisibleEdit = true, // Show edit button
+  bsVisibleDelete = true, // Show delete button
   bsPinColsLeft,
   bsPinColsRight,
   bsRowPerPage = 25,
@@ -1332,6 +1357,31 @@ const BSDataGrid = ({
   // Helper: Check if field is is_active
   const isActiveField = useCallback((columnName) => {
     return columnName?.toLowerCase() === "is_active";
+  }, []);
+
+  // Helper: Check if field is audit field (should be read-only in inline editing)
+  const isAuditField = useCallback((columnName) => {
+    const auditFields = [
+      "create_by",
+      "created_by",
+      "createby",
+      "create_date",
+      "created_date",
+      "createdate",
+      "created_at",
+      "update_by",
+      "updated_by",
+      "updateby",
+      "modified_by",
+      "update_date",
+      "updated_date",
+      "updatedate",
+      "updated_at",
+      "modified_date",
+      "rowversion",
+    ];
+
+    return auditFields.includes(columnName?.toLowerCase());
   }, []);
 
   // Initialize form data based on metadata
@@ -2117,14 +2167,31 @@ const BSDataGrid = ({
         // If it's an existing row, update it
         const primaryKey = metadata?.primaryKeys?.[0] || "Id";
         const id = newRow[primaryKey];
-        const savedRecord = await updateRecord(id, newRow, bsPreObj);
+
+        // Remove invalid id fields from data before sending to backend
+        const cleanData = { ...newRow };
+        if (primaryKey !== "id") delete cleanData.id;
+        if (primaryKey !== "Id") delete cleanData.Id;
+        if (primaryKey !== "ID") delete cleanData.ID;
+
+        const savedRecord = await updateRecord(id, cleanData, bsPreObj);
+
+        // Merge saved record with original id for DataGrid row tracking
+        const updatedRow = {
+          ...savedRecord,
+          id: newRow.id, // Preserve original id for DataGrid
+        };
 
         setRows((oldRows) =>
-          oldRows.map((row) => (row.id === newRow.id ? savedRecord : row))
+          oldRows.map((row) => (row.id === newRow.id ? updatedRow : row))
         );
 
-        Logger.log("✅ Record updated successfully:", savedRecord);
-        return savedRecord;
+        Logger.log("✅ Record updated successfully:", {
+          savedRecord,
+          updatedRow,
+          preservedId: newRow.id,
+        });
+        return updatedRow;
       } catch (error) {
         Logger.error("❌ Failed to save record:", error);
         alert(`Failed to save record: ${error.message}`);
@@ -2182,7 +2249,11 @@ const BSDataGrid = ({
                 ? "singleSelect"
                 : getGridColumnType(col.dataType),
             editable:
-              (!col.isIdentity && !col.isReadOnly && !readOnly) || bulkEditMode,
+              (!col.isIdentity &&
+                !col.isReadOnly &&
+                !readOnly &&
+                !isAuditField(columnName)) ||
+              (bulkEditMode && !isAuditField(columnName)),
             sortable: true,
             filterable: true,
             resizable: true,
@@ -2349,22 +2420,26 @@ const BSDataGrid = ({
           });
         } else {
           // Regular edit/delete actions (only in normal mode)
-          actions.push((params) => (
-            <GridActionsCellItem
-              icon={<Edit />}
-              label="Edit"
-              onClick={() => handleEditClick(params.row)}
-            />
-          ));
+          if (bsVisibleEdit) {
+            actions.push((params) => (
+              <GridActionsCellItem
+                icon={<Edit />}
+                label="Edit"
+                onClick={() => handleEditClick(params.row)}
+              />
+            ));
+          }
 
-          actions.push((params) => (
-            <GridActionsCellItem
-              icon={<Delete />}
-              label="Delete"
-              onClick={() => handleDeleteClick(params.row)}
-              showInMenu
-            />
-          ));
+          if (bsVisibleDelete) {
+            actions.push((params) => (
+              <GridActionsCellItem
+                icon={<Delete />}
+                label="Delete"
+                onClick={() => handleDeleteClick(params.row)}
+                showInMenu
+              />
+            ));
+          }
         }
 
         // Insert actions column at the beginning (after checkbox if present)
@@ -2379,6 +2454,56 @@ const BSDataGrid = ({
           disableColumnMenu: true,
           getActions: (params) => actions.map((a) => a(params)).filter(Boolean),
         });
+      }
+
+      // Add row number column if enabled
+      if (bsShowRowNumber) {
+        const rowNumberCol = {
+          field: "__rowNumber",
+          headerName: "No.",
+          width: 70,
+          sortable: false,
+          filterable: false,
+          hideable: false,
+          disableColumnMenu: true,
+          headerAlign: "center",
+          renderCell: (params) => {
+            // Calculate row number based on pagination
+            const currentPage = paginationModel?.page || 0;
+            const pageSize = paginationModel?.pageSize || bsRowPerPage;
+            const rowNumber =
+              currentPage * pageSize +
+              params.api.getAllRowIds().indexOf(params.id) +
+              1;
+
+            return (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "100%",
+                  height: "100%",
+                  color: "text.secondary",
+                  fontSize: "0.875rem",
+                  fontWeight: "medium",
+                }}
+              >
+                {rowNumber}
+              </Box>
+            );
+          },
+        };
+
+        // Insert row number column after actions column (or at the beginning if no actions)
+        const actionsIndex = dataColumns.findIndex(
+          (col) => col.field === "actions"
+        );
+        if (actionsIndex >= 0) {
+          dataColumns.splice(actionsIndex + 1, 0, rowNumberCol);
+        } else {
+          dataColumns.unshift(rowNumberCol);
+        }
       }
 
       // Apply column filtering if bsCols is specified
@@ -2477,6 +2602,11 @@ const BSDataGrid = ({
     readOnly,
     bulkEditMode,
     bsBulkAddInline,
+    bsShowRowNumber,
+    bsRowPerPage,
+    paginationModel,
+    bsVisibleEdit,
+    bsVisibleDelete,
     parsedCols,
     comboBoxConfig,
     onView,
@@ -2492,6 +2622,7 @@ const BSDataGrid = ({
     renderComboBoxCell,
     getComboBoxOptions,
     isActiveField,
+    isAuditField,
     getIsActiveOptions,
     rowModesModel,
     handleInlineEditClick,
@@ -2741,26 +2872,62 @@ const BSDataGrid = ({
         if (primaryKey !== "Id") delete cleanData.Id;
         if (primaryKey !== "ID") delete cleanData.ID;
 
-        Logger.log("📝 Clean data for update:", {
-          cleanData,
+        Logger.log("📝 Clean data for update (normal mode):", {
+          primaryKey,
+          beforeClean: { ...newRow },
+          afterClean: cleanData,
+          removedId: primaryKey !== "id",
           whereConditions: { [primaryKey]: rowId },
         });
 
         // Perform update and refresh data
-        return updateRecord({
-          id: rowId,
-          data: cleanData,
-          whereConditions: { [primaryKey]: rowId },
-          preObj: bsPreObj, // Pass preObj for correct schema mapping
-        })
-          .then((result) => {
-            // Refresh data after successful update
-            Logger.log("✅ Normal mode update successful, refreshing data");
-            // Use setTimeout to ensure the update is completed before refresh
-            setTimeout(() => {
-              loadData(true); // Force refresh with cache buster
-            }, 100);
-            return result;
+        return updateRecord(rowId, cleanData, bsPreObj)
+          .then(async (result) => {
+            Logger.log("✅ Normal mode update successful:", {
+              result,
+              originalId: newRow.id,
+              primaryKey,
+            });
+
+            // Return updated data with original 'id' for DataGrid row tracking
+            // Backend returns data with primary key (e.g., method_id) but not the 'id' field
+            // DataGrid needs 'id' field to track rows
+            const updatedRow = {
+              ...result,
+              id: newRow.id, // Preserve original id for DataGrid
+            };
+
+            // Check metadata BEFORE scheduling background refresh
+            // This prevents metadata from becoming null during re-render
+            if (!metadata || !metadata.columns) {
+              Logger.warn(
+                "⚠️ Metadata missing before background refresh, reloading now..."
+              );
+              try {
+                await loadMetadata(bsPreObj);
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                Logger.log(
+                  "✅ Metadata reloaded successfully before background refresh"
+                );
+              } catch (metadataError) {
+                Logger.error("❌ Failed to reload metadata:", metadataError);
+                // Even if metadata reload fails, continue with the update
+                // Don't schedule background refresh if metadata is still missing
+              }
+            }
+
+            // Only schedule background refresh if metadata is available
+            if (metadata && metadata.columns) {
+              setTimeout(() => {
+                loadData(true); // Force refresh with cache buster
+              }, 100);
+            } else {
+              Logger.warn(
+                "⚠️ Skipping background refresh due to missing metadata"
+              );
+            }
+
+            return updatedRow;
           })
           .catch((error) => {
             Logger.error("❌ Normal mode update failed:", error);
@@ -2797,6 +2964,7 @@ const BSDataGrid = ({
       loadData,
       bsPreObj,
       effectiveTableName,
+      loadMetadata,
     ]
   );
 
@@ -2847,17 +3015,11 @@ const BSDataGrid = ({
           primaryKey,
           id,
           cleanData,
-          whereConditions: { [primaryKey]: id },
           bsPreObj,
           preObjPassed: !!bsPreObj,
         });
 
-        await updateRecord({
-          id,
-          data: cleanData,
-          whereConditions: { [primaryKey]: id },
-          preObj: bsPreObj,
-        });
+        await updateRecord(id, cleanData, bsPreObj);
       }
 
       // Reset bulk edit state
@@ -2869,6 +3031,16 @@ const BSDataGrid = ({
       // Small delay to ensure database transactions are committed
       await new Promise((resolve) => setTimeout(resolve, 300));
 
+      // Ensure metadata is available before reloading data
+      if (!metadata || !metadata.columns) {
+        Logger.warn(
+          "⚠️ Metadata not available after bulk save, reloading metadata..."
+        );
+        await loadMetadata(bsPreObj);
+        // Wait a bit for metadata to be set in state
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
       // Force reload data from server with cache buster
       await loadData(true);
       Logger.log("✅ Bulk changes saved successfully and data refreshed");
@@ -2879,22 +3051,43 @@ const BSDataGrid = ({
       setFormLoading(false);
       setLoading(false); // Clear loading state
     }
-  }, [metadata, updateRecord, loadData, bsPreObj, validateFormData]);
+  }, [
+    metadata,
+    updateRecord,
+    loadData,
+    bsPreObj,
+    validateFormData,
+    loadMetadata,
+  ]);
 
-  const handleBulkDiscardChanges = useCallback(() => {
+  const handleBulkDiscardChanges = useCallback(async () => {
     setLoading(true); // Set loading state
     setBulkEditMode(false);
     unsavedChangesRef.current = {};
     setHasUnsavedChanges(false);
     setRowSelectionModel([]);
 
-    // Force reload to discard changes with loading state
-    loadData(true).finally(() => {
-      setLoading(false); // Clear loading state after reload
-    });
+    try {
+      // Ensure metadata is available before reloading data
+      if (!metadata || !metadata.columns) {
+        Logger.warn(
+          "⚠️ Metadata not available after discard, reloading metadata..."
+        );
+        await loadMetadata(bsPreObj);
+        // Wait a bit for metadata to be set in state
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
 
-    Logger.log("🗑️ Bulk changes discarded");
-  }, [loadData]);
+      // Force reload to discard changes with loading state
+      await loadData(true);
+      Logger.log("🗑️ Bulk changes discarded");
+    } catch (err) {
+      Logger.error("❌ Failed to discard bulk changes:", err);
+      setError(err.message || "Failed to discard changes");
+    } finally {
+      setLoading(false); // Clear loading state
+    }
+  }, [loadData, metadata, loadMetadata, bsPreObj]);
 
   const handleToggleHeaderFilters = useCallback(() => {
     setHeaderFiltersEnabled((prev) => {
