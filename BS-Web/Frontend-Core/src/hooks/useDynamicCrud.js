@@ -172,6 +172,13 @@ export const useDynamicCrud = (tableName) => {
   const createRecord = useCallback(
     async (recordData, preObj = null) => {
       try {
+        Logger.log("🔍 createRecord called with parameters:", {
+          recordDataKeys: recordData ? Object.keys(recordData) : "null",
+          preObj,
+          preObjType: typeof preObj,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
         if (preObj) {
@@ -253,6 +260,15 @@ export const useDynamicCrud = (tableName) => {
   const updateRecord = useCallback(
     async (id, recordData, preObj = null, whereConditions = null) => {
       try {
+        Logger.log("🔍 updateRecord called with parameters:", {
+          id,
+          recordDataKeys: recordData ? Object.keys(recordData) : "null",
+          preObj,
+          preObjType: typeof preObj,
+          whereConditions,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
 
@@ -361,6 +377,14 @@ export const useDynamicCrud = (tableName) => {
   const deleteRecord = useCallback(
     async (id, whereConditions, preObj = null) => {
       try {
+        Logger.log("🔍 deleteRecord called with parameters:", {
+          id,
+          whereConditions,
+          preObj,
+          preObjType: typeof preObj,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
         if (preObj) {

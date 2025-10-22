@@ -1685,6 +1685,8 @@ const BSDataGrid = ({
         Logger.log("🔧 Saving with auto-generated values:", {
           originalFormData: formData,
           finalSaveData: saveData,
+          bsPreObj,
+          preObjPassed: !!bsPreObj,
         });
 
         await createRecord(saveData, bsPreObj);
@@ -1694,7 +1696,15 @@ const BSDataGrid = ({
         const id =
           selectedRow?.[primaryKey] ?? selectedRow?.id ?? selectedRow?.Id;
         if (!id) throw new Error("No primary key for update");
-        await updateRecord({ id, data: formData, preObj: bsPreObj });
+
+        Logger.log("🔧 About to call updateRecord with:", {
+          id,
+          formDataKeys: Object.keys(formData),
+          bsPreObj,
+          bsPreObjType: typeof bsPreObj,
+        });
+
+        await updateRecord(id, formData, bsPreObj);
       }
 
       setDialogOpen(false);
@@ -2897,6 +2907,8 @@ const BSDataGrid = ({
           afterClean: cleanData,
           removedId: primaryKey !== "id",
           whereConditions: { [primaryKey]: rowId },
+          bsPreObj,
+          preObjPassed: !!bsPreObj,
         });
 
         // Perform update and refresh data
