@@ -237,14 +237,35 @@ const BSDataGridClient = ({
       case "bit":
         return value ? "Yes" : "No";
       case "date":
-        if (value instanceof Date) return value.toLocaleDateString();
-        if (typeof value === "string")
-          return new Date(value).toLocaleDateString();
+        if (value instanceof Date) {
+          return isNaN(value.getTime())
+            ? String(value)
+            : value.toLocaleDateString();
+        }
+        if (typeof value === "string") {
+          try {
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? value : date.toLocaleDateString();
+          } catch (e) {
+            return value;
+          }
+        }
         return value;
       case "datetime":
       case "timestamp":
-        if (value instanceof Date) return value.toLocaleString();
-        if (typeof value === "string") return new Date(value).toLocaleString();
+        if (value instanceof Date) {
+          return isNaN(value.getTime())
+            ? String(value)
+            : value.toLocaleString();
+        }
+        if (typeof value === "string") {
+          try {
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? value : date.toLocaleString();
+          } catch (e) {
+            return value;
+          }
+        }
         return value;
       case "number":
       case "int":
@@ -324,7 +345,13 @@ const BSDataGridClient = ({
         // Value getter for proper sorting
         if (colDef.type === "date" || colDef.type === "datetime") {
           baseColumn.valueGetter = (value) => {
-            return value ? new Date(value) : null;
+            if (!value) return null;
+            try {
+              const date = new Date(value);
+              return isNaN(date.getTime()) ? null : date;
+            } catch (e) {
+              return null;
+            }
           };
         }
 
@@ -347,13 +374,18 @@ const BSDataGridClient = ({
           } else if (sampleValue instanceof Date) {
             detectedType = "date";
           } else if (typeof sampleValue === "string") {
-            // Try to detect date strings
-            if (!isNaN(Date.parse(sampleValue))) {
+            // Better date detection - check for actual date patterns
+            const isDateLike =
+              /^\d{4}-\d{2}-\d{2}/.test(sampleValue) || // ISO date format
+              /^\d{1,2}\/\d{1,2}\/\d{4}/.test(sampleValue) || // MM/DD/YYYY
+              /^\d{4}\/\d{1,2}\/\d{1,2}/.test(sampleValue); // YYYY/MM/DD
+
+            if (isDateLike && !isNaN(Date.parse(sampleValue))) {
               detectedType = "date";
             }
           }
 
-          return {
+          const columnConfig = {
             field: key,
             headerName: formatColumnName(key),
             width: getColumnWidth(detectedType, key),
@@ -370,6 +402,21 @@ const BSDataGridClient = ({
             resizable: true,
             renderCell: (params) => formatCellValue(params.value, detectedType),
           };
+
+          // Add value getter for date columns to handle invalid dates
+          if (detectedType === "date") {
+            columnConfig.valueGetter = (value) => {
+              if (!value) return null;
+              try {
+                const date = new Date(value);
+                return isNaN(date.getTime()) ? null : date;
+              } catch (e) {
+                return null;
+              }
+            };
+          }
+
+          return columnConfig;
         });
     }
 
