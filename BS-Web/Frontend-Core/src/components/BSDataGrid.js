@@ -57,6 +57,7 @@ import {
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../utils/SchemaMapping";
+import { useAuth } from "../contexts/AuthContext";
 import Logger from "../utils/logger";
 import muiLicenseManager from "../utils/muiLicenseManager";
 
@@ -826,6 +827,97 @@ const BSDataGrid = ({
     return config;
   }, [bsComboBox]);
 
+  // Get current user for locale information
+  const { user } = useAuth();
+
+  // Helper: Get effective locale for date formatting
+  const getEffectiveLocale = useCallback(() => {
+    // Priority: bsLocale prop > user.locale_id > default 'en'
+    if (bsLocale && bsLocale !== "default") {
+      return bsLocale;
+    }
+
+    if (user) {
+      try {
+        const userObj = typeof user === "string" ? JSON.parse(user) : user;
+        const userLocale =
+          userObj?.locale_id || userObj?.localeId || userObj?.locale;
+        if (userLocale) {
+          return userLocale;
+        }
+      } catch (e) {
+        Logger.warn("Failed to parse user locale:", e);
+      }
+    }
+
+    return "en"; // Default fallback
+  }, [bsLocale, user]);
+
+  // Helper: Custom date formatter for consistent dd/MM/yyyy format
+  const formatDateCustom = useCallback(
+    (date, includeTime = false, effectiveLocale) => {
+      const isThai = effectiveLocale === "th";
+
+      // Get year with locale-specific calendar
+      let year = date.getFullYear();
+      if (isThai) {
+        year += 543; // Convert to Buddhist Era
+      }
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const formattedDate = `${day}/${month}/${year}`;
+
+      if (includeTime) {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${formattedDate} ${hours}:${minutes}`;
+      }
+
+      return formattedDate;
+    },
+    []
+  );
+
+  // Helper: Get locale-specific date/time formatting options
+  const getLocaleFormatOptions = useCallback((effectiveLocale) => {
+    const isThai = effectiveLocale === "th";
+
+    return {
+      // Date formatting - always dd/MM/yyyy format
+      dateOptions: {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        calendar: isThai ? "buddhist" : "gregory",
+      },
+      // DateTime formatting - always dd/MM/yyyy HH:mm format
+      dateTimeOptions: {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        calendar: isThai ? "buddhist" : "gregory",
+      },
+      // Time formatting
+      timeOptions: {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      },
+      // Number formatting
+      numberOptions: {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      },
+      // Locale string for toLocaleString()
+      localeString: isThai ? "th-TH" : "en-US",
+    };
+  }, []);
+
   const {
     metadata,
     loading: metadataLoading,
@@ -1224,48 +1316,77 @@ const BSDataGrid = ({
     }
   }, []);
 
-  // Helper: Format cell values
-  const formatCellValue = useCallback((value, dataType) => {
-    if (value === null || value === undefined) return "";
+  // Helper: Format cell values with locale-aware formatting
+  const formatCellValue = useCallback(
+    (value, dataType) => {
+      if (value === null || value === undefined) return "";
 
-    switch (dataType?.toLowerCase()) {
-      case "int":
-        return Number(value).toLocaleString();
-      case "bit":
-        return value ? "Yes" : "No";
-      case "datetime":
-      case "datetime2":
-        return new Date(value).toLocaleString("th-TH", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false, // ถ้าอยากได้แบบ 24 ชั่วโมง
-        });
-      case "date":
-        return new Date(value).toLocaleDateString("th-TH", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
-      case "time":
-        return new Date(`1970-01-01T${value}`).toLocaleTimeString("th-TH", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        });
-      case "money":
-      case "decimal":
-        return Number(value).toLocaleString("th-TH", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      default:
+      const effectiveLocale = getEffectiveLocale();
+      const formatOptions = getLocaleFormatOptions(effectiveLocale);
+
+      Logger.log("🌐 Format cell value with locale:", {
+        value,
+        dataType,
+        effectiveLocale,
+        bsLocale,
+        userLocale: user
+          ? (typeof user === "string" ? JSON.parse(user) : user)?.locale_id
+          : "no-user",
+      });
+
+      try {
+        switch (dataType?.toLowerCase()) {
+          case "int":
+            return Number(value).toLocaleString(formatOptions.localeString);
+          case "bit":
+            return value ? "Yes" : "No";
+          case "datetime":
+          case "datetime2": {
+            // Use custom formatter for consistent dd/MM/yyyy HH:mm format (no comma)
+            const date = new Date(value);
+            return formatDateCustom(date, true, effectiveLocale);
+          }
+          case "date": {
+            // Use custom formatter for consistent dd/MM/yyyy format
+            const date = new Date(value);
+            return formatDateCustom(date, false, effectiveLocale);
+          }
+          case "time":
+            return new Date(`1970-01-01T${value}`).toLocaleTimeString(
+              formatOptions.localeString,
+              formatOptions.timeOptions
+            );
+          case "money":
+          case "decimal":
+            return Number(value).toLocaleString(
+              formatOptions.localeString,
+              formatOptions.numberOptions
+            );
+          default:
+            return String(value);
+        }
+      } catch (error) {
+        Logger.warn(
+          "Failed to format cell value with locale, using fallback:",
+          {
+            value,
+            dataType,
+            effectiveLocale,
+            error: error.message,
+          }
+        );
+        // Fallback to simple string conversion
         return String(value);
-    }
-  }, []);
+      }
+    },
+    [
+      getEffectiveLocale,
+      getLocaleFormatOptions,
+      formatDateCustom,
+      bsLocale,
+      user,
+    ]
+  );
 
   // Helper: Check if field should be shown in form
   const isFieldInForm = useCallback(
