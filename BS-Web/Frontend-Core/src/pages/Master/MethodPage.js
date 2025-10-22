@@ -27,10 +27,10 @@ const MethodPage = () => {
                 </Typography>
                 {/* ตารางข้อมูล */}
                 <BSDataGrid
-                    bsLocale="th"
+                    bsLocale="en"
                     bsPreObj="ams"
                     bsObj="tbm_method"
-                    onCheckBoxSelected={(rows) => setSelectedRows(rows)}
+                // bsCols="method,create_by,create_date,update_by,update_date"
                 />
             </Paper>
         </>
