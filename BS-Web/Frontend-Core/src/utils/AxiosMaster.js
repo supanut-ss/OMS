@@ -116,7 +116,7 @@ AxiosMaster.interceptors.response.use(
         clearCorruptedTokens();
         // Redirect to login if needed
         if(Config.BASE_URL && Config.BASE_URL !== "/") {
-          window.location.href = Config.BASE_URL + "/login";
+          window.location.href = Config.BASE_URL ;
         } else {
           window.location.href = "/login";
         }

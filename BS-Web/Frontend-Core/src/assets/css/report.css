@@ -1,0 +1,13 @@
+
+@page {
+  size: 9.3cm 22.8cm;
+  margin: 0;
+}
+
+.report-root {
+  font-family: "TH Sarabun New", sans-serif;
+  font-size: 16px;
+  position: relative;
+  overflow: hidden;
+}
+

@@ -4,7 +4,9 @@ import BSAutoComplete from "../../components/BSAutoComplete";
 import { useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
+import secureStorage from "../../utils/SecureStorage";
 const CountTag = () => {
+     const userInfo = secureStorage.get("userInfo");
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
     const CallNoti = async () => {
@@ -24,9 +26,20 @@ const CountTag = () => {
         console.log("Selected User:", selectedUser);
         console.log("Selected Rows:", selectedRows);
         for (let row of selectedRows) {
-            await AxiosMaster.post("/ams/notify/recount-tags", {
-                user_id: selectedUser,
-                tag_no: row.tag_no
+            await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
+                "title":"Please Re-Count " +row.location+" "+row.tag_no, //Please Re-Count [location] [Tag_no]
+                "body": ""+row.part_no,
+                "tokens": [
+                    selectedUser.fcm_token
+                ],
+                "data": [
+                    {
+                        "tag_no": row.tag_no,
+                        "user_id": JSON.parse(userInfo).user_id,
+                        "create_by":JSON.parse(userInfo).user_id 
+                    }
+                ],
+                "routeApp": "/count_tag"
             }).then((response) => {
                 BSAlertSwal2.show(
                     "success",
@@ -61,15 +74,15 @@ const CountTag = () => {
                                 bsObj="user"
                                 bsColumes={[
                                     {
-                                        field: "user_id",
-                                        display: true,
+                                        field: "fcm_token",
+                                        display: false,
                                         filter: false,
                                         key: true,
                                     },
                                     { field: "first_name", display: true, filter: false, key: false },
                                     { field: "last_name", display: true, filter: false, key: false }
                                 ]}
-                                bsObjBy="user_id asc"
+                                bsObjBy="first_name asc"
                                 bsObjWh="isnull(fcm_token,'')<>''"
                                 bsValue={selectedUser} // ค่าเริ่มต้น = code ของ option
                                 cacheKey="drive_user_autocomplete"
