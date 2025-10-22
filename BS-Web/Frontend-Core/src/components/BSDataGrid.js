@@ -635,6 +635,7 @@ const ComboBoxField = ({
  *   bsBulkEdit={true}
  *   bsBulkAdd={true}
  *   bsShowDescColumn={false}
+ *   bsShowCharacterCount={true}
  *   bsComboBox={[
  *     {
  *       Column: "status",
@@ -663,6 +664,13 @@ const ComboBoxField = ({
  *   * All data is loaded and filtering happens in the browser
  *   * Best for smaller datasets that can be loaded entirely
  *   * No filter parameters are sent to the API
+ *
+ * @bsShowCharacterCount Configuration:
+ * - bsShowCharacterCount={false} (default): Character count is not shown in helper text
+ * - bsShowCharacterCount={true}: Shows current/max character count for text fields
+ *   * Format: "15/50 characters" or "Description text (15/50 characters)"
+ *   * Only applies to text and textarea fields with maxLength defined in metadata
+ *   * Helps users stay within column length limits to prevent truncation errors
  */
 const BSDataGrid = ({
   // Legacy props (เก่า)
@@ -694,6 +702,7 @@ const BSDataGrid = ({
   bsRowPerPage = 25,
   bsComboBox = [],
   bsFilterMode = "server", // "server" | "client"
+  bsShowCharacterCount = false, // Show character count in helper text
   onCheckBoxSelected,
 
   ...props
@@ -1071,7 +1080,7 @@ const BSDataGrid = ({
     if (metadata && autoLoad) {
       loadData();
     }
-  }, [metadata, autoLoad, paginationModel, sortModel, filterModel]);
+  }, [metadata, autoLoad, loadData]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
@@ -1489,10 +1498,71 @@ const BSDataGrid = ({
     [metadata, onDelete, deleteRecord, loadData, bsPreObj]
   );
 
+  // Validate form data against metadata constraints
+  const validateFormData = useCallback(
+    (data) => {
+      if (!metadata?.columns) return { isValid: true, errors: [] };
+
+      const errors = [];
+
+      metadata.columns.forEach((column) => {
+        const { columnName, maxLength, dataType, isNullable } = column;
+        const value = data[columnName];
+
+        // Skip validation for fields not in form
+        if (
+          !isFieldInForm(
+            columnName,
+            dataType,
+            column.isIdentity,
+            column.hasDefault,
+            column.defaultValue
+          )
+        ) {
+          return;
+        }
+
+        // Check maxLength for text fields
+        if (maxLength > 0 && value != null) {
+          const stringValue = String(value);
+          if (stringValue.length > maxLength) {
+            errors.push(
+              `${formatColumnName(
+                columnName
+              )}: Maximum ${maxLength} characters allowed (current: ${
+                stringValue.length
+              })`
+            );
+          }
+        }
+
+        // Check required fields
+        if (!isNullable && (value == null || value === "")) {
+          errors.push(
+            `${formatColumnName(columnName)}: This field is required`
+          );
+        }
+      });
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+      };
+    },
+    [metadata, isFieldInForm, formatColumnName]
+  );
+
   // Save (create/update) from dialog
   const handleSave = useCallback(async () => {
     try {
       setFormLoading(true);
+
+      // Validate form data before saving
+      const validation = validateFormData(formData);
+      if (!validation.isValid) {
+        alert(`Validation Errors:\n${validation.errors.join("\n")}`);
+        return;
+      }
 
       if (dialogMode === "add") {
         // For add mode, prepare form data with auto-generated values
@@ -1563,6 +1633,7 @@ const BSDataGrid = ({
     updateRecord,
     loadData,
     bsPreObj,
+    validateFormData,
   ]);
 
   const handleDialogClose = useCallback(() => {
@@ -1703,7 +1774,7 @@ const BSDataGrid = ({
     }
 
     const formFields = formColumns.map((c) => {
-      const { columnName, dataType, isNullable, description } = c;
+      const { columnName, dataType, isNullable, description, maxLength } = c;
       const val = formData[columnName] ?? "";
       let inputType = "text";
       let multiline = false;
@@ -1830,6 +1901,18 @@ const BSDataGrid = ({
       // For text/ntext fields, use full width
       const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
 
+      // Build helper text with length information
+      let helperText = description || "";
+      if (
+        bsShowCharacterCount &&
+        maxLength > 0 &&
+        (inputType === "text" || multiline)
+      ) {
+        const currentLength = String(val).length;
+        const lengthInfo = `${currentLength}/${maxLength} characters`;
+        helperText = helperText ? `${helperText} (${lengthInfo})` : lengthInfo;
+      }
+
       return (
         <Grid item {...gridSize} key={columnName}>
           <TextField
@@ -1844,10 +1927,14 @@ const BSDataGrid = ({
             required={!isNullable}
             multiline={multiline}
             rows={multiline ? 3 : 1}
-            helperText={
-              description
-              // || `${dataType} ${isNullable ? "(nullable)" : "(required)"}`
-            }
+            helperText={helperText}
+            inputProps={{
+              ...(maxLength > 0 &&
+                (inputType === "text" || multiline) && {
+                  maxLength: maxLength,
+                }),
+            }}
+            error={maxLength > 0 && String(val).length > maxLength}
           />
         </Grid>
       );
@@ -1868,6 +1955,7 @@ const BSDataGrid = ({
     getIsActiveOptions,
     comboBoxConfig,
     selectedRow,
+    bsShowCharacterCount,
   ]);
 
   // Function to restore a single row to its original state
@@ -2372,6 +2460,23 @@ const BSDataGrid = ({
         return;
       }
 
+      // Validate all rows before saving
+      const validationErrors = [];
+      validRows.forEach((row, index) => {
+        const { _id, ...data } = row;
+        const validation = validateFormData(data);
+        if (!validation.isValid) {
+          validationErrors.push(
+            `Row ${index + 1}: ${validation.errors.join(", ")}`
+          );
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        alert(`Validation Errors:\n${validationErrors.join("\n")}`);
+        return;
+      }
+
       Logger.log("💾 Saving", validRows.length, "bulk records");
 
       // Save each row individually
@@ -2390,7 +2495,7 @@ const BSDataGrid = ({
     } finally {
       setFormLoading(false);
     }
-  }, [bulkAddRows, createRecord, loadData, bsPreObj]);
+  }, [bulkAddRows, createRecord, loadData, bsPreObj, validateFormData]);
 
   const handleBulkDialogClose = useCallback(() => {
     setBulkAddDialogOpen(false);
@@ -2512,6 +2617,24 @@ const BSDataGrid = ({
         (change) => change.newData
       );
 
+      // Validate all changed rows before saving
+      const validationErrors = [];
+      changes.forEach((row, index) => {
+        const validation = validateFormData(row);
+        if (!validation.isValid) {
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const rowId = row[primaryKey] || row.id || row.Id;
+          validationErrors.push(
+            `Row ID ${rowId}: ${validation.errors.join(", ")}`
+          );
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        alert(`Validation Errors:\n${validationErrors.join("\n")}`);
+        return;
+      }
+
       Logger.log("💾 Saving bulk changes:", changes.length, "rows");
 
       // Save each changed row
@@ -2563,7 +2686,7 @@ const BSDataGrid = ({
       setFormLoading(false);
       setLoading(false); // Clear loading state
     }
-  }, [metadata, updateRecord, loadData, bsPreObj]);
+  }, [metadata, updateRecord, loadData, bsPreObj, validateFormData]);
 
   const handleBulkDiscardChanges = useCallback(() => {
     setLoading(true); // Set loading state
@@ -3207,7 +3330,12 @@ const BSDataGrid = ({
                           )
                         )
                         .map((c) => {
-                          const { columnName, dataType, isNullable } = c;
+                          const {
+                            columnName,
+                            dataType,
+                            isNullable,
+                            maxLength,
+                          } = c;
                           const val = row[columnName] ?? "";
                           let inputType = "text";
                           let multiline = false;
@@ -3325,6 +3453,17 @@ const BSDataGrid = ({
                             ? { xs: 12 }
                             : { xs: 12, sm: 6, md: 4 };
 
+                          // Build helper text with length information for bulk add
+                          let helperText = "";
+                          if (
+                            bsShowCharacterCount &&
+                            maxLength > 0 &&
+                            (inputType === "text" || multiline)
+                          ) {
+                            const currentLength = String(val).length;
+                            helperText = `${currentLength}/${maxLength} characters`;
+                          }
+
                           return (
                             <Grid item {...gridSize} key={columnName}>
                               <TextField
@@ -3345,6 +3484,17 @@ const BSDataGrid = ({
                                 required={!isNullable}
                                 multiline={multiline}
                                 rows={multiline ? 2 : 1}
+                                helperText={helperText}
+                                inputProps={{
+                                  ...(maxLength > 0 &&
+                                    (inputType === "text" || multiline) && {
+                                      maxLength: maxLength,
+                                    }),
+                                }}
+                                error={
+                                  maxLength > 0 &&
+                                  String(val).length > maxLength
+                                }
                               />
                             </Grid>
                           );
