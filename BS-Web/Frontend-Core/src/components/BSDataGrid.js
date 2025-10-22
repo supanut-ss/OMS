@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
 import {
   Paper,
   Box,
@@ -797,12 +803,12 @@ const BSDataGrid = ({
   const [error, setError] = useState(null);
   const [headerFiltersEnabled, setHeaderFiltersEnabled] = useState(false);
 
-  const [paginationModel, setPaginationModel] = useState({
+  const [paginationModel, setPaginationModel] = useState(() => ({
     page: 0,
     pageSize: bsRowPerPage,
-  });
-  const [sortModel, setSortModel] = useState(parsedObjBy);
-  const [filterModel, setFilterModel] = useState({
+  }));
+  const [sortModel, setSortModel] = useState(() => parsedObjBy);
+  const [filterModel, setFilterModel] = useState(() => ({
     items: bsObjWh
       ? [
           {
@@ -812,7 +818,7 @@ const BSDataGrid = ({
           },
         ]
       : [],
-  });
+  }));
 
   // Row selection state for checkbox selection
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
@@ -847,101 +853,6 @@ const BSDataGrid = ({
     }
   }, [effectiveTableName, autoLoad, loadMetadata, bsPreObj]);
 
-  // Build API request from DataGrid state
-  const buildRequest = useCallback(() => {
-    // Only process filters for server mode
-    let filterItems = [];
-    let quickFilterValue = null;
-
-    if (bsFilterMode === "server") {
-      // Build filter model for backend
-      filterItems = filterModel.items
-        .filter((item) => item.value !== undefined && item.value !== "")
-        .map((item) => ({
-          field: item.field,
-          operator: item.operator || "contains",
-          value: item.value,
-        }));
-
-      // Handle Quick Filter (search box)
-      if (
-        filterModel.quickFilterValues &&
-        filterModel.quickFilterValues.length > 0
-      ) {
-        quickFilterValue = filterModel.quickFilterValues.join(" ");
-        Logger.log("🔍 Quick Filter detected (server mode):", {
-          quickFilterValues: filterModel.quickFilterValues,
-          combinedValue: quickFilterValue,
-        });
-      }
-    } else {
-      Logger.log("🔍 Client-side filtering - not sending filters to server");
-    }
-
-    // Build sort model for backend
-    const sortModelForApi = sortModel.map((sort) => ({
-      field: sort.field,
-      sort: sort.sort,
-    }));
-
-    // Include ComboBox fields in the query even if they're not in bsCols for display
-    // This ensures form fields have data when editing
-    let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
-    if (columnsForQuery && comboBoxConfig) {
-      const comboBoxFields = Object.keys(comboBoxConfig);
-      comboBoxFields.forEach((field) => {
-        if (!columnsForQuery.includes(field)) {
-          columnsForQuery.push(field);
-          Logger.log(
-            `📋 Adding ComboBox field to query: ${field} (not in bsCols but needed for form)`
-          );
-        }
-      });
-    }
-
-    const request = {
-      tableName: effectiveTableName,
-      page: paginationModel.page + 1, // API uses 1-based pagination
-      pageSize: paginationModel.pageSize,
-      sortModel: sortModelForApi,
-      filterModel: {
-        items: filterItems,
-        logicOperator: filterModel.logicOperator || "and",
-        quickFilter: quickFilterValue, // Add quick filter to the request
-      },
-      // Additional BS properties
-      preObj: bsPreObj,
-      columns: columnsForQuery ? columnsForQuery.join(",") : undefined,
-      customWhere: bsObjWh,
-      customOrderBy: bsObjBy,
-    };
-
-    Logger.log("📡 API Request with filters:", {
-      filterItems: filterItems.length,
-      quickFilter: quickFilterValue,
-      hasCustomWhere: !!bsObjWh,
-      originalCols: parsedCols,
-      finalCols: columnsForQuery,
-      addedComboBoxFields:
-        columnsForQuery && parsedCols
-          ? columnsForQuery.filter((col) => !parsedCols.includes(col))
-          : [],
-    });
-
-    return request;
-  }, [
-    effectiveTableName,
-    paginationModel,
-    sortModel,
-    filterModel,
-    bsPreObj,
-    bsObjBy,
-    bsObjWh,
-    parsedCols,
-    bsFilterMode,
-    comboBoxConfig,
-  ]);
-
   // Load data from API
   const loadData = useCallback(
     async (forceRefresh = false) => {
@@ -951,7 +862,62 @@ const BSDataGrid = ({
       setError(null);
 
       try {
-        const request = buildRequest();
+        // Build request inline to avoid dependency issues
+        let filterItems = [];
+        let quickFilterValue = null;
+
+        if (bsFilterMode === "server") {
+          // Build filter model for backend
+          filterItems = filterModel.items
+            .filter((item) => item.value !== undefined && item.value !== "")
+            .map((item) => ({
+              field: item.field,
+              operator: item.operator || "contains",
+              value: item.value,
+            }));
+
+          // Handle Quick Filter (search box)
+          if (
+            filterModel.quickFilterValues &&
+            filterModel.quickFilterValues.length > 0
+          ) {
+            quickFilterValue = filterModel.quickFilterValues.join(" ");
+          }
+        }
+
+        // Build sort model for backend
+        const sortModelForApi = sortModel.map((sort) => ({
+          field: sort.field,
+          sort: sort.sort,
+        }));
+
+        // Include ComboBox fields in the query even if they're not in bsCols for display
+        let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
+        if (columnsForQuery && comboBoxConfig) {
+          const comboBoxFields = Object.keys(comboBoxConfig);
+          comboBoxFields.forEach((field) => {
+            if (!columnsForQuery.includes(field)) {
+              columnsForQuery.push(field);
+            }
+          });
+        }
+
+        const request = {
+          tableName: effectiveTableName,
+          page: paginationModel.page + 1, // API uses 1-based pagination
+          pageSize: paginationModel.pageSize,
+          sortModel: sortModelForApi,
+          filterModel: {
+            items: filterItems,
+            logicOperator: filterModel.logicOperator || "and",
+            quickFilter: quickFilterValue, // Add quick filter to the request
+          },
+          // Additional BS properties
+          preObj: bsPreObj,
+          columns: columnsForQuery ? columnsForQuery.join(",") : undefined,
+          customWhere: bsObjWh,
+          customOrderBy: bsObjBy,
+        };
 
         // Add cache buster for force refresh (like after bulk edit)
         if (forceRefresh) {
@@ -1072,15 +1038,32 @@ const BSDataGrid = ({
         setLoading(false);
       }
     },
-    [effectiveTableName, metadata, buildRequest, getTableData, paginationModel]
+    [
+      effectiveTableName,
+      metadata,
+      getTableData,
+      paginationModel,
+      sortModel,
+      filterModel,
+      bsFilterMode,
+      bsPreObj,
+      bsObjBy,
+      bsObjWh,
+      parsedCols,
+      comboBoxConfig,
+    ]
   );
+
+  // Store loadData reference to use in useEffect without dependency
+  const loadDataRef = useRef(loadData);
+  loadDataRef.current = loadData;
 
   // Auto-reload data when dependencies change
   useEffect(() => {
     if (metadata && autoLoad) {
-      loadData();
+      loadDataRef.current();
     }
-  }, [metadata, autoLoad, loadData]);
+  }, [metadata, autoLoad]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
