@@ -1,7 +1,6 @@
 import BSImportFile from "../../components/BSImportFile";
 import { Box } from "@mui/material";
 // ...existing code...
-import { DataGrid } from "@mui/x-data-grid";
 // ...existing code...
 import AxiosMaster from "../../utils/AxiosMaster";
 import SecureStorage from "../../utils/SecureStorage";
@@ -15,7 +14,6 @@ import BSDataGridClient from "../../components/BSDataGridClient";
 
 const ImportExcel = () => {
   const [select, setSelect] = useState("");
-  const [gridRows, setGridRows] = useState([]);
   const [gridData, setGridData] = useState([]);
 
   const userInfo = useMemo(() => {
@@ -27,18 +25,25 @@ const ImportExcel = () => {
       return {};
     }
   }, []);
-  const columns = [
+  const importResultColumns = [
     {
       field: "code",
       headerName: "Code",
       width: 150,
+      type: "string",
     },
     {
       field: "message",
       headerName: "Message",
       width: 600,
+      type: "string",
     },
-    { field: "records", headerName: "Records", width: 90 },
+    {
+      field: "records",
+      headerName: "Records",
+      width: 90,
+      type: "string",
+    },
   ];
   const userId = userInfo?.UserId ?? userInfo?.userId ?? "";
 
@@ -145,7 +150,7 @@ const ImportExcel = () => {
       >
         Download Excel
       </Button>
-      <BSDataGridClient data={gridData} />
+      <BSDataGridClient data={gridData} columns={importResultColumns} />
     </Box>
   );
 };
