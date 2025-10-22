@@ -3,6 +3,7 @@ import ThemeContextProvider from "./themes/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import AppRoutes from "./AppRoutes";
 import JWTDebugger from "./utils/JWTDebugger";
+import Config from "./utils/Config";
 
 // Import debugging tools for development
 if (process.env.NODE_ENV === "development") {
@@ -25,7 +26,7 @@ export default function App() {
   return (
     <ThemeContextProvider>
       <AuthProvider>
-        <BrowserRouter basename="/ams_kpmt_count_tag" >
+        <BrowserRouter basename={Config.BASE_URL} >
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>

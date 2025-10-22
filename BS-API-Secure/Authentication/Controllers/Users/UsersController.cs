@@ -46,6 +46,44 @@ namespace Authentication.Controllers.Users
                 return ResponseError(ex.Message, 1);
             }
         }
-       
+
+
+        [HttpPost("register")]
+        public async Task<IActionResult> RegisterUser(UserRequest userReq)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.RegisterUser(userReq, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+
+        [HttpPost("update")]
+        public async Task<IActionResult> UpdateUser(UserRequest userReq)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.UpdateUser(userReq, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
     }
 }

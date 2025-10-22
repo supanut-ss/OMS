@@ -1,5 +1,5 @@
 import BSImportFile from "../../components/BSImportFile";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 // ...existing code...
 import { DataGrid } from "@mui/x-data-grid";
 // ...existing code...
@@ -7,12 +7,16 @@ import AxiosMaster from "../../utils/AxiosMaster";
 import SecureStorage from "../../utils/SecureStorage";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import { useState, useMemo } from "react";
+import BSAlertSwal2 from "../../components/BSAlertSwal2";
+import DownloadIcon from "@mui/icons-material/Download";
+import { Button } from "@mui/material";
+import BSDataGridClient from "../../components/BSDataGridClient";
 // ...existing code...
 
 const ImportExcel = () => {
   const [select, setSelect] = useState("");
   const [gridRows, setGridRows] = useState([]);
-  const [recordsCount, setRecordsCount] = useState(null);
+  const [gridData, setGridData] = useState([]);
 
   const userInfo = useMemo(() => {
     const raw = SecureStorage.get("userInfo");
@@ -38,9 +42,41 @@ const ImportExcel = () => {
   ];
   const userId = userInfo?.UserId ?? userInfo?.userId ?? "";
 
+  const handleDownload = async () => {
+    if (!select?.import_id) {
+      BSAlertSwal2.show(
+        "error",
+        "Please select an import type before downloading."
+      );
+      return;
+    }
+    const url = `/GetImportMaster?import_id=${select?.import_id}`;
+    try {
+      const res = await AxiosMaster.get(url);
+      const filePath = res.data?.data?.[0]?.excel_example_file_path;
+      if (!filePath) {
+        BSAlertSwal2.show("error", "ไม่พบ path ของไฟล์ Excel");
+        return;
+      }
+      // ใช้ anchor trick เพื่อให้ browser download
+      const fileName = filePath.split("/").pop();
+      // 📥 สร้างลิงก์ดาวน์โหลด
+      const link = document.createElement("a");
+      link.href = filePath;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      BSAlertSwal2.show("error", "Upload error:", err);
+    }
+  };
   const handleImport = async (files) => {
     if (!select?.import_id) {
-      alert("Please select an import type before importing.");
+      BSAlertSwal2.show(
+        "error",
+        "Please select an import type before importing."
+      );
       return;
     }
     if (!files || files.length === 0) return;
@@ -59,26 +95,17 @@ const ImportExcel = () => {
       });
       const data = res.data;
 
-      // set records count when provided
-      setRecordsCount(typeof data.records === "number" ? data.records : null);
-
-      if (res.status === 200 && data.code == "0") {
-        alert(data.message || "Import success");
+      if (res.status === 200 && data.code === "0") {
+        BSAlertSwal2.show("success", data.message || "Import success");
         // if response contains tabular payload, map it to DataGrid
-        const payload = data.data;
-        debugger;
-        if (payload && typeof payload === "object" && payload.code) {
-          setGridRows([{ id: 1, ...payload }]);
-        } else {
-          // no tabular data — clear grid
-          setGridRows([]);
-        }
       } else {
-        alert("Upload Failed: " + (data.message || "Unknown error"));
+        BSAlertSwal2.show("error", data.message || "Unknown error");
       }
+      const payload = data.data;
+      console.log(payload);
+      setGridData(payload);
     } catch (err) {
-      console.error("Upload error:", err);
-      alert("Error uploading file.");
+      BSAlertSwal2.show("error", "Upload error:", err);
     }
   };
 
@@ -110,14 +137,15 @@ const ImportExcel = () => {
         buttonLabel="Choose Excel File"
         onImport={handleImport}
       />
-
-      <DataGrid
-        rows={gridRows}
-        columns={columns}
-        pageSize={10}
-        rowsPerPageOptions={[10, 25, 50]}
-        disableSelectionOnClick
-      />
+      <Button
+        variant="contained"
+        color="success"
+        startIcon={<DownloadIcon />}
+        onClick={handleDownload}
+      >
+        Download Excel
+      </Button>
+      <BSDataGridClient data={gridData} />
     </Box>
   );
 };

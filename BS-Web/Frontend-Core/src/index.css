@@ -11,3 +11,17 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.swal2-container {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 50000 !important;
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+.swal2-zindex-override {
+  z-index: 50001 !important;
+  position: fixed !important;
+}

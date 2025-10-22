@@ -15,6 +15,7 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import BSAlertSwal2 from "../components/BSAlertSwal2";
 /**
  * BSImportFile component
  * @param {Object} props
@@ -82,7 +83,8 @@ const BSImportFile = ({
     const invalidFiles = files.filter((file) => !validFiles.includes(file));
 
     if (invalidFiles.length > 0) {
-      alert(
+      BSAlertSwal2.show(
+        "error",
         `Some files are not allowed: ${invalidFiles
           .map((f) => f.name)
           .join(", ")}`
@@ -120,7 +122,9 @@ const BSImportFile = ({
     if (onImport) {
       onImport(selectedFiles);
     } else {
-      alert("Importing files: " + selectedFiles.map((f) => f.name).join(", "));
+      console.warn(
+        "Importing files: " + selectedFiles.map((f) => f.name).join(", ")
+      );
     }
     handleClose();
   };
