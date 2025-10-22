@@ -1774,7 +1774,7 @@ const BSDataGrid = ({
         return true;
       }
 
-      // Hide audit fields
+      // Hide audit fields (including update_by and update_date unless explicitly specified in bsCols)
       const auditFields = [
         // "create_by",
         // "created_by",
@@ -1783,11 +1783,11 @@ const BSDataGrid = ({
         // "created_date",
         // "createdate",
         // "created_at",
-        "update_by",
+        "update_by", // Hide by default unless in bsCols
         "updated_by",
         "updateby",
         "modified_by",
-        "update_date",
+        "update_date", // Hide by default unless in bsCols
         "updated_date",
         "updatedate",
         "updated_at",
@@ -1795,13 +1795,24 @@ const BSDataGrid = ({
         "rowversion",
       ];
 
+      // If bsCols is specified, allow update_by and update_date to show if they're in the list
+      if (parsedCols && parsedCols.length > 0) {
+        if (
+          (columnName.toLowerCase() === "update_by" ||
+            columnName.toLowerCase() === "update_date") &&
+          parsedCols.includes(columnName)
+        ) {
+          return false; // Don't hide if explicitly included in bsCols
+        }
+      }
+
       if (auditFields.includes(columnName.toLowerCase())) {
         return true;
       }
 
       return false;
     },
-    [metadata?.primaryKeys]
+    [metadata?.primaryKeys, parsedCols]
   );
 
   // Render form fields from metadata
@@ -2516,9 +2527,12 @@ const BSDataGrid = ({
       let filteredDataColumns = [...dataColumns]; // Ensure we have an array copy
 
       if (parsedCols && parsedCols.length > 0) {
-        // Separate actions column if it exists
+        // Separate special columns that should always be included
         const actionsCol = dataColumns.find((c) => c.field === "actions");
-        const otherColumns = dataColumns.filter((c) => c.field !== "actions");
+        const rowNumberCol = dataColumns.find((c) => c.field === "__rowNumber");
+        const otherColumns = dataColumns.filter(
+          (c) => c.field !== "actions" && c.field !== "__rowNumber"
+        );
 
         // Filter to only show specified columns, maintaining order
         filteredDataColumns = [];
@@ -2526,6 +2540,11 @@ const BSDataGrid = ({
         // Add actions column first if it exists
         if (actionsCol) {
           filteredDataColumns.push(actionsCol);
+        }
+
+        // Add row number column if it exists (should always show regardless of bsCols)
+        if (rowNumberCol) {
+          filteredDataColumns.push(rowNumberCol);
         }
 
         // Add other specified columns
