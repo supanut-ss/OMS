@@ -31,16 +31,16 @@ export const useDynamicCrud = (tableName) => {
         setError(null);
         Logger.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
 
-        // Debug JWT token
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
-        Logger.log(
-          "🔑 JWT Token check:",
-          token ? "Token exists" : "No token found"
-        );
-        if (token) {
-          Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
-        }
+        // // Debug JWT token
+        // const token =
+        //   localStorage.getItem("token") || sessionStorage.getItem("token");
+        // Logger.log(
+        //   "🔑 JWT Token check:",
+        //   token ? "Token exists" : "No token found"
+        // );
+        // if (token) {
+        //   Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
+        // }
 
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;

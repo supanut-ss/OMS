@@ -565,12 +565,10 @@ const ComboBoxField = ({
 
   return (
     <FormControl fullWidth size="small" required={required}>
-      <InputLabel>
-        {formatColumnName(columnName)} {required ? "*" : ""}
-      </InputLabel>
+      <InputLabel>{formatColumnName(columnName)}</InputLabel>
       <Select
         value={value || ""}
-        label={`${formatColumnName(columnName)} ${required ? "*" : ""}`}
+        label={formatColumnName(columnName)}
         onChange={(e) => onChange(e.target.value)}
         disabled={loading}
       >
@@ -1744,14 +1742,10 @@ const BSDataGrid = ({
         return (
           <Grid item xs={12} sm={6} md={4} key={columnName}>
             <FormControl fullWidth size="small" required={!isNullable}>
-              <InputLabel>
-                {formatColumnName(columnName)} {!isNullable ? "*" : ""}
-              </InputLabel>
+              <InputLabel>{formatColumnName(columnName)}</InputLabel>
               <Select
                 value={val || "YES"}
-                label={`${formatColumnName(columnName)} ${
-                  !isNullable ? "*" : ""
-                }`}
+                label={formatColumnName(columnName)}
                 onChange={(e) =>
                   setFormData((p) => ({ ...p, [columnName]: e.target.value }))
                 }
@@ -1827,9 +1821,7 @@ const BSDataGrid = ({
                   }
                 />
               }
-              label={`${formatColumnName(columnName)} ${
-                !isNullable ? "*" : ""
-              }`}
+              label={formatColumnName(columnName)}
             />
           </Grid>
         );
@@ -1843,7 +1835,7 @@ const BSDataGrid = ({
           <TextField
             fullWidth
             size="small"
-            label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""}`}
+            label={formatColumnName(columnName)}
             type={inputType}
             value={val}
             onChange={(e) =>
