@@ -40,6 +40,8 @@ import {
   GridActionsCellItem,
   GridToolbarContainer,
   GridToolbarQuickFilter,
+  GridRowModes,
+  GridRowEditStopReasons,
 } from "@mui/x-data-grid-pro";
 import {
   Edit,
@@ -50,6 +52,8 @@ import {
   FilterListOff as FilterListOffIcon,
   Restore,
   ArrowDropDown,
+  Save as SaveIcon,
+  Close as CancelIcon,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../utils/SchemaMapping";
@@ -338,6 +342,7 @@ const DynamicGridToolbar = ({
   onToggleHeaderFilters,
   bsBulkEdit = false,
   bsBulkAdd = false,
+  bsBulkDelete = false,
   selectedRowCount = 0,
   onBulkEdit,
   onBulkDelete,
@@ -406,8 +411,8 @@ const DynamicGridToolbar = ({
         </Button>
       )}
 
-      {/* Bulk Edit/Delete Split Button - show only when rows are selected */}
-      {selectedRowCount > 0 && (
+      {/* Bulk Edit/Delete Split Button - show only when rows are selected and checkbox is enabled */}
+      {selectedRowCount > 0 && (bsBulkEdit || bsBulkDelete) && (
         <BulkSplitButton
           selectedRowCount={selectedRowCount}
           onBulkEdit={onBulkEdit}
@@ -640,6 +645,9 @@ const ComboBoxField = ({
  *   bsRowPerPage={25}
  *   bsBulkEdit={true}
  *   bsBulkAdd={true}
+ *   bsBulkDelete={true}
+ *   bsBulkAddInline={true}
+ *   bsShowCheckbox={true}
  *   bsShowDescColumn={false}
  *   bsShowCharacterCount={true}
  *   bsComboBox={[
@@ -677,6 +685,12 @@ const ComboBoxField = ({
  *   * Format: "15/50 characters" or "Description text (15/50 characters)"
  *   * Only applies to text and textarea fields with maxLength defined in metadata
  *   * Helps users stay within column length limits to prevent truncation errors
+ *
+ * @bsShowCheckbox Configuration:
+ * - bsShowCheckbox={false} (default): Checkbox selection is hidden
+ * - bsShowCheckbox={true}: Force show checkbox selection column
+ *   * Checkbox will also auto-show when bsBulkEdit, bsBulkDelete is true or onCheckBoxSelected is provided
+ *   * Use this prop when you need checkbox selection without bulk operations
  */
 const BSDataGrid = ({
   // Legacy props (เก่า)
@@ -702,6 +716,8 @@ const BSDataGrid = ({
   bsBulkEdit = false,
   bsBulkAdd = false,
   bsBulkDelete = false,
+  bsBulkAddInline = false, // Inline bulk add mode
+  bsShowCheckbox = false, // Show checkbox selection
   bsShowDescColumn = true,
   bsPinColsLeft,
   bsPinColsRight,
@@ -845,6 +861,10 @@ const BSDataGrid = ({
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const unsavedChangesRef = React.useRef({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Inline Bulk Add states
+  const [rowModesModel, setRowModesModel] = useState({});
+  const newRowIdCounter = useRef(0);
 
   // Load metadata when table name changes
   useEffect(() => {
@@ -1431,11 +1451,29 @@ const BSDataGrid = ({
       return;
     }
 
+    // Inline bulk add mode
+    if (bsBulkAddInline) {
+      const id = `new-${newRowIdCounter.current++}`;
+      const newRow = {
+        id,
+        ...initializeFormData(),
+        isNew: true,
+      };
+
+      setRows((oldRows) => [...oldRows, newRow]);
+      setRowModesModel((oldModel) => ({
+        ...oldModel,
+        [id]: { mode: GridRowModes.Edit, fieldToFocus: Object.keys(newRow)[1] }, // Focus first editable field
+      }));
+      return;
+    }
+
+    // Default dialog mode
     setDialogMode("add");
     setSelectedRow(null);
     setFormData(initializeFormData());
     setDialogOpen(true);
-  }, [onAdd, initializeFormData, metadata, tableName]);
+  }, [onAdd, initializeFormData, metadata, tableName, bsBulkAddInline]);
 
   // Open Edit dialog or delegate
   const handleEditClick = useCallback(
@@ -1988,6 +2026,118 @@ const BSDataGrid = ({
     [metadata]
   );
 
+  // Inline editing handlers for bsBulkAddInline functionality
+  const handleInlineRowEditStop = useCallback((params, event) => {
+    if (params.reason === GridRowEditStopReasons.rowFocusOut) {
+      event.defaultMuiPrevented = true;
+    }
+  }, []);
+
+  const handleInlineEditClick = useCallback(
+    (id) => () => {
+      if (bsBulkAddInline) {
+        setRowModesModel((oldModel) => ({
+          ...oldModel,
+          [id]: { mode: GridRowModes.Edit },
+        }));
+      }
+    },
+    [bsBulkAddInline]
+  );
+
+  const handleInlineSaveClick = useCallback(
+    (id) => () => {
+      setRowModesModel((oldModel) => ({
+        ...oldModel,
+        [id]: { mode: GridRowModes.View },
+      }));
+    },
+    []
+  );
+
+  const handleInlineDeleteClick = useCallback(
+    (id) => () => {
+      setRows((oldRows) => oldRows.filter((row) => row.id !== id));
+      setRowModesModel((oldModel) => {
+        const newModel = { ...oldModel };
+        delete newModel[id];
+        return newModel;
+      });
+    },
+    []
+  );
+
+  const handleInlineCancelClick = useCallback(
+    (id) => () => {
+      setRowModesModel((oldModel) => ({
+        ...oldModel,
+        [id]: { mode: GridRowModes.View, ignoreModifications: true },
+      }));
+
+      const editedRow = rows.find((row) => row.id === id);
+      if (editedRow?.isNew) {
+        setRows((oldRows) => oldRows.filter((row) => row.id !== id));
+      }
+    },
+    [rows]
+  );
+
+  const processRowUpdate = useCallback(
+    async (newRow) => {
+      try {
+        // Validate the row data
+        const validation = validateFormData(newRow);
+        if (!validation.isValid) {
+          alert(`Validation errors:\n${validation.errors.join("\n")}`);
+          return newRow; // Return unchanged to keep edit mode
+        }
+
+        // If it's a new row, create it
+        if (newRow.isNew) {
+          const { isNew, id, ...dataToSave } = newRow;
+          const savedRecord = await createRecord(dataToSave, bsPreObj);
+
+          // Replace the temporary row with the saved one
+          const updatedRow = {
+            ...savedRecord,
+            isNew: false,
+          };
+
+          setRows((oldRows) =>
+            oldRows.map((row) => (row.id === newRow.id ? updatedRow : row))
+          );
+
+          // Refresh data to get the latest from server
+          await loadData(true);
+
+          Logger.log("✅ New record created successfully:", savedRecord);
+          return updatedRow;
+        }
+
+        // If it's an existing row, update it
+        const primaryKey = metadata?.primaryKeys?.[0] || "Id";
+        const id = newRow[primaryKey];
+        const savedRecord = await updateRecord(id, newRow, bsPreObj);
+
+        setRows((oldRows) =>
+          oldRows.map((row) => (row.id === newRow.id ? savedRecord : row))
+        );
+
+        Logger.log("✅ Record updated successfully:", savedRecord);
+        return savedRecord;
+      } catch (error) {
+        Logger.error("❌ Failed to save record:", error);
+        alert(`Failed to save record: ${error.message}`);
+        return newRow; // Return unchanged to keep edit mode
+      }
+    },
+    [validateFormData, createRecord, updateRecord, bsPreObj, metadata, loadData]
+  );
+
+  const handleRowModesModelChange = useCallback((newRowModesModel) => {
+    setRowModesModel(newRowModesModel);
+  }, []);
+
   // Build columns from metadata
   const columns = useMemo(() => {
     Logger.log("🏗️ Building columns - START", {
@@ -2155,6 +2305,48 @@ const BSDataGrid = ({
               />
             );
           });
+        } else if (bsBulkAddInline) {
+          // Inline bulk add actions
+          actions.push((params) => {
+            const isInEditMode =
+              rowModesModel[params.id]?.mode === GridRowModes.Edit;
+
+            if (isInEditMode) {
+              return (
+                <>
+                  <GridActionsCellItem
+                    icon={<SaveIcon />}
+                    label="Save"
+                    onClick={handleInlineSaveClick(params.id)}
+                    sx={{ color: "primary.main" }}
+                  />
+                  <GridActionsCellItem
+                    icon={<CancelIcon />}
+                    label="Cancel"
+                    onClick={handleInlineCancelClick(params.id)}
+                    color="inherit"
+                  />
+                </>
+              );
+            } else {
+              return (
+                <>
+                  <GridActionsCellItem
+                    icon={<Edit />}
+                    label="Edit"
+                    onClick={handleInlineEditClick(params.id)}
+                    color="inherit"
+                  />
+                  <GridActionsCellItem
+                    icon={<Delete />}
+                    label="Delete"
+                    onClick={handleInlineDeleteClick(params.id)}
+                    color="inherit"
+                  />
+                </>
+              );
+            }
+          });
         } else {
           // Regular edit/delete actions (only in normal mode)
           actions.push((params) => (
@@ -2284,6 +2476,7 @@ const BSDataGrid = ({
     metadata,
     readOnly,
     bulkEditMode,
+    bsBulkAddInline,
     parsedCols,
     comboBoxConfig,
     onView,
@@ -2300,6 +2493,11 @@ const BSDataGrid = ({
     getComboBoxOptions,
     isActiveField,
     getIsActiveOptions,
+    rowModesModel,
+    handleInlineEditClick,
+    handleInlineSaveClick,
+    handleInlineCancelClick,
+    handleInlineDeleteClick,
   ]);
 
   // Handle row selection changes for checkbox selection
@@ -3041,9 +3239,18 @@ const BSDataGrid = ({
                 }`}
                 // Editing
                 editMode="row"
-                processRowUpdate={processBulkRowUpdate}
+                processRowUpdate={
+                  bsBulkAddInline ? processRowUpdate : processBulkRowUpdate
+                }
                 onRowEditStart={handleRowEditStart}
-                onRowEditStop={handleRowEditStop}
+                onRowEditStop={
+                  bsBulkAddInline ? handleInlineRowEditStop : handleRowEditStop
+                }
+                // Inline editing for bsBulkAddInline
+                {...(bsBulkAddInline && {
+                  rowModesModel,
+                  onRowModesModelChange: handleRowModesModelChange,
+                })}
                 // Pagination
                 pagination={true}
                 paginationMode="server"
@@ -3065,12 +3272,18 @@ const BSDataGrid = ({
                 headerFilterHeight={52}
                 // Row Selection (checkbox selection when enabled)
                 checkboxSelection={
-                  bsBulkEdit || bsBulkAdd || !!onCheckBoxSelected
+                  bsShowCheckbox ||
+                  bsBulkEdit ||
+                  bsBulkDelete ||
+                  !!onCheckBoxSelected
                 }
                 rowSelectionModel={rowSelectionModel}
                 onRowSelectionModelChange={handleRowSelectionChange}
                 disableRowSelectionOnClick={
-                  !bsBulkEdit && !bsBulkAdd && !onCheckBoxSelected
+                  !bsShowCheckbox &&
+                  !bsBulkEdit &&
+                  !bsBulkDelete &&
+                  !onCheckBoxSelected
                 }
                 // Column Pinning (Pro feature)
                 pinnedColumns={pinnedColumns}
@@ -3126,6 +3339,7 @@ const BSDataGrid = ({
                           onToggleHeaderFilters: handleToggleHeaderFilters,
                           bsBulkEdit,
                           bsBulkAdd,
+                          bsBulkDelete,
                           selectedRowCount: rowSelectionModel.length,
                           onBulkEdit: handleBulkEdit,
                           onBulkDelete: handleBulkDelete,
