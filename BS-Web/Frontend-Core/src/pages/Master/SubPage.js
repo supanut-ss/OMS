@@ -28,10 +28,12 @@ const SubPage = () => {
 
             {/* ตารางข้อมูล */}
             <BSDataGrid
-                bsLocale="th"
+                bsLocale="en"
                 bsPreObj="ams"
                 bsObj="tbm_sub"
-                onCheckBoxSelected={(rows) => setSelectedRows(rows)}
+                bsCols="sub_no,part_no,part_name,supplier_name,create_by,create_date,update_by,update_date"
+                showAdd={false}
+                bsVisibleDelete={false}
             />
         </Paper>
     );
