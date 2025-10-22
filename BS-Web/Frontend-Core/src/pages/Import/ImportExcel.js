@@ -1,18 +1,15 @@
+import { useState, useMemo } from "react";
+import { Button, Box } from "@mui/material";
 import BSImportFile from "../../components/BSImportFile";
-import { Box } from "@mui/material";
-// ...existing code...
-// ...existing code...
 import AxiosMaster from "../../utils/AxiosMaster";
 import SecureStorage from "../../utils/SecureStorage";
 import BSAutoComplete from "../../components/BSAutoComplete";
-import { useState, useMemo } from "react";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import DownloadIcon from "@mui/icons-material/Download";
-import { Button } from "@mui/material";
 import BSDataGridClient from "../../components/BSDataGridClient";
-// ...existing code...
-
+import { useTheme } from "@mui/material/styles";
 const ImportExcel = () => {
+  const theme = useTheme();
   const [select, setSelect] = useState("");
   const [gridData, setGridData] = useState([]);
 
@@ -76,14 +73,17 @@ const ImportExcel = () => {
       BSAlertSwal2.show("error", "Upload error:", err);
     }
   };
-  const handleImport = async (files) => {
+  const handleBeforeOpen = () => {
     if (!select?.import_id) {
       BSAlertSwal2.show(
         "error",
         "Please select an import type before importing."
       );
-      return;
+      return false;
     }
+    return true;
+  };
+  const handleImport = async (files) => {
     if (!files || files.length === 0) return;
 
     const formData = new FormData();
@@ -107,7 +107,6 @@ const ImportExcel = () => {
         BSAlertSwal2.show("error", data.message || "Unknown error");
       }
       const payload = data.data;
-      console.log(payload);
       setGridData(payload);
     } catch (err) {
       BSAlertSwal2.show("error", "Upload error:", err);
@@ -115,41 +114,71 @@ const ImportExcel = () => {
   };
 
   return (
-    <Box>
-      <BSAutoComplete
-        bsMode="select"
-        bsTitle="เลือก Item เดียว"
-        bsPreObj="imp.t_mas_"
-        bsObj="import_master"
-        bsColumes={[
-          { field: "import_id", display: false, filter: false, key: true },
-          { field: "import_name", display: true, filter: true, key: false },
-        ]}
-        bsObjBy="import_name"
-        bsObjWh=""
-        bsValue={select} // ค่าเริ่มต้น = code ของ option
-        bsCacheKey="select"
-        bsOnChange={(val) => {
-          console.log(val);
-          setSelect(val);
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        p: 2,
+        borderBottom: 1,
+        borderColor: "divider",
+        backgroundColor: "background.paper",
+        borderRadius: 2,
+      }}
+    >
+      {/* แถวบน: AutoComplete + ปุ่ม */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
         }}
-        bsLoadOnOpen={true}
-      />
-      <BSImportFile
-        mode="single"
-        accept={[".xlsx", ".xls"]}
-        dialogTitle="Import Excel"
-        buttonLabel="Choose Excel File"
-        onImport={handleImport}
-      />
-      <Button
-        variant="contained"
-        color="success"
-        startIcon={<DownloadIcon />}
-        onClick={handleDownload}
       >
-        Download Excel
-      </Button>
+        {/* AutoComplete ครึ่งหนึ่งของพื้นที่ */}
+        <Box sx={{ flex: 1 }}>
+          <BSAutoComplete
+            bsMode="select"
+            bsTitle="เลือก Item เดียว"
+            bsPreObj="imp.t_mas_"
+            bsObj="import_master"
+            bsColumes={[
+              { field: "import_id", display: false, filter: false, key: true },
+              { field: "import_name", display: true, filter: true, key: false },
+            ]}
+            bsObjBy="import_name"
+            bsObjWh=""
+            bsValue={select}
+            bsCacheKey="select"
+            bsOnChange={(val) => {
+              console.log(val);
+              setSelect(val);
+            }}
+            bsLoadOnOpen={true}
+          />
+        </Box>
+
+        {/* ปุ่ม Choose File */}
+        <BSImportFile
+          mode="single"
+          accept={[".xlsx", ".xls"]}
+          dialogTitle="Import Excel"
+          buttonLabel="Choose Excel File"
+          onImport={handleImport}
+          beforeOpen={handleBeforeOpen}
+        />
+
+        {/* ปุ่ม Download */}
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownload}
+        >
+          DOWNLOAD EXCEL
+        </Button>
+      </Box>
+
+      {/* ตารางด้านล่าง */}
       <BSDataGridClient data={gridData} columns={importResultColumns} />
     </Box>
   );
