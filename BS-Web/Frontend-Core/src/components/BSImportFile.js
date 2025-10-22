@@ -24,6 +24,7 @@ import BSAlertSwal2 from "../components/BSAlertSwal2";
  * @param {string} [props.dialogTitle='Import File(s)'] - Dialog title
  * @param {string} [props.buttonLabel='Select File(s)'] - Select button label
  * @param {function} [props.onImport] - Callback when import is clicked
+ * @param {function} [props.beforeOpen] - Function to validate or confirm before opening dialog
  */
 const BSImportFile = ({
   mode = "multi",
@@ -31,6 +32,7 @@ const BSImportFile = ({
   dialogTitle = "Import File(s)",
   buttonLabel = "Select File(s)",
   onImport,
+  beforeOpen,
   ...otherProps
 }) => {
   const fileInputRef = useRef(null);
@@ -111,7 +113,18 @@ const BSImportFile = ({
     setIsDragActive(false);
   };
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = async () => {
+    // ถ้ามีฟังก์ชัน beforeOpen ส่งเข้ามา ให้เรียกก่อน
+    if (beforeOpen) {
+      const result = await beforeOpen(); // รองรับ async ได้ด้วย
+      // ถ้า beforeOpen คืนค่า false หรือไม่ผ่าน ให้ return ไม่ต้องเปิด dialog
+      if (result === false) return;
+    }
+
+    // เปิด Dialog ถ้าผ่านการตรวจสอบ
+    setOpen(true);
+  };
+
   const handleClose = () => {
     setOpen(false);
     setSelectedFiles([]);

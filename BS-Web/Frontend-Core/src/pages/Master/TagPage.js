@@ -52,10 +52,11 @@ const TagPage = () => {
                 </Box>
                 {/* ตารางข้อมูล */}
                 <BSDataGrid
-                    bsLocale="th"
+                    bsLocale="en"
                     bsPreObj="ams"
                     bsObj="tbm_tag"
-                    onCheckBoxSelected={(rows) => setSelectedRows(rows)}
+                    showAdd={false}
+                    bsCols="tag_no,tag_date,part_no,part_name,supplier_name,area_code,area_name,location,audit,remark,double_check,create_by,create_date,update_by,update_date"
                 />
             </Paper>
         </>
