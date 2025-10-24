@@ -276,7 +276,7 @@ export default function MainLayout() {
             </Tooltip>
 
             {/* Notifications */}
-            <Tooltip title="การแจ้งเตือน">
+            {/* <Tooltip title="การแจ้งเตือน">
               <IconButton
                 color="inherit"
                 onClick={handleNotificationClick}
@@ -287,7 +287,7 @@ export default function MainLayout() {
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
-            </Tooltip>
+            </Tooltip> */}
 
             {/* User Menu */}
             <Tooltip title="เมนูผู้ใช้">
