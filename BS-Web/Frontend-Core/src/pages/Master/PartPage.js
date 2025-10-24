@@ -49,7 +49,6 @@ const PartPage = () => {
                 alert(`ไม่สามารถลบ part_no: ${part_no} เนื่องจากมี ${count} รายการที่เชื่อมโยงใน tbm_sub`);
                 return;
             }
-
             if (!window.confirm(`ยืนยันการลบ part_no: ${part_no} ?`)) return;
 
             const delRes = await fetch(`/api/tbm_part/${encodeURIComponent(part_no)}`, {

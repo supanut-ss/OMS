@@ -56,7 +56,12 @@ const TagPage = () => {
                     bsPreObj="ams"
                     bsObj="tbm_tag"
                     showAdd={false}
+                    bsVisibleDelete={false}
                     bsCols="tag_no,tag_date,part_no,part_name,supplier_name,area_code,area_name,location,audit,remark,double_check,create_by,create_date,update_by,update_date"
+                    onCheckBoxSelected={(rows) => {
+                        console.log("Selected rows:", rows);
+                        setSelectedRows(rows);
+                    }}
                 />
             </Paper>
         </>

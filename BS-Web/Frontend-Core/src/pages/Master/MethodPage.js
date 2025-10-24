@@ -18,6 +18,17 @@ const MethodPage = () => {
         method: "",
     });
 
+    const handleOpenDelete = async (payload) => {
+        try {
+            console.log("onDelete payload:", payload);
+            // ที่นี่สามารถเพิ่ม logic ลบข้อมูลได้ เช่น call API delete
+        } catch (error) {
+            console.error("Error in handleOpenDelete:", error);
+            alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+        }
+    };
+
+
 
     return (
         <>
@@ -30,7 +41,9 @@ const MethodPage = () => {
                     bsLocale="en"
                     bsPreObj="ams"
                     bsObj="tbm_method"
-                // bsCols="method,create_by,create_date,update_by,update_date"
+                    bsCols="method,create_by,create_date,update_by,update_date"
+                    onDelete={handleOpenDelete}
+
                 />
             </Paper>
         </>
