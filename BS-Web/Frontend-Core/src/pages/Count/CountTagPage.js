@@ -6,7 +6,7 @@ import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import secureStorage from "../../utils/SecureStorage";
 const CountTag = () => {
-     const userInfo = secureStorage.get("userInfo");
+     const userInfo = JSON.parse(secureStorage.get("userInfo"));
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
     const CallNoti = async () => {
@@ -23,23 +23,17 @@ const CountTag = () => {
                 "Please select at least one tag to re-count.")
             return;
         }
-        console.log("Selected User:", selectedUser);
-        console.log("Selected Rows:", selectedRows);
         for (let row of selectedRows) {
             await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
                 "title":"Please Re-Count " +row.location+" "+row.tag_no, //Please Re-Count [location] [Tag_no]
                 "body": ""+row.part_no,
-                "tokens": [
-                    selectedUser.fcm_token
-                ],
-                "data": [
+                "tokens": [selectedUser.fcm_token],
+                "data": 
                     {
                         "tag_no": row.tag_no,
-                        "user_id": JSON.parse(userInfo).user_id,
-                        "create_by":JSON.parse(userInfo).user_id 
+                        "create_by":userInfo.UserId,
+                        "routeApp": "/count_tag"
                     }
-                ],
-                "routeApp": "/count_tag"
             }).then((response) => {
                 BSAlertSwal2.show(
                     "success",

@@ -1,25 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-    Box,
     Typography,
     Paper,
-    Divider,
-    Button,
-    TextField,
-    Stack,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const PartPage = () => {
-    const [filters, setFilters] = useState({
-        partNo: "",
-        partName: "",
-        area: "",
-    });
-
-
-
-
 
     const handleOpenDelete = async (payload) => {
         try {

@@ -1,22 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-    Box,
     Typography,
     Paper,
-    Divider,
-    Button,
-    TextField,
-    Stack,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const MethodPage = () => {
-    const [selectedRows, setSelectedRows] = useState([]);
 
-    // ✅ state เก็บค่าฟิลเตอร์
-    const [filters, setFilters] = useState({
-        method: "",
-    });
 
     const handleOpenDelete = async (payload) => {
         try {

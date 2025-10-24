@@ -14,7 +14,7 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
-  Badge,
+ // Badge,
   Avatar,
   Menu,
   MenuItem,
@@ -135,9 +135,9 @@ export default function MainLayout() {
 
   const toggleDrawer = () => setOpen((prev) => !prev);
 
-  const handleNotificationClick = (event) => {
-    setNotificationAnchor(event.currentTarget);
-  };
+  // const handleNotificationClick = (event) => {
+  //   setNotificationAnchor(event.currentTarget);
+  // };
 
   const handleNotificationClose = () => {
     setNotificationAnchor(null);

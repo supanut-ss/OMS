@@ -50,18 +50,6 @@ export default function AppRoutes() {
         <Route path="test/schema" element={<SchemaTestPage />} />
         {/* route สำหรับ Schema Mapping Demo */}
         <Route path="test/schema-demo" element={<SchemaMappingDemo />} />
-
-        <Route
-          path="timesheet"
-          element={<div>Timesheet Page - Coming Soon</div>}
-        />
-        <Route path="tasks" element={<div>Tasks Page - Coming Soon</div>} />
-        <Route
-          path="calendar"
-          element={<div>Calendar Page - Coming Soon</div>}
-        />
-        <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
-        <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
         <Route path="importMaster" element={<ImportMaster />} />
