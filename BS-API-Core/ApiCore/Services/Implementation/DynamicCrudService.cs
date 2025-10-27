@@ -1240,6 +1240,19 @@ namespace ApiCore.Services.Implementation
                     command.Parameters.Add(new SqlParameter("@Data", dataJson));
                 }
 
+                // Add OUTPUT parameters that most Enhanced Stored Procedures expect
+                var outputRowCountParam = new SqlParameter("@OutputRowCount", SqlDbType.Int)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputRowCountParam);
+
+                var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 4000)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputMessageParam);
+
                 // Execute stored procedure
                 var stopwatch = Stopwatch.StartNew();
                 var results = new List<Dictionary<string, object>>();
@@ -1249,33 +1262,72 @@ namespace ApiCore.Services.Implementation
 
                 using var reader = await command.ExecuteReaderAsync();
 
-                // Read result set (data)
-                while (await reader.ReadAsync())
+                // Read all result sets to find the one with actual data
+                var resultSets = new List<List<Dictionary<string, object>>>();
+
+                do
                 {
-                    var row = new Dictionary<string, object>();
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    var currentResultSet = new List<Dictionary<string, object>>();
+
+                    while (await reader.ReadAsync())
                     {
-                        var fieldName = reader.GetName(i);
-                        var value = reader.GetValue(i);
-                        row[fieldName] = value == DBNull.Value ? null : value;
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var fieldName = reader.GetName(i);
+                            var value = reader.GetValue(i);
+                            row[fieldName] = value == DBNull.Value ? null : value;
+                        }
+                        currentResultSet.Add(row);
                     }
-                    results.Add(row);
+
+                    resultSets.Add(currentResultSet);
+
+                } while (await reader.NextResultAsync());
+
+                // Find the result set with the most columns (likely the data)
+                var dataResultSet = resultSets
+                    .Where(rs => rs.Any()) // Must have data
+                    .OrderByDescending(rs => rs.First().Keys.Count) // Most columns first
+                    .FirstOrDefault();
+
+                if (dataResultSet != null)
+                {
+                    results = dataResultSet;
+                    _logger.LogInformation("Selected result set with {ColumnCount} columns and {RowCount} rows",
+                        results.First().Keys.Count, results.Count);
                 }
 
-                // Read output parameters if any
-                if (await reader.NextResultAsync())
+                // Try to find total count from any single-value result set
+                foreach (var rs in resultSets.Where(rs => rs.Any() && rs.First().Keys.Count == 1))
                 {
-                    if (await reader.ReadAsync())
+                    var firstRow = rs.First();
+                    var key = firstRow.Keys.First();
+                    if (key.ToLower().Contains("count") || key.ToLower().Contains("total"))
                     {
-                        if (reader.FieldCount > 0)
-                        {
-                            totalCount = reader.IsDBNull(0) ? results.Count : reader.GetInt32(0);
-                        }
-                        if (reader.FieldCount > 1)
-                        {
-                            message = reader.IsDBNull(1) ? "Success" : reader.GetString(1);
-                        }
+                        totalCount = Convert.ToInt32(firstRow[key]);
+                        break;
                     }
+                }
+
+                // Close reader to access output parameters
+                reader.Close();
+
+                // Get output parameters
+                if (outputRowCountParam.Value != DBNull.Value)
+                {
+                    totalCount = (int)outputRowCountParam.Value;
+                }
+
+                if (outputMessageParam.Value != DBNull.Value)
+                {
+                    message = outputMessageParam.Value.ToString() ?? "Success";
+                }
+
+                // If no explicit total count, use result count
+                if (totalCount == 0)
+                {
+                    totalCount = results.Count;
                 }
 
                 stopwatch.Stop();
