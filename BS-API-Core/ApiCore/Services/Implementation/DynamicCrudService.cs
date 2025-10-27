@@ -839,7 +839,7 @@ namespace ApiCore.Services.Implementation
                     {
                         var fieldName = reader.GetName(i);
                         var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        data[fieldName] = value;
+                        data[fieldName] = value ?? DBNull.Value;
                     }
 
                     rows.Add(new DynamicResponse
@@ -1033,7 +1033,8 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
                     request.ProcedureName, request.SchemaName, request.Operation);
 
-                using var connection = await _connectionFactory.CreateConnectionAsync();
+                using var connection = _connectionFactory.CreateConnection();
+                await connection.OpenAsync();
                 using var command = connection.CreateCommand();
 
                 // Build stored procedure call
@@ -1067,7 +1068,7 @@ namespace ApiCore.Services.Implementation
                 {
                     foreach (var param in request.Parameters)
                     {
-                        command.Parameters.Add(new SqlParameter($"@{param.Key}", ConvertParameterValue(param.Value)));
+                        command.Parameters.Add(new SqlParameter($"@{param.Key}", ConvertJsonElementValue(param.Value)));
                     }
                 }
 
