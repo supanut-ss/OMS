@@ -14,15 +14,22 @@ namespace ApiCore.Extension
 
 
             //ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
+            if (!dt.Columns.Contains("No"))
+            {
+                var noCol = dt.Columns.Add("No", typeof(int));
+                noCol.SetOrdinal(0);
+                int index = 1;
+                foreach (DataRow row in dt.Rows)
+                    row["No"] = index++;
+            }
             using var package = new ExcelPackage();
             var ws = package.Workbook.Worksheets.Add(SanitizeSheetName(string.IsNullOrWhiteSpace(sheetName) ? (string.IsNullOrWhiteSpace(dt.TableName) ? "Export" : dt.TableName) : sheetName));
 
 
             // --- เลือกตำแหน่งวาง ---
-            int headerRow = 3;     // แถวหัวตาราง
-            int groupRow = 2;  // แถวหัวกลุ่ม (merge)
-            int dataStartRow = 4;  // แถวเริ่มข้อมูล
+            int headerRow = 2;     // แถวหัวตาราง
+            int groupRow = 1;  // แถวหัวกลุ่ม (merge)
+            int dataStartRow = 3;  // แถวเริ่มข้อมูล
             int startCol = 1;
 
 
@@ -86,11 +93,11 @@ namespace ApiCore.Extension
             }
 
             string title = "Summary Inventory";
-            ws.Cells[2, 1].Value = title;
-            ws.Cells[2, 1, 2, 5].Merge = true;        
+            ws.Cells[1, 1].Value = title;
+            ws.Cells[1, 1, 1, 5].Merge = true;        
             var titleCell = ws.Cells[1, 1];
             titleCell.Style.Font.Bold = true;
-            titleCell.Style.Font.Size = 16;
+            titleCell.Style.Font.Size = 18;
             titleCell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
             titleCell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             titleCell.Style.Fill.PatternType = ExcelFillStyle.Solid;
