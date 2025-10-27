@@ -673,6 +673,35 @@ namespace ApiCore.Controllers
         }
 
         /// <summary>
+        /// Execute Enhanced Stored Procedure with SELECT, UPDATE, DELETE operations
+        /// Supports pagination, sorting, and filtering for SELECT operations
+        /// </summary>
+        /// <param name="request">Enhanced stored procedure request</param>
+        /// <returns>Operation result with data and metadata</returns>
+        [HttpPost("enhanced-procedure")]
+        [ProducesResponseType(typeof(EnhancedStoredProcedureResponse), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(401)]
+        public async Task<ActionResult<EnhancedStoredProcedureResponse>> ExecuteEnhancedStoredProcedureAsync(
+            [FromBody] EnhancedStoredProcedureRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("🚀 Executing Enhanced Stored Procedure: {Schema}.{Procedure} - Operation: {Operation}",
+                    request.SchemaName, request.ProcedureName, request.Operation);
+
+                var result = await _dynamicService.ExecuteEnhancedStoredProcedureAsync(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing enhanced stored procedure {ProcedureName}", request.ProcedureName);
+                return BadRequest(new { message = $"Error executing procedure: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
         /// Check if table/view exists
         /// </summary>
         /// <param name="tableName">Name of the table or view</param>
