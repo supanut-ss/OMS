@@ -677,9 +677,24 @@
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
+    }, {
+      "DownstreamPathTemplate": "/api/Excel/ExportSummaryReport",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/Excel/ExportSummaryReport",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://10.60.10.136:8080"
+    "BaseUrl": "http://10.60.10.144:8080"
   }
 }
