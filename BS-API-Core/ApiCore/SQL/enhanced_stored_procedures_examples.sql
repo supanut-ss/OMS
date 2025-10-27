@@ -909,16 +909,494 @@ EXEC [dbo].[sp_enhanced_order_management]
     @PageSize = 25;
 */
 
+-- =====================================================================================
+-- Example 4: Part Management Enhanced Stored Procedure for AMS System
+-- สำหรับจัดการข้อมูลชิ้นส่วน (Parts) ในระบบ AMS
+-- =====================================================================================
+IF OBJECT_ID('[ams].[usp_tbm_part]', 'P') IS NOT NULL
+    DROP PROCEDURE [ams].[usp_tbm_part];
+GO
+
+CREATE PROCEDURE [ams].[usp_tbm_part]
+    -- Operation parameters
+    @Operation NVARCHAR(10) = 'SELECT',
+    -- 'SELECT', 'INSERT', 'UPDATE', 'DELETE'
+
+    -- Pagination parameters (for SELECT)
+    @Page INT = 1,
+    @PageSize INT = 25,
+    @OrderBy NVARCHAR(500) = 'part_id ASC',
+    @FilterModel NVARCHAR(MAX) = NULL,
+    @QuickFilter NVARCHAR(255) = NULL,
+    -- Quick search across multiple fields
+
+    -- Part data parameters (for INSERT/UPDATE/DELETE)
+    @PartId INT = NULL,
+    @PartNo VARCHAR(50) = NULL,
+    @PartName NVARCHAR(100) = NULL,
+    @SupplierName NVARCHAR(100) = NULL,
+    @UnitPrice DECIMAL(18,2) = NULL,
+    @Snp INT = NULL,
+    @AreaCode VARCHAR(10) = NULL,
+    @AreaName VARCHAR(20) = NULL,
+    @Qty INT = NULL,
+
+    -- Filtering parameters
+    @AreaCodeFilter VARCHAR(10) = NULL,
+    @SupplierFilter NVARCHAR(100) = NULL,
+    @PriceFrom DECIMAL(18,2) = NULL,
+    @PriceTo DECIMAL(18,2) = NULL,
+
+    -- Audit parameters
+    @UserId VARCHAR(50) = 'system',
+
+    -- Output parameters
+    @OutputRowCount INT OUTPUT,
+    @OutputMessage NVARCHAR(4000) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Initialize output parameters
+    SET @OutputRowCount = 0;
+    SET @OutputMessage = '';
+
+    BEGIN TRY
+        -- ==========================================
+        -- SELECT Operation with Advanced Filtering
+        -- ==========================================
+        IF @Operation = 'SELECT'
+        BEGIN
+        DECLARE @SQL NVARCHAR(MAX);
+        DECLARE @CountSQL NVARCHAR(MAX);
+        DECLARE @WhereClause NVARCHAR(MAX) = ' WHERE 1=1';
+        DECLARE @OrderByClause NVARCHAR(500) = ISNULL(@OrderBy, 'part_id ASC');
+        DECLARE @Offset INT = (@Page - 1) * @PageSize;
+
+        -- Quick filter for search across multiple fields
+        IF @QuickFilter IS NOT NULL AND @QuickFilter != ''
+            BEGIN
+            SET @WhereClause = @WhereClause + ' AND (
+                    part_no LIKE ''%' + @QuickFilter + '%'' 
+                    OR part_name LIKE ''%' + @QuickFilter + '%''
+                    OR supplier_name LIKE ''%' + @QuickFilter + '%''
+                    OR area_code LIKE ''%' + @QuickFilter + '%''
+                    OR area_name LIKE ''%' + @QuickFilter + '%''
+                )';
+        END
+
+        -- Area code filter
+        IF @AreaCodeFilter IS NOT NULL AND @AreaCodeFilter != ''
+            BEGIN
+            SET @WhereClause = @WhereClause + ' AND area_code = ''' + @AreaCodeFilter + '''';
+        END
+
+        -- Supplier filter
+        IF @SupplierFilter IS NOT NULL AND @SupplierFilter != ''
+            BEGIN
+            SET @WhereClause = @WhereClause + ' AND supplier_name LIKE ''%' + @SupplierFilter + '%''';
+        END
+
+        -- Price range filter
+        IF @PriceFrom IS NOT NULL
+            BEGIN
+            SET @WhereClause = @WhereClause + ' AND unit_price >= ' + CAST(@PriceFrom AS VARCHAR(20));
+        END
+
+        IF @PriceTo IS NOT NULL
+            BEGIN
+            SET @WhereClause = @WhereClause + ' AND unit_price <= ' + CAST(@PriceTo AS VARCHAR(20));
+        END
+
+        -- Count total records
+        SET @CountSQL = '
+                SELECT COUNT(*) as TotalCount
+                FROM [ams].[tbm_part] p' + @WhereClause;
+
+        -- Main data query with pagination
+        SET @SQL = '
+                SELECT 
+                    part_id,
+                    part_no,
+                    part_name,
+                    supplier_name,
+                    unit_price,
+                    snp,
+                    area_code,
+                    area_name,
+                    qty,
+                    create_by,
+                    create_date,
+                    update_by,
+                    update_date,
+                    rowversion
+                FROM [ams].[tbm_part] p' + @WhereClause + '
+                ORDER BY ' + @OrderByClause + '
+                OFFSET ' + CAST(@Offset AS NVARCHAR(10)) + ' ROWS
+                FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
+
+        -- Execute count query
+        EXEC sp_executesql @CountSQL;
+
+        -- Execute main query
+        EXEC sp_executesql @SQL;
+
+        SET @OutputMessage = 'Parts retrieved successfully';
+        SET @OutputRowCount = @@ROWCOUNT;
+    END
+        
+        -- ==========================================
+        -- INSERT Operation
+        -- ==========================================
+        ELSE IF @Operation = 'INSERT'
+        BEGIN
+        -- Validate required fields for INSERT
+        IF @PartNo IS NULL OR @PartNo = ''
+            BEGIN
+            SET @OutputMessage = 'Part Number is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @PartName IS NULL OR @PartName = ''
+            BEGIN
+            SET @OutputMessage = 'Part Name is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @SupplierName IS NULL OR @SupplierName = ''
+            BEGIN
+            SET @OutputMessage = 'Supplier Name is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @UnitPrice IS NULL OR @UnitPrice < 0
+            BEGIN
+            SET @OutputMessage = 'Unit Price is required and must be >= 0 for INSERT operation';
+            RETURN;
+        END
+
+        IF @AreaCode IS NULL OR @AreaCode = ''
+            BEGIN
+            SET @OutputMessage = 'Area Code is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @AreaName IS NULL OR @AreaName = ''
+            BEGIN
+            SET @OutputMessage = 'Area Name is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @Qty IS NULL OR @Qty < 0
+            BEGIN
+            SET @OutputMessage = 'Quantity is required and must be >= 0 for INSERT operation';
+            RETURN;
+        END
+
+        -- Check for duplicate part number
+        IF EXISTS (SELECT 1
+        FROM [ams].[tbm_part]
+        WHERE part_no = @PartNo)
+            BEGIN
+            SET @OutputMessage = 'Part Number already exists: ' + @PartNo;
+            RETURN;
+        END
+
+        -- Insert new part record
+        INSERT INTO [ams].[tbm_part]
+            (
+            part_no,
+            part_name,
+            supplier_name,
+            unit_price,
+            snp,
+            area_code,
+            area_name,
+            qty,
+            create_by,
+            create_date
+            )
+        VALUES
+            (
+                @PartNo,
+                @PartName,
+                @SupplierName,
+                @UnitPrice,
+                @Snp,
+                @AreaCode,
+                @AreaName,
+                @Qty,
+                @UserId,
+                GETDATE()
+            );
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount > 0
+            BEGIN
+            SET @OutputMessage = 'Part created successfully';
+
+            -- Return newly created record
+            DECLARE @NewPartId INT = SCOPE_IDENTITY();
+            SELECT
+                part_id,
+                part_no,
+                part_name,
+                supplier_name,
+                unit_price,
+                snp,
+                area_code,
+                area_name,
+                qty,
+                create_by,
+                create_date,
+                update_by,
+                update_date,
+                rowversion
+            FROM [ams].[tbm_part]
+            WHERE part_id = @NewPartId;
+        END
+            ELSE
+            BEGIN
+            SET @OutputMessage = 'Failed to create part';
+        END
+    END
+        
+        -- ==========================================
+        -- UPDATE Operation
+        -- ==========================================
+        ELSE IF @Operation = 'UPDATE'
+        BEGIN
+        IF @PartId IS NULL
+            BEGIN
+            SET @OutputMessage = 'Part ID is required for UPDATE operation';
+            RETURN;
+        END
+
+        -- Check if part exists
+        IF NOT EXISTS (SELECT 1
+        FROM [ams].[tbm_part]
+        WHERE part_id = @PartId)
+            BEGIN
+            SET @OutputMessage = 'Part not found with ID: ' + CAST(@PartId AS NVARCHAR(10));
+            RETURN;
+        END
+
+        -- Check for duplicate part number (excluding current record)
+        IF @PartNo IS NOT NULL AND EXISTS (
+                SELECT 1
+            FROM [ams].[tbm_part]
+            WHERE part_no = @PartNo AND part_id != @PartId
+            )
+            BEGIN
+            SET @OutputMessage = 'Part Number already exists: ' + @PartNo;
+            RETURN;
+        END
+
+        -- Validate unit price if provided
+        IF @UnitPrice IS NOT NULL AND @UnitPrice < 0
+            BEGIN
+            SET @OutputMessage = 'Unit Price must be >= 0';
+            RETURN;
+        END
+
+        -- Validate quantity if provided
+        IF @Qty IS NOT NULL AND @Qty < 0
+            BEGIN
+            SET @OutputMessage = 'Quantity must be >= 0';
+            RETURN;
+        END
+
+        UPDATE [ams].[tbm_part] 
+            SET 
+                part_no = ISNULL(@PartNo, part_no),
+                part_name = ISNULL(@PartName, part_name),
+                supplier_name = ISNULL(@SupplierName, supplier_name),
+                unit_price = ISNULL(@UnitPrice, unit_price),
+                snp = ISNULL(@Snp, snp),
+                area_code = ISNULL(@AreaCode, area_code),
+                area_name = ISNULL(@AreaName, area_name),
+                qty = ISNULL(@Qty, qty),
+                update_by = @UserId,
+                update_date = GETDATE()
+            WHERE part_id = @PartId;
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount > 0
+            BEGIN
+            SET @OutputMessage = 'Part updated successfully';
+
+            -- Return updated record
+            SELECT
+                part_id,
+                part_no,
+                part_name,
+                supplier_name,
+                unit_price,
+                snp,
+                area_code,
+                area_name,
+                qty,
+                create_by,
+                create_date,
+                update_by,
+                update_date,
+                rowversion
+            FROM [ams].[tbm_part]
+            WHERE part_id = @PartId;
+        END
+            ELSE
+            BEGIN
+            SET @OutputMessage = 'No part found with ID: ' + CAST(@PartId AS NVARCHAR(10));
+        END
+    END
+        
+        -- ==========================================
+        -- DELETE Operation
+        -- ==========================================
+        ELSE IF @Operation = 'DELETE'
+        BEGIN
+        IF @PartId IS NULL
+            BEGIN
+            SET @OutputMessage = 'Part ID is required for DELETE operation';
+            RETURN;
+        END
+
+        -- Check if part exists
+        IF NOT EXISTS (SELECT 1
+        FROM [ams].[tbm_part]
+        WHERE part_id = @PartId)
+            BEGIN
+            SET @OutputMessage = 'Part not found with ID: ' + CAST(@PartId AS NVARCHAR(10));
+            RETURN;
+        END
+
+        -- Check if part is referenced in tbm_sub (foreign key constraint)
+        IF EXISTS (SELECT 1
+        FROM [ams].[tbm_sub]
+        WHERE part_id = @PartId)
+            BEGIN
+            SET @OutputMessage = 'Cannot delete part. Part is being used in sub-parts (tbm_sub). Please remove all related sub-parts first.';
+            RETURN;
+        END
+
+        -- Physical delete (no soft delete in this table structure)
+        DELETE FROM [ams].[tbm_part] 
+            WHERE part_id = @PartId;
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount > 0
+            BEGIN
+            SET @OutputMessage = 'Part deleted successfully';
+        END
+            ELSE
+            BEGIN
+            SET @OutputMessage = 'No part found with ID: ' + CAST(@PartId AS NVARCHAR(10));
+        END
+    END
+        
+        -- ==========================================
+        -- Invalid Operation
+        -- ==========================================
+        ELSE
+        BEGIN
+        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, INSERT, UPDATE, DELETE';
+        RETURN;
+    END
+        
+    END TRY
+    BEGIN CATCH
+        SET @OutputMessage = 'Error: ' + ERROR_MESSAGE();
+        SET @OutputRowCount = 0;
+        
+        -- Re-throw error for proper error handling
+        THROW;
+    END CATCH
+END
+GO
+
+-- =====================================================================================
+-- Part Management Usage Examples / ตัวอย่างการใช้งาน
+-- =====================================================================================
+
+/*
+-- 1. SELECT all parts with pagination
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'SELECT',
+    @Page = 1,
+    @PageSize = 20,
+    @OrderBy = 'part_no ASC';
+
+-- 2. Search parts with quick filter
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'SELECT',
+    @QuickFilter = 'motor',
+    @Page = 1,
+    @PageSize = 10;
+
+-- 3. Filter parts by area code
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'SELECT',
+    @AreaCodeFilter = 'A01',
+    @Page = 1,
+    @PageSize = 15;
+
+-- 4. Filter parts by supplier and price range
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'SELECT',
+    @SupplierFilter = 'Toyota',
+    @PriceFrom = 100.00,
+    @PriceTo = 1000.00;
+
+-- 5. INSERT new part
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'INSERT',
+    @PartNo = 'PT001',
+    @PartName = 'Engine Motor',
+    @SupplierName = 'Toyota Parts Co.',
+    @UnitPrice = 1500.00,
+    @Snp = 12345,
+    @AreaCode = 'A01',
+    @AreaName = 'Engine Area',
+    @Qty = 50,
+    @UserId = 'admin';
+
+-- 6. UPDATE part information
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'UPDATE',
+    @PartId = 1,
+    @PartName = 'Updated Engine Motor',
+    @UnitPrice = 1600.00,
+    @Qty = 45,
+    @UserId = 'admin';
+
+-- 7. DELETE part
+EXEC [ams].[usp_tbm_part] 
+    @Operation = 'DELETE',
+    @PartId = 1,
+    @UserId = 'admin';
+*/
+
 PRINT '✅ Enhanced Stored Procedures created successfully!';
 PRINT '📋 Available procedures:';
 PRINT '   - sp_enhanced_customer_management';
 PRINT '   - sp_enhanced_product_management';
 PRINT '   - sp_enhanced_order_management';
+PRINT '   - usp_tbm_part (AMS System)';
 PRINT '';
 PRINT '🔧 Each procedure supports:';
 PRINT '   - SELECT with pagination, sorting, filtering';
 PRINT '   - INSERT with data validation and duplicate checking';
 PRINT '   - UPDATE with data validation';
-PRINT '   - DELETE with soft delete';
+PRINT '   - DELETE with constraint checking';
 PRINT '   - Audit trail support';
 PRINT '   - Error handling';
+PRINT '';
+PRINT '🏭 Part Management Features:';
+PRINT '   - Quick search across part_no, part_name, supplier_name, area';
+PRINT '   - Filter by area_code, supplier_name, price range';
+PRINT '   - Part number duplicate checking';
+PRINT '   - Price and quantity validation';
+PRINT '   - Automatic audit trail (create_by, create_date, update_by, update_date)';
