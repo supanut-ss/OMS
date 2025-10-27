@@ -59,7 +59,7 @@ namespace Authentication.Services.Users
         {
             try
             {
-                var validationResponse = _auth.ValidatePassword(userReq.UserId, userReq.Password);
+                var validationResponse = _auth.ValidatePassword(userReq.user_id, userReq.password);
                 if (validationResponse.message_code != "0")
                     return validationResponse;
 
@@ -70,7 +70,7 @@ namespace Authentication.Services.Users
                 var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
                 using (var checkCmd = new SqlCommand(checkSql, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@userId", userReq.UserId ?? string.Empty);
+                    checkCmd.Parameters.AddWithValue("@userId", userReq.user_id ?? string.Empty);
                     var existsObj = await checkCmd.ExecuteScalarAsync();
                     if (existsObj != null && Convert.ToInt32(existsObj) > 0)
                     {
@@ -108,17 +108,17 @@ namespace Authentication.Services.Users
                       ",@create_date) ";  
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userReq.UserId);
+                cmd.Parameters.AddWithValue("@userId", userReq.user_id);
                 cmd.Parameters.AddWithValue("@password", Encryption.Encrypt("password"));
-                cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
-                cmd.Parameters.AddWithValue("@first_name", userReq.FirstName);
-                cmd.Parameters.AddWithValue("@last_name", userReq.LastName);
-                cmd.Parameters.AddWithValue("@locale_id", userReq.LocaleId);
-                cmd.Parameters.AddWithValue("@department", userReq.Department);
-                cmd.Parameters.AddWithValue("@supervisor", userReq.Supervisor);
-                cmd.Parameters.AddWithValue("@email_address", userReq.Email);
-                cmd.Parameters.AddWithValue("@domain", userReq.Domian);
-                cmd.Parameters.AddWithValue("@is_active", userReq.IsActive);
+                cmd.Parameters.AddWithValue("@user_group_id", userReq.user_group_id);
+                cmd.Parameters.AddWithValue("@first_name", userReq.first_name);
+                cmd.Parameters.AddWithValue("@last_name", userReq.last_name);
+                cmd.Parameters.AddWithValue("@locale_id", userReq.locale_id);
+                cmd.Parameters.AddWithValue("@department", userReq.department);
+                cmd.Parameters.AddWithValue("@supervisor", userReq.supervisor);
+                cmd.Parameters.AddWithValue("@email_address", userReq.email_address);
+                cmd.Parameters.AddWithValue("@domain", userReq.department);
+                cmd.Parameters.AddWithValue("@is_active", userReq.is_active);
                 cmd.Parameters.AddWithValue("@create_by", userId);
                 cmd.Parameters.AddWithValue("@create_date", DateTime.Now);
 
@@ -143,7 +143,7 @@ namespace Authentication.Services.Users
         {
             try
             {
-                if (userReq == null || string.IsNullOrWhiteSpace(userReq.UserId))
+                if (userReq == null || string.IsNullOrWhiteSpace(userReq.user_id))
                     return _auth.CreateErrorResponse("1", "UserId is required for update.");
 
                 using var conn = new SqlConnection(_connectionString);
@@ -153,7 +153,7 @@ namespace Authentication.Services.Users
                 var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
                 using (var checkCmd = new SqlCommand(checkSql, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@userId", userReq.UserId);
+                    checkCmd.Parameters.AddWithValue("@userId", userReq.user_id);
                     var existsObj = await checkCmd.ExecuteScalarAsync();
                     if (existsObj == null || Convert.ToInt32(existsObj) == 0)
                         return _auth.CreateErrorResponse("1", "User not found.");
@@ -173,28 +173,28 @@ namespace Authentication.Services.Users
                           "update_by = @update_by, " +
                           "update_date = @update_date";
 
-                var includePassword = !string.IsNullOrEmpty(userReq.Password);
+                var includePassword = !string.IsNullOrEmpty(userReq.password);
                 if (includePassword)
                     sql += ", password = @password";
 
                 sql += " WHERE user_id = @userId";
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userReq.UserId);
-                cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
-                cmd.Parameters.AddWithValue("@first_name", userReq.FirstName ?? string.Empty);
-                cmd.Parameters.AddWithValue("@last_name", userReq.LastName ?? string.Empty);
-                cmd.Parameters.AddWithValue("@locale_id", userReq.LocaleId ?? string.Empty);
-                cmd.Parameters.AddWithValue("@department", userReq.Department ?? string.Empty);
-                cmd.Parameters.AddWithValue("@supervisor", userReq.Supervisor ?? string.Empty);
-                cmd.Parameters.AddWithValue("@email_address", userReq.Email ?? string.Empty);
-                cmd.Parameters.AddWithValue("@domain", userReq.Domian ?? string.Empty);
-                cmd.Parameters.AddWithValue("@is_active", userReq.IsActive ?? string.Empty);
+                cmd.Parameters.AddWithValue("@userId", userReq.user_id);
+                cmd.Parameters.AddWithValue("@user_group_id", userReq.user_group_id);
+                cmd.Parameters.AddWithValue("@first_name", userReq.first_name ?? string.Empty);
+                cmd.Parameters.AddWithValue("@last_name", userReq.last_name ?? string.Empty);
+                cmd.Parameters.AddWithValue("@locale_id", userReq.last_name ?? string.Empty);
+                cmd.Parameters.AddWithValue("@department", userReq.department ?? string.Empty);
+                cmd.Parameters.AddWithValue("@supervisor", userReq.supervisor ?? string.Empty);
+                cmd.Parameters.AddWithValue("@email_address", userReq.email_address ?? string.Empty);
+                cmd.Parameters.AddWithValue("@domain", userReq.domain ?? string.Empty);
+                cmd.Parameters.AddWithValue("@is_active", userReq.is_active ?? string.Empty);
                 cmd.Parameters.AddWithValue("@update_by", userId);
                 cmd.Parameters.AddWithValue("@update_date", DateTime.Now);
 
                 if (includePassword)
-                    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
+                    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.password));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
                 if (rowsAffected == 0)

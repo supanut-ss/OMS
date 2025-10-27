@@ -37,8 +37,8 @@ import { useColorMode } from "../themes/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
 import { styled } from "@mui/material/styles";
-import logoMiniSvg from "../assets/logo-mini.svg";
-import logoHorizontalSvg from "../assets/logo-horizontal.svg";
+import logoMiniSvg from "../assets/logo.jpg";
+import logoHorizontalSvg from "../assets/logo.jpg";
 
 import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
@@ -451,7 +451,7 @@ export default function MainLayout() {
           </Box>
         </Box>
 
-        <MenuItem onClick={handleUserMenuClose} sx={{ py: 1.5, px: 3 }}>
+        {/* <MenuItem onClick={handleUserMenuClose} sx={{ py: 1.5, px: 3 }}>
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
@@ -463,7 +463,7 @@ export default function MainLayout() {
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="ตั้งค่า" />
-        </MenuItem>
+        </MenuItem> */}
 
         <Divider sx={{ my: 1 }} />
 

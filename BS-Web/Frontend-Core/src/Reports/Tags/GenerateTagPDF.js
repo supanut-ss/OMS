@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import QRCode from "qrcode";
-
+import dayjs from "dayjs";
 // ฟังก์ชันสร้าง PDF และเปิด preview + กลับหน้าก่อนหน้า
 const GenerateTagPDF = async (data) => {
     try {
@@ -55,7 +55,7 @@ const GenerateTagPDF = async (data) => {
             <tr>
               <td class="td-report-tags" style="width:2.5cm; text-align:left;">${item.area_name || ""} ${item.area_code || ""}</td>
               <td class="td-report-tags" style="text-align:center;font-weight:bold">${item.audit || ""}</td>
-              <td class="td-report-tags" style="text-align:center;">Tag No: ${item.tag_no || ""}</td>
+              <td class="td-report-tags" style="text-align:center;">${item.tag_no || ""}</td>
             </tr>
             <tr>
               <td colspan="3" style="text-align:center;">Location: ${item.location || ""}</td>
@@ -85,7 +85,15 @@ const GenerateTagPDF = async (data) => {
             </tr>
           </tbody>
         </table>
-      </div>
+        <table style="margin-top:3cm;">
+          <tbody>
+            <tr>
+              <td colspan="1" class="td-report-tags">&nbsp;</td>
+              <td colspan="2">${dayjs(item.tag_date).format("DD/MM/YYYY")|| ""}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div
     `;
 
             document.body.appendChild(tempDiv);

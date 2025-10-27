@@ -73,7 +73,7 @@ const PartPage = () => {
                 bsLocale="en"
                 bsPreObj="ams"
                 bsObj="tbm_part"
-                // showAdd={false}
+                showAdd={false}
                 bsCols="part_no,part_name,supplier_name,unit_price,snp,area_code,area_name,qty,create_by,create_date,update_by,update_date"
                 onDelete={handleOpenDelete}
                 onEdit={handleOpenEdit}
