@@ -496,7 +496,9 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/dynamic/enhanced-procedure",
-      "UpstreamHttpMethod": ["post"],
+      "UpstreamHttpMethod": [
+        "post"
+      ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -1000,6 +1002,24 @@
       "UpstreamPathTemplate": "/gateway/v1/api/Mobile/ReadNotify",
       "UpstreamHttpMethod": [
         "post"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/GetSubNo",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "10.10.60.103",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/GetSubNo",
+      "UpstreamHttpMethod": [
+        "get"
       ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
