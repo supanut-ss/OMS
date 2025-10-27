@@ -55,6 +55,11 @@ namespace ApiCore.Models.Dynamic
         /// User ID for audit operations
         /// </summary>
         public string? UserId { get; set; }
+
+        /// <summary>
+        /// Data for INSERT/UPDATE operations
+        /// </summary>
+        public Dictionary<string, object>? Data { get; set; }
     }
 
     /// <summary>
@@ -69,6 +74,7 @@ namespace ApiCore.Models.Dynamic
         public string? Message { get; set; }
         public Dictionary<string, object>? OutputParameters { get; set; }
         public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
+        public long ExecutionTime { get; set; }
     }
 
     /// <summary>
