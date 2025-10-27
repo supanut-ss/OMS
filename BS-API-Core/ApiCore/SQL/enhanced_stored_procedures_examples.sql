@@ -13,7 +13,7 @@ GO
 CREATE PROCEDURE [dbo].[sp_enhanced_customer_management]
     -- Operation parameters
     @Operation NVARCHAR(10) = 'SELECT',
-    -- 'SELECT', 'UPDATE', 'DELETE'
+    -- 'SELECT', 'INSERT', 'UPDATE', 'DELETE'
 
     -- Pagination parameters (for SELECT)
     @Page INT = 1,
@@ -103,6 +103,87 @@ BEGIN
     END
         
         -- ==========================================
+        -- INSERT Operation
+        -- ==========================================
+        ELSE IF @Operation = 'INSERT'
+        BEGIN
+        -- Validate required fields for INSERT
+        IF @CustomerName IS NULL OR @CustomerName = ''
+            BEGIN
+            SET @OutputMessage = 'Customer Name is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @Email IS NULL OR @Email = ''
+            BEGIN
+            SET @OutputMessage = 'Email is required for INSERT operation';
+            RETURN;
+        END
+
+        -- Check for duplicate email
+        IF EXISTS (SELECT 1
+        FROM t_customers
+        WHERE email = @Email AND status != 'Deleted')
+            BEGIN
+            SET @OutputMessage = 'Email already exists: ' + @Email;
+            RETURN;
+        END
+
+        -- Insert new customer record
+        INSERT INTO t_customers
+            (
+            customer_name,
+            email,
+            phone,
+            address,
+            status,
+            created_date,
+            updated_date,
+            created_by,
+            updated_by
+            )
+        VALUES
+            (
+                @CustomerName,
+                @Email,
+                @Phone,
+                @Address,
+                ISNULL(@Status, 'Active'),
+                GETDATE(),
+                GETDATE(),
+                ISNULL(@UserId, 'system'),
+                ISNULL(@UserId, 'system')
+        );
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount > 0
+            BEGIN
+            SET @OutputMessage = 'Customer created successfully';
+
+            -- Return newly created record
+            DECLARE @NewCustomerId INT = SCOPE_IDENTITY();
+            SELECT
+                customer_id,
+                customer_name,
+                email,
+                phone,
+                address,
+                status,
+                created_date,
+                updated_date,
+                created_by,
+                updated_by
+            FROM t_customers
+            WHERE customer_id = @NewCustomerId;
+        END
+            ELSE
+            BEGIN
+            SET @OutputMessage = 'Failed to create customer';
+        END
+    END
+        
+        -- ==========================================
         -- UPDATE Operation
         -- ==========================================
         ELSE IF @Operation = 'UPDATE'
@@ -187,7 +268,7 @@ BEGIN
         -- ==========================================
         ELSE
         BEGIN
-        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, UPDATE, DELETE';
+        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, INSERT, UPDATE, DELETE';
         RETURN;
     END
         
@@ -303,6 +384,90 @@ BEGIN
     END
         
         -- ==========================================
+        -- INSERT Operation
+        -- ==========================================
+        ELSE IF @Operation = 'INSERT'
+        BEGIN
+        -- Validate required fields for INSERT
+        IF @ProductName IS NULL OR @ProductName = ''
+            BEGIN
+            SET @OutputMessage = 'Product Name is required for INSERT operation';
+            RETURN;
+        END
+
+        IF @ProductCode IS NULL OR @ProductCode = ''
+            BEGIN
+            SET @OutputMessage = 'Product Code is required for INSERT operation';
+            RETURN;
+        END
+
+        -- Check for duplicate product code
+        IF EXISTS (SELECT 1
+        FROM t_products
+        WHERE product_code = @ProductCode AND status != 'Deleted')
+            BEGIN
+            SET @OutputMessage = 'Product Code already exists: ' + @ProductCode;
+            RETURN;
+        END
+
+        -- Insert new product record
+        INSERT INTO t_products
+            (
+            product_code,
+            product_name,
+            description,
+            unit_price,
+            category,
+            status,
+            created_date,
+            updated_date,
+            created_by,
+            updated_by
+            )
+        VALUES
+            (
+                @ProductCode,
+                @ProductName,
+                @Description,
+                ISNULL(@UnitPrice, 0.00),
+                @Category,
+                ISNULL(@Status, 'Active'),
+                GETDATE(),
+                GETDATE(),
+                ISNULL(@UserId, 'system'),
+                ISNULL(@UserId, 'system')
+        );
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount > 0
+            BEGIN
+            SET @OutputMessage = 'Product created successfully';
+
+            -- Return newly created record
+            DECLARE @NewProductId INT = SCOPE_IDENTITY();
+            SELECT
+                product_id,
+                product_code,
+                product_name,
+                description,
+                unit_price,
+                category,
+                status,
+                created_date,
+                updated_date,
+                created_by,
+                updated_by
+            FROM t_products
+            WHERE product_id = @NewProductId;
+        END
+            ELSE
+            BEGIN
+            SET @OutputMessage = 'Failed to create product';
+        END
+    END
+        
+        -- ==========================================
         -- UPDATE Operation
         -- ==========================================
         ELSE IF @Operation = 'UPDATE'
@@ -386,7 +551,7 @@ BEGIN
         
         ELSE
         BEGIN
-        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, UPDATE, DELETE';
+        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, INSERT, UPDATE, DELETE';
         RETURN;
     END
         
@@ -495,6 +660,94 @@ BEGIN
         SET @OutputRowCount = @@ROWCOUNT;
     END
         
+        -- ==========================================
+        -- INSERT Operation
+        -- ==========================================
+        ELSE IF @Operation = 'INSERT'
+        BEGIN
+        -- Validate required fields for INSERT
+        IF @CustomerId IS NULL
+            BEGIN
+            SET @OutputMessage = 'Customer ID is required for INSERT operation';
+            RETURN;
+        END
+
+        -- Validate customer exists
+        IF NOT EXISTS (SELECT 1
+        FROM t_customers
+        WHERE customer_id = @CustomerId AND status != 'Deleted')
+            BEGIN
+            SET @OutputMessage = 'Customer not found with ID: ' + CAST(@CustomerId AS NVARCHAR(10));
+            RETURN;
+        END
+
+        -- Generate order number if not provided
+        DECLARE @OrderNumber NVARCHAR(50);
+        IF @OrderNumber IS NULL
+            BEGIN
+            SET @OrderNumber = 'ORD' + FORMAT(GETDATE(), 'yyyyMMdd') + FORMAT(NEXT VALUE FOR seq_order_number, '0000');
+        END
+
+        -- Insert new order record
+        INSERT INTO t_orders
+            (
+            order_number,
+            customer_id,
+            order_date,
+            total_amount,
+            status,
+            notes,
+            created_date,
+            updated_date,
+            created_by,
+            updated_by
+            )
+        VALUES
+            (
+                @OrderNumber,
+                @CustomerId,
+                ISNULL(@OrderDate, GETDATE()),
+                ISNULL(@TotalAmount, 0.00),
+                ISNULL(@Status, 'Pending'),
+                @Notes,
+                GETDATE(),
+                GETDATE(),
+                ISNULL(@UserId, 'system'),
+                ISNULL(@UserId, 'system')
+        );
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount > 0
+            BEGIN
+            SET @OutputMessage = 'Order created successfully';
+
+            -- Return newly created record with customer info
+            DECLARE @NewOrderId INT = SCOPE_IDENTITY();
+            SELECT
+                o.order_id,
+                o.order_number,
+                o.customer_id,
+                c.customer_name,
+                c.email as customer_email,
+                o.order_date,
+                o.total_amount,
+                o.status,
+                o.notes,
+                o.created_date,
+                o.updated_date,
+                o.created_by,
+                o.updated_by
+            FROM t_orders o
+                INNER JOIN t_customers c ON o.customer_id = c.customer_id
+            WHERE o.order_id = @NewOrderId;
+        END
+            ELSE
+            BEGIN
+            SET @OutputMessage = 'Failed to create order';
+        END
+    END
+        
         ELSE IF @Operation = 'UPDATE'
         BEGIN
         IF @OrderId IS NULL
@@ -575,7 +828,7 @@ BEGIN
         
         ELSE
         BEGIN
-        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, UPDATE, DELETE';
+        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, INSERT, UPDATE, DELETE';
     END
         
     END TRY
@@ -599,7 +852,16 @@ EXEC [dbo].[sp_enhanced_customer_management]
     @PageSize = 10,
     @OrderBy = 'customer_name ASC';
 
--- 2. UPDATE customer
+-- 2. INSERT new customer
+EXEC [dbo].[sp_enhanced_customer_management] 
+    @Operation = 'INSERT',
+    @CustomerName = 'New Customer Name',
+    @Email = 'newcustomer@email.com',
+    @Phone = '0123456789',
+    @Address = '123 Main Street',
+    @UserId = 'admin';
+
+-- 3. UPDATE customer
 EXEC [dbo].[sp_enhanced_customer_management] 
     @Operation = 'UPDATE',
     @CustomerId = 1,
@@ -607,20 +869,38 @@ EXEC [dbo].[sp_enhanced_customer_management]
     @Email = 'updated@email.com',
     @UserId = 'admin';
 
--- 3. DELETE customer (soft delete)
+-- 4. DELETE customer (soft delete)
 EXEC [dbo].[sp_enhanced_customer_management] 
     @Operation = 'DELETE',
     @CustomerId = 1,
     @UserId = 'admin';
 
--- 4. Product search with quick filter
+-- 5. INSERT new product
+EXEC [dbo].[sp_enhanced_product_management] 
+    @Operation = 'INSERT',
+    @ProductCode = 'LAP001',
+    @ProductName = 'Gaming Laptop',
+    @Description = 'High-performance gaming laptop',
+    @UnitPrice = 45000.00,
+    @Category = 'Electronics',
+    @UserId = 'admin';
+
+-- 6. Product search with quick filter
 EXEC [dbo].[sp_enhanced_product_management] 
     @Operation = 'SELECT',
     @QuickFilter = 'laptop',
     @Page = 1,
     @PageSize = 20;
 
--- 5. Order management with date range
+-- 7. INSERT new order
+EXEC [dbo].[sp_enhanced_order_management] 
+    @Operation = 'INSERT',
+    @CustomerId = 1,
+    @TotalAmount = 1500.00,
+    @Notes = 'Rush order for customer',
+    @UserId = 'admin';
+
+-- 8. Order management with date range
 EXEC [dbo].[sp_enhanced_order_management] 
     @Operation = 'SELECT',
     @DateFrom = '2024-01-01',
@@ -637,6 +917,7 @@ PRINT '   - sp_enhanced_order_management';
 PRINT '';
 PRINT '🔧 Each procedure supports:';
 PRINT '   - SELECT with pagination, sorting, filtering';
+PRINT '   - INSERT with data validation and duplicate checking';
 PRINT '   - UPDATE with data validation';
 PRINT '   - DELETE with soft delete';
 PRINT '   - Audit trail support';

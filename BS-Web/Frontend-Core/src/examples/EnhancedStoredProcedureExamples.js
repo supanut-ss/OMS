@@ -19,13 +19,11 @@ export const EnhancedStoredProcedureExamples = () => {
       <Alert severity="info" sx={{ mb: 3 }}>
         <Typography variant="body2">
           <strong>Enhanced Stored Procedures</strong> allow you to create a
-          single stored procedure that handles SELECT, UPDATE, and DELETE
-          operations. This approach provides better control over business logic
-          and data validation directly in the database.
+          single stored procedure that handles SELECT, INSERT, UPDATE, and
+          DELETE operations. This approach provides better control over business
+          logic and data validation directly in the database.
         </Typography>
       </Alert>
-
-      {/* Example 1: Customer Management */}
       <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
         <Typography variant="h5" gutterBottom color="primary">
           🧑‍💼 Example 1: Customer Management
@@ -48,6 +46,9 @@ export const EnhancedStoredProcedureExamples = () => {
             bsShowCheckbox={true}
             bsBulkEdit={true}
             bsBulkDelete={true}
+            bsAllowAdd={true}
+            bsAllowEdit={true}
+            bsAllowDelete={true}
             onCheckBoxSelected={(selectedRows) =>
               console.log("Selected customers:", selectedRows)
             }
@@ -74,6 +75,9 @@ export const EnhancedStoredProcedureExamples = () => {
             bsShowDescColumn={true}
             bsVisibleEdit={true}
             bsVisibleDelete={true}
+            bsAllowAdd={true}
+            bsAllowEdit={true}
+            bsAllowDelete={true}
             bsFilterMode="server"
           />
         </Box>
@@ -104,6 +108,9 @@ export const EnhancedStoredProcedureExamples = () => {
             bsShowCheckbox={false}
             bsVisibleEdit={true}
             bsVisibleDelete={false} // Hide delete for orders
+            bsAllowAdd={true}
+            bsAllowEdit={true}
+            bsAllowDelete={false}
           />
         </Box>
       </Paper>
@@ -184,8 +191,8 @@ export const EnhancedStoredProcedureExamples = () => {
 
         <Box component="ul" sx={{ pl: 2 }}>
           <li>
-            Must accept <code>@Operation</code> parameter (SELECT, UPDATE,
-            DELETE)
+            Must accept <code>@Operation</code> parameter (SELECT, INSERT,
+            UPDATE, DELETE)
           </li>
           <li>
             Must support pagination parameters: <code>@Page</code>,{" "}
