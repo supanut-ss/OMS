@@ -6,6 +6,7 @@ import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
 import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
 import BSDataGridExamples from "./examples/BSDataGridExamples";
+import BSDataGridClientExample from "./pages/Examples/BSDataGridClientExample";
 import TestBSDataGrid from "./test/TestBSDataGrid";
 import UserPage from "./pages/Authentication/User";
 import UserGroupPage from "./pages/Authentication/UserGroup";
@@ -38,24 +39,17 @@ export default function AppRoutes() {
         <Route path="autocomplete" element={<BSAutoCompleteExamples />} />
         {/* route สำหรับ BSDataGrid Examples */}
         <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />
+        {/* route สำหรับ BSDataGridClient Examples */}
+        <Route
+          path="examples/bsdatagridclient"
+          element={<BSDataGridClientExample />}
+        />
         {/* route สำหรับ Testing BSDataGrid */}
         <Route path="test/bsdatagrid" element={<TestBSDataGrid />} />
         {/* route สำหรับ Schema Mapping Test */}
         <Route path="test/schema" element={<SchemaTestPage />} />
         {/* route สำหรับ Schema Mapping Demo */}
         <Route path="test/schema-demo" element={<SchemaMappingDemo />} />
-
-        <Route
-          path="timesheet"
-          element={<div>Timesheet Page - Coming Soon</div>}
-        />
-        <Route path="tasks" element={<div>Tasks Page - Coming Soon</div>} />
-        <Route
-          path="calendar"
-          element={<div>Calendar Page - Coming Soon</div>}
-        />
-        <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
-        <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
         <Route path="importMaster" element={<ImportMaster />} />

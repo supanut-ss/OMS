@@ -282,8 +282,8 @@ namespace Authentication.Services.Auth
                 LocaleId = reader["locale_id"].ToString() ?? "",
                 IsActive = reader["is_active"].ToString() == "YES"
             };
-
-            var token = _jwtHelper.GenerateToken(userinfo.UserId, "Admin", userinfo.FirstName, userinfo.FirstName, userinfo.LastName, userinfo.Email, "");
+            string role = userinfo.UserGroupId.ToString() ?? "unkonw";
+            var token = _jwtHelper.GenerateToken(userinfo.UserId,role, userinfo.FirstName, userinfo.FirstName, userinfo.LastName, userinfo.Email, "");
             var newRefreshToken = await _tokenValidatorService.GenerateRefreshToken(userinfo.UserId, token);
             var updateResult = await UpdateRefreshToken(userinfo.UserId, token, refreshToken, newRefreshToken, 1);
             if (updateResult.message_code != "0")

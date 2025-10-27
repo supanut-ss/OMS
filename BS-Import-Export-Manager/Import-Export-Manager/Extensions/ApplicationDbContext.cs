@@ -23,7 +23,7 @@ namespace Import_Export_Manager.Extensions
             builder.UseCollation("Thai_CI_AS");
             builder.Entity<TImportMaster>(entity =>
             {
-                entity.ToTable("t_import_master", "imp");
+                entity.ToTable("t_mas_import_master", "imp");
                 entity.HasKey(e => e.ImportId);
                 entity.Property(e => e.ImportId).HasColumnName("import_id");
                 entity.Property(e => e.ImportName).HasColumnName("import_name").HasMaxLength(200).IsRequired();
@@ -222,15 +222,16 @@ namespace Import_Export_Manager.Extensions
                     data = null
                 };
             }
-            var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 10)
+
+            var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
             {
                 Direction = ParameterDirection.Output
             };
-            var errorMessageParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 200)
+            var errorMessageParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
             {
                 Direction = ParameterDirection.Output
             };
-            var errorRecordParam = new SqlParameter("@out_intErrorRecord", SqlDbType.Int)
+            var errorRecordParam = new SqlParameter("@out_vchErrorRecord", SqlDbType.NVarChar, 100)
             {
                 Direction = ParameterDirection.Output
             };
@@ -244,35 +245,67 @@ namespace Import_Export_Manager.Extensions
                 Direction = ParameterDirection.Input,
                 Value = (object?)request.xml_import_data ?? DBNull.Value
             };
+
+            var errors = new List<ExcelImportListResponse>();
+
             try
             {
-                await Database.ExecuteSqlRawAsync(
-                $"EXEC {execSqlCommand} " +
-                $"@in_vchUserId, @in_XMLData, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT, @out_intErrorRecord OUTPUT",
-                in_vchUserId, in_XMLData, errorCodeParam, errorMessageParam, errorRecordParam);
+                using (var conn = Database.GetDbConnection())
+                {
+                    await conn.OpenAsync();
+
+                    using (var command = conn.CreateCommand())
+                    {
+                        command.CommandText = execSqlCommand;
+                        command.CommandType = System.Data.CommandType.StoredProcedure;
+
+                        command.Parameters.Add(in_vchUserId);
+                        command.Parameters.Add(in_XMLData);
+                        command.Parameters.Add(errorCodeParam);
+                        command.Parameters.Add(errorMessageParam);
+                        command.Parameters.Add(errorRecordParam);
+
+                        using (var reader = await command.ExecuteReaderAsync())
+                        {
+                            // Result set แรก (ถ้ามี) ข้ามได้
+                            if (await reader.ReadAsync()) { }
+
+                            // Result set ที่สอง: #TempImportResult
+                            if (await reader.NextResultAsync())
+                            {
+                                while (await reader.ReadAsync())
+                                {
+                                    errors.Add(new ExcelImportListResponse
+                                    {
+                                        code = reader["ErrorCode"]?.ToString(),
+                                        message = reader["ErrorMessage"]?.ToString(),
+                                        records = reader["ErrorRecord"]?.ToString()
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return new ExcelImportResponse
                 {
-                    code = "0",
-                    message = "import success",
-                    data = new ExcelImportListResponse
-                    {
-                        code = errorCodeParam.Value?.ToString(),
-                        message = errorMessageParam.Value?.ToString(),
-                        records = errorRecordParam.Value != DBNull.Value
-                            ? (int)errorRecordParam.Value
-                            : 0
-                    }
+                    code = errorCodeParam.Value?.ToString() ?? "0",
+                    message = errorMessageParam.Value?.ToString() ?? "Import completed",
+                    data = errors,
+                    total = errors.Count
                 };
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 return new ExcelImportResponse
                 {
                     code = "1",
                     message = ex.Message,
-                    data = null
+                    data = null,
+                    total = 0
                 };
             }
         }
+
     }
 }

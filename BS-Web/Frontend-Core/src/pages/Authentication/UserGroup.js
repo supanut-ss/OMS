@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { Box, Typography, Paper, Divider } from "@mui/material";
+import { Typography, Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const UserGroupPage = () => {
-  const [selectedRows, setSelectedRows] = useState([]);
   const [locale_id, setLocale_id] = useState("en");
 
   return (
@@ -16,7 +15,7 @@ const UserGroupPage = () => {
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="t_com_user_group"
-          bsCols="name,description,is_active,create_by,create_date,update_by,update_date"
+          bsCols="user_group_id,name,description,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="name asc"
           bsRowPerPage={20}
           bsShowDescColumn={false}
@@ -32,14 +31,7 @@ const UserGroupPage = () => {
               ObjBy: "application_name asc",
             },
           ]}
-          onCheckBoxSelected={(rows) => {
-            console.log("Selected rows:", rows);
-            setSelectedRows(rows);
-          }}
-          //   onEdit={(row) => console.log("Edit:", row)}
-          //   onDelete={(id) => console.log("Delete:", id)}
-          //   onAdd={() => console.log("Add new record")}
-          height={500}
+          bsBulkDelete={false}
         />
       </Paper>
     </>

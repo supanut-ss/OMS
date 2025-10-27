@@ -1,10 +1,12 @@
-import { Box, Button, FormControl, Grid, Paper, Typography } from "@mui/material";
+import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import { useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
+import secureStorage from "../../utils/SecureStorage";
 const CountTag = () => {
+     const userInfo = JSON.parse(secureStorage.get("userInfo"));
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
     const CallNoti = async () => {
@@ -22,9 +24,16 @@ const CountTag = () => {
             return;
         }
         for (let row of selectedRows) {
-            await AxiosMaster.post("/ams/notify/recount-tags", {
-                user_id: selectedUser,
-                tag_no: row.tag_no
+            await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
+                "title":"Please Re-Count " +row.location+" "+row.tag_no, //Please Re-Count [location] [Tag_no]
+                "body": ""+row.part_no,
+                "tokens": [selectedUser.fcm_token],
+                "data": 
+                    {
+                        "tag_no": row.tag_no,
+                        "create_by":userInfo.UserId,
+                        "routeApp": "/count_tag"
+                    }
             }).then((response) => {
                 BSAlertSwal2.show(
                     "success",
@@ -59,15 +68,15 @@ const CountTag = () => {
                                 bsObj="user"
                                 bsColumes={[
                                     {
-                                        field: "user_id",
-                                        display: true,
+                                        field: "fcm_token",
+                                        display: false,
                                         filter: false,
                                         key: true,
                                     },
                                     { field: "first_name", display: true, filter: false, key: false },
                                     { field: "last_name", display: true, filter: false, key: false }
                                 ]}
-                                bsObjBy="user_id asc"
+                                bsObjBy="first_name asc"
                                 bsObjWh="isnull(fcm_token,'')<>''"
                                 bsValue={selectedUser} // ค่าเริ่มต้น = code ของ option
                                 cacheKey="drive_user_autocomplete"
@@ -75,7 +84,7 @@ const CountTag = () => {
                                 bsOnChange={(val) => setSelectedUser(val)}
                             /></Grid>
                         <Grid size={3}>
-                            <Button variant="contained" color="warning" sx={{ mb: 2 }} onClick={CallNoti}>
+                            <Button variant="contained" color="warning" sx={{ mb: 2, height: '90%' }} onClick={CallNoti} >
                                 Re-Count Tags
                             </Button>
                         </Grid>
@@ -107,17 +116,16 @@ const CountTag = () => {
                     bsPinColsLeft=""
                     bsPinColsRight=""
                     bsRowPerPage={20}
-                    bsBulkEdit={true}
-                    bsBulkAdd={true}
+                    bsBulkEdit={false}
+                    bsBulkAdd={false}
+                    bsBulkDelete={false}
                     bsShowDescColumn={false}
-
+                    showAdd={false}
+                    readOnly={true}
                     onCheckBoxSelected={(rows) => {
                         console.log("Selected rows:", rows);
                         setSelectedRows(rows);
                     }}
-                    onEdit={(row) => console.log("Edit:", row)}
-                    onDelete={(id) => console.log("Delete:", id)}
-                    onAdd={() => console.log("Add new record")}
                     height={500}
                 />
             </Box>

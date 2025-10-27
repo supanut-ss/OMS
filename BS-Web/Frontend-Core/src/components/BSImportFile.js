@@ -15,6 +15,7 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import BSAlertSwal2 from "../components/BSAlertSwal2";
 /**
  * BSImportFile component
  * @param {Object} props
@@ -23,6 +24,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
  * @param {string} [props.dialogTitle='Import File(s)'] - Dialog title
  * @param {string} [props.buttonLabel='Select File(s)'] - Select button label
  * @param {function} [props.onImport] - Callback when import is clicked
+ * @param {function} [props.beforeOpen] - Function to validate or confirm before opening dialog
  */
 const BSImportFile = ({
   mode = "multi",
@@ -30,6 +32,7 @@ const BSImportFile = ({
   dialogTitle = "Import File(s)",
   buttonLabel = "Select File(s)",
   onImport,
+  beforeOpen,
   ...otherProps
 }) => {
   const fileInputRef = useRef(null);
@@ -82,7 +85,8 @@ const BSImportFile = ({
     const invalidFiles = files.filter((file) => !validFiles.includes(file));
 
     if (invalidFiles.length > 0) {
-      alert(
+      BSAlertSwal2.show(
+        "error",
         `Some files are not allowed: ${invalidFiles
           .map((f) => f.name)
           .join(", ")}`
@@ -109,7 +113,18 @@ const BSImportFile = ({
     setIsDragActive(false);
   };
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = async () => {
+    // ถ้ามีฟังก์ชัน beforeOpen ส่งเข้ามา ให้เรียกก่อน
+    if (beforeOpen) {
+      const result = await beforeOpen(); // รองรับ async ได้ด้วย
+      // ถ้า beforeOpen คืนค่า false หรือไม่ผ่าน ให้ return ไม่ต้องเปิด dialog
+      if (result === false) return;
+    }
+
+    // เปิด Dialog ถ้าผ่านการตรวจสอบ
+    setOpen(true);
+  };
+
   const handleClose = () => {
     setOpen(false);
     setSelectedFiles([]);
@@ -120,7 +135,9 @@ const BSImportFile = ({
     if (onImport) {
       onImport(selectedFiles);
     } else {
-      alert("Importing files: " + selectedFiles.map((f) => f.name).join(", "));
+      console.warn(
+        "Importing files: " + selectedFiles.map((f) => f.name).join(", ")
+      );
     }
     handleClose();
   };

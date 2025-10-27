@@ -19,7 +19,7 @@ function CustomBreadcrumbs() {
 
         return isLast ? (
           <Typography color="text.primary" key={to}>
-            {decodeURIComponent(value)}
+            {decodeURIComponent(value).split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
           </Typography>
         ) : (
           <Link
@@ -29,7 +29,7 @@ function CustomBreadcrumbs() {
             to={to}
             key={to}
           >
-            {decodeURIComponent(value)}
+            {decodeURIComponent(value).split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
           </Link>
         );
       })}

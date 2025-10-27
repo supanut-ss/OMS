@@ -31,16 +31,16 @@ export const useDynamicCrud = (tableName) => {
         setError(null);
         Logger.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
 
-        // Debug JWT token
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
-        Logger.log(
-          "🔑 JWT Token check:",
-          token ? "Token exists" : "No token found"
-        );
-        if (token) {
-          Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
-        }
+        // // Debug JWT token
+        // const token =
+        //   localStorage.getItem("token") || sessionStorage.getItem("token");
+        // Logger.log(
+        //   "🔑 JWT Token check:",
+        //   token ? "Token exists" : "No token found"
+        // );
+        // if (token) {
+        //   Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
+        // }
 
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
@@ -172,6 +172,13 @@ export const useDynamicCrud = (tableName) => {
   const createRecord = useCallback(
     async (recordData, preObj = null) => {
       try {
+        Logger.log("🔍 createRecord called with parameters:", {
+          recordDataKeys: recordData ? Object.keys(recordData) : "null",
+          preObj,
+          preObjType: typeof preObj,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
         if (preObj) {
@@ -199,8 +206,14 @@ export const useDynamicCrud = (tableName) => {
         if (user) {
           try {
             const userObj = typeof user === "string" ? JSON.parse(user) : user;
-            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
-            Logger.log("🔐 User data for CREATE audit:", { userObj, userId });
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for CREATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
           } catch (e) {
             Logger.warn("Failed to parse user data for audit fields:", e);
           }
@@ -245,10 +258,27 @@ export const useDynamicCrud = (tableName) => {
 
   // Update existing record
   const updateRecord = useCallback(
-    async ({ id, data: recordData, whereConditions, preObj = null }) => {
+    async (id, recordData, preObj = null, whereConditions = null) => {
       try {
+        Logger.log("🔍 updateRecord called with parameters:", {
+          id,
+          recordDataKeys: recordData ? Object.keys(recordData) : "null",
+          preObj,
+          preObjType: typeof preObj,
+          whereConditions,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
+
+        Logger.log("🔍 UPDATE Schema Resolution Debug:", {
+          preObj,
+          tableName,
+          hasPreObj: !!preObj,
+          preObjType: typeof preObj,
+        });
+
         if (preObj) {
           // Use schema mapping from preObj
           schema = getSchemaFromPreObj(preObj);
@@ -257,6 +287,7 @@ export const useDynamicCrud = (tableName) => {
             preObj,
             schema,
             table,
+            schemaFromMapping: getSchemaFromPreObj(preObj),
           });
         } else {
           // Parse tableName for schema.table format
@@ -266,6 +297,8 @@ export const useDynamicCrud = (tableName) => {
           Logger.log("📊 Using parsed tableName for UPDATE:", {
             schema,
             table,
+            parsed,
+            originalTableName: tableName,
           });
         }
 
@@ -284,8 +317,14 @@ export const useDynamicCrud = (tableName) => {
         if (user) {
           try {
             const userObj = typeof user === "string" ? JSON.parse(user) : user;
-            userId = userObj?.user_id || userObj?.id || userObj?.sub || null;
-            Logger.log("🔐 User data for UPDATE audit:", { userObj, userId });
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for UPDATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
           } catch (e) {
             Logger.warn("Failed to parse user data for audit fields:", e);
           }
@@ -299,13 +338,26 @@ export const useDynamicCrud = (tableName) => {
           Logger.log("🔧 Using fallback userId for testing:", userId);
         }
 
-        const response = await AxiosMaster.post("/dynamic/update", {
+        const requestPayload = {
           tableName: table,
           schemaName: schema,
           data: recordData,
           whereConditions: conditions,
           userId: userId, // Add userId for audit fields
+        };
+
+        Logger.log("📡 Final UPDATE Request Payload:", {
+          ...requestPayload,
+          finalSchema: schema,
+          finalTable: table,
+          originalPreObj: preObj,
+          originalTableName: tableName,
         });
+
+        const response = await AxiosMaster.post(
+          "/dynamic/update",
+          requestPayload
+        );
 
         Logger.log("✅ Record updated via Gateway:", response.data);
         return response.data;
@@ -325,6 +377,14 @@ export const useDynamicCrud = (tableName) => {
   const deleteRecord = useCallback(
     async (id, whereConditions, preObj = null) => {
       try {
+        Logger.log("🔍 deleteRecord called with parameters:", {
+          id,
+          whereConditions,
+          preObj,
+          preObjType: typeof preObj,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
         if (preObj) {
@@ -514,10 +574,50 @@ export const useDynamicCrud = (tableName) => {
           });
         }
 
+        // Get user ID from auth context for bulk update
+        let userId = null;
+        if (user) {
+          try {
+            const userObj = typeof user === "string" ? JSON.parse(user) : user;
+            // Try multiple possible userId field names from JWT token
+            userId =
+              userObj?.UserId || userObj?.userId || userObj?.user_id || null;
+            Logger.log("🔐 User data for BULK UPDATE audit:", {
+              userObj,
+              userId,
+              availableFields: Object.keys(userObj || {}),
+            });
+          } catch (e) {
+            Logger.warn(
+              "Failed to parse user data for bulk update audit fields:",
+              e
+            );
+          }
+        }
+
+        // Fallback for testing
+        if (!userId) {
+          userId = `test_user_${Date.now()}`;
+          Logger.log(
+            "🔧 Using fallback userId for bulk update testing:",
+            userId
+          );
+        }
+
+        Logger.log("📡 BULK UPDATE Request:", {
+          tableName: table,
+          schemaName: schema,
+          updates: updates,
+          userId: userId,
+          originalTableName: tableName,
+          preObj: preObj,
+        });
+
         const response = await AxiosMaster.post("/dynamic/bulk-update", {
           tableName: table,
           schemaName: schema,
           updates,
+          userId: userId, // Add userId for audit fields
         });
 
         Logger.log("✅ Bulk update completed via Gateway:", response.data);
@@ -531,7 +631,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName]
+    [tableName, user]
   );
 
   const bulkDelete = useCallback(
@@ -595,6 +695,30 @@ export const useDynamicCrud = (tableName) => {
     }
   }, []);
 
+  // Enhanced Stored Procedure executor
+  const executeEnhancedStoredProcedure = useCallback(async (request) => {
+    try {
+      Logger.log("🚀 Executing Enhanced Stored Procedure:", request);
+
+      const response = await AxiosMaster.post(
+        "/dynamic/enhanced-procedure",
+        request
+      );
+      Logger.log(
+        "✅ Enhanced Stored Procedure executed successfully:",
+        response.data
+      );
+      return response.data;
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to execute enhanced stored procedure";
+      Logger.error("❌ Failed to execute enhanced stored procedure:", errorMsg);
+      throw new Error(errorMsg);
+    }
+  }, []);
+
   return {
     // State
     metadata,
@@ -617,5 +741,6 @@ export const useDynamicCrud = (tableName) => {
 
     // Additional utilities
     getComboBoxData,
+    executeEnhancedStoredProcedure,
   };
 };

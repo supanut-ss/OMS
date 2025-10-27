@@ -14,7 +14,7 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
-  Badge,
+ // Badge,
   Avatar,
   Menu,
   MenuItem,
@@ -37,8 +37,8 @@ import { useColorMode } from "../themes/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
 import { styled } from "@mui/material/styles";
-import logoMiniSvg from "../assets/logo-mini.svg";
-import logoHorizontalSvg from "../assets/logo-horizontal.svg";
+import logoMiniSvg from "../assets/logo.jpg";
+import logoHorizontalSvg from "../assets/logo.jpg";
 
 import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
@@ -135,9 +135,9 @@ export default function MainLayout() {
 
   const toggleDrawer = () => setOpen((prev) => !prev);
 
-  const handleNotificationClick = (event) => {
-    setNotificationAnchor(event.currentTarget);
-  };
+  // const handleNotificationClick = (event) => {
+  //   setNotificationAnchor(event.currentTarget);
+  // };
 
   const handleNotificationClose = () => {
     setNotificationAnchor(null);
@@ -276,7 +276,7 @@ export default function MainLayout() {
             </Tooltip>
 
             {/* Notifications */}
-            <Tooltip title="การแจ้งเตือน">
+            {/* <Tooltip title="การแจ้งเตือน">
               <IconButton
                 color="inherit"
                 onClick={handleNotificationClick}
@@ -287,7 +287,7 @@ export default function MainLayout() {
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
-            </Tooltip>
+            </Tooltip> */}
 
             {/* User Menu */}
             <Tooltip title="เมนูผู้ใช้">
@@ -451,7 +451,7 @@ export default function MainLayout() {
           </Box>
         </Box>
 
-        <MenuItem onClick={handleUserMenuClose} sx={{ py: 1.5, px: 3 }}>
+        {/* <MenuItem onClick={handleUserMenuClose} sx={{ py: 1.5, px: 3 }}>
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
@@ -463,7 +463,7 @@ export default function MainLayout() {
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary="ตั้งค่า" />
-        </MenuItem>
+        </MenuItem> */}
 
         <Divider sx={{ my: 1 }} />
 
