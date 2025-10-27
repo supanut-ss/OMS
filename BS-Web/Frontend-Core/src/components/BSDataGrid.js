@@ -1439,15 +1439,15 @@ const BSDataGrid = ({
       const effectiveLocale = getEffectiveLocale();
       const formatOptions = getLocaleFormatOptions(effectiveLocale);
 
-      Logger.log("🌐 Format cell value with locale:", {
-        value,
-        dataType,
-        effectiveLocale,
-        bsLocale,
-        userLocale: user
-          ? (typeof user === "string" ? JSON.parse(user) : user)?.locale_id
-          : "no-user",
-      });
+      // Logger.log("🌐 Format cell value with locale:", {
+      //   value,
+      //   dataType,
+      //   effectiveLocale,
+      //   bsLocale,
+      //   userLocale: user
+      //     ? (typeof user === "string" ? JSON.parse(user) : user)?.locale_id
+      //     : "no-user",
+      // });
 
       try {
         switch (dataType?.toLowerCase()) {
@@ -1494,13 +1494,7 @@ const BSDataGrid = ({
         return String(value);
       }
     },
-    [
-      getEffectiveLocale,
-      getLocaleFormatOptions,
-      formatDateCustom,
-      bsLocale,
-      user,
-    ]
+    [getEffectiveLocale, getLocaleFormatOptions, formatDateCustom]
   );
 
   // Helper: Check if field should be shown in form
@@ -1620,9 +1614,194 @@ const BSDataGrid = ({
     return auditFields.includes(columnName?.toLowerCase());
   }, []);
 
+  // Helper: Detect primary key from Enhanced SP data
+  const detectPrimaryKeyFromData = useCallback((rowData) => {
+    if (!rowData || typeof rowData !== "object") return null;
+
+    const keys = Object.keys(rowData);
+
+    // Enhanced debugging to see all data
+    Logger.log("🔍 PRIMARY KEY DETECTION - All data keys:", {
+      allKeys: keys,
+      sampleData: keys.reduce((sample, key, index) => {
+        if (index < 10) {
+          // Show first 10 fields
+          sample[key] = rowData[key];
+        }
+        return sample;
+      }, {}),
+    });
+
+    // Common primary key patterns (in order of priority)
+    const primaryKeyPatterns = [
+      // Exact matches (highest priority)
+      /^id$/i,
+      /^ID$/,
+      /^Id$/,
+
+      // Table-specific patterns
+      /^.*_id$/i, // table_id, user_id, etc.
+      /^.*Id$/, // tableId, userId, etc.
+      /^.*ID$/, // tableID, userID, etc.
+
+      // Generic patterns
+      /^pk_/i, // pk_something
+      /^primary_/i, // primary_key
+      /^key$/i, // key
+    ];
+
+    // Try to find primary key by pattern matching
+    for (const pattern of primaryKeyPatterns) {
+      const foundKey = keys.find((key) => pattern.test(key));
+      if (foundKey) {
+        Logger.log(
+          `🔍 Detected primary key from Enhanced SP data: ${foundKey}`,
+          {
+            pattern: pattern.toString(),
+            allKeys: keys,
+            rowData: Object.keys(rowData).slice(0, 5), // Show first 5 keys for debugging
+          }
+        );
+        return foundKey;
+      }
+    }
+
+    // If no pattern matches, check for fields that look like IDs by data type
+    const possibleIdFields = keys.filter((key) => {
+      const value = rowData[key];
+      // Look for numeric fields that could be IDs
+      return (
+        (typeof value === "number" && Number.isInteger(value) && value > 0) ||
+        (typeof value === "string" && /^\d+$/.test(value))
+      );
+    });
+
+    if (possibleIdFields.length > 0) {
+      const primaryKey = possibleIdFields[0]; // Take the first numeric field
+      Logger.log(
+        `🔍 Detected primary key by data type from Enhanced SP: ${primaryKey}`,
+        {
+          possibleIdFields,
+          allKeys: keys,
+        }
+      );
+      return primaryKey;
+    }
+
+    Logger.warn("⚠️ Could not detect primary key from Enhanced SP data", {
+      keys,
+      sampleData: Object.keys(rowData)
+        .slice(0, 3)
+        .reduce((sample, key) => {
+          sample[key] = typeof rowData[key];
+          return sample;
+        }, {}),
+    });
+
+    return null;
+  }, []);
+
+  // Helper: Get effective primary key (from metadata or detected from data)
+  const getEffectivePrimaryKey = useCallback(
+    (rowData = null) => {
+      // For regular tables with metadata, use metadata primary key
+      if (metadata?.primaryKeys?.[0]) {
+        return metadata.primaryKeys[0];
+      }
+
+      // For Enhanced SP without metadata, try to detect from data
+      if (bsStoredProcedure && rowData) {
+        return detectPrimaryKeyFromData(rowData);
+      }
+
+      // Fallback to common names
+      return "Id";
+    },
+    [metadata?.primaryKeys, bsStoredProcedure, detectPrimaryKeyFromData]
+  );
+
   // Initialize form data based on metadata
   const initializeFormData = useCallback(
     (existing = null) => {
+      // For Enhanced Stored Procedure without metadata, use row data directly
+      if (
+        bsStoredProcedure &&
+        (!metadata?.columns || metadata.columns.length === 0)
+      ) {
+        if (!existing) return {};
+
+        // Detect primary key from data
+        const detectedPrimaryKey = detectPrimaryKeyFromData(existing);
+
+        // Define fields that should be excluded from Enhanced SP forms
+        const excludedFields = [
+          "__rowNumber", // Special row number field
+          // Primary key field (detected dynamically)
+          ...(detectedPrimaryKey ? [detectedPrimaryKey] : []),
+          // Common primary key variants (fallback)
+          "id",
+          "Id",
+          "ID",
+          "part_id",
+          "app_id",
+          "user_id",
+          "customer_id",
+          "product_id",
+          "order_id",
+          // Audit fields - Created by
+          "create_by",
+          "created_by",
+          "createby",
+          // Audit fields - Created date
+          "create_date",
+          "created_date",
+          "createdate",
+          "created_at",
+          // Audit fields - Updated by
+          "update_by",
+          "updated_by",
+          "updateby",
+          "modified_by",
+          // Audit fields - Updated date
+          "update_date",
+          "updated_date",
+          "updatedate",
+          "updated_at",
+          "modified_date",
+          // Version fields
+          "rowversion",
+          "timestamp",
+        ];
+
+        const init = {};
+        Object.keys(existing)
+          .filter((key) => {
+            // Check if field should be excluded (case-insensitive)
+            return !excludedFields.some(
+              (excludedField) =>
+                key.toLowerCase() === excludedField.toLowerCase()
+            );
+          })
+          .forEach((key) => {
+            init[key] = existing[key];
+          });
+
+        Logger.log("🔧 Enhanced SP form data initialized:", {
+          existing,
+          init,
+          keys: Object.keys(init),
+          excludedFields: Object.keys(existing).filter((key) =>
+            excludedFields.some(
+              (excludedField) =>
+                key.toLowerCase() === excludedField.toLowerCase()
+            )
+          ),
+        });
+
+        return init;
+      }
+
+      // Regular metadata-based initialization
       if (!metadata?.columns) return {};
       const init = {};
 
@@ -1719,7 +1898,15 @@ const BSDataGrid = ({
       Logger.log("🔧 Final initialized form data:", init);
       return init;
     },
-    [metadata, isFieldInForm, isActiveField, comboBoxConfig, dialogMode]
+    [
+      metadata,
+      isFieldInForm,
+      isActiveField,
+      comboBoxConfig,
+      dialogMode,
+      bsStoredProcedure,
+      detectPrimaryKeyFromData,
+    ]
   );
 
   // Open Add dialog or delegate to external handler
@@ -1788,10 +1975,14 @@ const BSDataGrid = ({
   // Handle Delete (external or built-in)
   const handleDeleteClick = useCallback(
     async (row) => {
-      const primaryKey = metadata?.primaryKeys?.[0] || "Id";
-      const id = row?.[primaryKey] ?? row?.id ?? row?.Id;
+      const primaryKey = getEffectivePrimaryKey(row);
+      const id = row?.[primaryKey];
       if (!id) {
-        Logger.error("❌ No primary key found for deletion");
+        Logger.error("❌ No primary key found for deletion", {
+          primaryKey,
+          rowKeys: Object.keys(row || {}),
+          row: row,
+        });
         return;
       }
 
@@ -1846,7 +2037,6 @@ const BSDataGrid = ({
       }
     },
     [
-      metadata,
       onDelete,
       deleteRecord,
       loadData,
@@ -1857,6 +2047,7 @@ const BSDataGrid = ({
       executeEnhancedStoredProcedure,
       loadStoredProcedureData,
       user,
+      getEffectivePrimaryKey,
     ]
   );
 
@@ -1996,9 +2187,8 @@ const BSDataGrid = ({
         }
       } else {
         // For edit mode, use formData as is
-        const primaryKey = metadata?.primaryKeys?.[0] || "Id";
-        const id =
-          selectedRow?.[primaryKey] ?? selectedRow?.id ?? selectedRow?.Id;
+        const primaryKey = getEffectivePrimaryKey(selectedRow);
+        const id = selectedRow?.[primaryKey];
         if (!id) throw new Error("No primary key for update");
 
         Logger.log("🔧 About to call updateRecord with:", {
@@ -2068,6 +2258,7 @@ const BSDataGrid = ({
     executeEnhancedStoredProcedure,
     loadStoredProcedureData,
     user,
+    getEffectivePrimaryKey,
   ]);
 
   const handleDialogClose = useCallback(() => {
@@ -2168,6 +2359,101 @@ const BSDataGrid = ({
 
   // Render form fields from metadata
   const renderFormFields = useCallback(() => {
+    // For Enhanced Stored Procedure without metadata, create form fields from row data
+    if (
+      bsStoredProcedure &&
+      (!metadata?.columns || metadata.columns.length === 0)
+    ) {
+      if (!selectedRow || !Object.keys(selectedRow).length) {
+        return (
+          <Typography color="warning.main" sx={{ p: 2 }}>
+            ⚠️ No data available to create form fields for Enhanced Stored
+            Procedure
+          </Typography>
+        );
+      }
+
+      // Detect primary key from selected row data
+      const detectedPrimaryKey = detectPrimaryKeyFromData(selectedRow);
+
+      // Define fields that should be excluded from Enhanced SP forms
+      const excludedFields = [
+        "__rowNumber", // Special row number field
+        // Primary key field (detected dynamically)
+        ...(detectedPrimaryKey ? [detectedPrimaryKey] : []),
+        // Common primary key variants (fallback)
+        "id",
+        "Id",
+        "ID",
+        "part_id",
+        "app_id",
+        "user_id",
+        "customer_id",
+        "product_id",
+        "order_id",
+        // Audit fields - Created by
+        "create_by",
+        "created_by",
+        "createby",
+        // Audit fields - Created date
+        "create_date",
+        "created_date",
+        "createdate",
+        "created_at",
+        // Audit fields - Updated by
+        "update_by",
+        "updated_by",
+        "updateby",
+        "modified_by",
+        // Audit fields - Updated date
+        "update_date",
+        "updated_date",
+        "updatedate",
+        "updated_at",
+        "modified_date",
+        // Version fields
+        "rowversion",
+        "timestamp",
+      ];
+
+      const fields = Object.keys(selectedRow)
+        .filter((key) => {
+          // Check if field should be excluded (case-insensitive)
+          return !excludedFields.some(
+            (excludedField) => key.toLowerCase() === excludedField.toLowerCase()
+          );
+        })
+        .map((fieldName) => {
+          const value = formData[fieldName] ?? selectedRow[fieldName] ?? "";
+
+          return (
+            <Grid item xs={12} sm={6} key={fieldName}>
+              <TextField
+                fullWidth
+                size="small"
+                label={formatColumnName(fieldName)}
+                value={value}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    [fieldName]: e.target.value,
+                  }))
+                }
+                variant="outlined"
+                helperText={`Enhanced SP field (${typeof value})`}
+              />
+            </Grid>
+          );
+        });
+
+      return (
+        <Grid container spacing={2} sx={{ p: 2 }}>
+          {fields}
+        </Grid>
+      );
+    }
+
+    // Regular metadata-based form fields
     if (!metadata?.columns) return null;
 
     // Get all columns that should be in the form
@@ -2401,6 +2687,8 @@ const BSDataGrid = ({
     comboBoxConfig,
     selectedRow,
     bsShowCharacterCount,
+    bsStoredProcedure,
+    detectPrimaryKeyFromData,
   ]);
 
   // Function to restore a single row to its original state
@@ -2419,12 +2707,13 @@ const BSDataGrid = ({
       // Update the row in the grid to show original data
       setRows((prevRows) =>
         prevRows.map((row) => {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const currentRowId = row[primaryKey] || row.id || row.Id;
+          const primaryKey = getEffectivePrimaryKey(row);
+          const currentRowId = row[primaryKey];
 
           if (String(currentRowId) === String(rowId)) {
             Logger.log("🔄 Restoring row to original state:", {
               rowId,
+              primaryKey,
               originalData: change.originalData,
             });
             return change.originalData;
@@ -2435,7 +2724,7 @@ const BSDataGrid = ({
 
       Logger.log("✅ Row restored successfully:", { rowId, remainingChanges });
     },
-    [metadata]
+    [getEffectivePrimaryKey]
   );
 
   // Inline editing handlers for bsBulkAddInline functionality
@@ -2527,7 +2816,7 @@ const BSDataGrid = ({
         }
 
         // If it's an existing row, update it
-        const primaryKey = metadata?.primaryKeys?.[0] || "Id";
+        const primaryKey = getEffectivePrimaryKey(newRow);
         const id = newRow[primaryKey];
 
         // Remove invalid id fields from data before sending to backend
@@ -2560,7 +2849,14 @@ const BSDataGrid = ({
         return newRow; // Return unchanged to keep edit mode
       }
     },
-    [validateFormData, createRecord, updateRecord, bsPreObj, metadata, loadData]
+    [
+      validateFormData,
+      createRecord,
+      updateRecord,
+      bsPreObj,
+      loadData,
+      getEffectivePrimaryKey,
+    ]
   );
 
   const handleRowModesModelChange = useCallback((newRowModesModel) => {
@@ -2591,15 +2887,335 @@ const BSDataGrid = ({
           keys: Object.keys(rows[0] || {}),
         });
 
+        // Detect primary key to exclude it from visible columns
+        const detectedPrimaryKey = detectPrimaryKeyFromData(rows[0]);
+
         const dataColumns = Object.keys(rows[0] || {})
-          .filter((key) => key !== "id") // Skip ID column as it will be handled separately
-          .map((key) => ({
-            field: key,
-            headerName: formatColumnName(key),
-            width: 150,
-            type: "string", // Default type, could be enhanced to detect type from data
-            editable: false, // Enhanced SP handles editing through operations
-          }));
+          .filter((key) => {
+            // Skip special fields
+            if (key === "__rowNumber") {
+              Logger.log(`🔍 Skipping special field: ${key}`);
+              return false;
+            }
+
+            // Skip detected primary key
+            if (detectedPrimaryKey && key === detectedPrimaryKey) {
+              Logger.log(`🔍 Hiding detected primary key column: ${key}`);
+              return false;
+            }
+
+            // Use the comprehensive primary key detection instead of hardcoded values
+            const isPrimaryKey = detectPrimaryKeyFromData({
+              [key]: rows[0][key],
+              ...rows[0],
+            });
+            if (isPrimaryKey === key) {
+              Logger.log(`🔍 Hiding primary key column (by detection): ${key}`);
+              return false;
+            }
+
+            // Skip common primary key patterns as additional fallback
+            if (
+              /^(id|Id|ID)$/.test(key) ||
+              /.*_id$/i.test(key) ||
+              /.*Id$/.test(key) ||
+              /.*ID$/.test(key)
+            ) {
+              Logger.log(`🔍 Hiding primary key column (by pattern): ${key}`);
+              return false;
+            }
+
+            Logger.log(`✅ Including column: ${key}`);
+            return true;
+          })
+          .map((key) => {
+            // Detect data type from the first row value
+            const firstValue = rows[0][key];
+            let columnType = "string";
+            let width = 150;
+
+            // Detect data type and set appropriate column configuration
+            if (firstValue !== null && firstValue !== undefined) {
+              // Date/DateTime detection - check various formats
+              if (
+                firstValue instanceof Date ||
+                (typeof firstValue === "string" &&
+                  (/^\d{4}-\d{2}-\d{2}/.test(firstValue) ||
+                    /^\d{2}\/\d{2}\/\d{4}/.test(firstValue) ||
+                    /^\d{4}\/\d{2}\/\d{2}/.test(firstValue)))
+              ) {
+                // Check if it includes time
+                const hasTime =
+                  typeof firstValue === "string" &&
+                  /\d{2}:\d{2}/.test(firstValue);
+                columnType = hasTime ? "dateTime" : "date";
+                width = hasTime ? 180 : 140;
+              }
+              // Number detection - integers and decimals
+              else if (
+                typeof firstValue === "number" ||
+                (typeof firstValue === "string" &&
+                  /^-?\d+\.?\d*$/.test(firstValue.toString().trim()))
+              ) {
+                // Check if it's a decimal
+                const isDecimal =
+                  typeof firstValue === "number"
+                    ? firstValue % 1 !== 0
+                    : firstValue.toString().includes(".");
+                columnType = isDecimal ? "number" : "number";
+                width = 120;
+              }
+              // Boolean detection
+              else if (
+                typeof firstValue === "boolean" ||
+                (typeof firstValue === "string" &&
+                  /^(true|false|yes|no|1|0)$/i.test(
+                    firstValue.toString().trim()
+                  ))
+              ) {
+                columnType = "boolean";
+                width = 100;
+              }
+              // Text fields - adjust width based on content length and field name
+              else if (typeof firstValue === "string") {
+                const avgLength = firstValue.length;
+                const fieldName = key.toLowerCase();
+
+                // Special handling for common field types
+                if (
+                  fieldName.includes("name") ||
+                  fieldName.includes("description")
+                ) {
+                  width = Math.max(200, Math.min(300, avgLength * 8));
+                } else if (
+                  fieldName.includes("code") ||
+                  fieldName.includes("no")
+                ) {
+                  width = Math.max(120, Math.min(180, avgLength * 10));
+                } else if (
+                  fieldName.includes("email") ||
+                  fieldName.includes("url")
+                ) {
+                  width = 200;
+                } else {
+                  // General text width calculation
+                  if (avgLength > 50) {
+                    width = 280;
+                  } else if (avgLength > 30) {
+                    width = 220;
+                  } else if (avgLength > 15) {
+                    width = 180;
+                  } else {
+                    width = 150;
+                  }
+                }
+              }
+            }
+
+            // Create column configuration with proper formatting
+            // Use 'string' type for all columns to avoid MUI X Date object requirements
+            const columnConfig = {
+              field: key,
+              headerName: formatColumnName(key),
+              width: width,
+              type: "string", // Use string type to avoid MUI X Date object requirements
+              editable: false, // Enhanced SP handles editing through operations
+            };
+
+            // Add custom formatters based on detected data type
+            if (columnType === "dateTime") {
+              columnConfig.renderCell = (params) => {
+                if (!params.value) return "";
+                try {
+                  const date = new Date(params.value);
+                  if (isNaN(date.getTime())) return params.value;
+                  return formatCellValue(date, "datetime");
+                } catch (error) {
+                  Logger.warn(`Failed to format datetime for ${key}:`, error);
+                  return params.value;
+                }
+              };
+              columnConfig.headerAlign = "center";
+              columnConfig.align = "center";
+            } else if (columnType === "date") {
+              columnConfig.renderCell = (params) => {
+                if (!params.value) return "";
+                try {
+                  const date = new Date(params.value);
+                  if (isNaN(date.getTime())) return params.value;
+                  return formatCellValue(date, "date");
+                } catch (error) {
+                  Logger.warn(`Failed to format date for ${key}:`, error);
+                  return params.value;
+                }
+              };
+              columnConfig.headerAlign = "center";
+              columnConfig.align = "center";
+            } else if (columnType === "number") {
+              columnConfig.renderCell = (params) => {
+                if (
+                  params.value === null ||
+                  params.value === undefined ||
+                  params.value === ""
+                )
+                  return "";
+                try {
+                  const num = parseFloat(params.value);
+                  if (isNaN(num)) return params.value;
+
+                  // Check if it's a decimal number
+                  const isDecimal = num % 1 !== 0;
+                  return formatCellValue(num, isDecimal ? "decimal" : "int");
+                } catch (error) {
+                  Logger.warn(`Failed to format number for ${key}:`, error);
+                  return params.value;
+                }
+              };
+              columnConfig.headerAlign = "right";
+              columnConfig.align = "right";
+            } else if (columnType === "boolean") {
+              columnConfig.renderCell = (params) => {
+                if (params.value === null || params.value === undefined)
+                  return "";
+                const value = params.value;
+
+                // Handle various boolean representations
+                if (typeof value === "boolean") {
+                  return value ? "Yes" : "No";
+                } else if (typeof value === "string") {
+                  const lowerValue = value.toLowerCase();
+                  if (
+                    lowerValue === "true" ||
+                    lowerValue === "yes" ||
+                    lowerValue === "1"
+                  ) {
+                    return "Yes";
+                  } else if (
+                    lowerValue === "false" ||
+                    lowerValue === "no" ||
+                    lowerValue === "0"
+                  ) {
+                    return "No";
+                  }
+                } else if (typeof value === "number") {
+                  return value === 1 ? "Yes" : "No";
+                }
+                return value;
+              };
+              columnConfig.headerAlign = "center";
+              columnConfig.align = "center";
+            }
+
+            Logger.log(`🔧 Column config for ${key}:`, {
+              field: key,
+              type: columnType,
+              width: width,
+              firstValue: firstValue,
+              valueType: typeof firstValue,
+            });
+
+            return columnConfig;
+          });
+
+        // Add actions column if not read-only (for Enhanced Stored Procedure)
+        if (!readOnly) {
+          const actions = [];
+
+          if (onView) {
+            actions.push((params) => (
+              <GridActionsCellItem
+                icon={<Visibility />}
+                label="View"
+                onClick={() => onView(params.row)}
+              />
+            ));
+          }
+
+          if (bsVisibleEdit) {
+            actions.push((params) => (
+              <GridActionsCellItem
+                icon={<Edit />}
+                label="Edit"
+                onClick={() => handleEditClick(params.row)}
+              />
+            ));
+          }
+
+          if (bsVisibleDelete) {
+            actions.push((params) => (
+              <GridActionsCellItem
+                icon={<Delete />}
+                label="Delete"
+                onClick={() => handleDeleteClick(params.row)}
+                showInMenu
+              />
+            ));
+          }
+
+          // Insert actions column at the beginning
+          dataColumns.unshift({
+            field: "actions",
+            type: "actions",
+            headerName: "", // Hide column header
+            width: 120,
+            sortable: false,
+            filterable: false,
+            hideable: false,
+            disableColumnMenu: true,
+            getActions: (params) =>
+              actions.map((a) => a(params)).filter(Boolean),
+          });
+        }
+
+        // Add row number column if enabled (for Enhanced Stored Procedure)
+        if (bsShowRowNumber) {
+          const rowNumberCol = {
+            field: "__rowNumber",
+            headerName: "No.",
+            width: 70,
+            sortable: false,
+            filterable: false,
+            hideable: false,
+            disableColumnMenu: true,
+            headerAlign: "center",
+            renderCell: (params) => {
+              // Calculate row number based on pagination
+              const currentPage = paginationModel?.page || 0;
+              const pageSize = paginationModel?.pageSize || bsRowPerPage;
+              const rowNumber =
+                currentPage * pageSize +
+                params.api.getAllRowIds().indexOf(params.id) +
+                1;
+
+              return (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    height: "100%",
+                    color: "text.secondary",
+                    fontSize: "0.875rem",
+                    fontWeight: "medium",
+                  }}
+                >
+                  {rowNumber}
+                </Box>
+              );
+            },
+          };
+
+          // Insert row number column after actions column (or at the beginning if no actions)
+          const actionsIndex = dataColumns.findIndex(
+            (col) => col.field === "actions"
+          );
+          if (actionsIndex >= 0) {
+            dataColumns.splice(actionsIndex + 1, 0, rowNumberCol);
+          } else {
+            dataColumns.unshift(rowNumberCol);
+          }
+        }
 
         Logger.log("✅ Generated columns from data:", dataColumns);
         return dataColumns;
@@ -3034,6 +3650,7 @@ const BSDataGrid = ({
     handleInlineSaveClick,
     handleInlineCancelClick,
     handleInlineDeleteClick,
+    detectPrimaryKeyFromData,
   ]);
 
   // Handle row selection changes for checkbox selection
@@ -3044,14 +3661,14 @@ const BSDataGrid = ({
       if (onCheckBoxSelected) {
         // Get selected row data
         const selectedRows = rows.filter((row) => {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const rowId = row[primaryKey] || row.id || row.Id;
+          const primaryKey = getEffectivePrimaryKey(row);
+          const rowId = row[primaryKey];
           return newRowSelectionModel.includes(rowId);
         });
         onCheckBoxSelected(selectedRows);
       }
     },
-    [rows, metadata, onCheckBoxSelected]
+    [rows, onCheckBoxSelected, getEffectivePrimaryKey]
   );
 
   // Get localization object for DataGrid
@@ -3121,8 +3738,8 @@ const BSDataGrid = ({
 
   const handleBulkEdit = useCallback(() => {
     const selectedRows = rows.filter((row) => {
-      const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-      const rowId = row[primaryKey] || row.id || row.Id;
+      const primaryKey = getEffectivePrimaryKey(row);
+      const rowId = row[primaryKey];
       return rowSelectionModel.includes(rowId);
     });
 
@@ -3135,12 +3752,12 @@ const BSDataGrid = ({
     unsavedChangesRef.current = {};
     setHasUnsavedChanges(false);
     Logger.log("📝 Bulk Edit mode enabled for", selectedRows.length, "rows");
-  }, [rows, rowSelectionModel, metadata]);
+  }, [rows, rowSelectionModel, getEffectivePrimaryKey]);
 
   const handleBulkDelete = useCallback(async () => {
     const selectedRows = rows.filter((row) => {
-      const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-      const rowId = row[primaryKey] || row.id || row.Id;
+      const primaryKey = getEffectivePrimaryKey(row);
+      const rowId = row[primaryKey];
       return rowSelectionModel.includes(rowId);
     });
 
@@ -3154,8 +3771,8 @@ const BSDataGrid = ({
       try {
         // TODO: Implement bulk delete API call
         for (const row of selectedRows) {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const id = row[primaryKey] || row.id || row.Id;
+          const primaryKey = getEffectivePrimaryKey(row);
+          const id = row[primaryKey];
           if (id) {
             await deleteRecord(id, null, bsPreObj);
           }
@@ -3169,7 +3786,14 @@ const BSDataGrid = ({
         setError(err.message || "Failed to delete records");
       }
     }
-  }, [rows, rowSelectionModel, metadata, deleteRecord, loadData, bsPreObj]);
+  }, [
+    rows,
+    rowSelectionModel,
+    deleteRecord,
+    loadData,
+    bsPreObj,
+    getEffectivePrimaryKey,
+  ]);
 
   // Bulk Add specific functions
   const handleBulkSave = useCallback(async () => {
@@ -3597,8 +4221,8 @@ const BSDataGrid = ({
     );
   }
 
-  // No metadata
-  if (!metadata) {
+  // No metadata - but Enhanced Stored Procedure doesn't need metadata
+  if (!metadata && !bsStoredProcedure) {
     Logger.warn("⚠️ BSDataGrid: no metadata available", {
       effectiveTableName,
       metadata,
@@ -4044,7 +4668,7 @@ const BSDataGrid = ({
           {dialogMode === "add" ? "Add New Record" : "Edit Record"}
         </DialogTitle>
         <DialogContent>
-          {metadata?.columns ? (
+          {metadata?.columns || bsStoredProcedure ? (
             renderFormFields()
           ) : (
             <Box sx={{ textAlign: "center", py: 4 }}>
