@@ -1184,6 +1184,130 @@ namespace ApiCore.Services.Implementation
             return value ?? DBNull.Value;
         }
 
+        /// <summary>
+        /// Execute Enhanced Stored Procedure with full CRUD operations
+        /// </summary>
+        public async Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
+                    request.ProcedureName, request.SchemaName, request.Operation);
+
+                using var connection = await _connectionFactory.CreateConnectionAsync();
+                using var command = connection.CreateCommand();
+
+                // Build stored procedure call
+                var fullProcedureName = $"[{request.SchemaName}].[{request.ProcedureName}]";
+                command.CommandText = fullProcedureName;
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandTimeout = 120; // 2 minutes timeout
+
+                // Add standard parameters
+                command.Parameters.Add(new SqlParameter("@Operation", request.Operation ?? "SELECT"));
+                command.Parameters.Add(new SqlParameter("@Page", request.Page ?? 1));
+                command.Parameters.Add(new SqlParameter("@PageSize", request.PageSize ?? 25));
+                command.Parameters.Add(new SqlParameter("@UserId", request.UserId ?? "system"));
+
+                // Add sort model as JSON
+                if (request.SortModel != null && request.SortModel.Any())
+                {
+                    var sortJson = JsonSerializer.Serialize(request.SortModel);
+                    command.Parameters.Add(new SqlParameter("@SortModel", sortJson));
+                }
+
+                // Add filter model as JSON
+                if (request.FilterModel != null)
+                {
+                    var filterJson = JsonSerializer.Serialize(request.FilterModel);
+                    command.Parameters.Add(new SqlParameter("@FilterModel", filterJson));
+                }
+
+                // Add custom parameters
+                if (request.Parameters != null)
+                {
+                    foreach (var param in request.Parameters)
+                    {
+                        command.Parameters.Add(new SqlParameter($"@{param.Key}", ConvertParameterValue(param.Value)));
+                    }
+                }
+
+                // Add data as JSON for INSERT/UPDATE operations
+                if (request.Data != null)
+                {
+                    var dataJson = JsonSerializer.Serialize(request.Data);
+                    command.Parameters.Add(new SqlParameter("@Data", dataJson));
+                }
+
+                // Execute stored procedure
+                var stopwatch = Stopwatch.StartNew();
+                var results = new List<Dictionary<string, object>>();
+                var totalCount = 0;
+                var message = "";
+                var operation = request.Operation ?? "SELECT";
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Read result set (data)
+                while (await reader.ReadAsync())
+                {
+                    var row = new Dictionary<string, object>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        var fieldName = reader.GetName(i);
+                        var value = reader.GetValue(i);
+                        row[fieldName] = value == DBNull.Value ? null : value;
+                    }
+                    results.Add(row);
+                }
+
+                // Read output parameters if any
+                if (await reader.NextResultAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        if (reader.FieldCount > 0)
+                        {
+                            totalCount = reader.IsDBNull(0) ? results.Count : reader.GetInt32(0);
+                        }
+                        if (reader.FieldCount > 1)
+                        {
+                            message = reader.IsDBNull(1) ? "Success" : reader.GetString(1);
+                        }
+                    }
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation("Enhanced Stored Procedure executed successfully in {ElapsedMs}ms. Returned {RowCount} rows",
+                    stopwatch.ElapsedMilliseconds, results.Count);
+
+                return new EnhancedStoredProcedureResponse
+                {
+                    Success = true,
+                    Data = results,
+                    RowCount = totalCount > 0 ? totalCount : results.Count,
+                    Message = message,
+                    Operation = operation,
+                    ExecutionTime = stopwatch.ElapsedMilliseconds
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing enhanced stored procedure: {ProcedureName}", request.ProcedureName);
+
+                return new EnhancedStoredProcedureResponse
+                {
+                    Success = false,
+                    Data = new List<Dictionary<string, object>>(),
+                    RowCount = 0,
+                    Message = ex.Message,
+                    Operation = request.Operation ?? "SELECT",
+                    ExecutionTime = 0
+                };
+            }
+        }
+
         #endregion
     }
 }

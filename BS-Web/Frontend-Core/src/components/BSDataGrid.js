@@ -990,12 +990,22 @@ const BSDataGrid = ({
   const [rowModesModel, setRowModesModel] = useState({});
   const newRowIdCounter = useRef(0);
 
-  // Load metadata when table name changes
+  // Load metadata when table name changes or for Enhanced Stored Procedure
   useEffect(() => {
-    if (effectiveTableName && autoLoad) {
-      loadMetadata(bsPreObj);
+    if (autoLoad) {
+      if (bsStoredProcedure) {
+        // For Enhanced Stored Procedure, create mock metadata to enable data loading
+        // The actual columns will be determined from the stored procedure response
+        Logger.log(
+          "🚀 Using Enhanced Stored Procedure mode - creating mock metadata"
+        );
+        // Skip metadata loading for Enhanced SP since it will handle everything
+      } else if (effectiveTableName) {
+        // For regular table mode, load metadata as usual
+        loadMetadata(bsPreObj);
+      }
     }
-  }, [effectiveTableName, autoLoad, loadMetadata, bsPreObj]);
+  }, [effectiveTableName, autoLoad, loadMetadata, bsPreObj, bsStoredProcedure]);
 
   // Use refs to store current state values to avoid dependency issues
   const paginationModelRef = useRef(paginationModel);
@@ -1308,10 +1318,16 @@ const BSDataGrid = ({
 
   // Auto-reload data when dependencies change
   useEffect(() => {
-    if (metadata && autoLoad) {
-      loadDataRef.current();
+    if (autoLoad) {
+      // For Enhanced Stored Procedure, load data directly without waiting for metadata
+      if (bsStoredProcedure) {
+        loadDataRef.current();
+      } else if (metadata) {
+        // For regular table mode, wait for metadata before loading data
+        loadDataRef.current();
+      }
     }
-  }, [metadata, autoLoad]);
+  }, [metadata, autoLoad, bsStoredProcedure]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
@@ -2560,9 +2576,42 @@ const BSDataGrid = ({
       parsedCols,
       readOnly,
       bulkEditMode,
+      isEnhancedStoredProcedure: !!bsStoredProcedure,
+      rowsCount: rows?.length || 0,
     });
 
-    // Early validation - must return empty array if no metadata
+    // For Enhanced Stored Procedure, try to create columns from data if no metadata
+    if (
+      bsStoredProcedure &&
+      (!metadata?.columns || !Array.isArray(metadata.columns))
+    ) {
+      if (rows && rows.length > 0) {
+        Logger.log("🚀 Creating columns from Enhanced Stored Procedure data:", {
+          firstRow: rows[0],
+          keys: Object.keys(rows[0] || {}),
+        });
+
+        const dataColumns = Object.keys(rows[0] || {})
+          .filter((key) => key !== "id") // Skip ID column as it will be handled separately
+          .map((key) => ({
+            field: key,
+            headerName: formatColumnName(key),
+            width: 150,
+            type: "string", // Default type, could be enhanced to detect type from data
+            editable: false, // Enhanced SP handles editing through operations
+          }));
+
+        Logger.log("✅ Generated columns from data:", dataColumns);
+        return dataColumns;
+      } else {
+        Logger.warn(
+          "⚠️ Enhanced Stored Procedure: No data available to generate columns"
+        );
+        return [];
+      }
+    }
+
+    // Early validation - must return empty array if no metadata for regular tables
     if (!metadata?.columns || !Array.isArray(metadata.columns)) {
       Logger.warn(
         "⚠️ No valid metadata columns available, returning empty array",
@@ -2966,6 +3015,8 @@ const BSDataGrid = ({
     onView,
     handleEditClick,
     handleDeleteClick,
+    bsStoredProcedure,
+    rows,
     handleRestoreRow,
     formatColumnName,
     getColumnWidth,

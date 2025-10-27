@@ -727,5 +727,31 @@ namespace ApiCore.Controllers
                 return BadRequest(new { message = $"Error checking table existence: {ex.Message}" });
             }
         }
+
+        /// <summary>
+        /// Execute Enhanced Stored Procedure with full CRUD operations
+        /// Supports SELECT, INSERT, UPDATE, DELETE operations in a single stored procedure
+        /// </summary>
+        /// <param name="request">Enhanced stored procedure request with operation type and parameters</param>
+        /// <returns>Enhanced stored procedure result with data and metadata</returns>
+        [HttpPost("enhanced-procedure")]
+        [ProducesResponseType(typeof(EnhancedStoredProcedureResponse), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(401)]
+        public async Task<ActionResult<EnhancedStoredProcedureResponse>> ExecuteEnhancedStoredProcedureAsync(
+            [FromBody] EnhancedStoredProcedureRequest request)
+        {
+            try
+            {
+                var result = await _dynamicService.ExecuteEnhancedStoredProcedureAsync(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing enhanced stored procedure {ProcedureName}", request.ProcedureName);
+                return BadRequest(new { message = $"Error executing enhanced stored procedure: {ex.Message}" });
+            }
+        }
     }
 }

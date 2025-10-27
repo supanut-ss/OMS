@@ -66,5 +66,10 @@ namespace ApiCore.Services.Interfaces
         /// Execute custom SQL query (with security restrictions)
         /// </summary>
         Task<DynamicDataGridResponse> ExecuteQueryAsync(string sqlQuery, Dictionary<string, object>? parameters = null);
+
+        /// <summary>
+        /// Execute Enhanced Stored Procedure with full CRUD operations
+        /// </summary>
+        Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request);
     }
 }
