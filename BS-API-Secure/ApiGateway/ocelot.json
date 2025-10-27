@@ -487,6 +487,28 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/api/dynamic/enhanced-procedure",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/enhanced-procedure",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 100
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/dynamic/procedure/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
