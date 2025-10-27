@@ -23,7 +23,7 @@ namespace ApiCore.Controllers
 
         // GET: api/excel/export?q=mouse&from=2025-01-01&to=2025-12-31
         [HttpGet("ExportSummaryReport")]
-        public IActionResult ExportSummaryReport([FromQuery] string? warehouseCode, [FromQuery] string? itemCode)
+        public IActionResult ExportSummaryReport()
         {
             // 1) ดึงข้อมูลจาก SQL Server เป็น DataTable
             var dt = new DataTable("InventoryCheck");
