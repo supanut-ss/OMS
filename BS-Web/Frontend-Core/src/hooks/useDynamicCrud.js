@@ -695,6 +695,30 @@ export const useDynamicCrud = (tableName) => {
     }
   }, []);
 
+  // Enhanced Stored Procedure executor
+  const executeEnhancedStoredProcedure = useCallback(async (request) => {
+    try {
+      Logger.log("🚀 Executing Enhanced Stored Procedure:", request);
+
+      const response = await AxiosMaster.post(
+        "/dynamic/enhanced-procedure",
+        request
+      );
+      Logger.log(
+        "✅ Enhanced Stored Procedure executed successfully:",
+        response.data
+      );
+      return response.data;
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to execute enhanced stored procedure";
+      Logger.error("❌ Failed to execute enhanced stored procedure:", errorMsg);
+      throw new Error(errorMsg);
+    }
+  }, []);
+
   return {
     // State
     metadata,
@@ -717,5 +741,6 @@ export const useDynamicCrud = (tableName) => {
 
     // Additional utilities
     getComboBoxData,
+    executeEnhancedStoredProcedure,
   };
 };

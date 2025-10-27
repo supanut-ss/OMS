@@ -751,6 +751,12 @@ const BSDataGrid = ({
   bsComboBox = [],
   bsFilterMode = "server", // "server" | "client"
   bsShowCharacterCount = false, // Show character count in helper text
+
+  // Enhanced Stored Procedure support
+  bsStoredProcedure, // Enhanced stored procedure name
+  bsStoredProcedureSchema = "dbo", // Schema for stored procedure
+  bsStoredProcedureParams = {}, // Additional parameters for stored procedure
+
   onCheckBoxSelected,
 
   ...props
@@ -927,6 +933,7 @@ const BSDataGrid = ({
     deleteRecord,
     createRecord,
     updateRecord,
+    executeEnhancedStoredProcedure,
   } = useDynamicCrud(effectiveTableName);
 
   // DataGrid state
@@ -1203,9 +1210,101 @@ const BSDataGrid = ({
     ]
   );
 
+  // Load data from Enhanced Stored Procedure
+  const loadStoredProcedureData = useCallback(
+    async (
+      currentPaginationModel = paginationModel,
+      currentSortModel = sortModel,
+      currentFilterModel = filterModel,
+      forceRefresh = false
+    ) => {
+      if (!bsStoredProcedure || !executeEnhancedStoredProcedure) {
+        Logger.warn(
+          "⚠️ No stored procedure specified or function not available"
+        );
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        Logger.log("🚀 Loading data from Enhanced Stored Procedure:", {
+          procedureName: bsStoredProcedure,
+          schema: bsStoredProcedureSchema,
+          params: bsStoredProcedureParams,
+          page: currentPaginationModel.page + 1,
+          pageSize: currentPaginationModel.pageSize,
+          forceRefresh,
+        });
+
+        // Prepare request for Enhanced Stored Procedure
+        const request = {
+          procedureName: bsStoredProcedure,
+          schemaName: bsStoredProcedureSchema,
+          operation: "SELECT", // Default operation for data loading
+          page: currentPaginationModel.page + 1, // API uses 1-based pagination
+          pageSize: currentPaginationModel.pageSize,
+          sortModel: currentSortModel.map((sort) => ({
+            field: sort.field,
+            sort: sort.sort,
+          })),
+          filterModel: currentFilterModel,
+          parameters: {
+            ...bsStoredProcedureParams,
+            // Add any additional parameters here
+          },
+          userId: user?.id || user?.userId || user?.user_id || "system",
+        };
+
+        const result = await executeEnhancedStoredProcedure(request);
+
+        if (result.success) {
+          const processedRows = (result.data || []).map((row, index) => ({
+            ...row,
+            id: row.id || row.ID || `sp_row_${index}`, // Ensure unique ID
+          }));
+
+          setRows(processedRows);
+          setRowCount(result.rowCount || processedRows.length);
+
+          Logger.log("✅ Enhanced Stored Procedure data loaded successfully:", {
+            rowsCount: processedRows.length,
+            totalCount: result.rowCount,
+            operation: result.operation,
+            message: result.message,
+          });
+        } else {
+          throw new Error(
+            result.message || "Stored procedure execution failed"
+          );
+        }
+      } catch (err) {
+        Logger.error("❌ Failed to load Enhanced Stored Procedure data:", err);
+        setError(err.message || "Failed to load stored procedure data");
+        setRows([]);
+        setRowCount(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      bsStoredProcedure,
+      bsStoredProcedureSchema,
+      bsStoredProcedureParams,
+      executeEnhancedStoredProcedure,
+      paginationModel,
+      sortModel,
+      filterModel,
+      user,
+    ]
+  );
+
   // Store loadData reference to use in useEffect without dependency
-  const loadDataRef = useRef(loadData);
-  loadDataRef.current = loadData;
+  const loadDataRef = useRef(
+    bsStoredProcedure ? loadStoredProcedureData : loadData
+  );
+  loadDataRef.current = bsStoredProcedure ? loadStoredProcedureData : loadData;
 
   // Auto-reload data when dependencies change
   useEffect(() => {
@@ -1684,22 +1783,65 @@ const BSDataGrid = ({
         // Delegate to external handler
         await Promise.resolve(onDelete(id));
         // Try refresh after external handler
-        loadData();
+        if (bsStoredProcedure) {
+          loadStoredProcedureData();
+        } else {
+          loadData();
+        }
         return;
       }
 
       if (window.confirm("Are you sure you want to delete this record?")) {
         try {
-          await deleteRecord(id, null, bsPreObj);
-          await loadData();
-          Logger.log("✅ Record deleted and data reloaded");
+          if (bsStoredProcedure) {
+            // Use Enhanced Stored Procedure for DELETE operation
+            const deleteRequest = {
+              procedureName: bsStoredProcedure,
+              schemaName: bsStoredProcedureSchema,
+              operation: "DELETE",
+              parameters: {
+                [primaryKey]: id,
+                ...bsStoredProcedureParams,
+              },
+              userId: user?.id || user?.userId || user?.user_id || "system",
+            };
+
+            const result = await executeEnhancedStoredProcedure(deleteRequest);
+
+            if (result.success) {
+              await loadStoredProcedureData();
+              Logger.log(
+                "✅ Record deleted via Enhanced Stored Procedure:",
+                result.message
+              );
+            } else {
+              throw new Error(result.message || "Delete operation failed");
+            }
+          } else {
+            // Use standard delete record
+            await deleteRecord(id, null, bsPreObj);
+            await loadData();
+            Logger.log("✅ Record deleted and data reloaded");
+          }
         } catch (err) {
           Logger.error("❌ Failed to delete record:", err);
           setError(err.message || "Failed to delete record");
         }
       }
     },
-    [metadata, onDelete, deleteRecord, loadData, bsPreObj]
+    [
+      metadata,
+      onDelete,
+      deleteRecord,
+      loadData,
+      bsPreObj,
+      bsStoredProcedure,
+      bsStoredProcedureSchema,
+      bsStoredProcedureParams,
+      executeEnhancedStoredProcedure,
+      loadStoredProcedureData,
+      user,
+    ]
   );
 
   // Validate form data against metadata constraints
@@ -1825,13 +1967,44 @@ const BSDataGrid = ({
           bsPreObjType: typeof bsPreObj,
         });
 
-        await updateRecord(id, formData, bsPreObj);
+        if (bsStoredProcedure) {
+          // Use Enhanced Stored Procedure for UPDATE operation
+          const updateRequest = {
+            procedureName: bsStoredProcedure,
+            schemaName: bsStoredProcedureSchema,
+            operation: "UPDATE",
+            parameters: {
+              [primaryKey]: id,
+              ...formData,
+              ...bsStoredProcedureParams,
+            },
+            userId: user?.id || user?.userId || user?.user_id || "system",
+          };
+
+          const result = await executeEnhancedStoredProcedure(updateRequest);
+
+          if (!result.success) {
+            throw new Error(result.message || "Update operation failed");
+          }
+
+          Logger.log(
+            "✅ Record updated via Enhanced Stored Procedure:",
+            result.message
+          );
+        } else {
+          await updateRecord(id, formData, bsPreObj);
+        }
       }
 
       setDialogOpen(false);
       setFormData({});
       setSelectedRow(null);
-      await loadData();
+
+      if (bsStoredProcedure) {
+        await loadStoredProcedureData();
+      } else {
+        await loadData();
+      }
     } catch (err) {
       Logger.error("❌ Save failed:", err);
       setError(err.message || "Failed to save record");
@@ -1848,6 +2021,12 @@ const BSDataGrid = ({
     loadData,
     bsPreObj,
     validateFormData,
+    bsStoredProcedure,
+    bsStoredProcedureSchema,
+    bsStoredProcedureParams,
+    executeEnhancedStoredProcedure,
+    loadStoredProcedureData,
+    user,
   ]);
 
   const handleDialogClose = useCallback(() => {
