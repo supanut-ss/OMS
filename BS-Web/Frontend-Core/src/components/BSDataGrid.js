@@ -1952,7 +1952,32 @@ const BSDataGrid = ({
           preObjPassed: !!bsPreObj,
         });
 
-        await createRecord(saveData, bsPreObj);
+        if (bsStoredProcedure) {
+          // Use Enhanced Stored Procedure for INSERT operation
+          const insertRequest = {
+            procedureName: bsStoredProcedure,
+            schemaName: bsStoredProcedureSchema,
+            operation: "INSERT",
+            parameters: {
+              ...saveData,
+              ...bsStoredProcedureParams,
+            },
+            userId: user?.id || user?.userId || user?.user_id || "system",
+          };
+
+          const result = await executeEnhancedStoredProcedure(insertRequest);
+
+          if (!result.success) {
+            throw new Error(result.message || "Insert operation failed");
+          }
+
+          Logger.log(
+            "✅ Record inserted via Enhanced Stored Procedure:",
+            result.message
+          );
+        } else {
+          await createRecord(saveData, bsPreObj);
+        }
       } else {
         // For edit mode, use formData as is
         const primaryKey = metadata?.primaryKeys?.[0] || "Id";

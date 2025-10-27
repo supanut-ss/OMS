@@ -31,7 +31,7 @@ namespace ApiCore.Models.Dynamic
         public string? SchemaName { get; set; } = "dbo";
 
         [Required]
-        public string Operation { get; set; } = "SELECT"; // "SELECT", "UPDATE", "DELETE"
+        public string Operation { get; set; } = "SELECT"; // "SELECT", "INSERT", "UPDATE", "DELETE"
 
         public Dictionary<string, object>? Parameters { get; set; } = new();
 
