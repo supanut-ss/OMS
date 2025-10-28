@@ -212,5 +212,44 @@ namespace Authentication.Services.Users
             }
         }
 
+        public async Task<RoleResponse> GetRole(string userId)
+        {
+            RoleResponse response = new RoleResponse();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    response.message_code = "1";
+                    response.message_text = "UserId is required.";
+                    return response;
+                }
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var sql = $"SELECT ug.name " +
+                          $"FROM [{schema}].t_com_user u " +
+                          $"JOIN [{schema}].t_com_user_group ug ON u.user_group_id = ug.user_group_id " +
+                          $"WHERE u.user_id = @userId";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userId);
+                var roleObj = await cmd.ExecuteScalarAsync();
+                if (roleObj != null)
+                {
+                    response.message_code = "0";
+                    response.message_text = "Role retrieved successfully.";
+                    response.role = roleObj.ToString();
+                }
+                else
+                {
+                    response.message_code = "1";
+                    response.message_text = "User not found or role not assigned.";
+                }
+            }
+            catch (Exception ex)
+            { 
+                response.message_code = "1";
+                response.message_text = $"An error occurred: {ex.Message}";
+            }
+            return response;
+         }
     }
 }

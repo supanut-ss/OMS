@@ -421,41 +421,51 @@ namespace Authentication.Services.Auth
 
         public AuthResponse ValidatePassword(string userId, string newPassword)
         {
+            string wording = "Password policy must be at least 8 characters long, contain both uppercase and lowercase letters, include at least one number, and have a special character.";
             // Validate userId is not null or empty  
             if (string.IsNullOrWhiteSpace(userId))
-                return CreateErrorResponse("1", "User ID cannot be null or empty.");
+              return CreateErrorResponse("1", wording);
+            //  return CreateErrorResponse("1", "User ID cannot be null or empty.");
 
             // Validate newPassword meets minimum length requirement  
             if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
-                return CreateErrorResponse("1", "New password must be at least 8 characters long.");
+                return CreateErrorResponse("1", wording);
+            // return CreateErrorResponse("1", "New password must be at least 8 characters long.");
 
             // Validate newPassword contains both letters and numbers  
             if (newPassword.All(char.IsLetter) || newPassword.All(char.IsDigit))
-                return CreateErrorResponse("1", "New password must contain both letters and numbers.");
+                return CreateErrorResponse("1", wording);
+            //  return CreateErrorResponse("1", "New password must contain both letters and numbers.");
 
             // Validate newPassword does not contain whitespace  
             if (newPassword.Any(char.IsWhiteSpace))
-                return CreateErrorResponse("1", "New password cannot contain whitespace characters.");
+                return CreateErrorResponse("1", wording);
+            // return CreateErrorResponse("1", "New password cannot contain whitespace characters.");
 
             // Validate newPassword does not contain the userId  
             if (newPassword.Contains(userId, StringComparison.OrdinalIgnoreCase))
-                return CreateErrorResponse("1", "New password cannot contain the username.");
+                return CreateErrorResponse("1", wording);
+            //return CreateErrorResponse("1", "New password cannot contain the username.");
 
             // Validate newPassword does not contain the word 'password'  
             if (newPassword.Contains("password", StringComparison.OrdinalIgnoreCase))
-                return CreateErrorResponse("1", "New password cannot contain the word 'password'.");
+                return CreateErrorResponse("1", wording);
+            // return CreateErrorResponse("1", "New password cannot contain the word 'password'.");
 
             // Validate newPassword contains at least 4 unique characters  
             if (newPassword.Distinct().Count() < 4)
-                return CreateErrorResponse("1", "New password must contain at least 4 unique characters.");
+                return CreateErrorResponse("1", wording);
+            // return CreateErrorResponse("1", "New password must contain at least 4 unique characters.");
 
             // Validate newPassword does not contain sequences of 3 or more consecutive characters  
             if (HasSequentialCharacters(newPassword, 3))
-                return CreateErrorResponse("1", "New password cannot contain sequences of 3 or more consecutive characters.");
+                return CreateErrorResponse("1", wording);
+            //return CreateErrorResponse("1", "New password cannot contain sequences of 3 or more consecutive characters.");
 
             // Validate newPassword does not contain the same character repeated 3 or more times in a row  
             if (HasRepeatedCharacters(newPassword, 3))
-                return CreateErrorResponse("1", "New password cannot contain the same character repeated 3 or more times in a row.");
+                return CreateErrorResponse("1", wording);
+            //return CreateErrorResponse("1", "New password cannot contain the same character repeated 3 or more times in a row.");
 
             return new AuthResponse { message_code = "0", message_text = "Password is valid." };
         }

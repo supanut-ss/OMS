@@ -14,7 +14,7 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
- // Badge,
+  // Badge,
   Avatar,
   Menu,
   MenuItem,
@@ -129,6 +129,7 @@ export default function MainLayout() {
   ];
 
   // Mock user data - ในอนาคตใช้ข้อมูลจาก useAuth แทน
+  const [role, setRole] = useState("User");
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -192,8 +193,10 @@ export default function MainLayout() {
   useEffect(() => {
     if (SecureStorage.get("userInfo") !== null && SecureStorage.get("userInfo") !== "") {
       setCurrentUser(JSON.parse(SecureStorage.get("userInfo")));
+      setRole(SecureStorage.get("role") ?? "User");
     } else {
       setCurrentUser();
+      setRole("User");
     }
   }, [location]);
 
@@ -437,7 +440,7 @@ export default function MainLayout() {
                 {currentUser?.FirstName}
               </Typography>
               <Chip
-                label={currentUser?.Role}
+                label={role}
                 size="small"
                 sx={{
                   mt: 0.5,
