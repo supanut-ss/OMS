@@ -69,7 +69,7 @@ const TagPage = () => {
                 )}
 
                 {/* ตารางข้อมูล */}
-                <BSDataGrid
+                {/* <BSDataGrid
                     bsLocale="en"
                     bsPreObj="ams"
                     bsObj="tbm_tag"
@@ -77,6 +77,23 @@ const TagPage = () => {
                     bsVisibleDelete={false}
                     bsCols="tag_no,tag_date,part_no,part_name,supplier_name,area_code,area_name,location,audit,remark,double_check,create_by,create_date,update_by,update_date"
                     selectedRows={selectedRows}
+                    onCheckBoxSelected={(rows) => {
+                        console.log("Selected rows:", rows);
+                        setSelectedRows(rows);
+                    }}
+                /> */}
+                <BSDataGrid
+                    // Enhanced Stored Procedure Configuration
+                    bsStoredProcedure="usp_tbm_tag"
+                    bsStoredProcedureSchema="ams"
+                    bsShowRowNumber={true}
+                    showAdd={false}
+                    bsVisibleDelete={false}
+                    bsLocale="en"
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
+                    bsPageSize={25}
                     onCheckBoxSelected={(rows) => {
                         console.log("Selected rows:", rows);
                         setSelectedRows(rows);
