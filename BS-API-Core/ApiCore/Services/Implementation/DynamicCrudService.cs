@@ -638,37 +638,88 @@ namespace ApiCore.Services.Implementation
                 await connection.OpenAsync();
                 using var reader = await command.ExecuteReaderAsync();
 
+                // Enhanced SP returns multiple result sets: metadata, count, data
+                var metadata = new List<DynamicColumnInfo>();
                 var rows = new List<DynamicResponse>();
-                var columns = new List<DynamicColumnInfo>();
+                var totalCount = 0;
+                var tableMetadata = new DynamicTableMetadata();
 
-                // Get column information from the first result set
-                if (reader.FieldCount > 0)
+                // First result set: Column metadata (from usf_get_column_metadata)
+                if (reader.HasRows)
                 {
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    while (await reader.ReadAsync())
                     {
-                        columns.Add(new DynamicColumnInfo
+                        var columnInfo = new DynamicColumnInfo
                         {
-                            ColumnName = reader.GetName(i),
-                            DataType = reader.GetFieldType(i).Name
-                        });
+                            ColumnName = reader["COLUMN_NAME"]?.ToString() ?? "",
+                            DataType = reader["DATA_TYPE"]?.ToString() ?? "",
+                            IsNullable = reader["IS_NULLABLE"]?.ToString() == "YES",
+                            MaxLength = reader["CHARACTER_MAXIMUM_LENGTH"] as int?,
+                            Precision = reader["NUMERIC_PRECISION"] as byte?,
+                            Scale = reader["NUMERIC_SCALE"] as int?,
+                            DefaultValue = reader["COLUMN_DEFAULT"]?.ToString(),
+                            IsPrimaryKey = Convert.ToBoolean(reader["IS_PRIMARY_KEY"] ?? false),
+                            IsIdentity = Convert.ToBoolean(reader["IS_IDENTITY"] ?? false),
+                            OrdinalPosition = Convert.ToInt32(reader["ORDINAL_POSITION"] ?? 0)
+                        };
+                        metadata.Add(columnInfo);
+
+                        // Build table metadata for primary keys
+                        if (columnInfo.IsPrimaryKey)
+                        {
+                            tableMetadata.PrimaryKeys.Add(columnInfo.ColumnName);
+                        }
                     }
                 }
 
-                while (await reader.ReadAsync())
+                // Second result set: Total count
+                if (await reader.NextResultAsync() && reader.HasRows)
                 {
-                    var data = new Dictionary<string, object>();
-
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    if (await reader.ReadAsync())
                     {
-                        var fieldName = reader.GetName(i);
-                        var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        data[fieldName] = value;
+                        totalCount = Convert.ToInt32(reader["TotalCount"] ?? 0);
+                    }
+                }
+
+                // Third result set: Actual data
+                if (await reader.NextResultAsync() && reader.HasRows)
+                {
+                    // Get column information from data result set for fallback
+                    var dataColumns = new List<DynamicColumnInfo>();
+                    if (reader.FieldCount > 0)
+                    {
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            dataColumns.Add(new DynamicColumnInfo
+                            {
+                                ColumnName = reader.GetName(i),
+                                DataType = reader.GetFieldType(i).Name
+                            });
+                        }
                     }
 
-                    rows.Add(new DynamicResponse
+                    while (await reader.ReadAsync())
                     {
-                        Data = data
-                    });
+                        var data = new Dictionary<string, object>();
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var fieldName = reader.GetName(i);
+                            var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                            data[fieldName] = value;
+                        }
+
+                        rows.Add(new DynamicResponse
+                        {
+                            Data = data
+                        });
+                    }
+
+                    // Use data columns as fallback if no metadata
+                    if (!metadata.Any())
+                    {
+                        metadata = dataColumns;
+                    }
                 }
 
                 stopwatch.Stop();
@@ -676,8 +727,9 @@ namespace ApiCore.Services.Implementation
                 return new DynamicDataGridResponse
                 {
                     Rows = rows,
-                    RowCount = rows.Count,
-                    ColumnDefinitions = columns,
+                    RowCount = totalCount,
+                    ColumnDefinitions = metadata,
+                    TableMetadata = tableMetadata,
                     Metadata = new DataGridMetadata
                     {
                         QueryExecutionTimeMs = stopwatch.ElapsedMilliseconds,

@@ -211,6 +211,7 @@ namespace ApiCore.Models.Dynamic
         public int? Precision { get; set; }
         public int? Scale { get; set; }
         public object? DefaultValue { get; set; }
+        public int OrdinalPosition { get; set; }
     }
 
     /// <summary>
