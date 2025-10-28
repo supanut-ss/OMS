@@ -8,6 +8,7 @@ import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import DownloadIcon from "@mui/icons-material/Download";
 import BSDataGridClient from "../../components/BSDataGridClient";
 import { useTheme } from "@mui/material/styles";
+import Config from "../../utils/Config";
 const ImportExcel = () => {
   const theme = useTheme();
   const [select, setSelect] = useState("");
@@ -61,14 +62,15 @@ const ImportExcel = () => {
         return;
       }
       // ใช้ anchor trick เพื่อให้ browser download
-      const fileName = filePath.split("/").pop();
-      // 📥 สร้างลิงก์ดาวน์โหลด
+      const fileName = window.location.origin + "" + Config.BASE_URL + "" + filePath || "template.xlsx";
+      /// สร้างลิงก์ดาวน์โหลดไฟล์
       const link = document.createElement("a");
-      link.href = filePath;
-      link.download = fileName;
+      link.href = fileName;
+      link.setAttribute("download", fileName.split("/").pop() || "template.xlsx");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(fileName);
     } catch (err) {
       BSAlertSwal2.show("error", "Upload error:", err);
     }
