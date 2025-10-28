@@ -109,7 +109,7 @@ namespace Authentication.Services.Users
 
                 using var cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@user_id", userReq.user_id);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt("password"));
+                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.password));
                 cmd.Parameters.AddWithValue("@user_group_id", userReq.user_group_id);
                 cmd.Parameters.AddWithValue("@first_name", userReq.first_name);
                 cmd.Parameters.AddWithValue("@last_name", userReq.last_name);
