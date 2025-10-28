@@ -108,7 +108,7 @@ namespace Authentication.Services.Users
                       ",@create_date) ";  
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userReq.user_id);
+                cmd.Parameters.AddWithValue("@user_id", userReq.user_id);
                 cmd.Parameters.AddWithValue("@password", Encryption.Encrypt("password"));
                 cmd.Parameters.AddWithValue("@user_group_id", userReq.user_group_id);
                 cmd.Parameters.AddWithValue("@first_name", userReq.first_name);

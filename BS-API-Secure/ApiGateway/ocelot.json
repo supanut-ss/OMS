@@ -1027,6 +1027,24 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/ReCountTag",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "10.10.60.103",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/ReCountTag",
+      "UpstreamHttpMethod": [
+        "get"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/Excel/ExportSummaryReport",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -1046,6 +1064,6 @@
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://192.168.1.197:8080"
+    "BaseUrl": "http://192.168.254.155:8080"
   }
 }
