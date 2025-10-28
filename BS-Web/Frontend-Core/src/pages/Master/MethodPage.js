@@ -8,15 +8,6 @@ import BSDataGrid from "../../components/BSDataGrid";
 const MethodPage = () => {
 
 
-    const handleOpenDelete = async (payload) => {
-        try {
-            console.log("onDelete payload:", payload);
-            // ที่นี่สามารถเพิ่ม logic ลบข้อมูลได้ เช่น call API delete
-        } catch (error) {
-            console.error("Error in handleOpenDelete:", error);
-            alert("เกิดข้อผิดพลาดในการลบข้อมูล");
-        }
-    };
 
 
 
@@ -27,13 +18,28 @@ const MethodPage = () => {
                     Master Method
                 </Typography>
                 {/* ตารางข้อมูล */}
-                <BSDataGrid
+                {/* <BSDataGrid
                     bsLocale="en"
                     bsPreObj="ams"
                     bsObj="tbm_method"
                     bsCols="method,create_by,create_date,update_by,update_date"
-                    onDelete={handleOpenDelete}
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
+                /> */}
 
+                <BSDataGrid
+                    // Enhanced Stored Procedure Configuration
+                    bsStoredProcedure="usp_tbm_method"
+                    bsStoredProcedureSchema="ams"
+                    bsShowRowNumber={true}
+                    // bsCols="method,create_by,create_date,update_by,update_date"
+                    // showAdd={false}
+                    bsLocale="en"
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
+                    bsPageSize={25}
                 />
             </Paper>
         </>

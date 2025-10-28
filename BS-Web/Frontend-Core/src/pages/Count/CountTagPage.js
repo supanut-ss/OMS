@@ -25,8 +25,8 @@ const CountTag = () => {
         }
         for (let row of selectedRows) {
             await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
-                "title":"Please Re-Count " +row.location+" "+row.tag_no, //Please Re-Count [location] [Tag_no]
-                "body": ""+row.part_no,
+                "title":`Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_no}`,
+                "body": `Loc: ${row.location} Fixs Part No: ${row.part_no}`,
                 "tokens": [selectedUser.fcm_token],
                 "data": 
                     {
@@ -96,6 +96,7 @@ const CountTag = () => {
                     bsObj="tbt_count_tag"
                     bsCols="
       tag_no
+         ,area_code
       ,area_name
       ,location
       ,part_no

@@ -27,7 +27,7 @@ export default function LoginPage() {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, resource, menu } = useAuth();
+  const { login, resource, menu,role } = useAuth();
 
   const [formData, setFormData] = useState({
     usersname: "",
@@ -65,6 +65,7 @@ export default function LoginPage() {
       if (data.status) {
         let status_resource = await resource();
         if (status_resource) {
+          await role();
           let status_menu = await menu();
           if (status_menu) {
             const from = location.state?.from?.pathname || "/";

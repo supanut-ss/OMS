@@ -157,7 +157,15 @@ export const AuthProvider = ({ children }) => {
 
     return true;
   }
-
+const role = async () => {
+await AxiosMaster.get("/role").then((res) => {
+      if (res.data.message_code === "0") {
+        SecureStorage.set("role", res.data.role)
+      } else {  
+        SecureStorage.remove("role")
+      }
+}).finally();
+}
   const value = {
     isAuthenticated,
     user,
@@ -165,6 +173,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     resource,
     menu,
+    role,
     loading,
   };
 

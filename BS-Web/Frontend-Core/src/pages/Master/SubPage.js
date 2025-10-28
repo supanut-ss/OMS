@@ -7,15 +7,6 @@ import BSDataGrid from "../../components/BSDataGrid";
 
 const SubPage = () => {
 
-    const handleOpenDelete = async (payload) => {
-        try {
-            console.log("onDelete payload:", payload);
-            // ที่นี่สามารถเพิ่ม logic ลบข้อมูลได้ เช่น call API delete
-        } catch (error) {
-            console.error("Error in handleOpenDelete:", error);
-            alert("เกิดข้อผิดพลาดในการลบข้อมูล");
-        }
-    };
 
     return (
         <Paper sx={{ p: 3, mb: 3 }}>
@@ -24,13 +15,25 @@ const SubPage = () => {
             </Typography>
 
             {/* ตารางข้อมูล */}
-            <BSDataGrid
+            {/* <BSDataGrid
                 bsLocale="en"
                 bsPreObj="ams"
                 bsObj="tbm_sub"
                 bsCols="sub_no,part_no,part_name,supplier_name,create_by,create_date,update_by,update_date"
                 showAdd={false}
-                onDelete={handleOpenDelete}
+            /> */}
+
+            <BSDataGrid
+                // Enhanced Stored Procedure Configuration
+                bsStoredProcedure="usp_tbm_sub"
+                bsStoredProcedureSchema="ams"
+                bsShowRowNumber={true}
+                showAdd={false}
+                bsLocale="en"
+                bsAllowAdd={true}
+                bsAllowEdit={true}
+                bsAllowDelete={true}
+                bsPageSize={25}
             />
         </Paper>
     );

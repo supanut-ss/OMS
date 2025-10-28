@@ -53,6 +53,23 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/users/role",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/role",
+      "UpstreamHttpMethod": [
+        "get"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },{
       "DownstreamPathTemplate": "/users/reset_password",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -1027,6 +1044,24 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/ReCountTag",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "10.10.60.103",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/ReCountTag",
+      "UpstreamHttpMethod": [
+        "get"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/Excel/ExportSummaryReport",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -1046,6 +1081,6 @@
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://10.60.10.104:8080"
+    "BaseUrl": "http://192.168.254.155:8080"
   }
 }

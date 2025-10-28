@@ -14,6 +14,7 @@ const PartPage = () => {
         bsStoredProcedure="usp_tbm_part"
         bsStoredProcedureSchema="ams"
         bsShowRowNumber={true}
+        showAdd={false}
         // bsCols="part_no,part_name,supplier_name,unit_price,snp,area_code,area_name,qty,create_by,create_date,update_by,update_date"
         // bsStoredProcedureParams={
         //     {
@@ -24,7 +25,7 @@ const PartPage = () => {
         // }
         // Standard Configuration
         bsLocale="en"
-        // bsAllowAdd={true}
+        bsAllowAdd={true}
         bsAllowEdit={true}
         bsAllowDelete={true}
         bsPageSize={25}

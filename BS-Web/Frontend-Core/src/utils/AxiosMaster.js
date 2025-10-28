@@ -115,8 +115,8 @@ AxiosMaster.interceptors.response.use(
         // Clear all tokens
         clearCorruptedTokens();
         // Redirect to login if needed
-        if(Config.BASE_URL && Config.BASE_URL !== "/") {
-          window.location.href = Config.BASE_URL ;
+        if (Config.BASE_URL && Config.BASE_URL !== "/") {
+          window.location.href = Config.BASE_URL;
         } else {
           window.location.href = "/login";
         }
@@ -193,7 +193,11 @@ const refresh = async () => {
     console.error("❌ Token refresh failed:", error);
     clearCorruptedTokens();
     // Redirect to login
-    //window.location.href = "/login";
+    if (Config.BASE_URL && Config.BASE_URL !== "/") {
+      window.location.href = Config.BASE_URL+"/login";
+    } else {
+      window.location.href = "/login";
+    }
   }
 };
 
