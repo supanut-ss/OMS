@@ -23,16 +23,27 @@ import MethodPage from "./pages/Master/MethodPage";
 import PartPage from "./pages/Master/PartPage";
 import SubPage from "./pages/Master/SubPage";
 import TagPage from "./pages/Master/TagPage";
+import Resource from "./pages/Authentication/Resource";
+import secureStorage from "./utils/SecureStorage";
+import { useState } from "react";
+import { useAuth } from "./contexts/AuthContext";
 
 export default function AppRoutes() {
+  const [lang, setLang] = useState("en");
+  const { switchLang } = useAuth();
+  const onChangeLang = async (lang) => {
+    await switchLang(lang);
+    setLang(lang);
+    secureStorage.set("lang", lang);
+  }
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage setLang={(v) => onChangeLang(v)} />} />
       <Route
         path="/"
         element={
           <ProtectedRoute>
-            <MainLayout />
+            <MainLayout lang={lang} onChangeLang={onChangeLang} />
           </ProtectedRoute>
         }
       >
@@ -66,6 +77,7 @@ export default function AppRoutes() {
         <Route path="sub_master" element={<SubPage />} />
         <Route path="tag_master" element={<TagPage />} />
         <Route path="method_master" element={<MethodPage />} />
+        <Route path="resource" element={<Resource lang={lang} />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -3,6 +3,7 @@ using Authentication.Models.Data;
 using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace Authentication.Services.Resource
 {
@@ -34,7 +35,7 @@ namespace Authentication.Services.Resource
                 cmd.Parameters.AddWithValue("@licenseKey", licenseKey);
 
                 using var reader = await cmd.ExecuteReaderAsync();
-                
+
                 if (!await reader.ReadAsync())
                 {
 
@@ -70,6 +71,74 @@ namespace Authentication.Services.Resource
                 response.message_text = ex.Message;
             }
             return response;
+        }
+
+        public async Task<ResourceDataResponse> UpdateAsync(ResourceDataRequest resourceDataRequest, string userId)
+        {
+            try
+            {
+                ResourceDataResponse response = new ResourceDataResponse
+                {
+                    message_code = "0",
+                    message_text = "Update successful."
+                };
+
+                if (resourceDataRequest == null)
+                {
+                    response.message_code = "2";
+                    response.message_text = "Resource data request is null.";
+                    return response;
+                }
+
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using (var cmd = new SqlCommand($"[{schema}].usp_update_resource", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@in_intResourceID", resourceDataRequest?.resource_id ?? 0);
+                    cmd.Parameters.AddWithValue("@in_intAppID", resourceDataRequest.app_id);
+                    cmd.Parameters.AddWithValue("@in_vchPlatform", resourceDataRequest.platform);
+                    cmd.Parameters.AddWithValue("@in_vchResourceGroup", resourceDataRequest.resource_group);
+                    cmd.Parameters.AddWithValue("@in_vchResourceName", resourceDataRequest.resource_name);
+                    cmd.Parameters.AddWithValue("@in_vchResourceEN", resourceDataRequest.resource_en);
+                    cmd.Parameters.AddWithValue("@in_vchResourceTH", resourceDataRequest.resource_th);
+                    cmd.Parameters.AddWithValue("@in_vchResourceOther", resourceDataRequest.resource_other);
+                    cmd.Parameters.AddWithValue("@in_vchDescriptionEN", resourceDataRequest.description_en);
+                    cmd.Parameters.AddWithValue("@in_vchDescriptionTH", resourceDataRequest.description_th);
+                    cmd.Parameters.AddWithValue("@in_vchDescriptionOther", resourceDataRequest.descrption_other);
+                    cmd.Parameters.AddWithValue("@in_vchIsActive", resourceDataRequest.is_active);
+                    cmd.Parameters.AddWithValue("@in_vchCreateBy", userId);
+
+                    var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(errorCodeParam);
+
+                    var errorMessageParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(errorMessageParam);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    response.message_code = errorCodeParam.Value?.ToString() ?? "0";
+                    response.message_text = errorMessageParam.Value?.ToString() ?? "Update successful.";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new ResourceDataResponse
+                {
+                    message_code = "1",
+                    message_text = ex.Message
+                };
+            }
         }
     }
 }

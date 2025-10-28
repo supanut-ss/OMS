@@ -251,5 +251,34 @@ namespace Authentication.Services.Users
             }
             return response;
          }
+
+        public async Task<UserLangResponse> UpdateLangAsync(UserLangRequest userReq, string userId)
+        {
+            UserLangResponse response = new UserLangResponse();
+            try
+            {
+                if (string.IsNullOrEmpty(userReq.lang))
+                {
+                    response.message_code = "1";
+                    response.message_text = "lang is required.";
+                }
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var sql = $"UPDATE [{schema}].t_com_user SET locale_id = @locale_id WHERE user_id = @userId";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userId);
+                cmd.Parameters.AddWithValue("@locale_id", userReq.lang);
+                await cmd.ExecuteNonQueryAsync();
+                conn.Close();
+                response.message_code = "0";
+                response.message_text = "Success";
+            }
+            catch(Exception ex)
+            {
+                response.message_code = "1";
+                response.message_text = $"An error occurred: {ex.Message}";
+            }
+            return response;
+        }
     }
 }

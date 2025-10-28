@@ -5,8 +5,9 @@ import { useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import secureStorage from "../../utils/SecureStorage";
+import { useResource } from "../../hooks/useResource";
 const CountTag = () => {
-     const userInfo = JSON.parse(secureStorage.get("userInfo"));
+    const userInfo = secureStorage.get("userInfo");
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
     const CallNoti = async () => {
@@ -25,15 +26,15 @@ const CountTag = () => {
         }
         for (let row of selectedRows) {
             await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
-                "title":`Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_no}`,
+                "title": `Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_no}`,
                 "body": `Loc: ${row.location} Fixs Part No: ${row.part_no}`,
                 "tokens": [selectedUser.fcm_token],
-                "data": 
-                    {
-                        "tag_no": row.tag_no,
-                        "create_by":userInfo.UserId,
-                        "routeApp": "/count_tag"
-                    }
+                "data":
+                {
+                    "tag_no": row.tag_no,
+                    "create_by": userInfo.UserId,
+                    "routeApp": "/count_tag"
+                }
             }).then((response) => {
                 BSAlertSwal2.show(
                     "success",
@@ -47,6 +48,13 @@ const CountTag = () => {
             });
         }
     }
+    const { getResource } = useResource();
+    const CallResource = async () => {
+        let resource = await getResource("t_com_user", "email_address");
+        console.log("Resource fetched:", resource);
+    }
+    CallResource();
+
 
     return <Box>
         <Paper sx={{ p: 2, mb: 3 }}>
@@ -79,7 +87,7 @@ const CountTag = () => {
                                 bsObjBy="first_name asc"
                                 bsObjWh="isnull(fcm_token,'')<>''"
                                 bsValue={selectedUser} // ค่าเริ่มต้น = code ของ option
-                               // cacheKey="drive_user_autocomplete"
+                                // cacheKey="drive_user_autocomplete"
                                 bsLoadOnOpen={true}
                                 bsOnChange={(val) => setSelectedUser(val)}
                             /></Grid>
