@@ -1,17 +1,30 @@
-﻿namespace Authentication.Models.Requests
+﻿using System.Text.Json.Serialization;
+
+namespace Authentication.Models.Requests
 {
     public class UserRequest
     {
-        public string user_id { get; set; } = string.Empty;
-        public int user_group_id { get; set; }    
-        public string first_name { get; set; } = string.Empty;
-        public string last_name { get; set; } = string.Empty;
-        public string password { get; set; } = string.Empty;
-        public string locale_id { get; set; } = string.Empty;
-        public string department { get; set; } = string.Empty;
-        public string supervisor { get; set; } = string.Empty;
-        public string email_address { get; set; } = string.Empty;
-        public string domain { get; set; } = string.Empty;
-        public string is_active { get; set; } = string.Empty;
+        [JsonPropertyName("user_id")]
+        public string UserId { get; set; } = string.Empty;
+        [JsonPropertyName("user_group_id")]
+        public int UserGroupId { get; set; }
+        [JsonPropertyName("first_name")]
+        public string FirstName { get; set; } = string.Empty;
+        [JsonPropertyName("last_name")]
+        public string LastName { get; set; } = string.Empty;
+        [JsonPropertyName("password")]
+        public string Password { get; set; } = string.Empty;
+        [JsonPropertyName("locale_id")]
+        public string LocaleId { get; set; } = string.Empty;
+        [JsonPropertyName("department")]
+        public string Department { get; set; } = string.Empty;
+        [JsonPropertyName("supervisor")]
+        public string Supervisor { get; set; } = string.Empty;
+        [JsonPropertyName("email_address")]
+        public string Email { get; set; } = string.Empty;
+        [JsonPropertyName("domain")]
+        public string Domian { get; set; } = string.Empty;
+        [JsonPropertyName("is_active")]
+        public string IsActive { get; set; } = string.Empty;
     }
 }

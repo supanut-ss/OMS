@@ -67,6 +67,7 @@ const UserPage = () => {
 
   const handleChange = (eOrName, value) => {
     let name, val;
+
     // กรณีเป็น event จาก TextField
     if (eOrName?.target) {
       name = eOrName.target.name;
@@ -80,7 +81,7 @@ const UserPage = () => {
         Logger.log("handleChange:", name, val);
       } else if (eOrName === "locale_id") {
         name = eOrName;
-        val = value?.value_member ?? null;
+        val = value?.value ?? null;
         Logger.log("handleChange:", name, val);
       }
     }
@@ -94,6 +95,11 @@ const UserPage = () => {
         val && !emailPattern.test(val) ? "Invalid email address" : ""
       );
     }
+
+    // // Sync dropdown value for user_group_id
+    // if (name === "user_group_id") {
+    //   setSelectedGroup(val);
+    // }
   };
 
   const handleGroupChange = (val) => {
@@ -273,8 +279,8 @@ const UserPage = () => {
                   bsObjWh="is_active='YES'"
                   cacheKey="group_name"
                   //bsLoadOnOpen={true}
-                  bsOnChange={(val) => handleChange("user_group_id", val)}
-                  bsValue={form.user_group_id}
+                  bsOnChange={(val) => handleGroupChange(val)}
+                  bsValue={selectedGroup}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
@@ -288,13 +294,13 @@ const UserPage = () => {
                       field: "display_member",
                       display: true,
                       filter: false,
-                      key: false,
+                      key: true,
                     },
                     {
-                      field: "value_member",
+                      field: "group_name",
                       display: false,
                       filter: false,
-                      key: true,
+                      key: false,
                     },
                   ]}
                   bsObjBy=""
