@@ -4,6 +4,7 @@ import Logger from "../utils/logger";
 import { parseTableName } from "../utils/DatabaseConfig";
 import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import { useAuth } from "../contexts/AuthContext";
+import SecureStorage from "../utils/SecureStorage";
 
 /**
  * Dynamic CRUD Hook สำหรับการจัดการข้อมูลจากตารางใดๆ ใน database
@@ -31,16 +32,16 @@ export const useDynamicCrud = (tableName) => {
         setError(null);
         Logger.log("🚀 useDynamicCrud: Starting metadata load for:", tableName);
 
-        // Debug JWT token
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
-        Logger.log(
-          "🔑 JWT Token check:",
-          token ? "Token exists" : "No token found"
-        );
-        if (token) {
-          Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
-        }
+        // // Debug JWT token
+        // const token =
+        //   localStorage.getItem("token") || sessionStorage.getItem("token");
+        // Logger.log(
+        //   "🔑 JWT Token check:",
+        //   token ? "Token exists" : "No token found"
+        // );
+        // if (token) {
+        //   Logger.log("🔑 Token preview:", token.substring(0, 50) + "...");
+        // }
 
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
@@ -172,6 +173,13 @@ export const useDynamicCrud = (tableName) => {
   const createRecord = useCallback(
     async (recordData, preObj = null) => {
       try {
+        Logger.log("🔍 createRecord called with parameters:", {
+          recordDataKeys: recordData ? Object.keys(recordData) : "null",
+          preObj,
+          preObjType: typeof preObj,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
         if (preObj) {
@@ -251,8 +259,17 @@ export const useDynamicCrud = (tableName) => {
 
   // Update existing record
   const updateRecord = useCallback(
-    async ({ id, data: recordData, whereConditions, preObj = null }) => {
+    async (id, recordData, preObj = null, whereConditions = null) => {
       try {
+        Logger.log("🔍 updateRecord called with parameters:", {
+          id,
+          recordDataKeys: recordData ? Object.keys(recordData) : "null",
+          preObj,
+          preObjType: typeof preObj,
+          whereConditions,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
 
@@ -361,6 +378,14 @@ export const useDynamicCrud = (tableName) => {
   const deleteRecord = useCallback(
     async (id, whereConditions, preObj = null) => {
       try {
+        Logger.log("🔍 deleteRecord called with parameters:", {
+          id,
+          whereConditions,
+          preObj,
+          preObjType: typeof preObj,
+          tableName,
+        });
+
         // Determine schema: use preObj mapping if provided, otherwise parse from tableName
         let schema, table;
         if (preObj) {
@@ -671,6 +696,47 @@ export const useDynamicCrud = (tableName) => {
     }
   }, []);
 
+  // Enhanced Stored Procedure executor
+  const executeEnhancedStoredProcedure = useCallback(async (request) => {
+    try {
+      Logger.log("🚀 Executing Enhanced Stored Procedure:", request);
+
+      // Check token before making request
+      const token =
+        SecureStorage.get("token") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("token");
+
+      Logger.log("🔑 Token check before Enhanced SP call:", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenPreview: token ? token.substring(0, 20) + "..." : "NO TOKEN",
+      });
+
+      const response = await AxiosMaster.post(
+        "/dynamic/enhanced-procedure",
+        request
+      );
+      Logger.log(
+        "✅ Enhanced Stored Procedure executed successfully:",
+        response.data
+      );
+      return response.data;
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to execute enhanced stored procedure";
+      Logger.error("❌ Failed to execute enhanced stored procedure:", {
+        error: errorMsg,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        responseData: err.response?.data,
+      });
+      throw new Error(errorMsg);
+    }
+  }, []);
+
   return {
     // State
     metadata,
@@ -693,5 +759,6 @@ export const useDynamicCrud = (tableName) => {
 
     // Additional utilities
     getComboBoxData,
+    executeEnhancedStoredProcedure,
   };
 };

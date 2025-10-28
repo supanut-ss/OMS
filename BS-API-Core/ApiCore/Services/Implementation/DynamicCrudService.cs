@@ -264,11 +264,10 @@ namespace ApiCore.Services.Implementation
                 ValidateSecurityConstraints(request.TableName, request.SchemaName ?? "dbo");
 
                 // Debug logging for Quick Filter
-                _logger.LogInformation("🔍 Processing DataGrid request: {TableName}, Request.QuickFilter: {QuickFilter}, FilterModel.QuickFilterValues: {QuickFilterValues}, FilterModel.QuickFilter: {FilterModelQuickFilter}",
+                _logger.LogInformation("🔍 Processing DataGrid request: {TableName}, QuickFilter: {QuickFilter}, QuickFilterValues: {QuickFilterValues}",
                     request.TableName,
                     request.QuickFilter,
-                    request.FilterModel?.QuickFilterValues,
-                    request.FilterModel?.QuickFilter);
+                    request.FilterModel?.QuickFilterValues);
 
                 var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
@@ -287,7 +286,7 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
 
                 // Build ORDER BY clause
-                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata, request.CustomOrderBy);
+                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
 
                 // Build final query
                 var query = $@"
@@ -639,37 +638,88 @@ namespace ApiCore.Services.Implementation
                 await connection.OpenAsync();
                 using var reader = await command.ExecuteReaderAsync();
 
+                // Enhanced SP returns multiple result sets: metadata, count, data
+                var metadata = new List<DynamicColumnInfo>();
                 var rows = new List<DynamicResponse>();
-                var columns = new List<DynamicColumnInfo>();
+                var totalCount = 0;
+                var tableMetadata = new DynamicTableMetadata();
 
-                // Get column information from the first result set
-                if (reader.FieldCount > 0)
+                // First result set: Column metadata (from usf_get_column_metadata)
+                if (reader.HasRows)
                 {
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    while (await reader.ReadAsync())
                     {
-                        columns.Add(new DynamicColumnInfo
+                        var columnInfo = new DynamicColumnInfo
                         {
-                            ColumnName = reader.GetName(i),
-                            DataType = reader.GetFieldType(i).Name
-                        });
+                            ColumnName = reader["COLUMN_NAME"]?.ToString() ?? "",
+                            DataType = reader["DATA_TYPE"]?.ToString() ?? "",
+                            IsNullable = reader["IS_NULLABLE"]?.ToString() == "YES",
+                            MaxLength = reader["CHARACTER_MAXIMUM_LENGTH"] as int?,
+                            Precision = reader["NUMERIC_PRECISION"] as byte?,
+                            Scale = reader["NUMERIC_SCALE"] as int?,
+                            DefaultValue = reader["COLUMN_DEFAULT"]?.ToString(),
+                            IsPrimaryKey = Convert.ToBoolean(reader["IS_PRIMARY_KEY"] ?? false),
+                            IsIdentity = Convert.ToBoolean(reader["IS_IDENTITY"] ?? false),
+                            OrdinalPosition = Convert.ToInt32(reader["ORDINAL_POSITION"] ?? 0)
+                        };
+                        metadata.Add(columnInfo);
+
+                        // Build table metadata for primary keys
+                        if (columnInfo.IsPrimaryKey)
+                        {
+                            tableMetadata.PrimaryKeys.Add(columnInfo.ColumnName);
+                        }
                     }
                 }
 
-                while (await reader.ReadAsync())
+                // Second result set: Total count
+                if (await reader.NextResultAsync() && reader.HasRows)
                 {
-                    var data = new Dictionary<string, object>();
-
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    if (await reader.ReadAsync())
                     {
-                        var fieldName = reader.GetName(i);
-                        var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        data[fieldName] = value;
+                        totalCount = Convert.ToInt32(reader["TotalCount"] ?? 0);
+                    }
+                }
+
+                // Third result set: Actual data
+                if (await reader.NextResultAsync() && reader.HasRows)
+                {
+                    // Get column information from data result set for fallback
+                    var dataColumns = new List<DynamicColumnInfo>();
+                    if (reader.FieldCount > 0)
+                    {
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            dataColumns.Add(new DynamicColumnInfo
+                            {
+                                ColumnName = reader.GetName(i),
+                                DataType = reader.GetFieldType(i).Name
+                            });
+                        }
                     }
 
-                    rows.Add(new DynamicResponse
+                    while (await reader.ReadAsync())
                     {
-                        Data = data
-                    });
+                        var data = new Dictionary<string, object>();
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var fieldName = reader.GetName(i);
+                            var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                            data[fieldName] = value;
+                        }
+
+                        rows.Add(new DynamicResponse
+                        {
+                            Data = data
+                        });
+                    }
+
+                    // Use data columns as fallback if no metadata
+                    if (!metadata.Any())
+                    {
+                        metadata = dataColumns;
+                    }
                 }
 
                 stopwatch.Stop();
@@ -677,8 +727,9 @@ namespace ApiCore.Services.Implementation
                 return new DynamicDataGridResponse
                 {
                     Rows = rows,
-                    RowCount = rows.Count,
-                    ColumnDefinitions = columns,
+                    RowCount = totalCount,
+                    ColumnDefinitions = metadata,
+                    TableMetadata = tableMetadata,
                     Metadata = new DataGridMetadata
                     {
                         QueryExecutionTimeMs = stopwatch.ElapsedMilliseconds,
@@ -840,7 +891,7 @@ namespace ApiCore.Services.Implementation
                     {
                         var fieldName = reader.GetName(i);
                         var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        data[fieldName] = value;
+                        data[fieldName] = value ?? DBNull.Value;
                     }
 
                     rows.Add(new DynamicResponse
@@ -897,13 +948,6 @@ namespace ApiCore.Services.Implementation
         {
             var conditions = new List<string>();
 
-            // Custom WHERE clause (from BSDataGrid ObjWh or ComboBox ObjWh)
-            if (!string.IsNullOrEmpty(request.CustomWhere))
-            {
-                conditions.Add($"({request.CustomWhere})");
-                _logger.LogInformation("🎯 Added CustomWhere condition: {CustomWhere}", request.CustomWhere);
-            }
-
             // Column filters
             foreach (var filter in request.FilterModel.Items)
             {
@@ -928,18 +972,10 @@ namespace ApiCore.Services.Implementation
                 conditions.Add(condition);
             }
 
-            // Quick filter - รองรับทั้ง QuickFilterValues (standard), QuickFilter ใน FilterModel และ QuickFilter ใน Request
-            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilter)
-                ? request.FilterModel.QuickFilter
-                : !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+            // Quick filter - รองรับทั้ง QuickFilterValues (standard) และ QuickFilter (BSDataGrid)
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
                 ? request.FilterModel.QuickFilterValues
                 : request.QuickFilter;
-
-            _logger.LogInformation("🔍 Quick Filter Debug: FilterModel.QuickFilter='{FilterModelQuickFilter}', FilterModel.QuickFilterValues='{QuickFilterValues}', Request.QuickFilter='{RequestQuickFilter}', Final='{FinalValue}'",
-                request.FilterModel.QuickFilter,
-                request.FilterModel.QuickFilterValues,
-                request.QuickFilter,
-                quickFilterValue);
 
             if (!string.IsNullOrEmpty(quickFilterValue))
             {
@@ -952,8 +988,6 @@ namespace ApiCore.Services.Implementation
                 if (quickFilterConditions.Any())
                 {
                     conditions.Add($"({string.Join(" OR ", quickFilterConditions)})");
-                    _logger.LogInformation("🔍 Quick Filter SQL: {QuickFilterSQL} with value '{QuickFilterValue}'",
-                        string.Join(" OR ", quickFilterConditions), quickFilterValue);
                 }
             }
 
@@ -982,46 +1016,31 @@ namespace ApiCore.Services.Implementation
             }
 
             // Quick filter parameter - รองรับทั้ง QuickFilterValues และ QuickFilter
-            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilter)
-                ? request.FilterModel.QuickFilter
-                : !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
                 ? request.FilterModel.QuickFilterValues
                 : request.QuickFilter;
 
             if (!string.IsNullOrEmpty(quickFilterValue))
             {
                 command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{quickFilterValue}%"));
-                _logger.LogInformation("🔍 Quick Filter Parameter Added: @QuickFilter = '%{QuickFilterParam}'", $"%{quickFilterValue}%");
             }
         }
 
-        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata, string customOrderBy = null)
+        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata)
         {
-            // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
-            if (!string.IsNullOrEmpty(customOrderBy))
+            if (sortModel == null || !sortModel.Any())
             {
-                _logger.LogInformation("🎯 Using CustomOrderBy: {CustomOrderBy}", customOrderBy);
-                return $"ORDER BY {customOrderBy}";
+                // Default sort by first primary key or first column
+                var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
+                return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
             }
 
-            // Priority 2: Sort model from DataGrid
-            if (sortModel != null && sortModel.Any())
-            {
-                var orderItems = sortModel
-                    .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
-                    .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
+            var orderItems = sortModel
+                .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
+                .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
 
-                if (orderItems.Any())
-                {
-                    return $"ORDER BY {string.Join(", ", orderItems)}";
-                }
-            }
-
-            // Priority 3: Default sort by first primary key or first column
-            var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
-            return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
+            return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
         }
-
 
         private bool IsSearchableColumn(DynamicColumnInfo column)
         {
@@ -1054,6 +1073,183 @@ namespace ApiCore.Services.Implementation
             }
 
             return value ?? DBNull.Value;
+        }
+
+        /// <summary>
+        /// Execute Enhanced Stored Procedure with full CRUD operations
+        /// </summary>
+        public async Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
+                    request.ProcedureName, request.SchemaName, request.Operation);
+
+                using var connection = _connectionFactory.CreateConnection();
+                await connection.OpenAsync();
+                using var command = connection.CreateCommand();
+
+                // Build stored procedure call
+                var fullProcedureName = $"[{request.SchemaName}].[{request.ProcedureName}]";
+                command.CommandText = fullProcedureName;
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandTimeout = 120; // 2 minutes timeout
+
+                // Add standard parameters
+                command.Parameters.Add(new SqlParameter("@Operation", request.Operation ?? "SELECT"));
+                command.Parameters.Add(new SqlParameter("@Page", request.Page ?? 1));
+                command.Parameters.Add(new SqlParameter("@PageSize", request.PageSize ?? 25));
+                command.Parameters.Add(new SqlParameter("@UserId", request.UserId ?? "system"));
+
+                // Add sort model as JSON
+                if (request.SortModel != null && request.SortModel.Any())
+                {
+                    var sortJson = JsonSerializer.Serialize(request.SortModel);
+                    command.Parameters.Add(new SqlParameter("@SortModel", sortJson));
+                }
+
+                // Add filter model as JSON
+                if (request.FilterModel != null)
+                {
+                    var filterJson = JsonSerializer.Serialize(request.FilterModel);
+                    command.Parameters.Add(new SqlParameter("@FilterModel", filterJson));
+                }
+
+                // Add custom parameters
+                if (request.Parameters != null)
+                {
+                    foreach (var param in request.Parameters)
+                    {
+                        command.Parameters.Add(new SqlParameter($"@{param.Key}", ConvertJsonElementValue(param.Value)));
+                    }
+                }
+
+                // Add data as JSON for INSERT/UPDATE operations
+                if (request.Data != null)
+                {
+                    var dataJson = JsonSerializer.Serialize(request.Data);
+                    command.Parameters.Add(new SqlParameter("@Data", dataJson));
+                }
+
+                // Add OUTPUT parameters that most Enhanced Stored Procedures expect
+                var outputRowCountParam = new SqlParameter("@OutputRowCount", SqlDbType.Int)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputRowCountParam);
+
+                var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 4000)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputMessageParam);
+
+                // Execute stored procedure
+                var stopwatch = Stopwatch.StartNew();
+                var results = new List<Dictionary<string, object>>();
+                var totalCount = 0;
+                var message = "";
+                var operation = request.Operation ?? "SELECT";
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Read all result sets to find the one with actual data
+                var resultSets = new List<List<Dictionary<string, object>>>();
+
+                do
+                {
+                    var currentResultSet = new List<Dictionary<string, object>>();
+
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var fieldName = reader.GetName(i);
+                            var value = reader.GetValue(i);
+                            row[fieldName] = value == DBNull.Value ? null : value;
+                        }
+                        currentResultSet.Add(row);
+                    }
+
+                    resultSets.Add(currentResultSet);
+
+                } while (await reader.NextResultAsync());
+
+                // Find the result set with the most columns (likely the data)
+                var dataResultSet = resultSets
+                    .Where(rs => rs.Any()) // Must have data
+                    .OrderByDescending(rs => rs.First().Keys.Count) // Most columns first
+                    .FirstOrDefault();
+
+                if (dataResultSet != null)
+                {
+                    results = dataResultSet;
+                    _logger.LogInformation("Selected result set with {ColumnCount} columns and {RowCount} rows",
+                        results.First().Keys.Count, results.Count);
+                }
+
+                // Try to find total count from any single-value result set
+                foreach (var rs in resultSets.Where(rs => rs.Any() && rs.First().Keys.Count == 1))
+                {
+                    var firstRow = rs.First();
+                    var key = firstRow.Keys.First();
+                    if (key.ToLower().Contains("count") || key.ToLower().Contains("total"))
+                    {
+                        totalCount = Convert.ToInt32(firstRow[key]);
+                        break;
+                    }
+                }
+
+                // Close reader to access output parameters
+                reader.Close();
+
+                // Get output parameters
+                if (outputRowCountParam.Value != DBNull.Value)
+                {
+                    totalCount = (int)outputRowCountParam.Value;
+                }
+
+                if (outputMessageParam.Value != DBNull.Value)
+                {
+                    message = outputMessageParam.Value.ToString() ?? "Success";
+                }
+
+                // If no explicit total count, use result count
+                if (totalCount == 0)
+                {
+                    totalCount = results.Count;
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation("Enhanced Stored Procedure executed successfully in {ElapsedMs}ms. Returned {RowCount} rows",
+                    stopwatch.ElapsedMilliseconds, results.Count);
+
+                return new EnhancedStoredProcedureResponse
+                {
+                    Success = true,
+                    Data = results,
+                    RowCount = totalCount > 0 ? totalCount : results.Count,
+                    Message = message,
+                    Operation = operation,
+                    ExecutionTime = stopwatch.ElapsedMilliseconds
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing enhanced stored procedure: {ProcedureName}", request.ProcedureName);
+
+                return new EnhancedStoredProcedureResponse
+                {
+                    Success = false,
+                    Data = new List<Dictionary<string, object>>(),
+                    RowCount = 0,
+                    Message = ex.Message,
+                    Operation = request.Operation ?? "SELECT",
+                    ExecutionTime = 0
+                };
+            }
         }
 
         #endregion

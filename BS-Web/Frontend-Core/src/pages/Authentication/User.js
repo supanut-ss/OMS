@@ -39,7 +39,6 @@ const initialForm = {
 };
 
 const UserPage = () => {
-  const [selectedRows, setSelectedRows] = useState([]);
   const [locale_id, setLocale_id] = useState("en");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
@@ -193,12 +192,8 @@ const UserPage = () => {
           ]}
           bsRowPerPage={20}
           bsShowDescColumn={false}
-          onCheckBoxSelected={(rows) => {
-            setSelectedRows(rows);
-          }}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
-          height={500}
         />
       </Paper>
 

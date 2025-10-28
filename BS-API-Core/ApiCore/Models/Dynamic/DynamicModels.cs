@@ -21,6 +21,63 @@ namespace ApiCore.Models.Dynamic
     }
 
     /// <summary>
+    /// Enhanced Stored Procedure request supporting SELECT, UPDATE, DELETE operations
+    /// </summary>
+    public class EnhancedStoredProcedureRequest : BaseRequest
+    {
+        [Required]
+        public string ProcedureName { get; set; } = string.Empty;
+
+        public string? SchemaName { get; set; } = "dbo";
+
+        [Required]
+        public string Operation { get; set; } = "SELECT"; // "SELECT", "INSERT", "UPDATE", "DELETE"
+
+        public Dictionary<string, object>? Parameters { get; set; } = new();
+
+        /// <summary>
+        /// Pagination support for SELECT operations
+        /// </summary>
+        public int? Page { get; set; }
+        public int? PageSize { get; set; }
+
+        /// <summary>
+        /// Sorting support for SELECT operations
+        /// </summary>
+        public List<DataGridSortModel>? SortModel { get; set; }
+
+        /// <summary>
+        /// Filtering support for SELECT operations
+        /// </summary>
+        public DataGridFilterModel? FilterModel { get; set; }
+
+        /// <summary>
+        /// User ID for audit operations
+        /// </summary>
+        public string? UserId { get; set; }
+
+        /// <summary>
+        /// Data for INSERT/UPDATE operations
+        /// </summary>
+        public Dictionary<string, object>? Data { get; set; }
+    }
+
+    /// <summary>
+    /// Enhanced Stored Procedure response
+    /// </summary>
+    public class EnhancedStoredProcedureResponse
+    {
+        public List<Dictionary<string, object>> Data { get; set; } = new();
+        public int RowCount { get; set; }
+        public string Operation { get; set; } = string.Empty;
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public Dictionary<string, object>? OutputParameters { get; set; }
+        public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
+        public long ExecutionTime { get; set; }
+    }
+
+    /// <summary>
     /// Dynamic create request with flexible data
     /// </summary>
     public class DynamicCreateRequest : BaseRequest
@@ -154,6 +211,7 @@ namespace ApiCore.Models.Dynamic
         public int? Precision { get; set; }
         public int? Scale { get; set; }
         public object? DefaultValue { get; set; }
+        public int OrdinalPosition { get; set; }
     }
 
     /// <summary>

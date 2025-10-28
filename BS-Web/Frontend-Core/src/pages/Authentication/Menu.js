@@ -3,7 +3,6 @@ import { Box, Typography, Paper, Divider } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const MenuPage = () => {
-  const [selectedRows, setSelectedRows] = useState([]);
   const [locale_id, setLocale_id] = useState("en");
 
   return (
@@ -13,10 +12,10 @@ const MenuPage = () => {
           Menu
         </Typography>
         <BSDataGrid
-          bsLocale="th"
+          bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="t_com_menu"
-          bsCols="menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
+          bsCols="menu_id,menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="menu_group_sequence asc, menu_sequence asc"
           //   bsObjWh="status='active'"
           bsRowPerPage={20}

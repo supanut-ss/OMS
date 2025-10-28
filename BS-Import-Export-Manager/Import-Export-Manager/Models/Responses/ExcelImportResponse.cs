@@ -4,12 +4,14 @@
     {
         public string code { get; set; }
         public string message { get; set; }
-        public ExcelImportListResponse? data { get; set; }
+        public List<ExcelImportListResponse>? data { get; set; }  // ✅ เปลี่ยนจาก object → List
+        public int total { get; set; }  // ✅ จำนวนรายการใน data
     }
+
     public class ExcelImportListResponse
     {
         public string code { get; set; }
         public string message { get; set; }
-        public int records { get; set; }
+        public string records { get; set; }
     }
 }

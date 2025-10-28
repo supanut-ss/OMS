@@ -2,23 +2,57 @@ import { Box, Button, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import AxiosMaster from "../../utils/AxiosMaster";
 const ExportToExcel = async () => {
-    // Implement your export to Excel logic here
-    console.log("Export to Excel clicked");
-    // logic call download excel from backend
-    await AxiosMaster.get("/ams/count-reconcile/export-excel", {
-        responseType: 'blob', // Important
-    }).then((response) => {
-        // Create a URL for the blob
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'count_reconcile.xlsx');
-        document.body.appendChild(link);
-        link.click();
-    }).catch((error) => {
-        console.error("Error exporting to Excel:", error);
+  console.log("Export to Excel clicked");
+
+  try {
+    const response = await AxiosMaster.get("/Excel/ExportSummaryReport", {
+      responseType: "blob", // ต้องใส่เพื่อรับ binary file
     });
-}
+    // ดึงชื่อไฟล์จาก header (Content-Disposition)
+    const contentDisposition = response.headers["content-disposition"];
+   // ✅ สร้างชื่อไฟล์ตามรูปแบบ yyyyMMdd_HHmmss
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, "0");
+    const formattedDate = 
+      now.getFullYear().toString() +
+      pad(now.getMonth() + 1) +
+      pad(now.getDate()) + "_" +
+      pad(now.getHours()) +
+      pad(now.getMinutes()) +
+      pad(now.getSeconds());
+
+    let fileName = `inventory_check_${formattedDate}.xlsx`;
+    if (contentDisposition) {
+      // รองรับทั้ง filename และ filename* (UTF-8 encoded)
+      const utf8FileNameMatch = contentDisposition.match(/filename\*=['"]?UTF-8''([^;\r\n"]+)/);
+      const asciiFileNameMatch = contentDisposition.match(/filename=['"]?([^;\r\n"]+)/);
+
+      if (utf8FileNameMatch) {
+        fileName = decodeURIComponent(utf8FileNameMatch[1]);
+      } else if (asciiFileNameMatch) {
+        fileName = asciiFileNameMatch[1];
+      }
+    }
+
+    // สร้าง Blob จาก response
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    // สร้างลิงก์ดาวน์โหลดไฟล์
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error exporting to Excel:", error);
+  }
+};
+
 const CountReconcile = () => {
     return <Box>
         <Paper sx={{ p: 2, mb: 3 }}>

@@ -85,5 +85,21 @@ namespace Authentication.Controllers.Users
                 return ResponseError(ex.Message, 1);
             }
         }
+        [HttpGet("role")]
+        public async Task<IActionResult> GetRole()
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _iusers.GetRole(userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Role.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
     }
 }

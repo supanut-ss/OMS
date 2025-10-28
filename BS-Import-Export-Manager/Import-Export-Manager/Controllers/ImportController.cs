@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using ExcelDataReader;
 using Import_Export_Manager.Interfaces;
 using Import_Export_Manager.Models.Requests;
 using Import_Export_Manager.Models.Responses;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
 using System.Xml.Linq;
 
 namespace Import_Export_Manager.Controllers
@@ -50,24 +52,36 @@ namespace Import_Export_Manager.Controllers
 
         private string ConvertExcelToXML(Stream excelStream)
         {
-            using (var workbook = new XLWorkbook(excelStream))
-            {
-                var worksheet = workbook.Worksheets.First();
-                var rows = worksheet.RangeUsed().RowsUsed();
+            // จำเป็น: reset stream position ก่อนอ่าน
+            excelStream.Position = 0;
 
-                var xml = new XElement("Workbook",
-                    new XElement("Worksheet",
-                        new XAttribute("Name", worksheet.Name),
-                        rows.Select(row =>
-                            new XElement("Row",
-                                row.Cells().Select(cell =>
-                                    new XElement("Cell", cell.Value.IsBlank ? string.Empty : cell.Value.ToString())
-                                )
-                            )
-                        )
-                    )
-                );
-                return xml.ToString();
+            // ต้องใช้ Encoding.RegisterProvider เพื่อรองรับ code page เก่า (.xls)
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            using (var reader = ExcelReaderFactory.CreateReader(excelStream))
+            {
+                var result = reader.AsDataSet();
+
+                var workbookElement = new XElement("Workbook");
+
+                foreach (DataTable table in result.Tables)
+                {
+                    var worksheetElement = new XElement("Worksheet", new XAttribute("Name", table.TableName));
+
+                    foreach (DataRow row in table.Rows)
+                    {
+                        var rowElement = new XElement("Row");
+                        foreach (var cell in row.ItemArray)
+                        {
+                            rowElement.Add(new XElement("Cell", cell?.ToString() ?? string.Empty));
+                        }
+                        worksheetElement.Add(rowElement);
+                    }
+
+                    workbookElement.Add(worksheetElement);
+                }
+
+                return workbookElement.ToString();
             }
         }
     }

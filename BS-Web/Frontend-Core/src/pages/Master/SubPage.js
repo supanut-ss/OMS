@@ -1,24 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-    Box,
     Typography,
     Paper,
-    Divider,
-    Button,
-    TextField,
-    Stack,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const SubPage = () => {
-    const [selectedRows, setSelectedRows] = useState([]);
 
-    // ✅ state เก็บค่าฟิลเตอร์
-    const [filters, setFilters] = useState({
-        partNo: "",
-        partName: "",
-        subNo: "",
-    });
 
     return (
         <Paper sx={{ p: 3, mb: 3 }}>
@@ -27,11 +15,25 @@ const SubPage = () => {
             </Typography>
 
             {/* ตารางข้อมูล */}
-            <BSDataGrid
-                bsLocale="th"
+            {/* <BSDataGrid
+                bsLocale="en"
                 bsPreObj="ams"
                 bsObj="tbm_sub"
-                onCheckBoxSelected={(rows) => setSelectedRows(rows)}
+                bsCols="sub_no,part_no,part_name,supplier_name,create_by,create_date,update_by,update_date"
+                showAdd={false}
+            /> */}
+
+            <BSDataGrid
+                // Enhanced Stored Procedure Configuration
+                bsStoredProcedure="usp_tbm_sub"
+                bsStoredProcedureSchema="ams"
+                bsShowRowNumber={true}
+                showAdd={false}
+                bsLocale="en"
+                bsAllowAdd={true}
+                bsAllowEdit={true}
+                bsAllowDelete={true}
+                bsPageSize={25}
             />
         </Paper>
     );

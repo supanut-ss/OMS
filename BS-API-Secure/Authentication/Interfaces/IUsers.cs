@@ -11,5 +11,6 @@ namespace Authentication.Interfaces
         Task<AuthResponse> RegisterUser(UserRequest userReq, string userId);
 
         Task<AuthResponse> UpdateUser(UserRequest userReq, string userId);
+        Task<RoleResponse> GetRole(string userId);
     }
 }
