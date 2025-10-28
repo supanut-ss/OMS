@@ -1320,24 +1320,26 @@ const BSDataGrid = ({
 
             // Try to detect primary key from SP name and first row of data
             let detectedPrimaryKey = null;
-            
+
             if (processedRows.length > 0) {
               const firstRow = processedRows[0];
               const rowKeys = Object.keys(firstRow);
-              
+
               // Strategy 1: Extract table name from SP name (e.g., usp_tbm_part -> part_id)
               const spNameMatch = bsStoredProcedure.match(/usp_(\w+)_(\w+)/);
               if (spNameMatch) {
                 const tableSuffix = spNameMatch[2]; // e.g., "part" from "usp_tbm_part"
                 const possiblePrimaryKeys = [
-                  `${tableSuffix}_id`,        // part_id
-                  `${tableSuffix}Id`,         // partId
-                  `${tableSuffix}_ID`,        // part_ID
-                  `${tableSuffix}ID`,         // partID
+                  `${tableSuffix}_id`, // part_id
+                  `${tableSuffix}Id`, // partId
+                  `${tableSuffix}_ID`, // part_ID
+                  `${tableSuffix}ID`, // partID
                 ];
-                
-                detectedPrimaryKey = possiblePrimaryKeys.find(pk => rowKeys.includes(pk));
-                
+
+                detectedPrimaryKey = possiblePrimaryKeys.find((pk) =>
+                  rowKeys.includes(pk)
+                );
+
                 if (detectedPrimaryKey) {
                   Logger.log("✅ Detected primary key from SP name pattern:", {
                     storedProcedure: bsStoredProcedure,
@@ -1347,18 +1349,13 @@ const BSDataGrid = ({
                   });
                 }
               }
-              
+
               // Strategy 2: If not found, look for common ID patterns
               if (!detectedPrimaryKey) {
-                const idPatterns = [
-                  /^id$/i,
-                  /^.*_id$/i,
-                  /^.*Id$/,
-                  /^pk_/i,
-                ];
-                
+                const idPatterns = [/^id$/i, /^.*_id$/i, /^.*Id$/, /^pk_/i];
+
                 for (const pattern of idPatterns) {
-                  detectedPrimaryKey = rowKeys.find(key => pattern.test(key));
+                  detectedPrimaryKey = rowKeys.find((key) => pattern.test(key));
                   if (detectedPrimaryKey) {
                     Logger.log("✅ Detected primary key from pattern:", {
                       pattern: pattern.toString(),
@@ -1369,7 +1366,7 @@ const BSDataGrid = ({
                 }
               }
             }
-            
+
             // Create basic metadata with detected primary key
             const fallbackMetadata = {
               tableName: bsStoredProcedure,
@@ -1378,9 +1375,9 @@ const BSDataGrid = ({
               columns: [],
               tableType: "Enhanced SP (Fallback)",
             };
-            
+
             setEnhancedMetadata(fallbackMetadata);
-            
+
             Logger.log("🔧 Fallback metadata created:", {
               primaryKeys: fallbackMetadata.primaryKeys,
               detectedFromData: !!detectedPrimaryKey,
@@ -2500,7 +2497,7 @@ const BSDataGrid = ({
 
           // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
           const deviceCompatParams = {};
-          
+
           // Strategy 1: If primary key is device-specific parameter (@id, @part_id)
           if (primaryKey.startsWith("@")) {
             Logger.log(
@@ -2525,25 +2522,36 @@ const BSDataGrid = ({
               deviceCompatParams["Id"] = id; // Fallback for id devices
             }
           }
-          
+
           // Strategy 2: If primary key detection failed or uncertain, send multiple common variations
-          if (!primaryKey || primaryKey === "Id" || !metadata?.primaryKeys?.[0]) {
-            Logger.log("� PRIMARY KEY UNCERTAIN - Sending multiple parameter variations:", {
-              detectedPrimaryKey: primaryKey,
-              hasMetadata: !!metadata?.primaryKeys?.[0],
-              spName: bsStoredProcedure,
-            });
-            
+          if (
+            !primaryKey ||
+            primaryKey === "Id" ||
+            !metadata?.primaryKeys?.[0]
+          ) {
+            Logger.log(
+              "� PRIMARY KEY UNCERTAIN - Sending multiple parameter variations:",
+              {
+                detectedPrimaryKey: primaryKey,
+                hasMetadata: !!metadata?.primaryKeys?.[0],
+                spName: bsStoredProcedure,
+              }
+            );
+
             // Extract table name from SP name (e.g., usp_tbm_part -> part)
             const spNameMatch = bsStoredProcedure.match(/usp_(\w+)_(\w+)/);
             if (spNameMatch) {
               const tableSuffix = spNameMatch[2]; // e.g., "part"
-              
+
               // Add all possible variations
               deviceCompatParams["Id"] = id;
-              deviceCompatParams[`${tableSuffix.charAt(0).toUpperCase() + tableSuffix.slice(1)}Id`] = id; // PartId
+              deviceCompatParams[
+                `${
+                  tableSuffix.charAt(0).toUpperCase() + tableSuffix.slice(1)
+                }Id`
+              ] = id; // PartId
               deviceCompatParams[`${tableSuffix}_id`] = id; // part_id (in case SP expects snake_case)
-              
+
               Logger.log("📤 Sending multiple ID parameter variations:", {
                 variations: Object.keys(deviceCompatParams),
                 value: id,
