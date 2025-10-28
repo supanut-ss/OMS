@@ -108,17 +108,17 @@ namespace Authentication.Services.Users
                       ",@create_date) ";  
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@user_id", userReq.UserId);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
-                cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
-                cmd.Parameters.AddWithValue("@first_name", userReq.FirstName);
-                cmd.Parameters.AddWithValue("@last_name", userReq.LastName);
-                cmd.Parameters.AddWithValue("@locale_id", userReq.LocaleId);
-                cmd.Parameters.AddWithValue("@department", userReq.Department);
-                cmd.Parameters.AddWithValue("@supervisor", userReq.Supervisor);
-                cmd.Parameters.AddWithValue("@email_address", userReq.Email);
-                cmd.Parameters.AddWithValue("@domain", userReq.Domian);
-                cmd.Parameters.AddWithValue("@is_active", userReq.IsActive);
+                cmd.Parameters.AddWithValue("@user_id", userReq.user_id);
+                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.password));
+                cmd.Parameters.AddWithValue("@user_group_id", userReq.user_group_id);
+                cmd.Parameters.AddWithValue("@first_name", userReq.first_name);
+                cmd.Parameters.AddWithValue("@last_name", userReq.last_name);
+                cmd.Parameters.AddWithValue("@locale_id", userReq.locale_id);
+                cmd.Parameters.AddWithValue("@department", userReq.department);
+                cmd.Parameters.AddWithValue("@supervisor", userReq.supervisor);
+                cmd.Parameters.AddWithValue("@email_address", userReq.email_address);
+                cmd.Parameters.AddWithValue("@domain", userReq.department);
+                cmd.Parameters.AddWithValue("@is_active", userReq.is_active);
                 cmd.Parameters.AddWithValue("@create_by", userId);
                 cmd.Parameters.AddWithValue("@create_date", DateTime.Now);
 
@@ -173,9 +173,9 @@ namespace Authentication.Services.Users
                           "update_by = @update_by, " +
                           "update_date = @update_date";
 
-                //var includePassword = !string.IsNullOrEmpty(userReq.Password);
-                //if (includePassword)
-                //    sql += ", password = @password";
+                var includePassword = !string.IsNullOrEmpty(userReq.password);
+                if (includePassword)
+                    sql += ", password = @password";
 
                 sql += " WHERE user_id = @userId";
 
@@ -193,8 +193,8 @@ namespace Authentication.Services.Users
                 cmd.Parameters.AddWithValue("@update_by", userId);
                 cmd.Parameters.AddWithValue("@update_date", DateTime.Now);
 
-                //if (includePassword)
-                //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
+                if (includePassword)
+                    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.password));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
                 if (rowsAffected == 0)

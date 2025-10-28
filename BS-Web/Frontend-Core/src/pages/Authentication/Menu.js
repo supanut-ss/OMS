@@ -34,7 +34,7 @@ const MenuPage = () => {
             {
               Column: "platform",
               Display: "display_member",
-              Value: "value_member",
+              Value: "display_member",
               Default: "--- Select Platform ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
@@ -47,19 +47,10 @@ const MenuPage = () => {
               Value: "menu_group",
               Default: "--- Select Menu Group ---",
               PreObj: "sec",
-              Obj: "t_com_menu",
-              ObjWh: "GROUP BY menu_group",
+              Obj: "v_com_menu_group",
               ObjBy: "menu_group asc",
             },
           ]}
-          onCheckBoxSelected={(rows) => {
-            console.log("Selected rows:", rows);
-            setSelectedRows(rows);
-          }}
-          //   onEdit={(row) => console.log("Edit:", row)}
-          //   onDelete={(id) => console.log("Delete:", id)}
-          //   onAdd={() => console.log("Add new record")}
-          height={500}
         />
       </Paper>
     </>
