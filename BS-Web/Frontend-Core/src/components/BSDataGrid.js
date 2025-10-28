@@ -1694,9 +1694,18 @@ const BSDataGrid = ({
 
     const keys = Object.keys(rowData);
 
-    // Enhanced debugging to see all data
-    Logger.log("🔍 PRIMARY KEY DETECTION - All data keys:", {
+    // Enhanced debugging to see all data - DEVICE COMPATIBILITY DEBUG
+    Logger.log("🔍 PRIMARY KEY DETECTION - Device compatibility debug:", {
       allKeys: keys,
+      hasId: keys.includes("id"),
+      hasID: keys.includes("ID"),
+      hasId_caps: keys.includes("Id"),
+      hasPartId: keys.includes("part_id"),
+      hasPartID: keys.includes("part_ID"),
+      hasPartId_pascal: keys.includes("PartId"),
+      hasAtId: keys.includes("@id"),
+      hasAtPartId: keys.includes("@part_id"),
+      deviceSpecificKeys: keys.filter(key => key.includes("id") || key.includes("Id") || key.includes("ID") || key.startsWith("@")),
       sampleData: keys.reduce((sample, key, index) => {
         if (index < 10) {
           // Show first 10 fields
@@ -1706,9 +1715,24 @@ const BSDataGrid = ({
       }, {}),
     });
 
-    // Common primary key patterns (in order of priority)
+    // Device-specific parameter detection (handle @id vs @part_id scenarios)
+    const deviceParams = keys.filter(key => key.startsWith("@"));
+    if (deviceParams.length > 0) {
+      Logger.log("🔍 DEVICE PARAMETERS DETECTED:", {
+        deviceParams,
+        hasAtId: deviceParams.includes("@id"),
+        hasAtPartId: deviceParams.includes("@part_id"),
+        message: "Some devices send @id instead of @part_id for update/delete operations"
+      });
+    }
+
+    // Common primary key patterns (in order of priority) - enhanced for device compatibility
     const primaryKeyPatterns = [
-      // Exact matches (highest priority)
+      // Device-specific patterns (highest priority for compatibility)
+      /^@id$/i,      // @id parameter from some devices
+      /^@part_id$/i, // @part_id parameter from other devices
+      
+      // Exact matches (high priority)
       /^id$/i,
       /^ID$/,
       /^Id$/,
@@ -1733,6 +1757,8 @@ const BSDataGrid = ({
           {
             pattern: pattern.toString(),
             allKeys: keys,
+            isDeviceParam: foundKey.startsWith("@"),
+            compatibilityNote: foundKey.startsWith("@") ? "Device-specific parameter detected" : "Standard parameter",
             rowData: Object.keys(rowData).slice(0, 5), // Show first 5 keys for debugging
           }
         );
@@ -1778,6 +1804,14 @@ const BSDataGrid = ({
   // Helper: Get effective primary key (from metadata or detected from data)
   const getEffectivePrimaryKey = useCallback(
     (rowData = null) => {
+      Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
+        hasMetadata: !!metadata?.primaryKeys,
+        metadataPrimaryKeys: metadata?.primaryKeys,
+        bsStoredProcedure: !!bsStoredProcedure,
+        hasRowData: !!rowData,
+        rowDataKeys: rowData ? Object.keys(rowData) : null,
+      });
+
       // For Enhanced SP with metadata, use metadata primary key
       if (metadata?.primaryKeys?.[0]) {
         Logger.log(
@@ -2106,10 +2140,35 @@ const BSDataGrid = ({
             // Convert primary key to PascalCase
             const pascalPrimaryKey = toPascalCase(primaryKey);
 
-            Logger.log("🔄 Converting parameters for Enhanced SP DELETE:", {
+            // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
+            const deviceCompatParams = {};
+            
+            // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
+            if (primaryKey.startsWith("@")) {
+              Logger.log("� DEVICE COMPATIBILITY - Handling device-specific parameter for DELETE:", {
+                originalPrimaryKey: primaryKey,
+                pascalPrimaryKey: pascalPrimaryKey,
+                id: id,
+                deviceType: primaryKey.includes("part") ? "part_id device" : "id device",
+                compatibilityNote: "Some devices send @id instead of @part_id"
+              });
+              
+              // Add both variations for maximum compatibility
+              if (primaryKey === "@id") {
+                deviceCompatParams["Id"] = id;
+                deviceCompatParams["PartId"] = id; // Fallback for part_id devices
+              } else if (primaryKey === "@part_id") {
+                deviceCompatParams["PartId"] = id;
+                deviceCompatParams["Id"] = id; // Fallback for id devices
+              }
+            }
+
+            Logger.log("�🔄 Converting parameters for Enhanced SP DELETE:", {
               originalPrimaryKey: primaryKey,
               pascalPrimaryKey: pascalPrimaryKey,
               id: id,
+              deviceCompatParams: deviceCompatParams,
+              finalPrimaryKeyParam: pascalPrimaryKey,
             });
 
             // Use Enhanced Stored Procedure for DELETE operation
@@ -2119,6 +2178,7 @@ const BSDataGrid = ({
               operation: "DELETE",
               parameters: {
                 [pascalPrimaryKey]: id,
+                ...deviceCompatParams, // Add device compatibility parameters
                 ...bsStoredProcedureParams,
               },
               userId: user?.id || user?.userId || user?.user_id || "system",
@@ -2354,11 +2414,36 @@ const BSDataGrid = ({
           // Convert primary key to PascalCase
           const pascalPrimaryKey = toPascalCase(primaryKey);
 
+          // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
+          const deviceCompatParams = {};
+          
+          // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
+          if (primaryKey.startsWith("@")) {
+            Logger.log("🔧 DEVICE COMPATIBILITY - Handling device-specific parameter:", {
+              originalPrimaryKey: primaryKey,
+              pascalPrimaryKey: pascalPrimaryKey,
+              id: id,
+              deviceType: primaryKey.includes("part") ? "part_id device" : "id device",
+              compatibilityNote: "Some devices send @id instead of @part_id"
+            });
+            
+            // Add both variations for maximum compatibility
+            if (primaryKey === "@id") {
+              deviceCompatParams["Id"] = id;
+              deviceCompatParams["PartId"] = id; // Fallback for part_id devices
+            } else if (primaryKey === "@part_id") {
+              deviceCompatParams["PartId"] = id;
+              deviceCompatParams["Id"] = id; // Fallback for id devices
+            }
+          }
+
           Logger.log("🔄 Converting parameters for Enhanced SP:", {
             originalPrimaryKey: primaryKey,
             pascalPrimaryKey: pascalPrimaryKey,
             originalFormData: formData,
             convertedFormData: spFormData,
+            deviceCompatParams: deviceCompatParams,
+            finalPrimaryKeyParam: pascalPrimaryKey,
           });
 
           // Use Enhanced Stored Procedure for UPDATE operation
@@ -2368,6 +2453,7 @@ const BSDataGrid = ({
             operation: "UPDATE",
             parameters: {
               [pascalPrimaryKey]: id,
+              ...deviceCompatParams, // Add device compatibility parameters
               ...spFormData,
               ...bsStoredProcedureParams,
             },
