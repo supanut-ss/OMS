@@ -1705,7 +1705,13 @@ const BSDataGrid = ({
       hasPartId_pascal: keys.includes("PartId"),
       hasAtId: keys.includes("@id"),
       hasAtPartId: keys.includes("@part_id"),
-      deviceSpecificKeys: keys.filter(key => key.includes("id") || key.includes("Id") || key.includes("ID") || key.startsWith("@")),
+      deviceSpecificKeys: keys.filter(
+        (key) =>
+          key.includes("id") ||
+          key.includes("Id") ||
+          key.includes("ID") ||
+          key.startsWith("@")
+      ),
       sampleData: keys.reduce((sample, key, index) => {
         if (index < 10) {
           // Show first 10 fields
@@ -1716,22 +1722,23 @@ const BSDataGrid = ({
     });
 
     // Device-specific parameter detection (handle @id vs @part_id scenarios)
-    const deviceParams = keys.filter(key => key.startsWith("@"));
+    const deviceParams = keys.filter((key) => key.startsWith("@"));
     if (deviceParams.length > 0) {
       Logger.log("🔍 DEVICE PARAMETERS DETECTED:", {
         deviceParams,
         hasAtId: deviceParams.includes("@id"),
         hasAtPartId: deviceParams.includes("@part_id"),
-        message: "Some devices send @id instead of @part_id for update/delete operations"
+        message:
+          "Some devices send @id instead of @part_id for update/delete operations",
       });
     }
 
     // Common primary key patterns (in order of priority) - enhanced for device compatibility
     const primaryKeyPatterns = [
       // Device-specific patterns (highest priority for compatibility)
-      /^@id$/i,      // @id parameter from some devices
+      /^@id$/i, // @id parameter from some devices
       /^@part_id$/i, // @part_id parameter from other devices
-      
+
       // Exact matches (high priority)
       /^id$/i,
       /^ID$/,
@@ -1758,7 +1765,9 @@ const BSDataGrid = ({
             pattern: pattern.toString(),
             allKeys: keys,
             isDeviceParam: foundKey.startsWith("@"),
-            compatibilityNote: foundKey.startsWith("@") ? "Device-specific parameter detected" : "Standard parameter",
+            compatibilityNote: foundKey.startsWith("@")
+              ? "Device-specific parameter detected"
+              : "Standard parameter",
             rowData: Object.keys(rowData).slice(0, 5), // Show first 5 keys for debugging
           }
         );
@@ -2142,17 +2151,23 @@ const BSDataGrid = ({
 
             // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
             const deviceCompatParams = {};
-            
+
             // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
             if (primaryKey.startsWith("@")) {
-              Logger.log("� DEVICE COMPATIBILITY - Handling device-specific parameter for DELETE:", {
-                originalPrimaryKey: primaryKey,
-                pascalPrimaryKey: pascalPrimaryKey,
-                id: id,
-                deviceType: primaryKey.includes("part") ? "part_id device" : "id device",
-                compatibilityNote: "Some devices send @id instead of @part_id"
-              });
-              
+              Logger.log(
+                "� DEVICE COMPATIBILITY - Handling device-specific parameter for DELETE:",
+                {
+                  originalPrimaryKey: primaryKey,
+                  pascalPrimaryKey: pascalPrimaryKey,
+                  id: id,
+                  deviceType: primaryKey.includes("part")
+                    ? "part_id device"
+                    : "id device",
+                  compatibilityNote:
+                    "Some devices send @id instead of @part_id",
+                }
+              );
+
               // Add both variations for maximum compatibility
               if (primaryKey === "@id") {
                 deviceCompatParams["Id"] = id;
@@ -2416,17 +2431,22 @@ const BSDataGrid = ({
 
           // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
           const deviceCompatParams = {};
-          
+
           // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
           if (primaryKey.startsWith("@")) {
-            Logger.log("🔧 DEVICE COMPATIBILITY - Handling device-specific parameter:", {
-              originalPrimaryKey: primaryKey,
-              pascalPrimaryKey: pascalPrimaryKey,
-              id: id,
-              deviceType: primaryKey.includes("part") ? "part_id device" : "id device",
-              compatibilityNote: "Some devices send @id instead of @part_id"
-            });
-            
+            Logger.log(
+              "🔧 DEVICE COMPATIBILITY - Handling device-specific parameter:",
+              {
+                originalPrimaryKey: primaryKey,
+                pascalPrimaryKey: pascalPrimaryKey,
+                id: id,
+                deviceType: primaryKey.includes("part")
+                  ? "part_id device"
+                  : "id device",
+                compatibilityNote: "Some devices send @id instead of @part_id",
+              }
+            );
+
             // Add both variations for maximum compatibility
             if (primaryKey === "@id") {
               deviceCompatParams["Id"] = id;
