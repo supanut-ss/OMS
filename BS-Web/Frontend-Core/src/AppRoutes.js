@@ -14,6 +14,7 @@ import UserLogOnPage from "./pages/Authentication/UserLogOn";
 import MenuPage from "./pages/Authentication/Menu";
 import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
+import EnhancedSPTestPage from "./pages/Test/EnhancedSPTestPage";
 import ImportExcel from "./pages/Import/ImportExcel";
 import ImportMaster from "./pages/Import/ImportMaster";
 import CountTag from "./pages/Count/CountTagPage";
@@ -50,18 +51,8 @@ export default function AppRoutes() {
         <Route path="test/schema" element={<SchemaTestPage />} />
         {/* route สำหรับ Schema Mapping Demo */}
         <Route path="test/schema-demo" element={<SchemaMappingDemo />} />
-
-        <Route
-          path="timesheet"
-          element={<div>Timesheet Page - Coming Soon</div>}
-        />
-        <Route path="tasks" element={<div>Tasks Page - Coming Soon</div>} />
-        <Route
-          path="calendar"
-          element={<div>Calendar Page - Coming Soon</div>}
-        />
-        <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
-        <Route path="team" element={<div>Team Page - Coming Soon</div>} />
+        {/* route สำหรับ Enhanced SP Test with Metadata */}
+        <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
         <Route path="importMaster" element={<ImportMaster />} />
