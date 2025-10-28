@@ -106,6 +106,10 @@ namespace Authentication.Services.Auth
                 {
                     await UpdateFcmToken(userinfo.UserId, fcm_token);
                 }
+                else
+                {
+                    await UpdateFcmToken(userinfo.UserId, "");
+                }
                 return new AuthResponse
                 {
                     message_code = "0",
