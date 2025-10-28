@@ -33,8 +33,8 @@ const GenerateTagPDF = async (data) => {
 }
 
 .report-root {
-  font-family: "TH Sarabun New", sans-serif;
-  font-size: 12pt;
+  font-family: "Tahoma", sans-serif;
+  font-size: 8pt;
   color: #000;
   width: 9.3cm;
   height: 22.8cm;
@@ -77,7 +77,7 @@ const GenerateTagPDF = async (data) => {
         <div>
           <img src="${qrDataUrl}" alt="QR Code" width="60" height="60" />
         </div>
-        <table style="margin-top:10cm;">
+        <table style="margin-top:11cm;">
           <tbody>
             <tr>
               <td colspan="1" class="td-report-tags">&nbsp;</td>
