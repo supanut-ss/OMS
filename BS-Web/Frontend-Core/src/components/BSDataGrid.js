@@ -925,7 +925,7 @@ const BSDataGrid = ({
   }, []);
 
   const {
-    metadata,
+    metadata: originalMetadata,
     loading: metadataLoading,
     error: metadataError,
     loadMetadata,
@@ -935,6 +935,12 @@ const BSDataGrid = ({
     updateRecord,
     executeEnhancedStoredProcedure,
   } = useDynamicCrud(effectiveTableName);
+
+  // Enhanced SP metadata override
+  const [enhancedMetadata, setEnhancedMetadata] = useState(null);
+
+  // Use Enhanced SP metadata if available, otherwise use original metadata
+  const metadata = enhancedMetadata || originalMetadata;
 
   // DataGrid state
   const [rows, setRows] = useState([]);
@@ -1278,11 +1284,47 @@ const BSDataGrid = ({
           setRows(processedRows);
           setRowCount(result.rowCount || processedRows.length);
 
+          // Extract metadata from Enhanced SP result
+          if (result.tableMetadata) {
+            Logger.log(
+              "📋 Enhanced SP returned metadata:",
+              result.tableMetadata
+            );
+
+            // Create metadata structure compatible with BSDataGrid
+            const enhancedMetadataStructure = {
+              tableName: bsStoredProcedure,
+              schemaName: bsStoredProcedureSchema || "dbo",
+              primaryKeys: result.tableMetadata.primaryKeys || [],
+              columns: result.columnDefinitions || [],
+              tableType: "Enhanced SP",
+            };
+
+            // Set metadata for use in form operations and primary key detection
+            setEnhancedMetadata(enhancedMetadataStructure);
+
+            Logger.log("🔧 Enhanced SP metadata applied:", {
+              primaryKeys: enhancedMetadataStructure.primaryKeys,
+              columnsCount: enhancedMetadataStructure.columns.length,
+              columns: enhancedMetadataStructure.columns.map((c) => ({
+                name: c.columnName,
+                type: c.dataType,
+                isPrimaryKey: c.isPrimaryKey,
+                isIdentity: c.isIdentity,
+              })),
+            });
+          } else {
+            Logger.warn(
+              "⚠️ Enhanced SP did not return metadata - using fallback detection"
+            );
+          }
+
           Logger.log("✅ Enhanced Stored Procedure data loaded successfully:", {
             rowsCount: processedRows.length,
             totalCount: result.rowCount,
             operation: result.operation,
             message: result.message,
+            hasMetadata: !!result.tableMetadata,
           });
         } else {
           throw new Error(
@@ -1307,6 +1349,7 @@ const BSDataGrid = ({
       sortModel,
       filterModel,
       user,
+      setEnhancedMetadata,
     ]
   );
 
@@ -1316,18 +1359,49 @@ const BSDataGrid = ({
   );
   loadDataRef.current = bsStoredProcedure ? loadStoredProcedureData : loadData;
 
+  // Track if initial load has been done
+  const hasLoadedRef = useRef(false);
+  const isEnhancedSPRef = useRef(!!bsStoredProcedure);
+
   // Auto-reload data when dependencies change
   useEffect(() => {
-    if (autoLoad) {
-      // For Enhanced Stored Procedure, load data directly without waiting for metadata
-      if (bsStoredProcedure) {
-        loadDataRef.current();
-      } else if (metadata) {
-        // For regular table mode, wait for metadata before loading data
-        loadDataRef.current();
-      }
+    if (!autoLoad) return;
+
+    // For Enhanced SP, load immediately without waiting for metadata
+    if (bsStoredProcedure && !hasLoadedRef.current) {
+      Logger.log("🔄 Initial load for Enhanced SP");
+      hasLoadedRef.current = true;
+      loadDataRef.current();
+      return;
     }
-  }, [metadata, autoLoad, bsStoredProcedure]);
+
+    // For regular tables, wait for metadata before loading
+    if (!bsStoredProcedure && metadata && !hasLoadedRef.current) {
+      Logger.log("🔄 Initial load for regular table");
+      hasLoadedRef.current = true;
+      loadDataRef.current();
+      return;
+    }
+
+    // Reset hasLoaded flag if table/SP changes
+    if (isEnhancedSPRef.current !== !!bsStoredProcedure) {
+      Logger.log("🔄 Table/SP type changed, resetting load flag");
+      isEnhancedSPRef.current = !!bsStoredProcedure;
+      hasLoadedRef.current = false;
+    }
+  }, [autoLoad, bsStoredProcedure, metadata]);
+
+  // Reload data when pagination, sort, or filter changes (server-side mode only)
+  useEffect(() => {
+    // Only reload for server-side filtering
+    if (bsFilterMode !== "server") return;
+
+    // Skip if initial load hasn't happened yet
+    if (!hasLoadedRef.current) return;
+
+    Logger.log("🔄 Reloading data due to pagination/sort/filter change");
+    loadDataRef.current();
+  }, [paginationModel, sortModel, filterModel, bsFilterMode]);
 
   // Handler for filter model changes with debugging
   const handleFilterModelChange = useCallback(
@@ -1704,17 +1778,24 @@ const BSDataGrid = ({
   // Helper: Get effective primary key (from metadata or detected from data)
   const getEffectivePrimaryKey = useCallback(
     (rowData = null) => {
-      // For regular tables with metadata, use metadata primary key
+      // For Enhanced SP with metadata, use metadata primary key
       if (metadata?.primaryKeys?.[0]) {
+        Logger.log(
+          "🔑 Using primary key from metadata:",
+          metadata.primaryKeys[0]
+        );
         return metadata.primaryKeys[0];
       }
 
       // For Enhanced SP without metadata, try to detect from data
       if (bsStoredProcedure && rowData) {
-        return detectPrimaryKeyFromData(rowData);
+        const detected = detectPrimaryKeyFromData(rowData);
+        Logger.log("🔑 Detected primary key from data:", detected);
+        return detected;
       }
 
       // Fallback to common names
+      Logger.log("🔑 Using fallback primary key: Id");
       return "Id";
     },
     [metadata?.primaryKeys, bsStoredProcedure, detectPrimaryKeyFromData]
@@ -1723,21 +1804,28 @@ const BSDataGrid = ({
   // Initialize form data based on metadata
   const initializeFormData = useCallback(
     (existing = null) => {
-      // For Enhanced Stored Procedure without metadata, use row data directly
-      if (
-        bsStoredProcedure &&
-        (!metadata?.columns || metadata.columns.length === 0)
-      ) {
+      // For Enhanced Stored Procedure, use metadata and row data
+      if (bsStoredProcedure) {
         if (!existing) return {};
 
-        // Detect primary key from data
+        // Get primary keys from metadata or detect from data
+        const metadataPrimaryKeys = metadata?.primaryKeys || [];
         const detectedPrimaryKey = detectPrimaryKeyFromData(existing);
+
+        // Combine primary keys from both sources
+        const allPrimaryKeys = [
+          ...metadataPrimaryKeys,
+          ...(detectedPrimaryKey &&
+          !metadataPrimaryKeys.includes(detectedPrimaryKey)
+            ? [detectedPrimaryKey]
+            : []),
+        ];
 
         // Define fields that should be excluded from Enhanced SP forms
         const excludedFields = [
           "__rowNumber", // Special row number field
-          // Primary key field (detected dynamically)
-          ...(detectedPrimaryKey ? [detectedPrimaryKey] : []),
+          // Primary key fields (from metadata and detection)
+          ...allPrimaryKeys,
           // Common primary key variants (fallback)
           "id",
           "Id",
@@ -1790,6 +1878,9 @@ const BSDataGrid = ({
           existing,
           init,
           keys: Object.keys(init),
+          metadataPrimaryKeys,
+          detectedPrimaryKey,
+          allPrimaryKeys,
           excludedFields: Object.keys(existing).filter((key) =>
             excludedFields.some(
               (excludedField) =>
@@ -2001,13 +2092,33 @@ const BSDataGrid = ({
       if (window.confirm("Are you sure you want to delete this record?")) {
         try {
           if (bsStoredProcedure) {
+            // Helper function to convert snake_case to PascalCase for SP parameters
+            const toPascalCase = (str) => {
+              return str
+                .split("_")
+                .map(
+                  (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                )
+                .join("");
+            };
+
+            // Convert primary key to PascalCase
+            const pascalPrimaryKey = toPascalCase(primaryKey);
+
+            Logger.log("🔄 Converting parameters for Enhanced SP DELETE:", {
+              originalPrimaryKey: primaryKey,
+              pascalPrimaryKey: pascalPrimaryKey,
+              id: id,
+            });
+
             // Use Enhanced Stored Procedure for DELETE operation
             const deleteRequest = {
               procedureName: bsStoredProcedure,
               schemaName: bsStoredProcedureSchema,
               operation: "DELETE",
               parameters: {
-                [primaryKey]: id,
+                [pascalPrimaryKey]: id,
                 ...bsStoredProcedureParams,
               },
               userId: user?.id || user?.userId || user?.user_id || "system",
@@ -2160,13 +2271,36 @@ const BSDataGrid = ({
         });
 
         if (bsStoredProcedure) {
+          // Helper function to convert snake_case to PascalCase for SP parameters
+          const toPascalCase = (str) => {
+            return str
+              .split("_")
+              .map(
+                (word) =>
+                  word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+              )
+              .join("");
+          };
+
+          // Convert saveData keys from snake_case to PascalCase for SP parameters
+          const spSaveData = {};
+          Object.keys(saveData).forEach((key) => {
+            const pascalKey = toPascalCase(key);
+            spSaveData[pascalKey] = saveData[key];
+          });
+
+          Logger.log("🔄 Converting parameters for Enhanced SP INSERT:", {
+            originalSaveData: saveData,
+            convertedSaveData: spSaveData,
+          });
+
           // Use Enhanced Stored Procedure for INSERT operation
           const insertRequest = {
             procedureName: bsStoredProcedure,
             schemaName: bsStoredProcedureSchema,
             operation: "INSERT",
             parameters: {
-              ...saveData,
+              ...spSaveData,
               ...bsStoredProcedureParams,
             },
             userId: user?.id || user?.userId || user?.user_id || "system",
@@ -2199,14 +2333,42 @@ const BSDataGrid = ({
         });
 
         if (bsStoredProcedure) {
+          // Helper function to convert snake_case to PascalCase for SP parameters
+          const toPascalCase = (str) => {
+            return str
+              .split("_")
+              .map(
+                (word) =>
+                  word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+              )
+              .join("");
+          };
+
+          // Convert formData keys from snake_case to PascalCase for SP parameters
+          const spFormData = {};
+          Object.keys(formData).forEach((key) => {
+            const pascalKey = toPascalCase(key);
+            spFormData[pascalKey] = formData[key];
+          });
+
+          // Convert primary key to PascalCase
+          const pascalPrimaryKey = toPascalCase(primaryKey);
+
+          Logger.log("🔄 Converting parameters for Enhanced SP:", {
+            originalPrimaryKey: primaryKey,
+            pascalPrimaryKey: pascalPrimaryKey,
+            originalFormData: formData,
+            convertedFormData: spFormData,
+          });
+
           // Use Enhanced Stored Procedure for UPDATE operation
           const updateRequest = {
             procedureName: bsStoredProcedure,
             schemaName: bsStoredProcedureSchema,
             operation: "UPDATE",
             parameters: {
-              [primaryKey]: id,
-              ...formData,
+              [pascalPrimaryKey]: id,
+              ...spFormData,
               ...bsStoredProcedureParams,
             },
             userId: user?.id || user?.userId || user?.user_id || "system",
@@ -2890,6 +3052,9 @@ const BSDataGrid = ({
         // Detect primary key to exclude it from visible columns
         const detectedPrimaryKey = detectPrimaryKeyFromData(rows[0]);
 
+        // Also check metadata for primary keys if available
+        const metadataPrimaryKeys = metadata?.primaryKeys || [];
+
         const dataColumns = Object.keys(rows[0] || {})
           .filter((key) => {
             // Skip special fields
@@ -2898,7 +3063,13 @@ const BSDataGrid = ({
               return false;
             }
 
-            // Skip detected primary key
+            // Skip primary keys from metadata (Enhanced SP returned metadata)
+            if (metadataPrimaryKeys.includes(key)) {
+              Logger.log(`🔍 Hiding primary key column from metadata: ${key}`);
+              return false;
+            }
+
+            // Skip detected primary key (fallback detection)
             if (detectedPrimaryKey && key === detectedPrimaryKey) {
               Logger.log(`🔍 Hiding detected primary key column: ${key}`);
               return false;

@@ -4,6 +4,7 @@ import Logger from "../utils/logger";
 import { parseTableName } from "../utils/DatabaseConfig";
 import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import { useAuth } from "../contexts/AuthContext";
+import SecureStorage from "../utils/SecureStorage";
 
 /**
  * Dynamic CRUD Hook สำหรับการจัดการข้อมูลจากตารางใดๆ ใน database
@@ -700,6 +701,18 @@ export const useDynamicCrud = (tableName) => {
     try {
       Logger.log("🚀 Executing Enhanced Stored Procedure:", request);
 
+      // Check token before making request
+      const token =
+        SecureStorage.get("token") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("token");
+
+      Logger.log("🔑 Token check before Enhanced SP call:", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenPreview: token ? token.substring(0, 20) + "..." : "NO TOKEN",
+      });
+
       const response = await AxiosMaster.post(
         "/dynamic/enhanced-procedure",
         request
@@ -714,7 +727,12 @@ export const useDynamicCrud = (tableName) => {
         err.response?.data?.message ||
         err.message ||
         "Failed to execute enhanced stored procedure";
-      Logger.error("❌ Failed to execute enhanced stored procedure:", errorMsg);
+      Logger.error("❌ Failed to execute enhanced stored procedure:", {
+        error: errorMsg,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        responseData: err.response?.data,
+      });
       throw new Error(errorMsg);
     }
   }, []);
