@@ -3938,19 +3938,104 @@ const BSDataGrid = ({
   // Handle row selection changes for checkbox selection
   const handleRowSelectionChange = useCallback(
     (newRowSelectionModel) => {
+      Logger.log("🔍 ROW SELECTION DEBUG - Start:", {
+        newRowSelectionModel,
+        rowsCount: rows.length,
+        firstRowSample: rows.length > 0 ? Object.keys(rows[0]) : "NO ROWS",
+        firstRowData: rows.length > 0 ? rows[0] : "NO ROWS",
+      });
+
       setRowSelectionModel(newRowSelectionModel);
 
       if (onCheckBoxSelected) {
+        // Debug metadata information
+        Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
+          hasMetadata: !!metadata,
+          metadataPrimaryKeys: metadata?.primaryKeys,
+          hasEnhancedMetadata: !!enhancedMetadata,
+          enhancedMetadataPrimaryKeys: enhancedMetadata?.primaryKeys,
+          bsStoredProcedure: !!bsStoredProcedure,
+          hasRowData: rows.length > 0,
+          rowDataKeys: rows.length > 0 ? Object.keys(rows[0]) : [],
+        });
+
+        // Get primary key for debugging
+        const primaryKey =
+          rows.length > 0 ? getEffectivePrimaryKey(rows[0]) : null;
+
+        Logger.log("🔑 Using primary key from metadata:", primaryKey);
+
+        Logger.log("🔑 PRIMARY KEY for selection:", {
+          primaryKey,
+          firstRowId: rows.length > 0 ? rows[0][primaryKey] : "NO ROWS",
+          firstRowAllIds:
+            rows.length > 0
+              ? {
+                  id: rows[0].id,
+                  Id: rows[0].Id,
+                  [primaryKey]: rows[0][primaryKey],
+                }
+              : "NO ROWS",
+        });
+
         // Get selected row data
         const selectedRows = rows.filter((row) => {
-          const primaryKey = getEffectivePrimaryKey(row);
-          const rowId = row[primaryKey];
-          return newRowSelectionModel.includes(rowId);
+          // Use the same logic as getRowId to determine row identifier
+          let rowId;
+
+          const primaryKeyValue = row[primaryKey];
+          if (primaryKey && primaryKeyValue != null) {
+            rowId = String(primaryKeyValue);
+          } else {
+            // Fallback to common ID fields - same as getRowId
+            const idFields = ["id", "Id", "ID", "_id"];
+            let foundId = null;
+            for (const field of idFields) {
+              if (row[field] != null) {
+                foundId = String(row[field]);
+                break;
+              }
+            }
+            rowId = foundId;
+          }
+
+          const isSelected = newRowSelectionModel.includes(rowId);
+
+          Logger.log("🔍 Checking row:", {
+            rowPrimaryKey: primaryKeyValue,
+            rowIdString: rowId,
+            isInSelection: isSelected,
+            selectionModel: newRowSelectionModel,
+            allRowIdentifiers: {
+              id: row.id,
+              Id: row.Id,
+              [primaryKey]: row[primaryKey],
+            },
+          });
+
+          return isSelected;
         });
+
+        Logger.log("✅ FINAL SELECTED ROWS:", {
+          count: selectedRows.length,
+          selectedData: selectedRows.map((row) => ({
+            [primaryKey]: row[primaryKey],
+            tag_no: row.tag_no,
+            area_name: row.area_name,
+          })),
+        });
+
         onCheckBoxSelected(selectedRows);
       }
     },
-    [rows, onCheckBoxSelected, getEffectivePrimaryKey]
+    [
+      rows,
+      onCheckBoxSelected,
+      getEffectivePrimaryKey,
+      metadata,
+      enhancedMetadata,
+      bsStoredProcedure,
+    ]
   );
 
   // Get localization object for DataGrid
@@ -4796,16 +4881,33 @@ const BSDataGrid = ({
                 onPinnedColumnsChange={setPinnedColumns}
                 // UI Settings
                 getRowId={(row) => {
-                  // First try to find primary key from metadata
-                  const primaryKey = metadata?.primaryKeys?.[0];
+                  // Use the same primary key detection logic as handleRowSelectionChange
+                  const primaryKey = getEffectivePrimaryKey(row);
+
+                  Logger.log("🆔 getRowId called:", {
+                    primaryKey,
+                    rowPrimaryValue: row[primaryKey],
+                    rowKeys: Object.keys(row),
+                    hasValue: row[primaryKey] != null,
+                    actualRowData: row,
+                    idField: row.id,
+                    IdField: row.Id,
+                    countTagIdField: row.count_tag_id,
+                  });
+
                   if (primaryKey && row[primaryKey] != null) {
                     return String(row[primaryKey]);
                   }
 
-                  // Fallback to common ID fields
+                  // Fallback to common ID fields - prioritize 'id' field
                   const idFields = ["id", "Id", "ID", "_id"];
                   for (const field of idFields) {
                     if (row[field] != null) {
+                      Logger.log("🆔 Using fallback ID field:", {
+                        field,
+                        value: row[field],
+                        stringValue: String(row[field]),
+                      });
                       return String(row[field]);
                     }
                   }
@@ -4816,7 +4918,15 @@ const BSDataGrid = ({
                     a = (a << 5) - a + b.charCodeAt(0);
                     return a & a;
                   }, 0);
-                  return `generated-${Math.abs(hash)}`;
+                  const generatedId = `generated-${Math.abs(hash)}`;
+
+                  Logger.log("🚨 Using generated ID:", {
+                    generatedId,
+                    rowData: row,
+                    reason: "No valid primary key or ID field found",
+                  });
+
+                  return generatedId;
                 }}
                 // Localization
                 localeText={getLocalization()}
