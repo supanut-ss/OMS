@@ -1273,13 +1273,21 @@ const BSDataGrid = forwardRef(
             procedureName: bsStoredProcedure,
             schemaName: bsStoredProcedureSchema,
             operation: "SELECT", // Default operation for data loading
-            page: currentPaginationModel.page + 1, // API uses 1-based pagination
-            pageSize: currentPaginationModel.pageSize,
-            sortModel: currentSortModel.map((sort) => ({
-              field: sort.field,
-              sort: sort.sort,
-            })),
-            filterModel: currentFilterModel,
+            page:
+              bsFilterMode === "client" ? 1 : currentPaginationModel.page + 1, // For client-side filtering, load all data (page 1)
+            pageSize:
+              bsFilterMode === "client"
+                ? 10000
+                : currentPaginationModel.pageSize, // For client-side filtering, load large page
+            sortModel:
+              bsFilterMode === "server"
+                ? currentSortModel.map((sort) => ({
+                    field: sort.field,
+                    sort: sort.sort,
+                  }))
+                : [], // Only send sort for server-side mode
+            filterModel:
+              bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
             parameters: {
               ...bsStoredProcedureParams,
               // Add any additional parameters here
@@ -1383,6 +1391,7 @@ const BSDataGrid = forwardRef(
         filterModel,
         user,
         setEnhancedMetadata,
+        bsFilterMode,
       ]
     );
 
@@ -3643,7 +3652,7 @@ const BSDataGrid = forwardRef(
           ) // Skip hidden and GUID/audit columns
           .map((col) => {
             const columnName = col.columnName;
-            const isRequired = isFieldRequired(columnName, metadata);
+            //const isRequired = isFieldRequired(columnName, metadata);
             const comboConfig = comboBoxConfig[columnName];
 
             const baseColumn = {
@@ -3664,7 +3673,7 @@ const BSDataGrid = forwardRef(
               filterable: true,
               resizable: true,
               // Add red styling for required fields
-              headerClassName: isRequired ? "required-field" : undefined,
+              //headerClassName: isRequired ? "required-field" : undefined,
             };
 
             // is_active field configuration
@@ -4964,12 +4973,14 @@ const BSDataGrid = forwardRef(
                   })}
                   // Pagination
                   pagination={true}
-                  paginationMode="server"
+                  paginationMode={
+                    bsFilterMode === "client" ? "client" : "server"
+                  }
                   paginationModel={paginationModel}
                   onPaginationModelChange={setPaginationModel}
                   pageSizeOptions={[10, 25, 50, 100]}
                   // Sorting
-                  sortingMode="server"
+                  sortingMode={bsFilterMode === "client" ? "client" : "server"}
                   sortModel={sortModel}
                   onSortModelChange={setSortModel}
                   // Filtering
