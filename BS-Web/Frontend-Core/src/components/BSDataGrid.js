@@ -621,7 +621,7 @@ const ComboBoxField = ({
         {loading
           ? "Loading options..."
           : description ||
-            `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+          `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
       </FormHelperText>
     </FormControl>
   );
@@ -957,12 +957,12 @@ const BSDataGrid = ({
   const [filterModel, setFilterModel] = useState(() => ({
     items: bsObjWh
       ? [
-          {
-            field: "custom_where",
-            operator: "custom",
-            value: bsObjWh,
-          },
-        ]
+        {
+          field: "custom_where",
+          operator: "custom",
+          value: bsObjWh,
+        },
+      ]
       : [],
   }));
 
@@ -1870,7 +1870,7 @@ const BSDataGrid = ({
         const allPrimaryKeys = [
           ...metadataPrimaryKeys,
           ...(detectedPrimaryKey &&
-          !metadataPrimaryKeys.includes(detectedPrimaryKey)
+            !metadataPrimaryKeys.includes(detectedPrimaryKey)
             ? [detectedPrimaryKey]
             : []),
         ];
@@ -2284,8 +2284,7 @@ const BSDataGrid = ({
             errors.push(
               `${formatColumnName(
                 columnName
-              )}: Maximum ${maxLength} characters allowed (current: ${
-                stringValue.length
+              )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
               })`
             );
           }
@@ -2405,6 +2404,11 @@ const BSDataGrid = ({
               user?.user_id ||
               "system",
           };
+
+          Logger.log("🔄Data  USER INSERT:", {
+            userId: user?.userId
+
+          });
 
           const result = await executeEnhancedStoredProcedure(insertRequest);
 
@@ -2960,8 +2964,8 @@ const BSDataGrid = ({
             inputProps={{
               ...(maxLength > 0 &&
                 (inputType === "text" || multiline) && {
-                  maxLength: maxLength,
-                }),
+                maxLength: maxLength,
+              }),
             }}
             error={maxLength > 0 && String(val).length > maxLength}
           />
@@ -3996,10 +4000,10 @@ const BSDataGrid = ({
           firstRowAllIds:
             rows.length > 0
               ? {
-                  id: rows[0].id,
-                  Id: rows[0].Id,
-                  [primaryKey]: rows[0][primaryKey],
-                }
+                id: rows[0].id,
+                Id: rows[0].Id,
+                [primaryKey]: rows[0][primaryKey],
+              }
               : "NO ROWS",
         });
 
@@ -4755,8 +4759,8 @@ const BSDataGrid = ({
             columnsValid: Array.isArray(columns) && columns.length > 0,
             sampleColumns: Array.isArray(columns)
               ? columns
-                  .slice(0, 2)
-                  .map((c) => ({ field: c.field, type: c.type }))
+                .slice(0, 2)
+                .map((c) => ({ field: c.field, type: c.type }))
               : "N/A",
             metadataExists: !!metadata,
             metadataColumnsCount: metadata?.columns?.length,
@@ -4848,11 +4852,9 @@ const BSDataGrid = ({
                 }
                 // Ensure we don't render until we have valid data structure
                 // Include rowCount and content hash in key to force re-render when data changes
-                key={`datagrid-${effectiveTableName}-${rowCount}-${
-                  rows.length
-                }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
-                  Array.isArray(columns) ? columns.length : 0
-                }`}
+                key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length
+                  }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${Array.isArray(columns) ? columns.length : 0
+                  }`}
                 // Editing
                 editMode="row"
                 processRowUpdate={
@@ -4973,33 +4975,33 @@ const BSDataGrid = ({
                 slotProps={
                   showToolbar && !bulkEditMode
                     ? {
-                        toolbar: {
-                          onAdd: handleAddClick,
-                          showAdd,
-                          headerFiltersEnabled,
-                          onToggleHeaderFilters: handleToggleHeaderFilters,
-                          bsBulkEdit,
-                          bsBulkAdd,
-                          bsBulkDelete,
-                          selectedRowCount: rowSelectionModel.length,
-                          onBulkEdit: handleBulkEdit,
-                          onBulkDelete: handleBulkDelete,
-                          onBulkAdd: handleBulkAdd,
-                          showBulkDelete: bsBulkDelete,
-                        },
-                        // Header filter cell props to show inline clear button
-                        headerFilterCell: {
-                          showClearIcon: true,
-                        },
-                      }
+                      toolbar: {
+                        onAdd: handleAddClick,
+                        showAdd,
+                        headerFiltersEnabled,
+                        onToggleHeaderFilters: handleToggleHeaderFilters,
+                        bsBulkEdit,
+                        bsBulkAdd,
+                        bsBulkDelete,
+                        selectedRowCount: rowSelectionModel.length,
+                        onBulkEdit: handleBulkEdit,
+                        onBulkDelete: handleBulkDelete,
+                        onBulkAdd: handleBulkAdd,
+                        showBulkDelete: bsBulkDelete,
+                      },
+                      // Header filter cell props to show inline clear button
+                      headerFilterCell: {
+                        showClearIcon: true,
+                      },
+                    }
                     : headerFiltersEnabled
-                    ? {
+                      ? {
                         // Header filter cell props when toolbar is disabled but header filters are enabled
                         headerFilterCell: {
                           showClearIcon: true,
                         },
                       }
-                    : undefined
+                      : undefined
                 }
                 // Styling with required field indicator
                 sx={{
@@ -5021,9 +5023,9 @@ const BSDataGrid = ({
                   },
                   // Force header text bold
                   "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                    {
-                      fontWeight: "bold",
-                    },
+                  {
+                    fontWeight: "bold",
+                  },
                   // Required field styling
                   "& .required-field .MuiDataGrid-columnHeaderTitle": {
                     color: "error.main",
@@ -5205,9 +5207,8 @@ const BSDataGrid = ({
                                   </InputLabel>
                                   <Select
                                     value={val || "YES"}
-                                    label={`${formatColumnName(columnName)} ${
-                                      !isNullable ? "*" : ""
-                                    }`}
+                                    label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
+                                      }`}
                                     onChange={(e) =>
                                       updateBulkRow(
                                         rowIndex,
@@ -5291,9 +5292,8 @@ const BSDataGrid = ({
                                       }
                                     />
                                   }
-                                  label={`${formatColumnName(columnName)} ${
-                                    !isNullable ? "*" : ""
-                                  }`}
+                                  label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
+                                    }`}
                                 />
                               </Grid>
                             );
@@ -5319,9 +5319,8 @@ const BSDataGrid = ({
                               <TextField
                                 fullWidth
                                 size="small"
-                                label={`${formatColumnName(columnName)} ${
-                                  !isNullable ? "*" : ""
-                                }`}
+                                label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
+                                  }`}
                                 type={inputType}
                                 value={val}
                                 onChange={(e) =>
@@ -5338,8 +5337,8 @@ const BSDataGrid = ({
                                 inputProps={{
                                   ...(maxLength > 0 &&
                                     (inputType === "text" || multiline) && {
-                                      maxLength: maxLength,
-                                    }),
+                                    maxLength: maxLength,
+                                  }),
                                 }}
                                 error={
                                   maxLength > 0 &&
