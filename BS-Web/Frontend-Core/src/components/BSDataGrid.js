@@ -3673,7 +3673,7 @@ const BSDataGrid = forwardRef(
               filterable: true,
               resizable: true,
               // Add red styling for required fields
-              headerClassName: isRequired ? "required-field" : undefined,
+              //headerClassName: isRequired ? "required-field" : undefined,
             };
 
             // is_active field configuration
