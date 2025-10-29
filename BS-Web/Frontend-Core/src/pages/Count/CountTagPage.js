@@ -1,7 +1,7 @@
 import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSAutoComplete from "../../components/BSAutoComplete";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import secureStorage from "../../utils/SecureStorage";
@@ -10,6 +10,7 @@ const CountTag = (props) => {
     const userInfo = secureStorage.get("userInfo");
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
+    const dataGridRef = useRef();
     const CallNoti = async () => {
         if (!selectedUser) {
             BSAlertSwal2.show(
@@ -36,6 +37,7 @@ const CountTag = (props) => {
                     "routeApp": "/count_tag"
                 }
             }).then((response) => {
+                dataGridRef.current?.refreshData();
                 BSAlertSwal2.show(
                     "success",
                     `Re-count notification for tag ${row.tag_no} sent to user successfully.`
@@ -91,6 +93,7 @@ const CountTag = (props) => {
                     </Grid>
                 </Box>
                 <BSDataGrid
+                    ref={dataGridRef}
                     bsLocale={props.lang}
                     bsPreObj="ams"
                     bsObj="tbt_count_tag"

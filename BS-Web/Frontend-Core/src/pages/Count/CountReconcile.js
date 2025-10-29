@@ -1,6 +1,7 @@
 import { Box, Button, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import AxiosMaster from "../../utils/AxiosMaster";
+import { useRef } from "react";
 const ExportToExcel = async () => {
   console.log("Export to Excel clicked");
 
@@ -10,10 +11,10 @@ const ExportToExcel = async () => {
     });
     // ดึงชื่อไฟล์จาก header (Content-Disposition)
     const contentDisposition = response.headers["content-disposition"];
-   // ✅ สร้างชื่อไฟล์ตามรูปแบบ yyyyMMdd_HHmmss
+    // ✅ สร้างชื่อไฟล์ตามรูปแบบ yyyyMMdd_HHmmss
     const now = new Date();
     const pad = (n) => n.toString().padStart(2, "0");
-    const formattedDate = 
+    const formattedDate =
       now.getFullYear().toString() +
       pad(now.getMonth() + 1) +
       pad(now.getDate()) + "_" +
@@ -54,23 +55,25 @@ const ExportToExcel = async () => {
 };
 
 const CountReconcile = (props) => {
-    return <Box>
-        <Paper sx={{ p: 2, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-                Count Reconcile
-            </Typography>
-            <hr />
-            <Box mt={3}>
-                <Box>
-                    <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={ExportToExcel}>
-                        Export to Excel
-                    </Button>
-                </Box>
-                <BSDataGrid
-                    bsLocale={props.lang}
-                    bsPreObj="ams"
-                    bsObj="v_ams_count_reconcile"
-                    bsCols="area_code
+  const dataGridRef = useRef();
+  return <Box>
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Count Reconcile
+      </Typography>
+      <hr />
+      <Box mt={3}>
+        <Box>
+          <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={ExportToExcel}>
+            Export to Excel
+          </Button>
+        </Box>
+        <BSDataGrid
+          ref={dataGridRef}
+          bsLocale={props.lang}
+          bsPreObj="ams"
+          bsObj="v_ams_count_reconcile"
+          bsCols="area_code
 	,area_name
 	, part_no
 	, part_name
@@ -80,29 +83,29 @@ const CountReconcile = (props) => {
 	, total_qty_plan
 	, total_qty_actual
 	, diff"
-                    bsObjBy="status asc"
-                    bsPinColsLeft=""
-                    bsPinColsRight=""
-                    //  bsRowPerPage={20}
-                    showAdd={false}
-                    readOnly={true}
-                    bsBulkDelete={false}
-                    bsBulkEdit={false}
-                    bsBulkAdd={false}
-                    bsShowDescColumn={false}
+          bsObjBy="status asc"
+          bsPinColsLeft=""
+          bsPinColsRight=""
+          //  bsRowPerPage={20}
+          showAdd={false}
+          readOnly={true}
+          bsBulkDelete={false}
+          bsBulkEdit={false}
+          bsBulkAdd={false}
+          bsShowDescColumn={false}
 
-                    //   onCheckBoxSelected={(rows) => {
-                    //     console.log("Selected rows:", rows);
-                    //    // setSelectedRows(rows);
-                    //   }}
-                    // onEdit={(row) => console.log("Edit:", row)}
-                    //    onDelete={(id) => console.log("Delete:", id)}
-                    //  onAdd={() => console.log("Add new record")}
-                    height={500}
-                />
-            </Box>
-        </Paper>
+          //   onCheckBoxSelected={(rows) => {
+          //     console.log("Selected rows:", rows);
+          //    // setSelectedRows(rows);
+          //   }}
+          // onEdit={(row) => console.log("Edit:", row)}
+          //    onDelete={(id) => console.log("Delete:", id)}
+          //  onAdd={() => console.log("Add new record")}
+          height={500}
+        />
+      </Box>
+    </Paper>
 
-    </Box >;
+  </Box >;
 }
 export default CountReconcile;

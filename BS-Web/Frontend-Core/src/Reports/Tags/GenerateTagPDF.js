@@ -13,7 +13,7 @@ const GenerateTagPDF = async (data) => {
         const pdf = new jsPDF({
             orientation: "portrait",
             unit: "mm",
-            format: [93, 228],
+            format: [115, 300],
         });
 
         for (let i = 0; i < data.length; i++) {
@@ -22,8 +22,8 @@ const GenerateTagPDF = async (data) => {
 
             const tempDiv = document.createElement("div");
             tempDiv.className = "report-root";
-            tempDiv.style.width = "93mm";
-            tempDiv.style.height = "228mm";
+            tempDiv.style.width = "115mm";
+            tempDiv.style.height = "300mm";
             tempDiv.style.padding = "10mm";
             tempDiv.style.background = "white";
 //             tempDiv.innerHTML = `
@@ -102,8 +102,8 @@ const GenerateTagPDF = async (data) => {
             font-family: "Tahoma", sans-serif;
             font-size: 8pt;
             color: #000;
-            width: 9.3cm;
-            height: 22.8cm;
+            width: 115mm;
+            height: 300mm;
             display: flex;
             justify-content: center;
             overflow: hidden;
@@ -118,7 +118,7 @@ const GenerateTagPDF = async (data) => {
         }
     </style>
     <div>
-        <table>
+        <table style="margin-top: 40mm;">
             <tbody>
                 <tr>
                     <td class="td-report-tags" style="text-align:left;">&nbsp;</td>
@@ -143,11 +143,11 @@ const GenerateTagPDF = async (data) => {
                 </tr>
             </tbody>
         </table>
-        <div style="margin-top: 10px;">
+        <div style="margin-top: 5mm;">
             <img src="${qrDataUrl}"
                 alt="QR Code" width="80" height="80">
         </div>
-        <table style="margin-top:10cm;">
+        <table  style="margin-top:128mm;">
             <tbody>
                 <tr>
                     <td colspan="1" class="td-report-tags">&nbsp;</td>
@@ -155,7 +155,7 @@ const GenerateTagPDF = async (data) => {
                 </tr>
             </tbody>
         </table>
-        <table style="margin-top:3cm;margin-left: 40px;">
+        <table style="margin-top:33mm;margin-left: 40px;">
             <tbody>
                 <tr>
                     <td colspan="1" class="td-report-tags">&nbsp;</td>
@@ -168,7 +168,7 @@ const GenerateTagPDF = async (data) => {
 
             const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true });
             const imgData = canvas.toDataURL("image/png");
-            pdf.addImage(imgData, "PNG", 0, 0, 93, 228);
+            pdf.addImage(imgData, "PNG", 0, 0, 115, 300);
             if (i < data.length - 1) pdf.addPage();
 
             document.body.removeChild(tempDiv);
