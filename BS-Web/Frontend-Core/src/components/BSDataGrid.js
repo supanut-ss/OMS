@@ -2385,6 +2385,10 @@ const BSDataGrid = ({
             convertedSaveData: spSaveData,
           });
 
+          Logger.log("🔄 USER INSERT:", {
+            user: user,
+          });
+
           // Use Enhanced Stored Procedure for INSERT operation
           const insertRequest = {
             procedureName: bsStoredProcedure,
