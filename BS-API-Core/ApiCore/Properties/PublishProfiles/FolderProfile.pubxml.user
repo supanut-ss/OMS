@@ -4,8 +4,8 @@ https://go.microsoft.com/fwlink/?LinkID=208121.
 -->
 <Project>
   <PropertyGroup>
-    <_PublishTargetUrl>C:\Users\pthawatchai\OneDrive - oga.co.th\Projects\Source\2025_Timesheet\BS-Platform\BS-Platform\BS-API-Core\ApiCore\bin\Release\net9.0\publish\</_PublishTargetUrl>
-    <History>True|2025-10-16T08:04:03.5253882Z||;True|2025-10-16T14:59:44.1809360+07:00||;</History>
+    <_PublishTargetUrl>D:\OneDrive - oga.co.th\BS_Platform\BS-Platform\BS-API-Core\ApiCore\bin\Release\net9.0\publish\</_PublishTargetUrl>
+    <History>True|2025-10-29T00:25:28.8121782Z||;True|2025-10-29T06:40:19.4150098+07:00||;True|2025-10-16T15:04:03.5253882+07:00||;True|2025-10-16T14:59:44.1809360+07:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>
