@@ -716,6 +716,13 @@ const ComboBoxField = ({
  * - bsVisibleDelete={true} (default): Show delete button in actions column
  *   * Only applies to regular mode (not bulk edit or inline bulk add mode)
  *   * Button will trigger onDelete callback or built-in delete confirmation
+ *
+ * @onDataBind Configuration:
+ * - onDataBind={(data) => console.log(data)}: Callback function that receives the loaded data
+ *   * Called whenever data is loaded from API (initial load, pagination, filtering, sorting)
+ *   * Receives array of row objects from the current page or all data (client-side filtering)
+ *   * Useful for calculating summaries, totals, or other derived values
+ *   * Example: onDataBind={(data) => setTotalQty(data.reduce((sum, row) => sum + (row.qty || 0), 0))}
  */
 const BSDataGrid = forwardRef(
   (
@@ -762,6 +769,9 @@ const BSDataGrid = forwardRef(
       bsStoredProcedureParams = {}, // Additional parameters for stored procedure
 
       onCheckBoxSelected,
+
+      // Data binding callback
+      onDataBind, // Callback to receive loaded data for external processing
 
       ...props
     },
@@ -1165,6 +1175,19 @@ const BSDataGrid = forwardRef(
           setRows(processedRows);
           setRowCount(result.rowCount || 0);
 
+          // Call onDataBind callback with the loaded data
+          if (onDataBind && typeof onDataBind === "function") {
+            try {
+              onDataBind(processedRows);
+              Logger.log("📊 onDataBind callback called with data:", {
+                rowCount: processedRows.length,
+                sampleData: processedRows.slice(0, 2),
+              });
+            } catch (err) {
+              Logger.error("❌ Error in onDataBind callback:", err);
+            }
+          }
+
           // Reset row selection when data changes to prevent stale references
           setRowSelectionModel([]);
 
@@ -1237,6 +1260,7 @@ const BSDataGrid = forwardRef(
         bsObjWh,
         parsedCols,
         comboBoxConfig,
+        onDataBind,
       ]
     );
 
@@ -1311,6 +1335,25 @@ const BSDataGrid = forwardRef(
 
             setRows(processedRows);
             setRowCount(result.rowCount || processedRows.length);
+
+            // Call onDataBind callback with the loaded data
+            if (onDataBind && typeof onDataBind === "function") {
+              try {
+                onDataBind(processedRows);
+                Logger.log(
+                  "📊 Enhanced SP onDataBind callback called with data:",
+                  {
+                    rowCount: processedRows.length,
+                    sampleData: processedRows.slice(0, 2),
+                  }
+                );
+              } catch (err) {
+                Logger.error(
+                  "❌ Error in Enhanced SP onDataBind callback:",
+                  err
+                );
+              }
+            }
 
             // 🔍 Extract metadata from Enhanced SP result (API returns as 'metadata' property)
             if (result.metadata) {
@@ -1392,6 +1435,7 @@ const BSDataGrid = forwardRef(
         user,
         setEnhancedMetadata,
         bsFilterMode,
+        onDataBind,
       ]
     );
 
