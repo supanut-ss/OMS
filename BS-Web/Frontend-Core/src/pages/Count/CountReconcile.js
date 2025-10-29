@@ -53,7 +53,7 @@ const ExportToExcel = async () => {
   }
 };
 
-const CountReconcile = () => {
+const CountReconcile = (props) => {
     return <Box>
         <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -67,7 +67,7 @@ const CountReconcile = () => {
                     </Button>
                 </Box>
                 <BSDataGrid
-                    bsLocale="th"
+                    bsLocale={props.lang}
                     bsPreObj="ams"
                     bsObj="v_ams_count_reconcile"
                     bsCols="area_code

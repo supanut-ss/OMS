@@ -161,29 +161,29 @@ export default function MainLayout({ lang, onChangeLang }) {
   })
   const validatePassword = (pw) => {
     if (pw.length < 8) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' : 'Password must be at least 8 characters long.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' : 'Password must be at least 8 characters long.' };
     } else if (pw.length > 20) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องมีความยาวไม่เกิน 20 ตัวอักษร' : 'Password must not exceed 20 characters.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีความยาวไม่เกิน 20 ตัวอักษร' : 'Password must not exceed 20 characters.' };
     } else if (!/[A-Z]/.test(pw)) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่ อย่างน้อย 1 ตัว' : 'Password must contain at least one uppercase letter.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่ อย่างน้อย 1 ตัว' : 'Password must contain at least one uppercase letter.' };
     } else if (!/[a-z]/.test(pw)) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องมีตัวอักษรพิมพ์เล็ก อย่างน้อย 1 ตัว' : 'Password must contain at least one lowercase letter.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีตัวอักษรพิมพ์เล็ก อย่างน้อย 1 ตัว' : 'Password must contain at least one lowercase letter.' };
     } else if (!/[0-9]/.test(pw)) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องมีตัวเลข อย่างน้อย 1 ตัว' : 'Password must contain at least one number.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีตัวเลข อย่างน้อย 1 ตัว' : 'Password must contain at least one number.' };
     } else if (!/[!@#$%^&*]/.test(pw)) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องมีอักขระพิเศษ อย่างน้อย 1 ตัว (!@#$%^&*)' : 'Password must contain at least one special character (!@#$%^&*).' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีอักขระพิเศษ อย่างน้อย 1 ตัว (!@#$%^&*)' : 'Password must contain at least one special character (!@#$%^&*).' };
     } else if (/\s/.test(pw)) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องไม่มีช่องว่าง' : 'Password must not contain spaces.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่มีช่องว่าง' : 'Password must not contain spaces.' };
     } else if (pw.toLowerCase().includes(currentUser?.FirstName.toLowerCase()) || pw.toLowerCase().includes(currentUser?.LastName.toLowerCase())) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องไม่ประกอบด้วยชื่อหรือสกุลของคุณ' : 'Password must not contain your first or last name.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยชื่อหรือสกุลของคุณ' : 'Password must not contain your first or last name.' };
     } else if (pw.toLowerCase().includes(currentUser?.Email.toLowerCase())) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องไม่ประกอบด้วยอีเมลของคุณ' : 'Password must not contain your email.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยอีเมลของคุณ' : 'Password must not contain your email.' };
     } else if (pw.toLowerCase().includes("1234") || pw.toLowerCase().includes("abcd")) {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องไม่ประกอบด้วยลำดับตัวอักษรหรือตัวเลขที่ง่ายต่อการคาดเดา เช่น 1234 หรือ abcd' : 'Password must not contain easily guessable sequences like 1234 or abcd.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยลำดับตัวอักษรหรือตัวเลขที่ง่ายต่อการคาดเดา เช่น 1234 หรือ abcd' : 'Password must not contain easily guessable sequences like 1234 or abcd.' };
     } else if (pw.toLowerCase() === "password" || pw.toLowerCase() === "qwerty" || pw.toLowerCase() === "letmein") {
-      return { status: true, message: lang === "TH" ? 'รหัสผ่านต้องไม่ใช่รหัสผ่านที่ใช้บ่อยหรือคาดเดาได้ง่าย เช่น password, qwerty, letmein' : 'Password must not be a commonly used or easily guessable password like password, qwerty, letmein.' };
+      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ใช่รหัสผ่านที่ใช้บ่อยหรือคาดเดาได้ง่าย เช่น password, qwerty, letmein' : 'Password must not be a commonly used or easily guessable password like password, qwerty, letmein.' };
     } else if (pw.length === 0) {
-      return { status: true, message: lang === "TH" ? 'กรุณากรอกรหัสผ่าน' : 'Please enter a password.' };
+      return { status: true, message: lang === "th" ? 'กรุณากรอกรหัสผ่าน' : 'Please enter a password.' };
     } else {
       return { status: false, message: "" };
     }
@@ -204,7 +204,7 @@ export default function MainLayout({ lang, onChangeLang }) {
     if (validate.status) {
       setErrorPassword({ ...errorPassword, confirm_password: validate });
     } else if (password.new_password !== e.target.value) {
-      setErrorPassword({ ...errorPassword, confirm_password: { status: true, message: lang === "TH" ? 'รหัสผ่านไม่ตรงกัน' : 'Passwords do not match.' } });
+      setErrorPassword({ ...errorPassword, confirm_password: { status: true, message: lang === "th" ? 'รหัสผ่านไม่ตรงกัน' : 'Passwords do not match.' } });
     } else {
       setErrorPassword({ ...errorPassword, confirm_password: { status: false, message: "" } });
     }
@@ -221,7 +221,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       setErrorPassword({ ...errorPassword, new_password: validateNewPassword });
     }
     if (validateConfirmPassword.status || password.new_password !== password.confirm_password) {
-      setErrorPassword({ ...errorPassword, confirm_password: validateConfirmPassword.status ? validateConfirmPassword : { status: true, message: lang === "TH" ? 'รหัสผ่านไม่ตรงกัน' : 'Passwords do not match.' } });
+      setErrorPassword({ ...errorPassword, confirm_password: validateConfirmPassword.status ? validateConfirmPassword : { status: true, message: lang === "th" ? 'รหัสผ่านไม่ตรงกัน' : 'Passwords do not match.' } });
     }
     if (!validateNewPassword.status && !validateConfirmPassword.status && password.new_password === password.confirm_password) {
       setLoading(true);
@@ -229,7 +229,7 @@ export default function MainLayout({ lang, onChangeLang }) {
         if (res.data.message_code === "0") {
           BSAlertSwal2.fire({
             icon: "success",
-            title: lang === "TH" ? 'เปลี่ยนรหัสผ่านสำเร็จ' : 'Password Changed Successfully',
+            title: lang === "th" ? 'เปลี่ยนรหัสผ่านสำเร็จ' : 'Password Changed Successfully',
             confirmButtonText: "OK"
           });
         } else {
@@ -700,20 +700,20 @@ export default function MainLayout({ lang, onChangeLang }) {
       {/* Reset Password Popup */}
       <Dialog open={isPopupResetPasswordOpen} onClose={() => setIsPopupResetPasswordOpen(false)} maxWidth="sm" fullWidth>
         {/* เนื้อหาของ Popup Reset Password จะอยู่ที่นี่ */}
-        <DialogTitle>{lang === "TH" ? 'เปลี่ยนรหัสผ่าน' : 'Reset Password'}</DialogTitle>
+        <DialogTitle>{lang === "th" ? 'เปลี่ยนรหัสผ่าน' : 'Reset Password'}</DialogTitle>
         <DialogContent>
           {/* ใส่ฟอร์มเปลี่ยนรหัสผ่านที่นี่ */}
           <Typography variant="body2" color="text.secondary">
-            {lang === "TH" ? 'กรุณากรอกรหัสผ่านใหม่ของคุณด้านล่าง' : 'Please enter your new password below.'}
+            {lang === "th" ? 'กรุณากรอกรหัสผ่านใหม่ของคุณด้านล่าง' : 'Please enter your new password below.'}
           </Typography>
           <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel htmlFor="new-password">{lang === "TH" ? 'รหัสผ่านใหม่' : 'New Password'}</InputLabel>
+            <InputLabel htmlFor="new-password">{lang === "th" ? 'รหัสผ่านใหม่' : 'New Password'}</InputLabel>
             <Input
               id="new-password"
               type="password"
               value={password.new_password}
               onChange={(e) => onChangePassword(e)}
-              label={lang === "TH" ? 'รหัสผ่านใหม่' : 'New Password'}
+              label={lang === "th" ? 'รหัสผ่านใหม่' : 'New Password'}
             />
             {errorPassword.new_password.status && (
               <FormHelperText sx={{ color: "red" }}>{errorPassword.new_password.message}</FormHelperText>
@@ -721,13 +721,13 @@ export default function MainLayout({ lang, onChangeLang }) {
 
           </FormControl>
           <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel htmlFor="confirm-password">{lang === "TH" ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password'}</InputLabel>
+            <InputLabel htmlFor="confirm-password">{lang === "th" ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password'}</InputLabel>
             <Input
               id="confirm-password"
               type="password"
               value={password.confirm_password}
               onChange={(e) => onChangeConfirmPassword(e)}
-              label={lang === "TH" ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password'}
+              label={lang === "th" ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password'}
             />
             {errorPassword.confirm_password.status && (
               <FormHelperText sx={{ color: "red" }}>{errorPassword.confirm_password.message}</FormHelperText>
@@ -735,8 +735,8 @@ export default function MainLayout({ lang, onChangeLang }) {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsPopupResetPasswordOpen(false)} color="primary">{lang === "TH" ? 'ยกเลิก' : 'Cancel'}</Button>
-          <Button onClick={sendChangePassword} color="primary" variant="contained">{lang === "TH" ? 'บันทึก' : 'Save'}</Button>
+          <Button onClick={() => setIsPopupResetPasswordOpen(false)} color="primary">{lang === "th" ? 'ยกเลิก' : 'Cancel'}</Button>
+          <Button onClick={sendChangePassword} color="primary" variant="contained">{lang === "th" ? 'บันทึก' : 'Save'}</Button>
         </DialogActions>
       </Dialog>
     </Box>

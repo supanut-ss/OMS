@@ -17,7 +17,7 @@ const LanguageSwitch = ({ lang, changeLanguage }) => {
                 >
                     {
                         lang === "en" ? (<img alt="en" src={en} style={{ width: 25, height: 25 }} />) :
-                            <img alt="th" src={th} style={{ width: 25, height: 25 }} />
+                        (<img alt="th" src={th} style={{ width: 25, height: 25 }} />)
                     }
                 </IconButton>
             </Tooltip>

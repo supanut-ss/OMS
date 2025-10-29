@@ -170,7 +170,18 @@ export const AuthProvider = ({ children }) => {
     }).finally();
   }
   const switchLang = async (lang) => {
-    await AxiosMaster.post("/users/switch/lang", { lang: lang }).then().finally();
+    try {
+      await AxiosMaster.post("/users/switch/lang", { lang: lang }).then(
+        (res) => {
+          if (res.data.message_code !== "0") {
+            return false;
+          }
+        }
+      ).finally();
+      return true;
+    } catch (err) {
+      return false;
+    }
   }
   const value = {
     isAuthenticated,

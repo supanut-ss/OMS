@@ -24,17 +24,18 @@ import PartPage from "./pages/Master/PartPage";
 import SubPage from "./pages/Master/SubPage";
 import TagPage from "./pages/Master/TagPage";
 import Resource from "./pages/Authentication/Resource";
-import secureStorage from "./utils/SecureStorage";
 import { useState } from "react";
 import { useAuth } from "./contexts/AuthContext";
+import secureStorage from "./utils/SecureStorage";
 
 export default function AppRoutes() {
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState(secureStorage.get("lang") || "en");
   const { switchLang } = useAuth();
   const onChangeLang = async (lang) => {
-    await switchLang(lang);
-    setLang(lang);
-    secureStorage.set("lang", lang);
+    if (await switchLang(lang)) {
+      setLang(lang);
+      secureStorage.set("lang", lang);
+    }
   }
   return (
     <Routes>
@@ -71,8 +72,8 @@ export default function AppRoutes() {
         <Route path="user_group" element={<UserGroupPage />} />
         <Route path="menu" element={<MenuPage />} />
         <Route path="user_logon" element={<UserLogOnPage />} />
-        <Route path="count_tag" element={<CountTag />} />
-        <Route path="count_record" element={<CountReconcile />} />
+        <Route path="count_tag" element={<CountTag lang={lang} />} />
+        <Route path="count_record" element={<CountReconcile lang={lang} />} />
         <Route path="part_master" element={<PartPage />} />
         <Route path="sub_master" element={<SubPage />} />
         <Route path="tag_master" element={<TagPage />} />

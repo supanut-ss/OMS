@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 // ฟังก์ชันสร้าง PDF และเปิด preview + กลับหน้าก่อนหน้า
 const GenerateTagPDF = async (data) => {
     try {
+      let f;
         if (!data || data.length === 0) {
             return { success: false, message: "No data provided for tag PDF generation." };
         }
@@ -25,77 +26,144 @@ const GenerateTagPDF = async (data) => {
             tempDiv.style.height = "228mm";
             tempDiv.style.padding = "10mm";
             tempDiv.style.background = "white";
-            tempDiv.innerHTML = `
-            <style>
-            @page {
-  size: 9.3cm 22.8cm;
-  margin: 0;
-}
+//             tempDiv.innerHTML = `
+//             <style>
+//             @page {
+//   size: 9.3cm 22.8cm;
+//   margin: 0;
+// }
 
-.report-root {
-  font-family: "Tahoma", sans-serif;
-  font-size: 8pt;
-  color: #000;
-  width: 9.3cm;
-  height: 22.8cm;
-  display: flex;
-  justify-content: center;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid #ccc;
-  position: relative;
-}
-.td-report-tags{
-  width: 2.5cm;
-}
-  </style>
-      <div>
-        <table style="margin-top: 0.5cm;">
-          <tbody>
-            <tr>
-              <td class="td-report-tags" style="width:2.5cm; text-align:left;">${item.area_name || ""} ${item.area_code || ""}</td>
-              <td class="td-report-tags" style="text-align:center;font-weight:bold">${item.audit || ""}</td>
-              <td class="td-report-tags" style="text-align:center;">${item.tag_no || ""}</td>
-            </tr>
-            <tr>
-              <td colspan="3" style="text-align:center;">Location: ${item.location || ""}</td>
-            </tr>
-          </tbody>
+// .report-root {
+//   font-family: "Tahoma", sans-serif;
+//   font-size: 8pt;
+//   color: #000;
+//   width: 9.3cm;
+//   height: 22.8cm;
+//   display: flex;
+//   justify-content: center;
+//   overflow: hidden;
+//   background: #fff;
+//   border: 1px solid #ccc;
+//   position: relative;
+// }
+// .td-report-tags{
+//   width: 2.5cm;
+// }
+//   </style>
+//       <div>
+//         <table style="margin-top: 0.5cm;">
+//           <tbody>
+//             <tr>
+//               <td class="td-report-tags" style="width:2.5cm; text-align:left;">${item.area_name || ""} ${item.area_code || ""}</td>
+//               <td class="td-report-tags" style="text-align:center;font-weight:bold">${item.audit || ""}</td>
+//               <td class="td-report-tags" style="text-align:center;">${item.tag_no || ""}</td>
+//             </tr>
+//             <tr>
+//               <td colspan="3" style="text-align:center;">Location: ${item.location || ""}</td>
+//             </tr>
+//           </tbody>
+//         </table>
+//         <table style="margin-top: 0.9cm;">
+//           <tbody>
+//             <tr>
+//               <td colspan="1" class="td-report-tags">&nbsp;</td>
+//               <td colspan="2">${item.part_no || ""}</td>
+//             </tr>
+//             <tr>
+//               <td colspan="1" class="td-report-tags">&nbsp;</td>
+//               <td colspan="2">${item.part_name || ""}</td>
+//             </tr>
+//           </tbody>
+//         </table>
+//         <div>
+//           <img src="${qrDataUrl}" alt="QR Code" width="60" height="60" />
+//         </div>
+//         <table style="margin-top:11cm;">
+//           <tbody>
+//             <tr>
+//               <td colspan="1" class="td-report-tags">&nbsp;</td>
+//               <td colspan="2">${item.supplier_name || ""}</td>
+//             </tr>
+//           </tbody>
+//         </table>
+//         <table style="margin-top:3cm;">
+//           <tbody>
+//             <tr>
+//               <td colspan="1" class="td-report-tags">&nbsp;</td>
+//               <td colspan="2">${dayjs(item.tag_date).format("DD/MM/YYYY")|| ""}</td>
+//             </tr>
+//           </tbody>
+//         </table>
+//       </div
+//     `;
+    tempDiv.innerHTML = `
+    <style>
+        .report-root {
+            font-family: "Tahoma", sans-serif;
+            font-size: 8pt;
+            color: #000;
+            width: 9.3cm;
+            height: 22.8cm;
+            display: flex;
+            justify-content: center;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+
+        .td-report-tags {
+            width: 2.7cm;
+            height: 0.5cm;
+        }
+    </style>
+    <div>
+        <table>
+            <tbody>
+                <tr>
+                    <td class="td-report-tags" style="text-align:left;">&nbsp;</td>
+                    <td class="td-report-tags" style="text-align:center;font-weight:bold;">${item.audit || ""}</td>
+                    <td class="td-report-tags" style="text-align:center;">&nbsp;</td>
+                </tr>
+                <tr>
+                    <td class="td-report-tags" style="text-align:left;">${item.area_name || ""} ${item.area_code || ""}</td>
+                    <td class="td-report-tags">&nbsp;</td>
+                    <td class="td-report-tags" style="text-align:center;">${item.tag_no || ""}</td>
+                </tr>
+                <tr>
+                    <td class="td-report-tags" colspan="3" style="text-align:center;height: 50px;">Location: ${item.location || ""}</td>
+                </tr>
+                <tr>
+                    <td class="td-report-tags" colspan="1">&nbsp;</td>
+                    <td class="td-report-tags" colspan="2">&nbsp;${item.part_no || ""}</td>
+                </tr>
+                <tr style="height: 44px;">
+                    <td class="td-report-tags" colspan="1">&nbsp;</td>
+                    <td class="td-report-tags" colspan="2">&nbsp;${item.part_name || ""}</td>
+                </tr>
+            </tbody>
         </table>
-        <table style="margin-top: 0.9cm;">
-          <tbody>
-            <tr>
-              <td colspan="1" class="td-report-tags">&nbsp;</td>
-              <td colspan="2">${item.part_no || ""}</td>
-            </tr>
-            <tr>
-              <td colspan="1" class="td-report-tags">&nbsp;</td>
-              <td colspan="2">${item.part_name || ""}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div>
-          <img src="${qrDataUrl}" alt="QR Code" width="60" height="60" />
+        <div style="margin-top: 10px;">
+            <img src="${qrDataUrl}"
+                alt="QR Code" width="80" height="80">
         </div>
-        <table style="margin-top:11cm;">
-          <tbody>
-            <tr>
-              <td colspan="1" class="td-report-tags">&nbsp;</td>
-              <td colspan="2">${item.supplier_name || ""}</td>
-            </tr>
-          </tbody>
+        <table style="margin-top:10cm;">
+            <tbody>
+                <tr>
+                    <td colspan="1" class="td-report-tags">&nbsp;</td>
+                    <td colspan="2">${item.supplier_name || ""}</td>
+                </tr>
+            </tbody>
         </table>
-        <table style="margin-top:3cm;">
-          <tbody>
-            <tr>
-              <td colspan="1" class="td-report-tags">&nbsp;</td>
-              <td colspan="2">${dayjs(item.tag_date).format("DD/MM/YYYY")|| ""}</td>
-            </tr>
-          </tbody>
+        <table style="margin-top:3cm;margin-left: 40px;">
+            <tbody>
+                <tr>
+                    <td colspan="1" class="td-report-tags">&nbsp;</td>
+                    <td colspan="2" class="td-report-tags">${dayjs(item.tag_date).format("DD/MM/YYYY")|| ""}</td>
+                </tr>
+            </tbody>
         </table>
-      </div
-    `;
-
+    </div>`
             document.body.appendChild(tempDiv);
 
             const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true });
@@ -110,7 +178,7 @@ const GenerateTagPDF = async (data) => {
         const blobUrl = URL.createObjectURL(blob);
 
         window.open(blobUrl, "_blank"); // เปิด PDF ในแท็บใหม่
-        return { success: true, message: "Tag PDF generated successfully." };
+        return { success: true, message: "Tag PDF generated successfully."};
     } catch (error) {
         return {
             success: false, message: "Error generating tag PDF.", error: error
