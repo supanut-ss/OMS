@@ -3,17 +3,18 @@ import {
   Box,
   Typography,
   Button,
-  List,
-  ListItem,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
+  List,
+  ListItem,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import BSAlertSwal2 from "../components/BSAlertSwal2";
 /**
@@ -22,7 +23,7 @@ import BSAlertSwal2 from "../components/BSAlertSwal2";
  * @param {'single'|'multi'} [props.mode='multi'] - Allow single or multiple file selection
  * @param {string[]} [props.accept=['.xlsx', '.xls', 'image/*']] - Accepted file types
  * @param {string} [props.dialogTitle='Import File(s)'] - Dialog title
- * @param {string} [props.buttonLabel='Select File(s)'] - Select button label
+ * @param {string} [props.buttonLabel='Browse File(s)'] - Select button label
  * @param {function} [props.onImport] - Callback when import is clicked
  * @param {function} [props.beforeOpen] - Function to validate or confirm before opening dialog
  */
@@ -30,7 +31,7 @@ const BSImportFile = ({
   mode = "multi",
   accept = [".xlsx", ".xls", "image/*"],
   dialogTitle = "Import File(s)",
-  buttonLabel = "Select File(s)",
+  buttonLabel = "Browse File(s)",
   onImport,
   beforeOpen,
   ...otherProps
@@ -42,39 +43,25 @@ const BSImportFile = ({
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const thumbSize = useMediaQuery(theme.breakpoints.down("sm")) ? 32 : 40;
-
-  const handleButtonClick = () => {
-    fileInputRef.current.click();
-  };
 
   const handleFileChange = (event) => {
-    let files = Array.from(event.target.files);
-    if (mode === "single") {
-      setSelectedFiles(files.length > 1 ? [files[0]] : files);
-    } else {
-      // Prevent duplicates by name (optional)
-      const existingNames = selectedFiles.map((f) => f.name);
-      const newFiles = files.filter((f) => !existingNames.includes(f.name));
-      setSelectedFiles((prev) => [...prev, ...newFiles]);
-    }
+    const files = Array.from(event.target.files);
+    if (mode === "single") setSelectedFiles([files[0]]);
+    else setSelectedFiles(files);
   };
 
   const handleDrop = (event) => {
     event.preventDefault();
     setIsDragActive(false);
-    let files = Array.from(event.dataTransfer.files);
 
-    // Build a regex from accept prop for validation
-    const acceptPattern = accept
-      .map((type) =>
-        type.startsWith(".")
-          ? `\\${type}$`
-          : type.replace("*", ".*").replace("/", "\\/")
-      )
-      .join("|");
-    const acceptRegex = new RegExp(acceptPattern, "i");
+    const files = Array.from(event.dataTransfer.files);
 
+    if (files.length === 0) {
+      BSAlertSwal2.show("warning", "ไม่พบไฟล์ที่ลากเข้ามา");
+      return;
+    }
+
+    // ตรวจสอบชนิดไฟล์ตาม accept ที่กำหนด
     const validFiles = files.filter((file) =>
       accept.some((type) =>
         type.startsWith(".")
@@ -82,63 +69,48 @@ const BSImportFile = ({
           : file.type.match(type.replace("*", ".*"))
       )
     );
+
     const invalidFiles = files.filter((file) => !validFiles.includes(file));
 
     if (invalidFiles.length > 0) {
-      BSAlertSwal2.show(
-        "error",
-        `Some files are not allowed: ${invalidFiles
-          .map((f) => f.name)
-          .join(", ")}`
-      );
+      BSAlertSwal2.show("error", `รองรับเฉพาะไฟล์ ${accept.join(", ")}`);
+      return;
     }
 
+    if (validFiles.length === 0) {
+      return; // ถ้าไม่มีไฟล์ที่ถูกต้อง ไม่ต้อง set state
+    }
+
+    // จำกัดโหมด single/multi
     if (mode === "single") {
-      setSelectedFiles(validFiles.length > 1 ? [validFiles[0]] : validFiles);
+      setSelectedFiles([validFiles[0]]);
     } else {
-      const existingNames = selectedFiles.map((f) => f.name);
-      const newFiles = validFiles.filter(
-        (f) => !existingNames.includes(f.name)
-      );
-      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      setSelectedFiles((prev) => [...prev, ...validFiles]);
     }
   };
-  const handleDragOver = (event) => {
-    event.preventDefault();
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
     setIsDragActive(true);
   };
 
-  const handleDragLeave = (event) => {
-    event.preventDefault();
+  const handleDragLeave = (e) => {
+    e.preventDefault();
     setIsDragActive(false);
   };
 
   const handleOpen = async () => {
-    // ถ้ามีฟังก์ชัน beforeOpen ส่งเข้ามา ให้เรียกก่อน
-    if (beforeOpen) {
-      const result = await beforeOpen(); // รองรับ async ได้ด้วย
-      // ถ้า beforeOpen คืนค่า false หรือไม่ผ่าน ให้ return ไม่ต้องเปิด dialog
-      if (result === false) return;
-    }
-
-    // เปิด Dialog ถ้าผ่านการตรวจสอบ
+    if (beforeOpen && (await beforeOpen()) === false) return;
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
     setSelectedFiles([]);
-    setIsDragActive(false);
   };
 
   const handleImport = () => {
-    if (onImport) {
-      onImport(selectedFiles);
-    } else {
-      console.warn(
-        "Importing files: " + selectedFiles.map((f) => f.name).join(", ")
-      );
-    }
+    if (onImport) onImport(selectedFiles);
     handleClose();
   };
 
@@ -148,50 +120,71 @@ const BSImportFile = ({
 
   return (
     <>
-      <Button variant="contained" onClick={handleOpen} {...otherProps}>
-        {mode === "single" ? "CHOOSE FILE" : "CHOOSE FILES"}
+      <Button variant="contained" onClick={handleOpen}>
+        Import Products
       </Button>
 
-      {/* Use fullScreen on small devices for responsive dialog */}
       <Dialog
         open={open}
         onClose={handleClose}
-        maxWidth="sm"
         fullWidth
+        maxWidth="sm"
         fullScreen={fullScreen}
       >
-        <DialogTitle>{dialogTitle}</DialogTitle>
+        {/* Header */}
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            pb: 1,
+          }}
+        >
+          <Typography variant="h6">{dialogTitle}</Typography>
+          <IconButton onClick={handleClose}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        {/* Content */}
         <DialogContent>
           <Box
             sx={{
-              p: { xs: 2, sm: 3 },
-              border: "2px dashed #1976d2",
+              mt: 2,
+              p: 4,
+              border: "2px dashed",
               borderColor: isDragActive ? "primary.main" : "grey.400",
               borderRadius: 2,
               textAlign: "center",
-              backgroundColor: isDragActive ? "grey.100" : "inherit",
-              transition: "background-color 0.2s",
+              backgroundColor: isDragActive
+                ? "action.hover"
+                : "background.paper",
+              transition: "0.2s",
               position: "relative",
-              minHeight: { xs: 240, sm: 180 },
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
+              maxWidth: 500,
+              mx: "auto",
             }}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            {selectedFiles.length === 0 && (
-              <>
-                <CloudUploadIcon
-                  sx={{ fontSize: { xs: 44, sm: 48 }, color: "#1976d2", mb: 1 }}
-                />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Drag and drop files here, or click the button to select.
-                </Typography>
-              </>
-            )}
+            <CloudUploadIcon
+              sx={{ fontSize: 56, color: "primary.main", mb: 2 }}
+            />
+            <Typography variant="body1" fontWeight={500}>
+              Drag and drop files here,
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              or click the button to select.
+            </Typography>
+
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => fileInputRef.current.click()}
+            >
+              {buttonLabel}
+            </Button>
 
             <input
               type="file"
@@ -201,85 +194,70 @@ const BSImportFile = ({
               onChange={handleFileChange}
               style={{ display: "none" }}
             />
-
-            {selectedFiles.length > 0 && (
-              <Box sx={{ mt: 2, width: "100%" }}>
-                <List dense>
-                  {selectedFiles.map((file, idx) => (
-                    <ListItem
-                      key={idx}
-                      sx={{
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 1,
-                        py: { xs: 0.5, sm: 1 },
-                      }}
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          aria-label="delete"
-                          onClick={() => handleRemoveFile(idx)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      }
-                    >
-                      {file.type.startsWith("image/") ? (
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={file.name}
-                          style={{
-                            width: thumbSize,
-                            height: thumbSize,
-                            objectFit: "cover",
-                            marginRight: 8,
-                            borderRadius: 4,
-                            border: "1px solid #ccc",
-                          }}
-                          onLoad={(e) => URL.revokeObjectURL(e.target.src)}
-                        />
-                      ) : null}
-                      <Box
-                        sx={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          maxWidth: { xs: "60%", sm: "80%" },
-                        }}
-                      >
-                        {file.name}
-                      </Box>
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
           </Box>
+
+          {/* File info */}
+          {selectedFiles.length > 0 && (
+            <List sx={{ mt: 3, maxWidth: 500, mx: "auto" }}>
+              {selectedFiles.map((file, idx) => (
+                <ListItem
+                  key={idx}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    px: 2,
+                    py: 1,
+                    mb: 1,
+                  }}
+                >
+                  <Box>
+                    <Typography sx={{ fontSize: 16, fontWeight: 500 }}>
+                      {file.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    color="error"
+                    onClick={() => handleRemoveFile(idx)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
         </DialogContent>
 
-        <DialogActions sx={{ flexWrap: "wrap", gap: 1 }}>
-          <Box
-            sx={{
-              flex: fullScreen ? "0 1 100%" : 1,
-              display: "flex",
-              justifyContent: fullScreen ? "center" : "flex-start",
-            }}
+        {/* ⚙️ ปุ่มล่างสุด */}
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Button
+            onClick={handleClose}
+            variant="outlined"
+            sx={{ flex: 1, mr: 1 }}
           >
-            <Button variant="contained" onClick={handleButtonClick}>
-              {buttonLabel}
-            </Button>
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button
-              onClick={handleImport}
-              variant="contained"
-              disabled={selectedFiles.length === 0}
-            >
-              Import
-            </Button>
-          </Box>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleImport}
+            variant="contained"
+            color="primary"
+            sx={{ flex: 1 }}
+          >
+            Import
+          </Button>
         </DialogActions>
       </Dialog>
     </>

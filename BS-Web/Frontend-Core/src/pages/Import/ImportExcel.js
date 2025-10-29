@@ -169,7 +169,7 @@ const ImportExcel = () => {
           mode="single"
           accept={[".xlsx", ".xls"]}
           dialogTitle="Import Excel"
-          buttonLabel="Choose Excel File"
+          buttonLabel="Browse Excel File"
           onImport={handleImport}
           beforeOpen={handleBeforeOpen}
         />
