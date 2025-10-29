@@ -1195,21 +1195,24 @@ namespace ApiCore.Services.Implementation
                     }
                 }
 
-                // Find the result set with the most columns (likely the data)
+                // Find the result set with actual data (not metadata, not single-column count)
                 var dataResultSet = resultSets
                     .Where(rs => rs.Any()) // Must have data
-                    .OrderByDescending(rs => rs.First().Keys.Count) // Most columns first
-                    .FirstOrDefault();
+                    .Where(rs => rs.First().Keys.Count > 1) // Must have more than 1 column (not just count)
+                    .Where(rs => !rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase) &&
+                                !rs.First().Keys.Contains("DATA_TYPE", StringComparer.OrdinalIgnoreCase)) // Not metadata
+                    .FirstOrDefault(); // Take the FIRST result set that matches criteria
 
                 if (dataResultSet != null)
                 {
                     results = dataResultSet;
-                    _logger.LogInformation("✅ SERVICE: Selected result set with {ColumnCount} columns and {RowCount} rows",
+                    _logger.LogInformation("✅ SERVICE: Selected DATA result set with {ColumnCount} columns and {RowCount} rows (not metadata, not count)",
                         results.First().Keys.Count, results.Count);
                 }
                 else
                 {
-                    _logger.LogWarning("⚠️ SERVICE: NO DATA RESULT SET found from SP!");
+                    _logger.LogWarning("⚠️ SERVICE: NO DATA RESULT SET found from SP! Available result sets: {ResultSetInfo}",
+                        string.Join(", ", resultSets.Select((rs, i) => $"Set{i}:{rs.Count}rows,{(rs.Any() ? rs.First().Keys.Count : 0)}cols")));
                 }
 
                 // Try to find total count from any single-value result set
