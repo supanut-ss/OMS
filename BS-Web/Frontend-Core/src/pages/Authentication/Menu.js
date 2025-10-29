@@ -34,7 +34,7 @@ const MenuPage = () => {
             {
               Column: "platform",
               Display: "display_member",
-              Value: "value_member",
+              Value: "display_member",
               Default: "--- Select Platform ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
