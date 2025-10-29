@@ -3652,7 +3652,7 @@ const BSDataGrid = forwardRef(
           ) // Skip hidden and GUID/audit columns
           .map((col) => {
             const columnName = col.columnName;
-            const isRequired = isFieldRequired(columnName, metadata);
+            //const isRequired = isFieldRequired(columnName, metadata);
             const comboConfig = comboBoxConfig[columnName];
 
             const baseColumn = {
