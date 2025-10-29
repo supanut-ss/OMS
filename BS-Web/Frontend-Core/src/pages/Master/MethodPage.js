@@ -40,6 +40,7 @@ const MethodPage = () => {
                     bsAllowEdit={true}
                     bsAllowDelete={true}
                     bsPageSize={25}
+                    bsFilterMode="client"
                 />
             </Paper>
         </>
