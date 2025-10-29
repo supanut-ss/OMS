@@ -1270,7 +1270,13 @@ const BSDataGrid = ({
             ...bsStoredProcedureParams,
             // Add any additional parameters here
           },
-          userId: user?.id || user?.userId || user?.user_id || "system",
+          userId:
+            user?.UserId ||
+            user?.UserId ||
+            user?.id ||
+            user?.userId ||
+            user?.user_id ||
+            "system",
         };
 
         const result = await executeEnhancedStoredProcedure(request);
@@ -2201,7 +2207,12 @@ const BSDataGrid = ({
                 ...deviceCompatParams, // Add device compatibility parameters
                 ...bsStoredProcedureParams,
               },
-              userId: user?.id || user?.userId || user?.user_id || "system",
+              userId:
+                user?.UserId ||
+                user?.id ||
+                user?.userId ||
+                user?.user_id ||
+                "system",
             };
 
             const result = await executeEnhancedStoredProcedure(deleteRequest);
@@ -2383,7 +2394,12 @@ const BSDataGrid = ({
               ...spSaveData,
               ...bsStoredProcedureParams,
             },
-            userId: user?.id || user?.userId || user?.user_id || "system",
+            userId:
+              user?.UserId ||
+              user?.id ||
+              user?.userId ||
+              user?.user_id ||
+              "system",
           };
 
           const result = await executeEnhancedStoredProcedure(insertRequest);
@@ -2482,7 +2498,12 @@ const BSDataGrid = ({
               ...spFormData,
               ...bsStoredProcedureParams,
             },
-            userId: user?.id || user?.userId || user?.user_id || "system",
+            userId:
+              user?.UserId ||
+              user?.id ||
+              user?.userId ||
+              user?.user_id ||
+              "system",
           };
 
           const result = await executeEnhancedStoredProcedure(updateRequest);
