@@ -1084,7 +1084,7 @@ namespace ApiCore.Services.Implementation
             {
                 _logger.LogInformation("🔵 SERVICE: Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
                     request.ProcedureName, request.SchemaName, request.Operation);
-                
+
                 _logger.LogInformation("📊 SERVICE: Request details - Page: {Page}, PageSize: {PageSize}, HasParameters: {HasParams}, HasData: {HasData}",
                     request.Page, request.PageSize, request.Parameters?.Count ?? 0, request.Data != null);
 
@@ -1180,7 +1180,7 @@ namespace ApiCore.Services.Implementation
                 } while (await reader.NextResultAsync());
 
                 _logger.LogInformation("📦 SERVICE: Read {ResultSetCount} result sets from SP", resultSets.Count);
-                
+
                 for (int i = 0; i < resultSets.Count; i++)
                 {
                     var rs = resultSets[i];
@@ -1251,11 +1251,11 @@ namespace ApiCore.Services.Implementation
 
                 // 🔍 DEBUG: Detect metadata from result set
                 DynamicTableMetadata? metadata = null;
-                
+
                 if (results.Any())
                 {
                     _logger.LogInformation("🔍 METADATA DETECTION - Starting for Enhanced SP: {ProcedureName}", request.ProcedureName);
-                    
+
                     var firstRow = results.First();
                     var columns = new List<DynamicColumnInfo>();
                     var detectedPrimaryKeys = new List<string>();
@@ -1265,7 +1265,7 @@ namespace ApiCore.Services.Implementation
                     {
                         var columnName = kvp.Key;
                         var value = kvp.Value;
-                        
+
                         // Detect data type from value
                         string dataType = "nvarchar";
                         if (value != null)
@@ -1294,7 +1294,7 @@ namespace ApiCore.Services.Implementation
                         };
 
                         columns.Add(columnInfo);
-                        
+
                         _logger.LogDebug("📋 Column detected: {ColumnName} ({DataType})", columnName, dataType);
                     }
 
@@ -1309,15 +1309,15 @@ namespace ApiCore.Services.Implementation
 
                     foreach (var pattern in primaryKeyPatterns)
                     {
-                        var matchedColumn = columns.FirstOrDefault(c => 
+                        var matchedColumn = columns.FirstOrDefault(c =>
                             c.ColumnName.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
                             c.ColumnName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase));
-                            
+
                         if (matchedColumn != null)
                         {
                             matchedColumn.IsPrimaryKey = true;
                             detectedPrimaryKeys.Add(matchedColumn.ColumnName);
-                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED: {ColumnName} (pattern: {Pattern})", 
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED: {ColumnName} (pattern: {Pattern})",
                                 matchedColumn.ColumnName, pattern);
                             break; // Use first match
                         }
@@ -1325,7 +1325,7 @@ namespace ApiCore.Services.Implementation
 
                     if (!detectedPrimaryKeys.Any())
                     {
-                        _logger.LogWarning("⚠️ NO PRIMARY KEY DETECTED in Enhanced SP result. Available columns: {Columns}", 
+                        _logger.LogWarning("⚠️ NO PRIMARY KEY DETECTED in Enhanced SP result. Available columns: {Columns}",
                             string.Join(", ", columns.Select(c => c.ColumnName)));
                     }
 
