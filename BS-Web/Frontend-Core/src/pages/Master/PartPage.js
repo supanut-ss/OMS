@@ -1,13 +1,5 @@
-import React, { useState } from "react";
-import {
-  Box,
-  Typography,
-  Paper,
-  Divider,
-  Button,
-  TextField,
-  Stack,
-} from "@mui/material";
+import React from "react";
+import { Typography, Box, Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const PartPage = () => {
@@ -22,7 +14,8 @@ const PartPage = () => {
         bsStoredProcedure="usp_tbm_part"
         bsStoredProcedureSchema="ams"
         bsShowRowNumber={true}
-        // bsCols="part_no,part_name,supplier_name,unit_price,snp,area_code,area_name,qty,create_by,create_date,update_by,update_date"
+        showAdd={false}
+        bsCols="part_no,part_name,supplier_name,unit_price,snp,area_code,area_name,qty,create_by,create_date,update_by,update_date"
         // bsStoredProcedureParams={
         //     {
         // เพิ่มพารามิเตอร์เพิ่มเติมได้ตามต้องการ
@@ -32,11 +25,27 @@ const PartPage = () => {
         // }
         // Standard Configuration
         bsLocale="en"
-        // bsAllowAdd={true}
+        bsAllowAdd={true}
         bsAllowEdit={true}
         bsAllowDelete={true}
         bsPageSize={25}
+        bsFilterMode="client"
       />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "flex-end", // ✅ ชิดขวาสุด
+          textAlign: "right",
+          px: 2,
+          fontWeight: "bold",
+        }}
+      >
+        <Box>
+          <Typography variant="body1">
+            Total :{/* {totals.qty.toLocaleString()} */}
+          </Typography>
+        </Box>
+      </Box>
     </Paper>
   );
 };
