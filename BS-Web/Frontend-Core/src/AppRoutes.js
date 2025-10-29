@@ -73,7 +73,7 @@ export default function AppRoutes() {
         <Route path="menu" element={<MenuPage />} />
         <Route path="user_logon" element={<UserLogOnPage />} />
         <Route path="count_tag" element={<CountTag lang={lang} />} />
-        <Route path="count_record" element={<CountReconcile lang={lang} />} />
+        <Route path="count_reconcile" element={<CountReconcile lang={lang} />} />
         <Route path="part_master" element={<PartPage />} />
         <Route path="sub_master" element={<SubPage />} />
         <Route path="tag_master" element={<TagPage />} />
