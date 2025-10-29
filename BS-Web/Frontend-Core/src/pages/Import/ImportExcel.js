@@ -62,17 +62,22 @@ const ImportExcel = () => {
         return;
       }
       // ใช้ anchor trick เพื่อให้ browser download
-      const fileName = window.location.origin + "" + Config.BASE_URL + "" + filePath || "template.xlsx";
+      const fileName =
+        window.location.origin + "" + Config.BASE_URL + "" + filePath ||
+        "template.xlsx";
       /// สร้างลิงก์ดาวน์โหลดไฟล์
       const link = document.createElement("a");
       link.href = fileName;
-      link.setAttribute("download", fileName.split("/").pop() || "template.xlsx");
+      link.setAttribute(
+        "download",
+        fileName.split("/").pop() || "template.xlsx"
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(fileName);
     } catch (err) {
-      BSAlertSwal2.show("error", "Upload error:", err);
+      BSAlertSwal2.show("error", "Download error:", err);
     }
   };
   const handleBeforeOpen = () => {

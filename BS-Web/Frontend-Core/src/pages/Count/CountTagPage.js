@@ -6,7 +6,7 @@ import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import secureStorage from "../../utils/SecureStorage";
 import { useResource } from "../../hooks/useResource";
-const CountTag = () => {
+const CountTag = (props) => {
     const userInfo = secureStorage.get("userInfo");
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
@@ -48,14 +48,6 @@ const CountTag = () => {
             });
         }
     }
-    const { getResource } = useResource();
-    const CallResource = async () => {
-        let resource = await getResource("t_com_user", "email_address");
-        console.log("Resource fetched:", resource);
-    }
-    CallResource();
-
-
     return <Box>
         <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -99,7 +91,7 @@ const CountTag = () => {
                     </Grid>
                 </Box>
                 <BSDataGrid
-                    bsLocale="th"
+                    bsLocale={props.lang}
                     bsPreObj="ams"
                     bsObj="tbt_count_tag"
                     bsCols="

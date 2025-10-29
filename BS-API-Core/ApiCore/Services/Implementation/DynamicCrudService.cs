@@ -1249,12 +1249,114 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("Enhanced Stored Procedure executed successfully in {ElapsedMs}ms. Returned {RowCount} rows",
                     stopwatch.ElapsedMilliseconds, results.Count);
 
-                // 🔍 DEBUG: Detect metadata from result set
+                // 🔍 DEBUG: Enhanced metadata detection from SP result sets
                 DynamicTableMetadata? metadata = null;
 
-                if (results.Any())
+                _logger.LogInformation("🔍 ENHANCED METADATA DETECTION - Starting for Enhanced SP: {ProcedureName}", request.ProcedureName);
+
+                // Look for metadata in Result Set 0 (columns with COLUMN_NAME, DATA_TYPE, etc.)
+                var metadataResultSet = resultSets.FirstOrDefault(rs => 
+                    rs.Any() && rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase));
+
+                if (metadataResultSet != null)
                 {
-                    _logger.LogInformation("🔍 METADATA DETECTION - Starting for Enhanced SP: {ProcedureName}", request.ProcedureName);
+                    _logger.LogInformation("� METADATA RESULT SET FOUND: {RowCount} columns defined", metadataResultSet.Count);
+                    
+                    var columns = new List<DynamicColumnInfo>();
+                    var detectedPrimaryKeys = new List<string>();
+
+                    foreach (var metaRow in metadataResultSet)
+                    {
+                        var columnName = metaRow.GetValueOrDefault("COLUMN_NAME")?.ToString() ?? "";
+                        var dataType = metaRow.GetValueOrDefault("DATA_TYPE")?.ToString() ?? "nvarchar";
+                        var isNullableStr = metaRow.GetValueOrDefault("IS_NULLABLE")?.ToString() ?? "YES";
+                        var isPrimaryKeyObj = metaRow.GetValueOrDefault("IS_PRIMARY_KEY");
+                        var isIdentityObj = metaRow.GetValueOrDefault("IS_IDENTITY");
+                        var maxLengthObj = metaRow.GetValueOrDefault("CHARACTER_MAXIMUM_LENGTH");
+                        var columnDefaultObj = metaRow.GetValueOrDefault("COLUMN_DEFAULT");
+                        var ordinalPositionObj = metaRow.GetValueOrDefault("ORDINAL_POSITION");
+
+                        // Parse nullable
+                        bool isNullable = isNullableStr.Equals("YES", StringComparison.OrdinalIgnoreCase);
+
+                        // Parse primary key
+                        bool isPrimaryKey = false;
+                        if (isPrimaryKeyObj != null)
+                        {
+                            if (isPrimaryKeyObj is bool boolVal)
+                                isPrimaryKey = boolVal;
+                            else if (int.TryParse(isPrimaryKeyObj.ToString(), out int intVal))
+                                isPrimaryKey = intVal == 1;
+                            else if (isPrimaryKeyObj.ToString().Equals("1", StringComparison.OrdinalIgnoreCase) ||
+                                     isPrimaryKeyObj.ToString().Equals("true", StringComparison.OrdinalIgnoreCase))
+                                isPrimaryKey = true;
+                        }
+
+                        // Parse identity
+                        bool isIdentity = false;
+                        if (isIdentityObj != null)
+                        {
+                            if (isIdentityObj is bool boolVal)
+                                isIdentity = boolVal;
+                            else if (int.TryParse(isIdentityObj.ToString(), out int intVal))
+                                isIdentity = intVal == 1;
+                            else if (isIdentityObj.ToString().Equals("1", StringComparison.OrdinalIgnoreCase) ||
+                                     isIdentityObj.ToString().Equals("true", StringComparison.OrdinalIgnoreCase))
+                                isIdentity = true;
+                        }
+
+                        // Parse max length
+                        int? maxLength = null;
+                        if (maxLengthObj != null && int.TryParse(maxLengthObj.ToString(), out int maxLenVal))
+                            maxLength = maxLenVal;
+
+                        // Parse ordinal position
+                        int ordinalPosition = 0;
+                        if (ordinalPositionObj != null && int.TryParse(ordinalPositionObj.ToString(), out int ordVal))
+                            ordinalPosition = ordVal;
+
+                        var columnInfo = new DynamicColumnInfo
+                        {
+                            ColumnName = columnName,
+                            DataType = dataType,
+                            IsNullable = isNullable,
+                            IsPrimaryKey = isPrimaryKey,
+                            IsIdentity = isIdentity,
+                            MaxLength = maxLength,
+                            DefaultValue = columnDefaultObj?.ToString(),
+                            OrdinalPosition = ordinalPosition
+                        };
+
+                        columns.Add(columnInfo);
+
+                        if (isPrimaryKey)
+                        {
+                            detectedPrimaryKeys.Add(columnName);
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED FROM METADATA: {ColumnName}", columnName);
+                        }
+
+                        _logger.LogDebug("📋 Column from metadata: {ColumnName} ({DataType}) - PK: {IsPK}, Identity: {IsIdentity}, Nullable: {IsNullable}",
+                            columnName, dataType, isPrimaryKey, isIdentity, isNullable);
+                    }
+
+                    metadata = new DynamicTableMetadata
+                    {
+                        TableName = request.ProcedureName,
+                        SchemaName = request.SchemaName,
+                        TableType = DynamicTableType.StoredProcedure,
+                        Columns = columns.OrderBy(c => c.OrdinalPosition).ToList(),
+                        PrimaryKeys = detectedPrimaryKeys,
+                        TotalRows = results.Count,
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    _logger.LogInformation("✅ ENHANCED METADATA CREATED from SP metadata: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                        metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
+                }
+                else if (results.Any())
+                {
+                    // Fallback: Detect metadata from data result set (old method)
+                    _logger.LogInformation("⚠️ No metadata result set found, falling back to data-based detection");
 
                     var firstRow = results.First();
                     var columns = new List<DynamicColumnInfo>();
@@ -1294,11 +1396,10 @@ namespace ApiCore.Services.Implementation
                         };
 
                         columns.Add(columnInfo);
-
-                        _logger.LogDebug("📋 Column detected: {ColumnName} ({DataType})", columnName, dataType);
+                        _logger.LogDebug("📋 Column detected from data: {ColumnName} ({DataType})", columnName, dataType);
                     }
 
-                    // 🔑 Detect primary key from column names
+                    // 🔑 Detect primary key from column names (fallback method)
                     var primaryKeyPatterns = new[]
                     {
                         "id", "ID", "Id",
@@ -1317,7 +1418,7 @@ namespace ApiCore.Services.Implementation
                         {
                             matchedColumn.IsPrimaryKey = true;
                             detectedPrimaryKeys.Add(matchedColumn.ColumnName);
-                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED: {ColumnName} (pattern: {Pattern})",
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED from pattern: {ColumnName} (pattern: {Pattern})",
                                 matchedColumn.ColumnName, pattern);
                             break; // Use first match
                         }
@@ -1340,7 +1441,7 @@ namespace ApiCore.Services.Implementation
                         FetchedAt = DateTime.UtcNow
                     };
 
-                    _logger.LogInformation("✅ METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                    _logger.LogInformation("✅ FALLBACK METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
                         metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
                 }
                 else

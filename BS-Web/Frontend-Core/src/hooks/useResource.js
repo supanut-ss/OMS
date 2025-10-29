@@ -2,14 +2,10 @@ import secureStorage from "../utils/SecureStorage";
 
 export const useResource = () => {
 
-    const getResource = async (resource_group, resource_name) => {
+    const getResource = (resourceData, resource_name) => {
         let response = null;
-        const resourceData = secureStorage.get("resource") || null;
-        const lang = secureStorage.get("lang");
         if (resourceData) {
-            let data = {};
-            data = resourceData.find(r => r.resource_group === resource_group && r.resource_name === resource_name);
-            response = data ? lang === "EN" ? data.resource_en : lang === "TH" ? data.resource_th : data.resource_other : null;
+            response = resourceData?.find(r => r.resource_name === resource_name)?.resource_value ?? resource_name;
         }
         return response;
     }
