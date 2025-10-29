@@ -54,7 +54,7 @@ const MenuPage = () => {
           ]}
           onCheckBoxSelected={(rows) => {
             console.log("Selected rows:", rows);
-            setSelectedRows(rows);
+            //setSelectedRows(rows);
           }}
           //   onEdit={(row) => console.log("Edit:", row)}
           //   onDelete={(id) => console.log("Delete:", id)}
