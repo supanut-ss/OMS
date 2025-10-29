@@ -1082,8 +1082,11 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                _logger.LogInformation("Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
+                _logger.LogInformation("🔵 SERVICE: Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
                     request.ProcedureName, request.SchemaName, request.Operation);
+                
+                _logger.LogInformation("📊 SERVICE: Request details - Page: {Page}, PageSize: {PageSize}, HasParameters: {HasParams}, HasData: {HasData}",
+                    request.Page, request.PageSize, request.Parameters?.Count ?? 0, request.Data != null);
 
                 using var connection = _connectionFactory.CreateConnection();
                 await connection.OpenAsync();
@@ -1176,6 +1179,22 @@ namespace ApiCore.Services.Implementation
 
                 } while (await reader.NextResultAsync());
 
+                _logger.LogInformation("📦 SERVICE: Read {ResultSetCount} result sets from SP", resultSets.Count);
+                
+                for (int i = 0; i < resultSets.Count; i++)
+                {
+                    var rs = resultSets[i];
+                    if (rs.Any())
+                    {
+                        _logger.LogInformation("   - Result Set {Index}: {RowCount} rows, {ColumnCount} columns, Columns: [{Columns}]",
+                            i, rs.Count, rs.First().Keys.Count, string.Join(", ", rs.First().Keys));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("   - Result Set {Index}: EMPTY", i);
+                    }
+                }
+
                 // Find the result set with the most columns (likely the data)
                 var dataResultSet = resultSets
                     .Where(rs => rs.Any()) // Must have data
@@ -1185,8 +1204,12 @@ namespace ApiCore.Services.Implementation
                 if (dataResultSet != null)
                 {
                     results = dataResultSet;
-                    _logger.LogInformation("Selected result set with {ColumnCount} columns and {RowCount} rows",
+                    _logger.LogInformation("✅ SERVICE: Selected result set with {ColumnCount} columns and {RowCount} rows",
                         results.First().Keys.Count, results.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SERVICE: NO DATA RESULT SET found from SP!");
                 }
 
                 // Try to find total count from any single-value result set
@@ -1226,6 +1249,105 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("Enhanced Stored Procedure executed successfully in {ElapsedMs}ms. Returned {RowCount} rows",
                     stopwatch.ElapsedMilliseconds, results.Count);
 
+                // 🔍 DEBUG: Detect metadata from result set
+                DynamicTableMetadata? metadata = null;
+                
+                if (results.Any())
+                {
+                    _logger.LogInformation("🔍 METADATA DETECTION - Starting for Enhanced SP: {ProcedureName}", request.ProcedureName);
+                    
+                    var firstRow = results.First();
+                    var columns = new List<DynamicColumnInfo>();
+                    var detectedPrimaryKeys = new List<string>();
+
+                    // Build column metadata from result set
+                    foreach (var kvp in firstRow)
+                    {
+                        var columnName = kvp.Key;
+                        var value = kvp.Value;
+                        
+                        // Detect data type from value
+                        string dataType = "nvarchar";
+                        if (value != null)
+                        {
+                            var type = value.GetType();
+                            dataType = type.Name switch
+                            {
+                                "Int32" => "int",
+                                "Int64" => "bigint",
+                                "Decimal" => "decimal",
+                                "Double" => "float",
+                                "Boolean" => "bit",
+                                "DateTime" => "datetime",
+                                "String" => "nvarchar",
+                                _ => "nvarchar"
+                            };
+                        }
+
+                        var columnInfo = new DynamicColumnInfo
+                        {
+                            ColumnName = columnName,
+                            DataType = dataType,
+                            IsNullable = true,
+                            IsPrimaryKey = false,
+                            IsIdentity = false
+                        };
+
+                        columns.Add(columnInfo);
+                        
+                        _logger.LogDebug("📋 Column detected: {ColumnName} ({DataType})", columnName, dataType);
+                    }
+
+                    // 🔑 Detect primary key from column names
+                    var primaryKeyPatterns = new[]
+                    {
+                        "id", "ID", "Id",
+                        "_id", "_ID", "_Id",
+                        "part_id", "PartId", "PartID",
+                        "customer_id", "CustomerId", "CustomerID"
+                    };
+
+                    foreach (var pattern in primaryKeyPatterns)
+                    {
+                        var matchedColumn = columns.FirstOrDefault(c => 
+                            c.ColumnName.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
+                            c.ColumnName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase));
+                            
+                        if (matchedColumn != null)
+                        {
+                            matchedColumn.IsPrimaryKey = true;
+                            detectedPrimaryKeys.Add(matchedColumn.ColumnName);
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED: {ColumnName} (pattern: {Pattern})", 
+                                matchedColumn.ColumnName, pattern);
+                            break; // Use first match
+                        }
+                    }
+
+                    if (!detectedPrimaryKeys.Any())
+                    {
+                        _logger.LogWarning("⚠️ NO PRIMARY KEY DETECTED in Enhanced SP result. Available columns: {Columns}", 
+                            string.Join(", ", columns.Select(c => c.ColumnName)));
+                    }
+
+                    metadata = new DynamicTableMetadata
+                    {
+                        TableName = request.ProcedureName,
+                        SchemaName = request.SchemaName,
+                        TableType = DynamicTableType.StoredProcedure,
+                        Columns = columns,
+                        PrimaryKeys = detectedPrimaryKeys,
+                        TotalRows = results.Count,
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    _logger.LogInformation("✅ METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                        metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ NO DATA returned from Enhanced SP - cannot detect metadata");
+                }
+
                 return new EnhancedStoredProcedureResponse
                 {
                     Success = true,
@@ -1233,7 +1355,8 @@ namespace ApiCore.Services.Implementation
                     RowCount = totalCount > 0 ? totalCount : results.Count,
                     Message = message,
                     Operation = operation,
-                    ExecutionTime = stopwatch.ElapsedMilliseconds
+                    ExecutionTime = stopwatch.ElapsedMilliseconds,
+                    Metadata = metadata // 🔥 ADD METADATA TO RESPONSE
                 };
             }
             catch (Exception ex)

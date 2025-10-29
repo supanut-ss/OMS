@@ -714,13 +714,31 @@ namespace ApiCore.Controllers
         {
             try
             {
+                _logger.LogInformation("🔵 CONTROLLER: Executing Enhanced SP: {ProcedureName}.{SchemaName}, Operation: {Operation}",
+                    request.ProcedureName, request.SchemaName, request.Operation);
+
                 var result = await _dynamicService.ExecuteEnhancedStoredProcedureAsync(request);
+
+                // 🔍 DEBUG: Log response details
+                _logger.LogInformation("✅ CONTROLLER: Enhanced SP executed - Success: {Success}, RowCount: {RowCount}, HasMetadata: {HasMetadata}",
+                    result.Success, result.RowCount, result.Metadata != null);
+
+                if (result.Metadata != null)
+                {
+                    _logger.LogInformation("📋 CONTROLLER: Metadata included - Columns: {ColumnCount}, Primary Keys: [{PrimaryKeys}]",
+                        result.Metadata.Columns?.Count ?? 0,
+                        result.Metadata.PrimaryKeys != null ? string.Join(", ", result.Metadata.PrimaryKeys) : "NONE");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ CONTROLLER: NO METADATA in response!");
+                }
 
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing enhanced stored procedure {ProcedureName}", request.ProcedureName);
+                _logger.LogError(ex, "❌ CONTROLLER ERROR: Enhanced stored procedure {ProcedureName} failed", request.ProcedureName);
                 return BadRequest(new { message = $"Error executing enhanced stored procedure: {ex.Message}" });
             }
         }
