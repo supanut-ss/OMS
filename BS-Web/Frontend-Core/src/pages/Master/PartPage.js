@@ -29,6 +29,7 @@ const PartPage = () => {
         bsAllowEdit={true}
         bsAllowDelete={true}
         bsPageSize={25}
+        bsFilterMode="client"
       />
       <Box
         sx={{
@@ -41,8 +42,7 @@ const PartPage = () => {
       >
         <Box>
           <Typography variant="body1">
-            Total :
-            {/* {totals.qty.toLocaleString()} */}
+            Total :{/* {totals.qty.toLocaleString()} */}
           </Typography>
         </Box>
       </Box>

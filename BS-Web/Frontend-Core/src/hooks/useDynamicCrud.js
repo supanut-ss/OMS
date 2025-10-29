@@ -713,9 +713,30 @@ export const useDynamicCrud = (tableName) => {
         tokenPreview: token ? token.substring(0, 20) + "..." : "NO TOKEN",
       });
 
+      // Fix: Ensure FilterModel items have string IDs and clean structure
+      let cleanedRequest = { ...request };
+
+      if (cleanedRequest.filterModel && cleanedRequest.filterModel.items) {
+        cleanedRequest.filterModel.items = cleanedRequest.filterModel.items.map(
+          (item) => ({
+            field: item.field,
+            operator: item.operator,
+            value: item.value,
+            id: item.id ? String(item.id) : undefined, // Convert number ID to string
+          })
+        );
+
+        // Remove any extra properties like fromInput
+        cleanedRequest.filterModel.items.forEach((item) => {
+          delete item.fromInput;
+        });
+      }
+
+      Logger.log("🔧 Cleaned Enhanced SP request:", cleanedRequest);
+
       const response = await AxiosMaster.post(
         "/dynamic/enhanced-procedure",
-        request
+        cleanedRequest
       );
       Logger.log(
         "✅ Enhanced Stored Procedure executed successfully:",
