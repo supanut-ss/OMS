@@ -1,5 +1,286 @@
 USE [AMS_KPMT_COUNT_TAG]
 GO
+
+/****** Object:  StoredProcedure [ams].[usp_tbm_method]    Script Date: 29/10/2025 17:20:00 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE [ams].[usp_tbm_method]
+    -- Operation parameters
+    @Operation NVARCHAR(10) = 'SELECT',
+    -- 'SELECT', 'INSERT', 'UPDATE', 'DELETE'
+
+    -- Pagination parameters (for SELECT)
+    @Page INT = 1,
+    @PageSize INT = 25,
+    @OrderBy NVARCHAR(500) = 'method_id ASC',
+    @FilterModel NVARCHAR(MAX) = NULL,
+    @QuickFilter NVARCHAR(255) = NULL,
+    -- Quick search across multiple fields
+
+    -- Method data parameters (for INSERT/UPDATE/DELETE)
+    @MethodId INT = NULL,
+    @Method NVARCHAR(100) = NULL,
+
+    -- Audit parameters
+    @UserId VARCHAR(50) = 'system',
+
+    -- Output parameters
+    @OutputRowCount INT OUTPUT,
+    @OutputMessage NVARCHAR(4000) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Initialize output parameters
+    SET @OutputRowCount = 0;
+    SET @OutputMessage = '';
+
+    BEGIN TRY
+        -- ==========================================
+        -- SELECT Operation with Advanced Filtering
+        -- ==========================================
+        IF @Operation = 'SELECT'
+        BEGIN
+        DECLARE @SQL NVARCHAR(MAX);
+        DECLARE @CountSQL NVARCHAR(MAX);
+        DECLARE @WhereClause NVARCHAR(MAX) = ' WHERE 1=1';
+        DECLARE @OrderByClause NVARCHAR(500) = ISNULL(@OrderBy, 'method_id ASC');
+        DECLARE @Offset INT = (@Page - 1) * @PageSize;
+
+        -- Process FilterModel JSON from Frontend (Compatible with older SQL Server versions)
+        IF @FilterModel IS NOT NULL AND @FilterModel != ''
+            BEGIN
+            -- Debug: Print FilterModel
+            PRINT 'FilterModel received: ' + @FilterModel;
+
+            -- Simple JSON parsing for FilterModel without OPENJSON
+            DECLARE @FieldName NVARCHAR(100);
+            DECLARE @Operator NVARCHAR(50);
+            DECLARE @FilterValue NVARCHAR(500);
+
+            -- Extract first filter item from Items array using string manipulation
+            -- Look for Items array first, then extract the first item
+            IF CHARINDEX('"Items":[{', @FilterModel) > 0
+                BEGIN
+                DECLARE @StartPos INT, @EndPos INT;
+                DECLARE @FilterConditions NVARCHAR(MAX) = '';
+                DECLARE @ItemsStart INT;
+                DECLARE @FirstItem NVARCHAR(MAX);
+
+                -- Find the start of the first item in Items array
+                SET @ItemsStart = CHARINDEX('"Items":[{', @FilterModel) + 10;
+                -- Skip '"Items":[{'
+                SET @EndPos = CHARINDEX('}]', @FilterModel, @ItemsStart);
+                -- Find end of first item
+
+                -- Extract the first item content
+                SET @FirstItem = SUBSTRING(@FilterModel, @ItemsStart, @EndPos - @ItemsStart);
+                PRINT 'First Item extracted: ' + ISNULL(@FirstItem, 'NULL');
+
+                -- Extract Field name
+                SET @StartPos = CHARINDEX('"Field":"', @FirstItem);
+                IF @StartPos > 0
+                    BEGIN
+                    SET @StartPos = @StartPos + 8;
+                    -- Skip '"Field":"'
+                    SET @EndPos = CHARINDEX('"', @FirstItem, @StartPos);
+                    SET @FieldName = SUBSTRING(@FirstItem, @StartPos, @EndPos - @StartPos);
+                    PRINT 'Extracted Field: ' + ISNULL(@FieldName, 'NULL');
+                END
+
+                -- Extract Operator
+                SET @StartPos = CHARINDEX('"Operator":"', @FirstItem);
+                IF @StartPos > 0
+                    BEGIN
+                    SET @StartPos = @StartPos + 12;
+                    -- Skip '"Operator":"'
+                    SET @EndPos = CHARINDEX('"', @FirstItem, @StartPos);
+                    SET @Operator = SUBSTRING(@FirstItem, @StartPos, @EndPos - @StartPos);
+                    PRINT 'Extracted Operator: ' + ISNULL(@Operator, 'NULL');
+                END
+
+                -- Extract Value
+                SET @StartPos = CHARINDEX('"Value":"', @FirstItem);
+                IF @StartPos > 0
+                    BEGIN
+                    SET @StartPos = @StartPos + 9;
+                    -- Skip '"Value":"'
+                    SET @EndPos = CHARINDEX('"', @FirstItem, @StartPos);
+                    SET @FilterValue = SUBSTRING(@FirstItem, @StartPos, @EndPos - @StartPos);
+                    PRINT 'Extracted Value: ' + ISNULL(@FilterValue, 'NULL');
+                END
+
+                -- Validate field name against tbm_method table columns
+                IF @FieldName IN ('method_id', 'method', 'create_by', 'create_date', 'update_by', 'update_date')
+                    BEGIN
+                    -- Apply filter based on operator
+                    IF @Operator = 'contains'
+                            SET @FilterConditions = '[' + @FieldName + '] LIKE ''%' + REPLACE(@FilterValue, '''', '''''') + '%''';
+                        ELSE IF @Operator = 'equals'
+                            SET @FilterConditions = '[' + @FieldName + '] = ''' + REPLACE(@FilterValue, '''', '''''') + '''';
+                        ELSE IF @Operator = 'startsWith'
+                            SET @FilterConditions = '[' + @FieldName + '] LIKE ''' + REPLACE(@FilterValue, '''', '''''') + '%''';
+                        ELSE IF @Operator = 'endsWith'
+                            SET @FilterConditions = '[' + @FieldName + '] LIKE ''%' + REPLACE(@FilterValue, '''', '''''') + '''';
+                        ELSE IF @Operator = 'isEmpty'
+                            SET @FilterConditions = '([' + @FieldName + '] IS NULL OR [' + @FieldName + '] = '''')';
+                        ELSE IF @Operator = 'isNotEmpty'
+                            SET @FilterConditions = '[' + @FieldName + '] IS NOT NULL AND [' + @FieldName + '] != ''''';
+                        ELSE
+                            -- Default to contains for unsupported operators
+                            SET @FilterConditions = '[' + @FieldName + '] LIKE ''%' + REPLACE(@FilterValue, '''', '''''') + '%''';
+
+                    PRINT 'Generated FilterConditions: ' + ISNULL(@FilterConditions, 'NULL');
+
+                    -- Add filter conditions to WHERE clause
+                    IF @FilterConditions != ''
+                            SET @WhereClause = @WhereClause + ' AND (' + @FilterConditions + ')';
+                END
+                    ELSE
+                    BEGIN
+                    -- Invalid field name - skip this filter
+                    PRINT 'Warning: Invalid field name in filter: ' + ISNULL(@FieldName, 'NULL');
+                END
+            END
+        END
+
+        -- Debug: Print final WHERE clause
+        PRINT 'Final WHERE clause: ' + ISNULL(@WhereClause, 'NULL');
+
+        -- Quick filter for search across multiple fields (fallback)
+        IF @QuickFilter IS NOT NULL AND @QuickFilter != ''
+            BEGIN
+            SET @WhereClause = @WhereClause + ' AND (
+                        method LIKE ''%' + @QuickFilter + '%''
+                        OR create_by LIKE ''%' + @QuickFilter + '%''
+                    )';
+        END
+
+        -- Build count query for pagination
+        SET @CountSQL = 'SELECT COUNT(*) FROM [ams].[tbm_method] ' + @WhereClause;
+
+        -- Build main query with pagination
+        SET @SQL = 'SELECT * FROM [ams].[tbm_method] ' + @WhereClause + 
+                      ' ORDER BY ' + @OrderByClause + 
+                      ' OFFSET ' + CAST(@Offset AS NVARCHAR(10)) + ' ROWS ' +
+                      ' FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
+
+        -- Debug: Print the SQL queries
+        PRINT 'Count SQL: ' + @CountSQL;
+        PRINT 'Main SQL: ' + @SQL;
+
+        -- Execute count query
+        DECLARE @TotalRows INT;
+        EXEC sp_executesql @CountSQL, N'', @TotalRows OUTPUT;
+
+        -- Execute main query and return data
+        EXEC sp_executesql @SQL;
+
+        -- Return pagination metadata in second result set
+        SELECT @TotalRows AS TotalRows, @Page AS CurrentPage, @PageSize AS PageSize,
+            CEILING(CAST(@TotalRows AS FLOAT) / @PageSize) AS TotalPages;
+
+        SET @OutputRowCount = @TotalRows;
+        SET @OutputMessage = 'Methods retrieved successfully';
+    END
+        -- ==========================================
+        -- INSERT Operation
+        -- ==========================================
+        ELSE IF @Operation = 'INSERT'
+        BEGIN
+        IF @Method IS NULL OR @Method = ''
+            BEGIN
+            SET @OutputMessage = 'Method name is required for INSERT operation';
+            RETURN;
+        END
+
+        INSERT INTO [ams].[tbm_method]
+            (method, create_by, create_date)
+        VALUES
+            (@Method, @UserId, GETDATE());
+
+        SET @OutputRowCount = @@ROWCOUNT;
+        SET @OutputMessage = 'Method created successfully';
+
+        -- Return the inserted record
+        SELECT *
+        FROM [ams].[tbm_method]
+        WHERE method_id = SCOPE_IDENTITY();
+    END
+        -- ==========================================
+        -- UPDATE Operation
+        -- ==========================================
+        ELSE IF @Operation = 'UPDATE'
+        BEGIN
+        IF @MethodId IS NULL
+            BEGIN
+            SET @OutputMessage = 'Method ID is required for UPDATE operation';
+            RETURN;
+        END
+
+        UPDATE [ams].[tbm_method]
+            SET method = ISNULL(@Method, method),
+                update_by = @UserId,
+                update_date = GETDATE()
+            WHERE method_id = @MethodId;
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount = 0
+                SET @OutputMessage = 'No method found with the specified ID';
+            ELSE
+                SET @OutputMessage = 'Method updated successfully';
+
+        -- Return the updated record
+        SELECT *
+        FROM [ams].[tbm_method]
+        WHERE method_id = @MethodId;
+    END
+        -- ==========================================
+        -- DELETE Operation
+        -- ==========================================
+        ELSE IF @Operation = 'DELETE'
+        BEGIN
+        IF @MethodId IS NULL
+            BEGIN
+            SET @OutputMessage = 'Method ID is required for DELETE operation';
+            RETURN;
+        END
+
+        DELETE FROM [ams].[tbm_method] WHERE method_id = @MethodId;
+
+        SET @OutputRowCount = @@ROWCOUNT;
+
+        IF @OutputRowCount = 0
+                SET @OutputMessage = 'No method found with the specified ID';
+            ELSE
+                SET @OutputMessage = 'Method deleted successfully';
+
+        -- Return success confirmation
+        SELECT @OutputRowCount AS DeletedRows, @OutputMessage AS Message;
+    END
+        ELSE
+        BEGIN
+        SET @OutputMessage = 'Invalid operation. Supported operations: SELECT, INSERT, UPDATE, DELETE';
+    END
+
+    END TRY
+    BEGIN CATCH
+        SET @OutputMessage = 'Error: ' + ERROR_MESSAGE();
+        SET @OutputRowCount = 0;
+        
+        -- Return error information
+        SELECT
+        ERROR_NUMBER() AS ErrorNumber,
+        ERROR_MESSAGE() AS ErrorMessage,
+        ERROR_LINE() AS ErrorLine;
+    END CATCH
+END
+GO
+
 /****** Object:  StoredProcedure [ams].[usp_tbm_part]    Script Date: 29/10/2025 14:10:04 ******/
 SET ANSI_NULLS ON
 GO
