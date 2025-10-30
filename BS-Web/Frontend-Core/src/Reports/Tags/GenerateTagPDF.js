@@ -116,22 +116,22 @@ const GenerateTagPDF = async (data) => {
             width: 2.7cm;
             height: 0.5cm;
             font-family: "Tahoma", sans-serif;
-            font-size: 14px;
+            font-size: 16px;
             font-weight:600;
         }
     </style>
     <div>
-        <table style="margin-top: 40mm;">
+        <table style="margin-top: 35mm;">
             <tbody>
                 <tr>
                     <td class="td-report-tags" style="text-align:left;">&nbsp;</td>
-                    <td class="td-report-tags" style="text-align:center;font-weight:bold;font-size:16px;">${item.audit || ""}</td>
+                    <td class="td-report-tags" style="text-align:center;font-weight:bold;font-size:18px;">${item.audit || ""}</td>
                     <td class="td-report-tags" style="text-align:center;">&nbsp;</td>
                 </tr>
                 <tr>
                     <td class="td-report-tags" style="text-align:left;">${item.area_name || ""} ${item.area_code || ""}</td>
                     <td class="td-report-tags">&nbsp;</td>
-                    <td class="td-report-tags" style="text-align:center;">${item.tag_no || ""}</td>
+                    <td class="td-report-tags" style="text-align:center;">&nbsp;&nbsp;${item.tag_no || ""}</td>
                 </tr>
                 <tr>
                     <td class="td-report-tags" colspan="3" style="text-align:center;height: 50px;">Location: ${item.location || ""}</td>

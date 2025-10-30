@@ -695,7 +695,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           position: "relative",
         }}
       >
-        <Box sx={{ mb: 3 }}>{!isDashboard && <CustomBreadcrumbs />}</Box>
+        <Box sx={{ mb: 3 }}>{!isDashboard && <CustomBreadcrumbs lang={lang} />}</Box>
         <Outlet />
       </Box>
       {/* Reset Password Popup */}

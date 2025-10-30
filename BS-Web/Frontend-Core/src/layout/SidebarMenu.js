@@ -10,7 +10,7 @@ import {
   Paper,
 } from "@mui/material";
 import SearchIcon from '@mui/icons-material/Search';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import ExpandLess from "@mui/icons-material/ExpandLess";
@@ -26,7 +26,6 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const [resourceData, setResourceData] = useState();
   const [filteredMenu, setFilteredMenu] = useState();
   const menuItems = useMenuItems();
-
   // toggle expand/collapse
   const handleExpand = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -55,17 +54,22 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const getLang = async () => {
+  const getLang = useCallback(async () => {
     setResourceData(await getResources("Menu"));
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+  const getMenu = useCallback(async () => {
+    setFilteredMenu(await filterMenuItems(menuItems, search));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceData, search]);
+
   useEffect(() => {
-    setFilteredMenu(filterMenuItems(menuItems, search));
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resourceData,search])
+    getMenu();
+  }, [getMenu])
   useEffect(() => {
     getLang()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang])
+  }, [getLang])
   return (
     <>
       <Paper
