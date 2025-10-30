@@ -126,6 +126,10 @@ const GenerateTagPDF = async (data) => {
             font-size: 16px;
             font-weight:600;
         }
+            .font-16{
+              font-size: 15px;
+            font-weight:600;
+            }
     </style>
     <div>
         <table style="margin-top: 35mm;">
@@ -135,24 +139,26 @@ const GenerateTagPDF = async (data) => {
                     <td class="td-report-tags" style="text-align:center;font-weight:bold;font-size:18px;">${item.audit || ""}</td>
                     <td class="td-report-tags" style="text-align:center;">&nbsp;</td>
                 </tr>
-                <tr>
-                    <td class="td-report-tag" style="text-align:left;">${item.area_name || ""} ${item.area_code || ""}</td>
-                    <td class="td-report-tag">&nbsp;</td>
-                    <td class="td-report-tag" style="text-align:right;">${item.tag_no || ""}</td>
-                </tr>
-                <tr>
-                    <td class="td-report-tags" colspan="3" style="text-align:center;height: 50px;">Location: ${item.location || ""}</td>
-                </tr>
-                <tr>
-                    <td class="td-report-tags" colspan="1">&nbsp;</td>
-                    <td class="td-report-tags" colspan="2">&nbsp;${item.part_no || ""}</td>
-                </tr>
-                <tr style="height: 44px;">
-                    <td class="td-report-tags" colspan="1">&nbsp;</td>
-                    <td class="td-report-tags" colspan="2">&nbsp;${item.part_name || ""}</td>
-                </tr>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+                <div class="font-16" style=" 
+                    display: grid;
+                    grid-template-columns: auto 30%;
+                    ">
+                    <div style="text-align:left;">${item.area_name || ""} ${item.area_code || ""}</div>
+                    <div style="text-align:center;">${item.tag_no || ""}</div>
+                </div>
+                <div class="font-16" style="text-align:center;margin-top: 5mm;margin-bottom:5mm;">Location: ${item.location || ""}</div>
+                 <div class="font-16" style=" display: grid;  grid-template-columns: 30% auto;
+                    ">
+                    <div style="text-align:left;"></div>
+                    <div style="text-align:left;">${item.part_no || ""}</div>
+                </div>
+                <div class="font-16" style="margin-top: 3mm; display: grid;  grid-template-columns: 30% auto;
+                    ">
+                    <div style="text-align:left;"></div>
+                    <div style="text-align:left;">${item.part_name || ""}</div>
+                </div>
         <div style="margin-top: 5mm;">
             <img src="${qrDataUrl}"
                 alt="QR Code" width="80" height="80">
