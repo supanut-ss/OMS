@@ -586,7 +586,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="เปลี่ยนรหัสผ่าน" />
+          <ListItemText primary={lang === "th" ? 'เปลี่ยนรหัสผ่าน' : 'Reset Password'} />
         </MenuItem>
         {/*
         <MenuItem onClick={handleUserMenuClose} sx={{ py: 1.5, px: 3 }}>
@@ -612,7 +612,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           <ListItemIcon>
             <LogoutIcon fontSize="small" sx={{ color: "error.main" }} />
           </ListItemIcon>
-          <ListItemText primary="ออกจากระบบ" />
+          <ListItemText primary={lang === "th" ? 'ออกจากระบบ' : 'Logout'} />
         </MenuItem>
       </Menu>
 
