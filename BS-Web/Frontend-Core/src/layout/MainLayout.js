@@ -690,7 +690,8 @@ export default function MainLayout({ lang, onChangeLang }) {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-          bgcolor: "background.default",
+        //  bgcolor: "background.default",
+        bgcolor:"aliceblue",
           minHeight: "100vh",
           position: "relative",
         }}
