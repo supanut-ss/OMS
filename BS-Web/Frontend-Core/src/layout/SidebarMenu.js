@@ -24,6 +24,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const [search, setSearch] = useState("");
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState();
+  const [filteredMenu, setFilteredMenu] = useState();
   const menuItems = useMenuItems();
 
   // toggle expand/collapse
@@ -33,6 +34,9 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
 
   // ฟังก์ชัน search แบบ recursive
   const filterMenuItems = (items, keyword) => {
+    items?.forEach(item => {
+      item.text = getResource(resourceData, item.text);
+    });
     if (!keyword) return items; // ถ้า search ว่าง return ทุกตัว
     return items
       .map(item => {
@@ -50,11 +54,14 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
       .filter(Boolean);
   };
 
-  const filteredMenu = filterMenuItems(menuItems, search);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const getLang = async () => {
     setResourceData(await getResources("Menu"));
   }
+  useEffect(() => {
+    setFilteredMenu(filterMenuItems(menuItems, search));
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceData,search])
   useEffect(() => {
     getLang()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +126,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
                   >
                     {icon || <MenuOpenIcon />}
                   </ListItemIcon>
-                  {open && <ListItemText primary={getResource(resourceData, text)} sx={{ color: "inherit", "& .MuiTypography-root": { fontWeight: 500 } }} />}
+                  {open && <ListItemText primary={text} sx={{ color: "inherit", "& .MuiTypography-root": { fontWeight: 500 } }} />}
                   {hasSubmenu && open && (expanded[key] ? <ExpandLess /> : <ExpandMore />)}
                 </ListItemButton>
               </Tooltip>
@@ -147,7 +154,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
                           },
                         }}
                       >
-                        <ListItemText primary={getResource(resourceData, sub.text)} />
+                        <ListItemText primary={sub.text} />
                       </ListItemButton>
                     ))}
                   </List>
