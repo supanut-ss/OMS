@@ -145,16 +145,16 @@ const GenerateTagPDF = async (data) => {
                     display: grid;
                     grid-template-columns: auto 30%;
                     ">
-                    <div style="text-align:left;">${item.area_name || ""} ${item.area_code || ""}</div>
+                    <div style="text-align:left;">${item.area_name || ""}</div>
                     <div style="text-align:center;">${item.tag_no || ""}</div>
                 </div>
                 <div class="font-16" style="text-align:center;margin-top: 5mm;margin-bottom:5mm;">Location: ${item.location || ""}</div>
-                 <div class="font-16" style=" display: grid;  grid-template-columns: 30% auto;
+                 <div class="font-16" style=" display: grid;  grid-template-columns: 40% auto;
                     ">
                     <div style="text-align:left;"></div>
                     <div style="text-align:left;">${item.part_no || ""}</div>
                 </div>
-                <div class="font-16" style="margin-top: 3mm; display: grid;  grid-template-columns: 30% auto;
+                <div class="font-16" style="margin-top: 3mm; display: grid;  grid-template-columns: 40% auto;
                     ">
                     <div style="text-align:left;"></div>
                     <div style="text-align:left;">${item.part_name || ""}</div>
@@ -165,14 +165,14 @@ const GenerateTagPDF = async (data) => {
         </div>
         <div style="
         margin-left:33mm;
-            margin-top:128mm; 
-            font-size: 16px;
+            margin-top:131mm; 
+            font-size: 14px;
             font-weight:600;">${item.supplier_name || ""}</div>
-        <table style="margin-top:33mm;margin-left: 40px;">
+        <table style="margin-top:30mm;margin-left: 40px;">
             <tbody>
                 <tr>
                     <td colspan="1" class="td-report-tags">&nbsp;</td>
-                    <td colspan="2" class="td-report-tags">${dayjs(item.tag_date).format("DD/MM/YYYY") || ""}</td>
+                    <td colspan="2" class="td-report-tags" style="font-size: 14px;">${dayjs(item.tag_date).format("DD/MM/YYYY") || ""}</td>
                 </tr>
             </tbody>
         </table>
