@@ -28,13 +28,18 @@ const SubPage = () => {
                 bsStoredProcedure="usp_tbm_sub"
                 bsStoredProcedureSchema="ams"
                 bsShowRowNumber={true}
+                bsCols="sub_no,part_no,part_name,supplier_name,create_by,create_date,update_by,update_date"
                 showAdd={false}
                 bsLocale="en"
                 bsAllowAdd={true}
                 bsAllowEdit={true}
                 bsAllowDelete={true}
                 bsPageSize={25}
+                bsFilterMode="client"
             />
+
+
+
         </Paper>
     );
 };

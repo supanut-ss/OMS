@@ -34,7 +34,7 @@ const MenuPage = () => {
             {
               Column: "platform",
               Display: "display_member",
-              Value: "value_member",
+              Value: "display_member",
               Default: "--- Select Platform ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
@@ -54,7 +54,7 @@ const MenuPage = () => {
           ]}
           onCheckBoxSelected={(rows) => {
             console.log("Selected rows:", rows);
-            setSelectedRows(rows);
+            //setSelectedRows(rows);
           }}
           //   onEdit={(row) => console.log("Edit:", row)}
           //   onDelete={(id) => console.log("Delete:", id)}

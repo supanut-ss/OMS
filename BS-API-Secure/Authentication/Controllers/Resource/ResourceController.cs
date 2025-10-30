@@ -37,5 +37,25 @@ namespace Authentication.Controllers.Resource
                 return BadRequest(ex.Message);
             }
         }
+        [HttpPost("save")]
+        [Consumes("application/json")]
+        [Produces("application/json")]
+        public async Task<IActionResult> SaveResource(ResourceDataRequest request)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value;
+                return _resource == null
+                    ? Unauthorized("Resource service is not available.")
+                    :  await _resource.UpdateAsync(request, userId) is var resourceResponse
+                            ? Ok(resourceResponse)
+                            : Unauthorized("Invalid request.");
+
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

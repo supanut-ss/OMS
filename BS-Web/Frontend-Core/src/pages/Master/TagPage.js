@@ -86,6 +86,8 @@ const TagPage = () => {
                     // Enhanced Stored Procedure Configuration
                     bsStoredProcedure="usp_tbm_tag"
                     bsStoredProcedureSchema="ams"
+                    bsCols="tag_no,tag_date,part_no,part_name,supplier_name,area_code,area_name,location,audit,remark,double_check,create_by,create_date,update_by,update_date"
+                    selectedRows={selectedRows}
                     bsShowRowNumber={true}
                     showAdd={false}
                     bsVisibleDelete={false}
@@ -94,6 +96,7 @@ const TagPage = () => {
                     bsAllowEdit={true}
                     bsAllowDelete={true}
                     bsPageSize={25}
+                    bsFilterMode="client"
                     onCheckBoxSelected={(rows) => {
                         console.log("Selected rows:", rows);
                         setSelectedRows(rows);

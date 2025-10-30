@@ -33,13 +33,14 @@ const MethodPage = () => {
                     bsStoredProcedure="usp_tbm_method"
                     bsStoredProcedureSchema="ams"
                     bsShowRowNumber={true}
-                    // bsCols="method,create_by,create_date,update_by,update_date"
+                    bsCols="method,create_by,create_date,update_by,update_date"
                     // showAdd={false}
                     bsLocale="en"
                     bsAllowAdd={true}
                     bsAllowEdit={true}
                     bsAllowDelete={true}
                     bsPageSize={25}
+                    bsFilterMode="client"
                 />
             </Paper>
         </>

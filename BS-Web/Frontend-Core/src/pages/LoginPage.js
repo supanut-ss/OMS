@@ -23,11 +23,11 @@ import { useAuth } from "../contexts/AuthContext";
 import logoSvg from "../assets/logo.jpg";
 import Config from "../utils/Config";
 
-export default function LoginPage() {
+export default function LoginPage({ setLang }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, resource, menu,role } = useAuth();
+  const { login, resource, menu, role } = useAuth();
 
   const [formData, setFormData] = useState({
     usersname: "",
@@ -62,6 +62,7 @@ export default function LoginPage() {
     try {
       // Mock login - in real app, call API here
       let data = await login(formData);
+      setLang(data?.lang ?? "en");
       if (data.status) {
         let status_resource = await resource();
         if (status_resource) {
@@ -93,6 +94,7 @@ export default function LoginPage() {
       //   setError("ผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
       // }
     } catch (err) {
+      console.log(err);
       setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
     } finally {
       setLoading(false);
@@ -258,7 +260,7 @@ export default function LoginPage() {
               }}
             >
               {/* {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"} */}
-               {loading ? "Logging in..." : "Login"}
+              {loading ? "Logging in..." : "Login"}
             </Button>
 
             {/* <Box sx={{ textAlign: "center" }}>

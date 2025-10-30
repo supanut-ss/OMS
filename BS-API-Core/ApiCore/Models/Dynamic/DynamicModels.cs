@@ -75,6 +75,11 @@ namespace ApiCore.Models.Dynamic
         public Dictionary<string, object>? OutputParameters { get; set; }
         public DateTime ExecutedAt { get; set; } = DateTime.UtcNow;
         public long ExecutionTime { get; set; }
+
+        /// <summary>
+        /// Table metadata detected from result set (columns, primary keys, etc.)
+        /// </summary>
+        public DynamicTableMetadata? Metadata { get; set; }
     }
 
     /// <summary>

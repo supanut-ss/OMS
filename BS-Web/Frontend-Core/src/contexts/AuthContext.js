@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
       if (authStatus === "true" && userInfo) {
         setIsAuthenticated(true);
-        setUser(JSON.parse(userInfo));
+        setUser(userInfo);
       }
       setLoading(false);
     };
@@ -48,13 +48,16 @@ export const AuthProvider = ({ children }) => {
         SecureStorage.set("token", res.data.data.access_token ?? "")
         SecureStorage.set("refresh_token", res.data.data.refresh_token ?? "")
         SecureStorage.set("isAuthenticated", "true");
-        SecureStorage.set("userInfo", userinfo);
+        SecureStorage.set("userInfo", JSON.parse(userinfo));
+        SecureStorage.set("lang", JSON.parse(userinfo).LocaleId ?? "en")
         setUser(userinfo);
         json.status = true;
         json.message = res.data.message_text;
+        json.lang = SecureStorage.get("lang");
       } else {
         json.status = false;
         json.message = res.data.message_text;
+        json.lang = "en";
       }
     }).finally();
     return json;
@@ -96,9 +99,9 @@ export const AuthProvider = ({ children }) => {
       platform: "web" // web,pda
     }).then((res) => {
       if (res.data.message_code === "0") {
-        SecureStorage.set("resouce", res.data.data)
+        SecureStorage.set("resource", res.data.data)
       } else {
-        SecureStorage.remove("resouce")
+        SecureStorage.remove("resource")
       }
     }).finally();
     return true;
@@ -157,15 +160,29 @@ export const AuthProvider = ({ children }) => {
 
     return true;
   }
-const role = async () => {
-await AxiosMaster.get("/role").then((res) => {
+  const role = async () => {
+    await AxiosMaster.get("/role").then((res) => {
       if (res.data.message_code === "0") {
         SecureStorage.set("role", res.data.role)
-      } else {  
+      } else {
         SecureStorage.remove("role")
       }
-}).finally();
-}
+    }).finally();
+  }
+  const switchLang = async (lang) => {
+    try {
+      await AxiosMaster.post("/users/switch/lang", { lang: lang }).then(
+        (res) => {
+          if (res.data.message_code !== "0") {
+            return false;
+          }
+        }
+      ).finally();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
   const value = {
     isAuthenticated,
     user,
@@ -174,6 +191,7 @@ await AxiosMaster.get("/role").then((res) => {
     resource,
     menu,
     role,
+    switchLang,
     loading,
   };
 

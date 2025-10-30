@@ -101,5 +101,20 @@ namespace Authentication.Controllers.Users
                 return ResponseError(ex.Message, 1);
             }
         }
+        [HttpPost("switch/lang")]
+        public async Task<IActionResult> SwitchLang(UserLangRequest request) {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _iusers.UpdateLangAsync(request, userId);
+                return response != null ? AccessResponseSuccess("success",response): ResponseNotFound("No found Lang.");
+            }
+            catch (Exception ex) { 
+                return ResponseError(ex.Message, 1);
+            }
+        
+        }
     }
 }

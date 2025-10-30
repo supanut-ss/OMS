@@ -12,5 +12,6 @@ namespace Authentication.Interfaces
 
         Task<AuthResponse> UpdateUser(UserRequest userReq, string userId);
         Task<RoleResponse> GetRole(string userId);
+        Task<UserLangResponse> UpdateLangAsync(UserLangRequest userReq, string userId);
     }
 }

@@ -1,14 +1,16 @@
 import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSAutoComplete from "../../components/BSAutoComplete";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import secureStorage from "../../utils/SecureStorage";
-const CountTag = () => {
-     const userInfo = JSON.parse(secureStorage.get("userInfo"));
+import { useResource } from "../../hooks/useResource";
+const CountTag = (props) => {
+    const userInfo = secureStorage.get("userInfo");
     const [selectedUser, setSelectedUser] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]);
+    const dataGridRef = useRef();
     const CallNoti = async () => {
         if (!selectedUser) {
             BSAlertSwal2.show(
@@ -25,16 +27,17 @@ const CountTag = () => {
         }
         for (let row of selectedRows) {
             await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
-                "title":`Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_no}`,
+                "title": `Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_no}`,
                 "body": `Loc: ${row.location} Fixs Part No: ${row.part_no}`,
                 "tokens": [selectedUser.fcm_token],
-                "data": 
-                    {
-                        "tag_no": row.tag_no,
-                        "create_by":userInfo.UserId,
-                        "routeApp": "/count_tag"
-                    }
+                "data":
+                {
+                    "tag_no": row.tag_no,
+                    "create_by": userInfo.UserId,
+                    "routeApp": "/count_tag"
+                }
             }).then((response) => {
+                dataGridRef.current?.refreshData();
                 BSAlertSwal2.show(
                     "success",
                     `Re-count notification for tag ${row.tag_no} sent to user successfully.`
@@ -47,7 +50,6 @@ const CountTag = () => {
             });
         }
     }
-
     return <Box>
         <Paper sx={{ p: 2, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -79,7 +81,7 @@ const CountTag = () => {
                                 bsObjBy="first_name asc"
                                 bsObjWh="isnull(fcm_token,'')<>''"
                                 bsValue={selectedUser} // ค่าเริ่มต้น = code ของ option
-                               // cacheKey="drive_user_autocomplete"
+                                // cacheKey="drive_user_autocomplete"
                                 bsLoadOnOpen={true}
                                 bsOnChange={(val) => setSelectedUser(val)}
                             /></Grid>
@@ -91,7 +93,8 @@ const CountTag = () => {
                     </Grid>
                 </Box>
                 <BSDataGrid
-                    bsLocale="th"
+                    ref={dataGridRef}
+                    bsLocale={props.lang}
                     bsPreObj="ams"
                     bsObj="tbt_count_tag"
                     bsCols="

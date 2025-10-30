@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BsAutoComplete from "../../components/BSAutoComplete";
-import Logger, { log } from "../../utils/logger";
+import Logger from "../../utils/logger";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
@@ -29,7 +29,7 @@ const initialForm = {
   user_group_id: "",
   first_name: "",
   last_name: "",
-  locale_id: "en",
+  locale_id: "",
   department: "",
   supervisor: "",
   email_address: "",
@@ -40,6 +40,7 @@ const initialForm = {
 
 const UserPage = () => {
   const [locale_id, setLocale_id] = useState("en");
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
@@ -47,11 +48,13 @@ const UserPage = () => {
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [selectLocale, setSelectLocale] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleOpenAdd = () => {
     setForm(initialForm);
     setSelectedGroup("");
+    setSelectLocale("");
     setEditMode(false);
     setOpen(true);
   };
@@ -59,6 +62,7 @@ const UserPage = () => {
   const handleOpenEdit = (row) => {
     setForm(row);
     setSelectedGroup(row.user_group_id || "");
+    setSelectLocale(row.locale_id || "");
     setEditMode(true);
     setOpen(true);
   };
@@ -103,9 +107,13 @@ const UserPage = () => {
   };
 
   const handleGroupChange = (val) => {
-    log("handleGroupChange:", val);
     setSelectedGroup(val);
     setForm({ ...form, user_group_id: val });
+  };
+
+  const handleLocaleChange = (val) => {
+    setSelectLocale(val);
+    setForm({ ...form, locale_id: val });
   };
 
   const handleSave = async () => {
@@ -176,7 +184,8 @@ const UserPage = () => {
                   create_by,
                   create_date,
                   update_by,
-                  update_date"
+                  update_date,
+                  user_group_id"
           bsObjBy="user_id asc"
           bsComboBox={[
             {
@@ -279,7 +288,7 @@ const UserPage = () => {
                   bsObjWh="is_active='YES'"
                   cacheKey="group_name"
                   //bsLoadOnOpen={true}
-                  bsOnChange={(val) => handleGroupChange(val)}
+                  bsOnChange={(val) => handleGroupChange(val.user_group_id)}
                   bsValue={selectedGroup}
                 />
               </Box>
@@ -291,14 +300,14 @@ const UserPage = () => {
                   bsObj="combobox_item"
                   bsColumes={[
                     {
-                      field: "display_member",
-                      display: true,
+                      field: "value_member",
+                      display: false,
                       filter: false,
                       key: true,
                     },
                     {
-                      field: "group_name",
-                      display: false,
+                      field: "display_member",
+                      display: true,
                       filter: false,
                       key: false,
                     },
@@ -307,8 +316,8 @@ const UserPage = () => {
                   bsObjWh="group_name='locale_id'"
                   cacheKey="locale_id"
                   //bsLoadOnOpen={frue}
-                  bsOnChange={(val) => handleChange("locale_id", val)}
-                  bsValue={form.locale_id}
+                  bsOnChange={(val) => handleLocaleChange(val.code)}
+                  bsValue={selectLocale}
                 />
               </Box>
             </Box>
