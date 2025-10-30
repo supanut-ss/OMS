@@ -670,6 +670,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           isMobile={isMobile}   // ไว้ใช้สำหรับ mobile responsive
           setOpen={setOpen}     // ฟังก์ชันเปลี่ยนค่า open
           theme={theme}         // ส่ง theme ของ MUI เข้าไป
+          lang={lang}
         />
 
       </StyledDrawer>

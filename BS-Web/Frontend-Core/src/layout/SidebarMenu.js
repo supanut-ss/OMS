@@ -10,18 +10,20 @@ import {
   Paper,
 } from "@mui/material";
 import SearchIcon from '@mui/icons-material/Search';
-import {useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import useMenuItems from "../contexts/useMenuItems";
+import { useResource } from "../hooks/useResource";
 
-const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme }) => {
- const navigate = useNavigate();
+const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState({});
   const [search, setSearch] = useState("");
-
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState();
   const menuItems = useMenuItems();
 
   // toggle expand/collapse
@@ -49,7 +51,14 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme }) => {
   };
 
   const filteredMenu = filterMenuItems(menuItems, search);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getLang = async () => {
+    setResourceData(await getResources("Menu"));
+  }
+  useEffect(() => {
+    getLang()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang])
   return (
     <>
       <Paper
@@ -110,7 +119,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme }) => {
                   >
                     {icon || <MenuOpenIcon />}
                   </ListItemIcon>
-                  {open && <ListItemText primary={text} sx={{ color: "inherit", "& .MuiTypography-root": { fontWeight: 500 } }} />}
+                  {open && <ListItemText primary={getResource(resourceData, text)} sx={{ color: "inherit", "& .MuiTypography-root": { fontWeight: 500 } }} />}
                   {hasSubmenu && open && (expanded[key] ? <ExpandLess /> : <ExpandMore />)}
                 </ListItemButton>
               </Tooltip>
@@ -138,7 +147,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme }) => {
                           },
                         }}
                       >
-                        <ListItemText primary={sub.text} />
+                        <ListItemText primary={getResource(resourceData, sub.text)} />
                       </ListItemButton>
                     ))}
                   </List>
