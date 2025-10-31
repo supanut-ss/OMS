@@ -26,17 +26,17 @@ namespace Import_Export_Manager.Controllers
         [HttpPost("UploadExcel")]
         public async Task<ExcelImportResponse> UploadExcel([FromForm] ExcelImportRequest request)
         {
-            if (request.file == null || request.file.Length == 0)
+            if (request.files[0] == null || request.files[0].Length == 0)
                 return new ExcelImportResponse { code = "400", message = "No file uploaded." };
 
-            var ext = Path.GetExtension(request.file.FileName).ToLowerInvariant();
+            var ext = Path.GetExtension(request.files[0].FileName).ToLowerInvariant();
             if (ext != ".xls" && ext != ".xlsx")
                 return new ExcelImportResponse { code = "400", message = "Invalid file type. Please upload an Excel file." };
 
             try
             {
                 string xmlData;
-                using (var stream = request.file.OpenReadStream())
+                using (var stream = request.files[0].OpenReadStream())
                 {
                     xmlData = ConvertExcelToXML(stream);
                 }
