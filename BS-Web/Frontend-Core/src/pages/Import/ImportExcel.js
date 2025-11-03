@@ -47,10 +47,10 @@ const ImportExcel = () => {
 
   const handleDownload = async () => {
     if (!select?.import_id) {
-      BSAlertSwal2.show(
-        "error",
-        "Please select an import type before downloading."
-      );
+      showAlert("error", "Please select an import type before downloading.", {
+        timer: 1500,
+        showConfirmButton: false,
+      });
       return;
     }
     const url = `/GetImportMaster?import_id=${select?.import_id}`;
@@ -58,7 +58,7 @@ const ImportExcel = () => {
       const res = await AxiosMaster.get(url);
       const filePath = res.data?.data?.[0]?.excel_example_file_path;
       if (!filePath) {
-        BSAlertSwal2.show("error", "ไม่พบ path ของไฟล์ Excel");
+        showAlert("error", "ไม่พบ path ของไฟล์ Excel");
         return;
       }
       // ใช้ anchor trick เพื่อให้ browser download
@@ -77,46 +77,59 @@ const ImportExcel = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(fileName);
     } catch (err) {
-      BSAlertSwal2.show("error", "Download error:", err);
+      showAlert("error", "Download error:", err);
     }
   };
+  const showAlert = (icon, text, ...options) =>
+    BSAlertSwal2.show(icon, text, ...options);
   const handleBeforeOpen = () => {
     if (!select?.import_id) {
-      BSAlertSwal2.show(
-        "error",
-        "Please select an import type before importing."
-      );
+      showAlert("error", "Please select an import type before importing.", {
+        timer: 1500,
+        showConfirmButton: false,
+      });
       return false;
     }
     return true;
   };
-  const handleImport = async (files) => {
+  const handleImport = async (files, setProgress) => {
     if (!files || files.length === 0) return;
 
     const formData = new FormData();
-    formData.append("file", files[0]);
+    for (let i = 0; i < files.length; i++) {
+      formData.append("files", files[i]);
+    }
+
     formData.append("user_id", userId);
     formData.append("import_id", select?.import_id ?? "");
 
     try {
-      // let AxiosMaster/browser set multipart Content-Type & boundary
       const res = await AxiosMaster.post("/UploadExcel", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        // ✅ ใช้ event นี้อัปเดต progress
+        onUploadProgress: (event) => {
+          if (event.total) {
+            const percent = Math.round((event.loaded * 100) / event.total);
+            setProgress(percent);
+          }
+        },
       });
       const data = res.data;
-
       if (res.status === 200 && data.code === "0") {
-        BSAlertSwal2.show("success", data.message || "Import success");
-        // if response contains tabular payload, map it to DataGrid
+        showAlert("success", data.message || "Import success", {
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setGridData(data.data);
       } else {
-        BSAlertSwal2.show("error", data.message || "Unknown error");
+        showAlert("error", data.message || "Unknown error");
       }
       const payload = data.data;
       setGridData(payload);
     } catch (err) {
-      BSAlertSwal2.show("error", "Upload error:", err);
+      showAlert("error", "Upload error", err);
     }
   };
 
@@ -167,9 +180,9 @@ const ImportExcel = () => {
         {/* ปุ่ม Choose File */}
         <BSImportFile
           mode="single"
-          accept={[".xlsx", ".xls"]}
-          dialogTitle="Import Excel"
+          dialogTitle="IMPORT EXCEL"
           buttonLabel="Browse Excel File"
+          accept={[".xlsx", ".xls"]}
           onImport={handleImport}
           beforeOpen={handleBeforeOpen}
         />

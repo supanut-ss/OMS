@@ -12,92 +12,36 @@ import {
   ListItem,
   useTheme,
   useMediaQuery,
+  LinearProgress,
+  Avatar,
+  Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import BSAlertSwal2 from "../components/BSAlertSwal2";
 /**
- * BSImportFile component
- * @param {Object} props
- * @param {'single'|'multi'} [props.mode='multi'] - Allow single or multiple file selection
- * @param {string[]} [props.accept=['.xlsx', '.xls', 'image/*']] - Accepted file types
- * @param {string} [props.dialogTitle='Import File(s)'] - Dialog title
- * @param {string} [props.buttonLabel='Browse File(s)'] - Select button label
- * @param {function} [props.onImport] - Callback when import is clicked
- * @param {function} [props.beforeOpen] - Function to validate or confirm before opening dialog
+ * Enhanced BSImportFile
  */
 const BSImportFile = ({
   mode = "multi",
   accept = [".xlsx", ".xls", "image/*"],
   dialogTitle = "Import File(s)",
   buttonLabel = "Browse File(s)",
+  maxFileSize = 10 * 1024 * 1024, // 10 MB
   onImport,
   beforeOpen,
-  ...otherProps
 }) => {
   const fileInputRef = useRef(null);
-  const [isDragActive, setIsDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [open, setOpen] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const handleFileChange = (event) => {
-    const files = Array.from(event.target.files);
-    if (mode === "single") setSelectedFiles([files[0]]);
-    else setSelectedFiles(files);
-  };
-
-  const handleDrop = (event) => {
-    event.preventDefault();
-    setIsDragActive(false);
-
-    const files = Array.from(event.dataTransfer.files);
-
-    if (files.length === 0) {
-      BSAlertSwal2.show("warning", "ไม่พบไฟล์ที่ลากเข้ามา");
-      return;
-    }
-
-    // ตรวจสอบชนิดไฟล์ตาม accept ที่กำหนด
-    const validFiles = files.filter((file) =>
-      accept.some((type) =>
-        type.startsWith(".")
-          ? file.name.toLowerCase().endsWith(type.toLowerCase())
-          : file.type.match(type.replace("*", ".*"))
-      )
-    );
-
-    const invalidFiles = files.filter((file) => !validFiles.includes(file));
-
-    if (invalidFiles.length > 0) {
-      BSAlertSwal2.show("error", `รองรับเฉพาะไฟล์ ${accept.join(", ")}`);
-      return;
-    }
-
-    if (validFiles.length === 0) {
-      return; // ถ้าไม่มีไฟล์ที่ถูกต้อง ไม่ต้อง set state
-    }
-
-    // จำกัดโหมด single/multi
-    if (mode === "single") {
-      setSelectedFiles([validFiles[0]]);
-    } else {
-      setSelectedFiles((prev) => [...prev, ...validFiles]);
-    }
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragActive(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragActive(false);
-  };
 
   const handleOpen = async () => {
     if (beforeOpen && (await beforeOpen()) === false) return;
@@ -105,23 +49,100 @@ const BSImportFile = ({
   };
 
   const handleClose = () => {
-    setOpen(false);
+    if (importing) return; // ปิดไม่ได้ระหว่าง import
     setSelectedFiles([]);
+    setProgress(0);
+    setOpen(false);
   };
 
-  const handleImport = () => {
-    if (onImport) onImport(selectedFiles);
-    handleClose();
+  const showAlert = (icon, text) =>
+    BSAlertSwal2.show(icon, text, {
+      timer: 1500,
+      showConfirmButton: false,
+    });
+
+  const handleFileSelect = (files) => {
+    const validFiles = Array.from(files).filter((f) => {
+      const isAccepted = accept.some((type) =>
+        type.startsWith(".")
+          ? f.name.toLowerCase().endsWith(type.toLowerCase())
+          : f.type.match(type.replace("*", ".*"))
+      );
+      if (!isAccepted) {
+        showAlert("error", `ไม่รองรับชนิดไฟล์ ${f.name}`);
+        return false;
+      }
+      if (f.size > maxFileSize) {
+        showAlert(
+          "warning",
+          `${f.name} มีขนาดเกิน ${(maxFileSize / 1024 / 1024).toFixed(1)} MB`
+        );
+        return false;
+      }
+      return true;
+    });
+
+    if (mode === "single") {
+      setSelectedFiles(validFiles.slice(0, 1));
+    } else {
+      const existing = selectedFiles.map((f) => f.name);
+      const newFiles = validFiles.filter((f) => !existing.includes(f.name));
+      if (newFiles.length < validFiles.length)
+        showAlert("info", "ข้ามไฟล์ที่ชื่อซ้ำ");
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+    }
   };
 
-  const handleRemoveFile = (index) => {
+  const handleFileChange = (e) => handleFileSelect(e.target.files);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleImport = async () => {
+    if (!selectedFiles.length) return;
+    if (!onImport) {
+      showAlert("error", "ไม่พบฟังก์ชัน onImport()");
+      return;
+    }
+
+    setImporting(true);
+    setProgress(0);
+
+    try {
+      // simulate progress animation (หรือใช้จริงจาก onImport)
+      const timer = setInterval(() => {
+        setProgress((p) => (p < 90 ? p + 10 : p));
+      }, 200);
+
+      await onImport(selectedFiles, setProgress); // onImport สามารถอัปเดต progress ได้เอง
+
+      clearInterval(timer);
+      setProgress(100);
+
+      setTimeout(handleClose, 1000);
+    } catch (err) {
+      showAlert("error", "เกิดข้อผิดพลาดระหว่างนำเข้า");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleRemoveFile = (index) =>
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
+
+  const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
 
   return (
     <>
-      <Button variant="contained" onClick={handleOpen}>
-        Import Products
+      <Button
+        variant="contained"
+        startIcon={<CloudUploadIcon />}
+        onClick={handleOpen}
+      >
+        {dialogTitle}
       </Button>
 
       <Dialog
@@ -131,13 +152,11 @@ const BSImportFile = ({
         maxWidth="sm"
         fullScreen={fullScreen}
       >
-        {/* Header */}
         <DialogTitle
           sx={{
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
-            pb: 1,
+            alignItems: "center",
           }}
         >
           <Typography variant="h6">{dialogTitle}</Typography>
@@ -146,107 +165,129 @@ const BSImportFile = ({
           </IconButton>
         </DialogTitle>
 
-        {/* Content */}
-        <DialogContent>
-          <Box
-            sx={{
-              mt: 2,
-              p: 4,
-              border: "2px dashed",
-              borderColor: isDragActive ? "primary.main" : "grey.400",
-              borderRadius: 2,
-              textAlign: "center",
-              backgroundColor: isDragActive
-                ? "action.hover"
-                : "background.paper",
-              transition: "0.2s",
-              position: "relative",
-              maxWidth: 500,
-              mx: "auto",
-            }}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
+        <DialogContent
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnter={() => setIsDragActive(true)}
+          onDragLeave={() => setIsDragActive(false)}
+          sx={{
+            border: "2px dashed",
+            borderColor: isDragActive ? "primary.main" : "grey.400",
+            borderRadius: 2,
+            textAlign: "center",
+            backgroundColor: isDragActive
+              ? "action.hover"
+              : "background.default",
+            transition: "0.2s",
+            py: 2,
+            mx: 2,
+          }}
+        >
+          <CloudUploadIcon
+            sx={{ fontSize: 56, color: "primary.main", mb: 1 }}
+          />
+          <Typography variant="body1" fontWeight={500}>
+            ลากไฟล์มาวางที่นี่ หรือ
+          </Typography>
+
+          <Button
+            variant="outlined"
+            onClick={() => fileInputRef.current.click()}
+            sx={{ mt: 1 }}
           >
-            <CloudUploadIcon
-              sx={{ fontSize: 56, color: "primary.main", mb: 2 }}
-            />
-            <Typography variant="body1" fontWeight={500}>
-              Drag and drop files here,
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              or click the button to select.
-            </Typography>
+            {buttonLabel}
+          </Button>
 
-            <Button
-              variant="outlined"
-              fullWidth
-              onClick={() => fileInputRef.current.click()}
-            >
-              {buttonLabel}
-            </Button>
+          <input
+            type="file"
+            accept={accept.join(",")}
+            multiple={mode === "multi"}
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
 
-            <input
-              type="file"
-              accept={accept.join(",")}
-              multiple={mode === "multi"}
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              style={{ display: "none" }}
-            />
-          </Box>
-
-          {/* File info */}
           {selectedFiles.length > 0 && (
-            <List sx={{ mt: 3, maxWidth: 500, mx: "auto" }}>
-              {selectedFiles.map((file, idx) => (
-                <ListItem
-                  key={idx}
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 1,
-                    px: 2,
-                    py: 1,
-                    mb: 1,
-                  }}
-                >
-                  <Box>
-                    <Typography sx={{ fontSize: 16, fontWeight: 500 }}>
-                      {file.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </Typography>
-                  </Box>
-                  <IconButton
-                    color="error"
-                    onClick={() => handleRemoveFile(idx)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItem>
-              ))}
-            </List>
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle2" color="text.secondary" mb={1}>
+                {`${selectedFiles.length} ไฟล์, รวม ${(
+                  totalSize / 1024
+                ).toFixed(1)} KB`}
+              </Typography>
+
+              <List sx={{ maxHeight: 240, overflowY: "auto" }}>
+                {selectedFiles.map((file, idx) => {
+                  const isImage = file.type.startsWith("image/");
+                  return (
+                    <ListItem
+                      key={idx}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 1,
+                        mb: 1,
+                        px: 2,
+                      }}
+                    >
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        {isImage ? (
+                          <Avatar
+                            variant="rounded"
+                            src={URL.createObjectURL(file)}
+                            sx={{ width: 48, height: 48 }}
+                          />
+                        ) : (
+                          <Avatar sx={{ bgcolor: "grey.200" }}>
+                            <InsertDriveFileIcon />
+                          </Avatar>
+                        )}
+                        <Box>
+                          <Typography sx={{ fontWeight: 500, fontSize: 15 }}>
+                            {file.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <IconButton
+                        color="error"
+                        onClick={() => handleRemoveFile(idx)}
+                        disabled={importing}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Box>
           )}
         </DialogContent>
 
-        {/* ⚙️ ปุ่มล่างสุด */}
-        <DialogActions
-          sx={{
-            px: 3,
-            pb: 2,
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        {importing && (
+          <Box sx={{ px: 3, mt: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{ borderRadius: 1 }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              {`กำลังนำเข้า... ${progress.toFixed(0)}%`}
+            </Typography>
+          </Box>
+        )}
+
+        <DialogActions sx={{ p: 2 }}>
           <Button
             onClick={handleClose}
             variant="outlined"
-            sx={{ flex: 1, mr: 1 }}
+            disabled={importing}
+            fullWidth
           >
             Cancel
           </Button>
@@ -254,9 +295,10 @@ const BSImportFile = ({
             onClick={handleImport}
             variant="contained"
             color="primary"
-            sx={{ flex: 1 }}
+            fullWidth
+            disabled={selectedFiles.length === 0 || importing}
           >
-            Import
+            {importing ? "Importing..." : "Import"}
           </Button>
         </DialogActions>
       </Dialog>
