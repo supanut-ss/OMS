@@ -28,9 +28,8 @@ const UserGroupPage = () => {
               ObjBy: "application_name asc",
             },
           ]}
-          bsBulkDelete={true}
-          // bsBulkAdd={true}
-          bsBulkEdit={true}
+          // bsBulkDelete={true}
+          // bsBulkEdit={true}
         />
       </Paper>
     </>
