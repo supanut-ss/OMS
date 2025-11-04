@@ -25,7 +25,8 @@ namespace Authentication.Models.Responses
 
         protected IActionResult AccessResponseSuccess<T>(string status, T access, int code = 0)
         {
-            return Ok(access);
+            if (code == 1) return BadRequest(access);
+            else return Ok(access);
         }
         protected IActionResult ResponseSuccess(string status, string message, int code = 0)
         {

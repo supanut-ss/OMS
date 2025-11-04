@@ -52,14 +52,14 @@ const MenuPage = () => {
               ObjBy: "menu_group asc",
             },
           ]}
-          onCheckBoxSelected={(rows) => {
-            console.log("Selected rows:", rows);
-            //setSelectedRows(rows);
-          }}
+          // onCheckBoxSelected={(rows) => {
+          //   console.log("Selected rows:", rows);
+          //   //setSelectedRows(rows);
+          // }}
           //   onEdit={(row) => console.log("Edit:", row)}
           //   onDelete={(id) => console.log("Delete:", id)}
           //   onAdd={() => console.log("Add new record")}
-          height={500}
+          //height={500}
         />
       </Paper>
     </>

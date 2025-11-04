@@ -32,9 +32,11 @@ export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
   const { switchLang } = useAuth();
   const onChangeLang = async (lang) => {
-    if (await switchLang(lang)) {
-      setLang(lang);
-      secureStorage.set("lang", lang);
+    if (secureStorage.get("token")) {
+      if (await switchLang(lang)) {
+        setLang(lang);
+        secureStorage.set("lang", lang);
+      }
     }
   }
   return (
@@ -65,20 +67,28 @@ export default function AppRoutes() {
         <Route path="test/schema-demo" element={<SchemaMappingDemo />} />
         {/* route สำหรับ Enhanced SP Test with Metadata */}
         <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
-        <Route path="assign_menu" element={<AssignMenu />} />
-        <Route path="importExcel" element={<ImportExcel />} />
-        <Route path="importMaster" element={<ImportMaster />} />
-        <Route path="user" element={<UserPage />} />
-        <Route path="user_group" element={<UserGroupPage />} />
-        <Route path="menu" element={<MenuPage />} />
+        <Route path="import">
+          <Route path="importExcel" element={<ImportExcel />} />
+          <Route path="importMaster" element={<ImportMaster />} />
+        </Route>
         <Route path="user_logon" element={<UserLogOnPage />} />
-        <Route path="count_tag" element={<CountTag lang={lang} />} />
-        <Route path="count_reconcile" element={<CountReconcile lang={lang} />} />
-        <Route path="part_master" element={<PartPage />} />
-        <Route path="sub_master" element={<SubPage />} />
-        <Route path="tag_master" element={<TagPage />} />
-        <Route path="method_master" element={<MethodPage />} />
-        <Route path="resource" element={<Resource lang={lang} />} />
+        <Route path="count">
+          <Route path="count_tag" element={<CountTag lang={lang} />} />
+          <Route path="count_reconcile" element={<CountReconcile lang={lang} />} />
+        </Route>
+        <Route path="master">
+          <Route path="part_master" element={<PartPage />} />
+          <Route path="sub_master" element={<SubPage />} />
+          <Route path="tag_master" element={<TagPage />} />
+          <Route path="method_master" element={<MethodPage />} />
+        </Route>
+        <Route path="authentication">
+          <Route path="user_group" element={<UserGroupPage />} />
+          <Route path="user" element={<UserPage />} />
+          <Route path="assign_menu" element={<AssignMenu />} />
+          <Route path="resource" element={<Resource lang={lang} />} />
+          <Route path="menu" element={<MenuPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

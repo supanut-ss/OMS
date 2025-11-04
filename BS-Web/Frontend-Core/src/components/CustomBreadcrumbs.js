@@ -19,9 +19,9 @@ function CustomBreadcrumbs(props) {
 
   return (
     <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-      <Link component={RouterLink} underline="hover" color="inherit" to="/">
+      {/* <Link component={RouterLink} underline="hover" color="inherit" to="/">
         {getResource(resourceData, "Dashboard")}
-      </Link>
+      </Link> */}
 
       {pathnames.map((value, index) => {
         const to = `/${pathnames.slice(0, index + 1).join("/")}`;
