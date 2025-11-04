@@ -172,7 +172,8 @@ const UserPage = () => {
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user"
-          bsCols="user_id,
+          bsCols="Id,
+                  user_id,
                   group_name, 
                   first_name,
                   last_name,
