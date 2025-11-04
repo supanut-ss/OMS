@@ -97,6 +97,7 @@ const TagPage = () => {
                     bsAllowDelete={true}
                     bsPageSize={25}
                     bsFilterMode="client"
+                    bsVisibleEdit={false}
                     onCheckBoxSelected={(rows) => {
                         console.log("Selected rows:", rows);
                         setSelectedRows(rows);
