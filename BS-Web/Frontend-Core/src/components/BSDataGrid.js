@@ -1088,6 +1088,11 @@ const BSDataGrid = forwardRef(
             sort: sort.sort,
           }));
 
+          Logger.log(
+            "🟡 [BSDataGrid] sortModelForApi to API:",
+            sortModelForApi
+          );
+
           // Include ComboBox fields in the query even if they're not in bsCols for display
           let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
           if (columnsForQuery && comboBoxConfig) {
@@ -1527,6 +1532,24 @@ const BSDataGrid = forwardRef(
       loadDataRef.current();
     }, [paginationModel, sortModel, filterModel, bsFilterMode]);
 
+    // Handler for sort model changes with debugging
+    const handleSortModelChange = useCallback(
+      (newSortModel) => {
+        Logger.log("🔀 Sort model changed:", {
+          oldModel: sortModel,
+          newModel: newSortModel,
+          sortCount: newSortModel?.length || 0,
+          sortFields:
+            newSortModel?.map((s) => `${s.field} ${s.sort}`).join(", ") ||
+            "none",
+          filterMode: bsFilterMode,
+        });
+
+        setSortModel(newSortModel);
+      },
+      [sortModel, bsFilterMode]
+    );
+
     // Handler for filter model changes with debugging
     const handleFilterModelChange = useCallback(
       (newFilterModel) => {
@@ -1937,20 +1960,20 @@ const BSDataGrid = forwardRef(
     // Helper: Get effective primary key (from metadata or detected from data)
     const getEffectivePrimaryKey = useCallback(
       (rowData = null) => {
-        Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
-          hasMetadata: !!metadata?.primaryKeys,
-          metadataPrimaryKeys: metadata?.primaryKeys,
-          bsStoredProcedure: !!bsStoredProcedure,
-          hasRowData: !!rowData,
-          rowDataKeys: rowData ? Object.keys(rowData) : null,
-        });
+        // Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
+        //   hasMetadata: !!metadata?.primaryKeys,
+        //   metadataPrimaryKeys: metadata?.primaryKeys,
+        //   bsStoredProcedure: !!bsStoredProcedure,
+        //   hasRowData: !!rowData,
+        //   rowDataKeys: rowData ? Object.keys(rowData) : null,
+        // });
 
         // For Enhanced SP with metadata, use metadata primary key
         if (metadata?.primaryKeys?.[0]) {
-          Logger.log(
-            "🔑 Using primary key from metadata:",
-            metadata.primaryKeys[0]
-          );
+          // Logger.log(
+          //   "🔑 Using primary key from metadata:",
+          //   metadata.primaryKeys[0]
+          // );
           return metadata.primaryKeys[0];
         }
 
@@ -4988,7 +5011,7 @@ const BSDataGrid = forwardRef(
                   // Sorting
                   sortingMode={bsFilterMode === "client" ? "client" : "server"}
                   sortModel={sortModel}
-                  onSortModelChange={setSortModel}
+                  onSortModelChange={handleSortModelChange}
                   // Filtering
                   filterMode={bsFilterMode}
                   filterModel={filterModel}
@@ -4998,6 +5021,7 @@ const BSDataGrid = forwardRef(
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
                   headerFilterHeight={52}
+                  showToolbar={showToolbar && !bulkEditMode}
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||

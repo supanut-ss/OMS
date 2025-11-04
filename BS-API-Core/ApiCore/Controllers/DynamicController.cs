@@ -147,20 +147,24 @@ namespace ApiCore.Controllers
                         .ToList();
                 }
 
-                // Parse custom ORDER BY
-                if (!string.IsNullOrEmpty(request.CustomOrderBy))
+                // Parse custom ORDER BY only if SortModel is not provided
+                // Priority: SortModel (from UI) > CustomOrderBy (from config)
+                if (request.SortModel == null || !request.SortModel.Any())
                 {
-                    request.SortModel = request.CustomOrderBy.Split(',')
-                        .Select(orderPart =>
-                        {
-                            var parts = orderPart.Trim().Split(' ');
-                            return new DataGridSortModel
+                    if (!string.IsNullOrEmpty(request.CustomOrderBy))
+                    {
+                        request.SortModel = request.CustomOrderBy.Split(',')
+                            .Select(orderPart =>
                             {
-                                Field = parts[0],
-                                Sort = parts.Length > 1 && parts[1].ToLower() == "desc" ? "desc" : "asc"
-                            };
-                        })
-                        .ToList();
+                                var parts = orderPart.Trim().Split(' ');
+                                return new DataGridSortModel
+                                {
+                                    Field = parts[0],
+                                    Sort = parts.Length > 1 && parts[1].ToLower() == "desc" ? "desc" : "asc"
+                                };
+                            })
+                            .ToList();
+                    }
                 }
 
                 // Add custom WHERE to filter model
