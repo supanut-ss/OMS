@@ -85,6 +85,7 @@ const closedMixin = (theme) => ({
 });
 
 const DrawerHeader = styled("div")(({ theme }) => ({
+  borderRadius: "unset",
   display: "flex",
   alignItems: "center",
   justifyContent: "flex-end",
@@ -360,6 +361,7 @@ export default function MainLayout({ lang, onChangeLang }) {
               duration: theme.transitions.duration.enteringScreen,
             }),
           }),
+          borderRadius: "unset"
         }}
       >
         <Toolbar
@@ -393,7 +395,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <LanguageSwitch lang={lang} changeLanguage={(s)=>onChangeLang(s)} />
+            <LanguageSwitch lang={lang} changeLanguage={(s) => onChangeLang(s)} />
             {/* Theme toggle */}
             <Tooltip title="เปลี่ยนธีม">
               <IconButton
@@ -635,11 +637,11 @@ export default function MainLayout({ lang, onChangeLang }) {
           >
             {open && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <img
+                {/* <img
                   src={logoMiniSvg}
                   alt="Timesheet Logo"
                   style={{ width: 32, height: 32 }}
-                />
+                /> */}
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: 600, color: "text.primary" }}
@@ -690,8 +692,8 @@ export default function MainLayout({ lang, onChangeLang }) {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-        //  bgcolor: "background.default",
-        bgcolor:"aliceblue",
+          //  bgcolor: "background.default",
+          bgcolor: "aliceblue",
           minHeight: "100vh",
           position: "relative",
         }}
