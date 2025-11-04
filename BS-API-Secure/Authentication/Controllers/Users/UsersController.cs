@@ -116,5 +116,24 @@ namespace Authentication.Controllers.Users
             }
         
         }
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteUser(string userIdDel)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.DeleteUser(userIdDel, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+      
     }
 }

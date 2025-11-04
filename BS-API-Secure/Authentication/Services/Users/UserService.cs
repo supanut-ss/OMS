@@ -212,6 +212,53 @@ namespace Authentication.Services.Users
             }
         }
 
+        public async Task<AuthResponse> DeleteUser(string userIdDel, string userId)
+        {
+            try
+            {
+                if (userIdDel == null || string.IsNullOrWhiteSpace(userIdDel))
+                    return _auth.CreateErrorResponse("1", "UserId is required for update.");
+
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                // Check that the target user exists
+                var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
+                using (var checkCmd = new SqlCommand(checkSql, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@userId", userIdDel);
+                    var existsObj = await checkCmd.ExecuteScalarAsync();
+                    if (existsObj == null || Convert.ToInt32(existsObj) == 0)
+                        return _auth.CreateErrorResponse("1", "User not found.");
+                }
+
+                // Build update statement; include password only if provided
+                var sql = $"DELETE FROM [{schema}].t_com_user"; 
+
+                sql += " WHERE user_id = @userId";
+
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userIdDel); 
+
+                //if (includePassword)
+                //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
+
+                var rowsAffected = await cmd.ExecuteNonQueryAsync();
+                if (rowsAffected == 0)
+                    return _auth.CreateErrorResponse("1", "Delete failed.");
+
+                return new AuthResponse
+                {
+                    message_code = "0",
+                    message_text = "User Deleted successfully."
+                };
+            }
+            catch (Exception ex)
+            {
+                return _auth.CreateErrorResponse("1", $"An error occurred: {ex.Message}");
+            }
+        }
+
         public async Task<RoleResponse> GetRole(string userId)
         {
             RoleResponse response = new RoleResponse();
