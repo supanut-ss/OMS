@@ -32,7 +32,7 @@ const UserGroupPage = () => {
             },
           ]}
           bsBulkDelete={true}
-          bsBulkAdd={true}
+          // bsBulkAdd={true}
           bsBulkEdit={true}
         />
       </Paper>
