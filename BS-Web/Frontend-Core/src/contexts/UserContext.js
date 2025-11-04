@@ -22,8 +22,19 @@ export function UserContext() {
     }
   }, []);
 
+  const deleteUser = async (user) => {
+    try {
+      const res = await AxiosMaster.post(`/users/delete?userIdDel=${user}`);
+      return res.data;
+    } catch (err) {
+      console.error("error ", err);
+      return null;
+    }
+  };
+
   return {
     registerUser,
     updateUser,
+    deleteUser,
   };
 }

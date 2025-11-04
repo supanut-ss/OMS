@@ -44,7 +44,7 @@ const UserPage = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
-  const { registerUser, updateUser } = UserContext();
+  const { registerUser, updateUser, deleteUser } = UserContext();
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
@@ -65,6 +65,21 @@ const UserPage = () => {
     setSelectLocale(row.locale_id || "");
     setEditMode(true);
     setOpen(true);
+  };
+
+  const handleOpenDelete = async (row) => {
+    const result = await deleteUser(row);
+    Logger.log("Resulttt :", result);
+    if (result && result.message_code === "0") {
+      BSAlertSwal2.show("success", result.message_text, {
+        timer: 2000,
+      });
+    } else {
+      BSAlertSwal2.show(
+        "error",
+        result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+      );
+    }
   };
 
   const handleClose = () => setOpen(false);
@@ -164,10 +179,6 @@ const UserPage = () => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          User Management
-        </Typography>
-
         <BSDataGrid
           bsLocale={locale_id}
           bsPreObj="sec"
@@ -204,6 +215,7 @@ const UserPage = () => {
           bsShowDescColumn={false}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
+          onDelete={handleOpenDelete}
         />
       </Paper>
 

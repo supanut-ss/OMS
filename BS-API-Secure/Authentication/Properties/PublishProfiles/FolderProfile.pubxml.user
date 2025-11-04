@@ -4,8 +4,8 @@ https://go.microsoft.com/fwlink/?LinkID=208121.
 -->
 <Project>
   <PropertyGroup>
-    <_PublishTargetUrl>D:\api\authentication\Authentication\bin\Release\net9.0\publish\</_PublishTargetUrl>
-    <History>True|2025-08-19T09:39:13.7904996Z||;True|2025-08-19T15:36:10.5568136+07:00||;True|2025-08-15T09:02:05.0128859+07:00||;True|2025-08-15T08:18:30.2000958+07:00||;True|2025-08-14T11:19:54.3568327+07:00||;True|2025-08-13T22:43:27.6364033+07:00||;True|2025-08-13T22:36:39.2283120+07:00||;True|2025-08-13T21:51:49.2807614+07:00||;True|2025-08-13T13:46:03.2609343+07:00||;True|2025-08-13T13:41:23.5866737+07:00||;True|2025-08-13T13:34:14.4021734+07:00||;</History>
+    <_PublishTargetUrl>D:\REACT\KPMT\BS-Platform\BS-API-Secure\Authentication\bin\Release\net9.0\publish\</_PublishTargetUrl>
+    <History>True|2025-11-04T07:15:12.4388895Z||;True|2025-11-04T13:53:15.0784794+07:00||;True|2025-08-19T16:39:13.7904996+07:00||;True|2025-08-19T15:36:10.5568136+07:00||;True|2025-08-15T09:02:05.0128859+07:00||;True|2025-08-15T08:18:30.2000958+07:00||;True|2025-08-14T11:19:54.3568327+07:00||;True|2025-08-13T22:43:27.6364033+07:00||;True|2025-08-13T22:36:39.2283120+07:00||;True|2025-08-13T21:51:49.2807614+07:00||;True|2025-08-13T13:46:03.2609343+07:00||;True|2025-08-13T13:41:23.5866737+07:00||;True|2025-08-13T13:34:14.4021734+07:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

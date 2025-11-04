@@ -8,9 +8,6 @@ const UserGroupPage = () => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          User Group Management
-        </Typography>
         <BSDataGrid
           bsLocale={locale_id}
           bsPreObj="sec"

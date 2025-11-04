@@ -116,7 +116,7 @@ namespace Authentication.Controllers.Users
             }
         
         }
-        [HttpDelete("delete")]
+        [HttpPost("delete")]
         public async Task<IActionResult> DeleteUser(string userIdDel)
         {
             try
