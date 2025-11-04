@@ -397,7 +397,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <LanguageSwitch lang={lang} changeLanguage={(s) => onChangeLang(s)} />
             {/* Theme toggle */}
-            <Tooltip title="เปลี่ยนธีม">
+            {/* <Tooltip title="เปลี่ยนธีม">
               <IconButton
                 color="inherit"
                 onClick={toggleColorMode}
@@ -406,7 +406,7 @@ export default function MainLayout({ lang, onChangeLang }) {
               >
                 {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
               </IconButton>
-            </Tooltip>
+            </Tooltip> */}
 
             {/* Notifications */}
             {/* <Tooltip title="การแจ้งเตือน">

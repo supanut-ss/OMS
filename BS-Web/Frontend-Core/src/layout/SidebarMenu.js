@@ -17,6 +17,7 @@ import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import useMenuItems from "../contexts/useMenuItems";
 import { useResource } from "../hooks/useResource";
+import SidebarSubmenu from "./SidebarSubmenu";
 
 const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const navigate = useNavigate();
@@ -142,26 +143,15 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
           <Collapse in={expanded[key]} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
               {submenu.map((sub) => (
-                <ListItemButton
+                <SidebarSubmenu
                   key={`${key}-${sub.text}`}
-                  onClick={() => {
-                    setLoading(true);
-                    navigate(sub.path);
-                    if (isMobile) setOpen(false);
-                  }}
-                  sx={{
-                    pl: open ? 6 : 4,
-                    borderRadius: 2,
-                    "&:hover": { bgcolor: theme.palette.action.hover },
-                    "&.Mui-selected": {
-                      bgcolor: theme.palette.primary.main,
-                      color: theme.palette.primary.contrastText,
-                      "&:hover": { bgcolor: theme.palette.primary.dark },
-                    },
-                  }}
-                >
-                  <ListItemText primary={sub.text} />
-                </ListItemButton>
+                  text={sub.text}
+                  path={sub.path}
+                  isMobile={isMobile}
+                  open={open}
+                  setOpen={setOpen}
+                  setLoading={setLoading}
+                  theme={theme} />
               ))}
             </List>
           </Collapse>
