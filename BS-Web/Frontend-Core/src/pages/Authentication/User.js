@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -50,6 +50,7 @@ const UserPage = () => {
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectLocale, setSelectLocale] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const gridRef = useRef();
 
   const handleOpenAdd = () => {
     setForm(initialForm);
@@ -70,7 +71,7 @@ const UserPage = () => {
   const handleOpenDelete = async (row) => {
     const result = await deleteUser(row);
     Logger.log("Resulttt :", result);
-    if (result && result.message_code === "0") {
+    if (result && String(result.message_code) === "0") {
       BSAlertSwal2.show("success", result.message_text, {
         timer: 2000,
       });
@@ -145,13 +146,11 @@ const UserPage = () => {
       return;
     }
     if (editMode) {
-      //Logger.log("Edit:", form);
       const result = await updateUser(form);
       if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, {
-          timer: 2000,
-        });
+        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
         setOpen(false);
+        gridRef.current?.refreshData(); // รีเฟรช grid
       } else {
         BSAlertSwal2.show(
           "error",
@@ -159,14 +158,11 @@ const UserPage = () => {
         );
       }
     } else {
-      Logger.log("Add:", form);
-      //form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
       const result = await registerUser(form);
       if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, {
-          timer: 2000,
-        });
+        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
         setOpen(false);
+        gridRef.current?.refreshData(); // รีเฟรช grid
       } else {
         BSAlertSwal2.show(
           "error",
@@ -180,6 +176,7 @@ const UserPage = () => {
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
+          ref={gridRef}
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user"
