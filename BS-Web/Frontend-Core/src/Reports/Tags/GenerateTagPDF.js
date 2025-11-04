@@ -5,7 +5,6 @@ import dayjs from "dayjs";
 // ฟังก์ชันสร้าง PDF และเปิด preview + กลับหน้าก่อนหน้า
 const GenerateTagPDF = async (data) => {
     try {
-        let f;
         if (!data || data.length === 0) {
             return { success: false, message: "No data provided for tag PDF generation." };
         }
