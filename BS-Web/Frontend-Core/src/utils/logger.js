@@ -2,6 +2,8 @@
  * Logger utility สำหรับจัดการ console.log ใน production
  */
 
+import Config from './Config';
+
 const isDevelopment = process.env.NODE_ENV === "development";
 
 class Logger {
