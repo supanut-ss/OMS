@@ -224,7 +224,17 @@ namespace Import_Export_Manager.Extensions
             try
             {
                 var entity = await this.TImportMasters
-                .FirstOrDefaultAsync(x => x.ImportId == request.import_id);
+                    .FirstOrDefaultAsync(x => x.ImportId == request.import_id);
+
+                if (entity == null)
+                {
+                    return new ExcelImportResponse
+                    {
+                        code = "1",
+                        message = "Import configuration not found.",
+                        data = null
+                    };
+                }
 
                 var execSqlCommand = entity?.ExecSqlCommand;
                 if (string.IsNullOrEmpty(execSqlCommand))

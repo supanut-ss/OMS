@@ -61,6 +61,7 @@ const ImportExcel = () => {
         showAlert("error", "ไม่พบ path ของไฟล์ Excel");
         return;
       }
+
       // ใช้ anchor trick เพื่อให้ browser download
       const fileName =
         window.location.origin + "" + Config.BASE_URL + "" + filePath ||
@@ -92,9 +93,28 @@ const ImportExcel = () => {
     }
     return true;
   };
+
   const handleImport = async (files, setProgress) => {
     if (!files || files.length === 0) return;
+    if (select?.confirm_message) {
+      showAlert("warning", select.confirm_message, {
+        showCancelButton: true,
+        showConfirmButton: true,
+        cancelButtonText: "ยกเลิก",
+        confirmButtonText: "ตกลง",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          ImportExcel(files, setProgress);
+        } else {
+          return;
+        }
+      });
+    } else {
+      ImportExcel(files, setProgress);
+    }
+  };
 
+  async function ImportExcel(files, setProgress) {
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
       formData.append("files", files[i]);
@@ -126,12 +146,12 @@ const ImportExcel = () => {
       } else {
         showAlert("error", data.message || "Unknown error");
       }
-      const payload = data.data;
-      setGridData(payload);
+      const payload = data?.data;
+      setGridData(payload || []);
     } catch (err) {
       showAlert("error", "Upload error", err);
     }
-  };
+  }
 
   return (
     <Box
@@ -162,13 +182,23 @@ const ImportExcel = () => {
             bsPreObj="imp.t_mas_"
             bsObj="import_master"
             bsColumes={[
-              { field: "import_id", display: false, filter: false, key: true },
-              { field: "import_name", display: true, filter: true, key: false },
+              { field: "import_id", display: false, filter: true, key: true },
+              {
+                field: "import_name",
+                display: true,
+                filter: false,
+                key: false,
+              },
+              {
+                field: "confirm_message",
+                display: false,
+                filter: false,
+                key: false,
+              },
             ]}
             bsObjBy="import_name"
             bsObjWh=""
             bsValue={select}
-            bsCacheKey="select"
             bsOnChange={(val) => {
               console.log(val);
               setSelect(val);
