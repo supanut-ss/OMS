@@ -177,8 +177,8 @@ const ImportExcel = () => {
         {/* AutoComplete ครึ่งหนึ่งของพื้นที่ */}
         <Box sx={{ flex: 1 }}>
           <BSAutoComplete
-            bsMode="select"
-            bsTitle="เลือก Item เดียว"
+            bsMode="single"
+            bsTitle="กรุณาเลือกประเภทการนำเข้า"
             bsPreObj="imp.t_mas_"
             bsObj="import_master"
             bsColumes={[
