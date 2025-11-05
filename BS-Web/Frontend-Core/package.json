@@ -37,6 +37,7 @@
   "scripts": {
     "start": "env-cmd -f .env.development react-scripts start",
     "build": "react-scripts build",
+    "build:secure": "npm run build && javascript-obfuscator build/static/js --output build/static/js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "start:dev": "env-cmd -f .env.development react-scripts start",

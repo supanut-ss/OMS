@@ -8,6 +8,7 @@ import {
   InputBase,
   IconButton,
   Paper,
+  Box,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useEffect, useState } from "react";
@@ -162,8 +163,8 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
 
   // ✅ Return JSX
   return (
-    <>
-      {/* ช่อง Search */}
+    <Box>
+
       <Paper
         component="form"
         sx={{
@@ -171,12 +172,13 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
           display: "flex",
           alignItems: "center",
           width: "auto",
+          borderRadius: "unset"
         }}
         onSubmit={(e) => e.preventDefault()}
       >
         <InputBase
           sx={{ ml: 1, flex: 1 }}
-          placeholder="Search"
+          placeholder={open ? "Search" : ""}
           inputProps={{ "aria-label": "search" }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -188,7 +190,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
 
       {/* รายการเมนู */}
       <List sx={{ px: 2, py: 1 }}>{menuDiv}</List>
-    </>
+    </Box>
   );
 };
 
