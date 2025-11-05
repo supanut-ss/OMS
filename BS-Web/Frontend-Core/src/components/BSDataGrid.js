@@ -42,6 +42,10 @@ import {
   GridActionsCellItem,
   GridToolbarContainer,
   GridToolbarQuickFilter,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
   GridRowModes,
   GridRowEditStopReasons,
 } from "@mui/x-data-grid-pro";
@@ -371,22 +375,7 @@ const DynamicGridToolbar = ({
 
   return (
     <GridToolbarContainer>
-      {/* Visual indicator */}
-      {/* <Typography
-        variant="body2"
-        sx={{
-          mr: 2,
-          backgroundColor: "warning.main",
-          color: "warning.contrastText",
-          px: 1,
-          py: 0.5,
-          borderRadius: 1,
-        }}
-      >
-        🔧 BS-TOOLBAR
-      </Typography> */}
-
-      {/* Add button */}
+      {/* Custom BS Buttons */}
       {showAdd && (
         <Button
           size="small"
@@ -425,20 +414,10 @@ const DynamicGridToolbar = ({
         />
       )}
 
-      {/* Quick Filter */}
+      {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
+
       <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={500} />
-
-      {/* {headerFiltersEnabled && (
-        <Chip
-          label="Header Filters Enabled"
-          size="small"
-          color="primary"
-          variant="filled"
-          sx={{ ml: 1 }}
-        />
-      )} */}
-
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -451,6 +430,29 @@ const DynamicGridToolbar = ({
       >
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
+
+      {/* Default MUI DataGrid Toolbar Components - Icon only */}
+      <Box
+        sx={{
+          "& .MuiButton-root": {
+            minWidth: "auto",
+            padding: "4px 8px",
+            fontSize: 0,
+            color: "transparent",
+            "& .MuiButton-startIcon": {
+              margin: 0,
+              fontSize: "1.5rem",
+              color: "rgba(0, 0, 0, 0.54)",
+            },
+          },
+        }}
+      >
+        <GridToolbarColumnsButton />
+        <GridToolbarFilterButton />
+        <GridToolbarDensitySelector />
+
+        <GridToolbarExport />
+      </Box>
     </GridToolbarContainer>
   );
 };
@@ -4736,10 +4738,10 @@ const BSDataGrid = forwardRef(
         >
           <Box sx={{ textAlign: "center" }}>
             <CircularProgress sx={{ mb: 2 }} />
-            <Typography variant="body1">Loading table metadata...</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1">Loading data...</Typography>
+            {/* <Typography variant="body2" color="text.secondary">
               {effectiveTableName}
-            </Typography>
+            </Typography> */}
           </Box>
         </Paper>
       );
@@ -5069,7 +5071,8 @@ const BSDataGrid = forwardRef(
                   }}
                   // Row Heights
                   rowHeight={40} //{() => "auto"}
-                  showToolbar={showToolbar && !bulkEditMode}
+                  // showToolbar={showToolbar && !bulkEditMode}
+                  showToolbar
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||
@@ -5093,16 +5096,16 @@ const BSDataGrid = forwardRef(
                     // Use the same primary key detection logic as handleRowSelectionChange
                     const primaryKey = getEffectivePrimaryKey(row);
 
-                    Logger.log("🆔 getRowId called:", {
-                      primaryKey,
-                      rowPrimaryValue: row[primaryKey],
-                      rowKeys: Object.keys(row),
-                      hasValue: row[primaryKey] != null,
-                      actualRowData: row,
-                      idField: row.id,
-                      IdField: row.Id,
-                      countTagIdField: row.count_tag_id,
-                    });
+                    // Logger.log("🆔 getRowId called:", {
+                    //   primaryKey,
+                    //   rowPrimaryValue: row[primaryKey],
+                    //   rowKeys: Object.keys(row),
+                    //   hasValue: row[primaryKey] != null,
+                    //   actualRowData: row,
+                    //   idField: row.id,
+                    //   IdField: row.Id,
+                    //   countTagIdField: row.count_tag_id,
+                    // });
 
                     if (primaryKey && row[primaryKey] != null) {
                       return String(row[primaryKey]);
