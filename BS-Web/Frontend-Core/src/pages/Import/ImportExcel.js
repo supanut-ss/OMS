@@ -229,7 +229,11 @@ const ImportExcel = () => {
       </Box>
 
       {/* ตารางด้านล่าง */}
-      <BSDataGridClient data={gridData} columns={importResultColumns} />
+      <BSDataGridClient
+        data={gridData}
+        columns={importResultColumns}
+        getRowHeight={() => "auto"}
+      />
     </Box>
   );
 };
