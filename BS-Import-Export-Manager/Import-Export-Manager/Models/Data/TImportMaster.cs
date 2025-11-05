@@ -9,6 +9,7 @@
         public string ExcelExampleFilePath { get; set; }
         public int Seq { get; set; }
         public string IsActive { get; set; } = "YES";
+        public string ConfirmMessage { get; set; }
         public string CreateBy { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public string? UpdateBy { get; set; }
