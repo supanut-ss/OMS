@@ -1343,6 +1343,14 @@ const BSDataGrid = forwardRef(
             setRows(processedRows);
             setRowCount(result.rowCount || processedRows.length);
 
+            // Check if no data returned
+            if (processedRows.length === 0) {
+              Logger.log("ℹ️ Enhanced SP returned no data:", {
+                rowCount: result.rowCount,
+                message: result.message,
+              });
+            }
+
             // Call onDataBind callback with the loaded data
             if (onDataBind && typeof onDataBind === "function") {
               try {
@@ -4957,8 +4965,11 @@ const BSDataGrid = forwardRef(
               hasValidRows: rows.length > 0,
             });
 
-            // If no valid columns, show loading state
+            // If no valid columns, show appropriate message
             if (validColumns.length === 0) {
+              // Check if we're still loading data
+              const isStillLoading = loading || metadataLoading;
+
               return (
                 <Box
                   sx={{
@@ -4969,12 +4980,37 @@ const BSDataGrid = forwardRef(
                   }}
                 >
                   <Box sx={{ textAlign: "center" }}>
-                    <CircularProgress sx={{ mb: 2 }} />
-                    <Typography variant="body1">
-                      {metadataLoading
-                        ? "Loading columns..."
-                        : "No valid columns available"}
-                    </Typography>
+                    {isStillLoading ? (
+                      <>
+                        <CircularProgress sx={{ mb: 2 }} />
+                        <Typography variant="body1">
+                          {metadataLoading
+                            ? "Loading columns..."
+                            : "Loading data..."}
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Typography
+                          variant="h6"
+                          color="text.secondary"
+                          sx={{ mb: 1 }}
+                        >
+                          {bsLocale === "th"
+                            ? "ไม่มีข้อมูล"
+                            : "No data available"}
+                        </Typography>
+                        <Typography variant="body2" color="text.disabled">
+                          {bsStoredProcedure
+                            ? bsLocale === "th"
+                              ? "ไม่พบข้อมูลในฐานข้อมูล"
+                              : "The database returned no data"
+                            : bsLocale === "th"
+                            ? "ไม่พบข้อมูลในตาราง"
+                            : "No records found in the table"}
+                        </Typography>
+                      </>
+                    )}
                   </Box>
                 </Box>
               );
@@ -5014,8 +5050,8 @@ const BSDataGrid = forwardRef(
                   loading={
                     loading ||
                     metadataLoading ||
-                    !Array.isArray(columns) ||
-                    columns.length === 0
+                    (!Array.isArray(columns) && loading) ||
+                    (columns.length === 0 && loading)
                   }
                   // Ensure we don't render until we have valid data structure
                   // Include rowCount and content hash in key to force re-render when data changes
@@ -5072,7 +5108,7 @@ const BSDataGrid = forwardRef(
                   // Row Heights
                   rowHeight={40} //{() => "auto"}
                   // showToolbar={showToolbar && !bulkEditMode}
-                  showToolbar
+                  //showToolbar
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||
