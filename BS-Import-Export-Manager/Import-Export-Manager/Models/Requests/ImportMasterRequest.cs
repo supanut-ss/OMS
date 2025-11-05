@@ -8,6 +8,7 @@
         public string? excel_example_file_path { get; set; }
         public int seq { get; set; }
         public string is_active { get; set; }
+        public string confirm_message { get; set; }
         public string create_by { get; set; }
         public string? update_by { get; set; }
     }

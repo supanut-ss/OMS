@@ -13,7 +13,7 @@ const MenuPage = () => {
           bsPreObj="sec"
           bsObj="t_com_menu"
           bsCols="menu_id,menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
-          bsObjBy="menu_group_sequence asc, menu_sequence asc"
+          bsObjBy="platform desc,menu_group_sequence asc, menu_sequence asc"
           //   bsObjWh="status='active'"
           bsRowPerPage={20}
           bsShowDescColumn={false}
@@ -45,7 +45,7 @@ const MenuPage = () => {
               Default: "--- Select Menu Group ---",
               PreObj: "sec",
               Obj: "t_com_menu",
-              ObjWh: "GROUP BY menu_group",
+              ObjWh: "is_active='YES'",
               ObjBy: "menu_group asc",
             },
           ]}

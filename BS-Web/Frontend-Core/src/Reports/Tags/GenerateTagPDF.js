@@ -17,7 +17,7 @@ const GenerateTagPDF = async (data) => {
 
         for (let i = 0; i < data.length; i++) {
             const item = data[i];
-            const qrDataUrl = await QRCode.toDataURL(item.tag_no || "NA", { width: 100 });
+            const qrDataUrl = await QRCode.toDataURL(item.tag_number || "NA", { width: 100 });
 
             const tempDiv = document.createElement("div");
             tempDiv.className = "report-root";
