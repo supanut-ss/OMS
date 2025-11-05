@@ -18,7 +18,7 @@ function CustomBreadcrumbs(props) {
   }, [props.lang])
 
   return (
-    <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
+    <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2, display: "contents" }}>
       {/* <Link component={RouterLink} underline="hover" color="inherit" to="/">
         {getResource(resourceData, "Dashboard")}
       </Link> */}
