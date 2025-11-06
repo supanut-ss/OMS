@@ -12,6 +12,7 @@
     "@mui/styled-engine-sc": "^7.2.0",
     "@mui/x-data-grid": "^7.29.9",
     "@mui/x-data-grid-pro": "^7.29.9",
+    "@mui/x-date-pickers": "^8.16.0",
     "@mui/x-tree-view": "^8.9.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

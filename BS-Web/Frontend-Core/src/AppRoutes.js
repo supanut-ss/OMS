@@ -27,6 +27,9 @@ import Resource from "./pages/Authentication/Resource";
 import { useState } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import secureStorage from "./utils/SecureStorage";
+import BSTextFieldExamples from "./examples/BSTextFieldExamples";
+import BSFilterCustomExamples from "./examples/BSFilterCustomExamples";
+import BSDatepickerExamples from "./examples/BSDatepickerExamples";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -71,6 +74,15 @@ export default function AppRoutes() {
           <Route path="importExcel" element={<ImportExcel />} />
           <Route path="importMaster" element={<ImportMaster />} />
         </Route>
+        <Route path="test/textfield" element={<BSTextFieldExamples />} />
+        <Route path="test/datepicker" element={<BSDatepickerExamples />} />
+        <Route path="test/filtercustom" element={<BSFilterCustomExamples />} />
+        <Route path="assign_menu" element={<AssignMenu />} />
+        <Route path="importExcel" element={<ImportExcel />} />
+        <Route path="importMaster" element={<ImportMaster />} />
+        <Route path="user" element={<UserPage />} />
+        <Route path="user_group" element={<UserGroupPage />} />
+        <Route path="menu" element={<MenuPage />} />
         <Route path="user_logon" element={<UserLogOnPage />} />
         <Route path="count">
           <Route path="count_tag" element={<CountTag lang={lang} />} />
