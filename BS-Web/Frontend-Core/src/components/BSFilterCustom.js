@@ -16,48 +16,58 @@ const BSFilterCustom = ({
   justifyButtons = "flex-end",
 }) => {
   const [value, setValue] = useState([]);
-  const setDefaultFilter = () => {
-    const data = [...bsFilterField];
-    let defaultData = [];
-    data.forEach((f) => defaultData.push({
+
+  // 🔹 ตั้งค่า default ตอน mount
+  const setDefaultFilter = useCallback(() => {
+    const defaultData = bsFilterField.map((f) => ({
       field: f.field,
       operator: "",
       value: "",
     }));
     setValue(defaultData);
+  }, [bsFilterField]);
 
-  }
   useEffect(() => {
     setDefaultFilter();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setDefaultFilter]);
 
-  // ✅ อัปเดตค่าเฉพาะ field ที่เปลี่ยน
-  const updateFieldValue = (fieldName, key, newValue) => {
-    const updated = [...value.map((f) =>
-      f.field === fieldName ? { ...f, [key]: newValue } : f
-    )];
-    setValue(updated);
-    let c = [...updated.filter(f => f.value !== "")];
-    let newData = [];
-    c.forEach(f => {
-      newData.push({
-        field: f.field,
-        operator: f.operator?.code || "",
-        value: f.value
-      })
-    })
-    bsFilterValueOnChanage([...newData])
-  };
+  // ✅ อัปเดตค่า filter field
+  const updateFieldValue = useCallback(
+    (fieldName, key, newValue) => {
+      if (typeof newValue === "undefined") return;
+
+      setValue((prev) => {
+        let newValues = [...prev];
+        let index = newValues.findIndex((f) => f.field === fieldName);
+
+        if (index === -1) {
+          newValues.push({
+            field: fieldName,
+            operator: key === "operator" ? newValue : "",
+            value: key === "value" ? newValue : "",
+          });
+               console.log("new ",newValues)
+        } else {
+          newValues[index] = {
+            ...newValues[index],
+            [key]: newValue,
+          };
+          console.log("update",newValues[index])
+        }
+        return newValues;
+      });
+    },
+    []
+  );
 
   const OnClickSearch = () => {
+    console.log(value)
     bsOnSearch?.(true);
   };
 
   // ✅ render component ตาม type
   const renderFilterComponent = (field) => {
-    const currentValue =
-      value.find((f) => f.field === field.field)?.value || "";
+    const currentValue = value.find((f) => f.field === field.field)?.value || "";
 
     switch (field.component) {
       case "BSAutoComplete":
@@ -71,7 +81,9 @@ const BSFilterCustom = ({
             bsObjBy={field.bsObjBy}
             bsObjWh={field.bsObjWh}
             bsValue={currentValue}
-            bsOnChange={(val) => updateFieldValue(field.field, "value", val)}
+            bsOnChange={(val) =>
+              updateFieldValue(field.field, "value", val)
+            }
             bsLoadOnOpen={field.bsLoadOnOpen}
           />
         );
@@ -117,33 +129,31 @@ const BSFilterCustom = ({
       <Stack spacing={2}>
         <Grid container spacing={spacing}>
           {bsFilterField.map((field, index) => {
-            const currentOperator =
-              value.find((f) => f.field === field.field)?.operator || "";
 
             return (
               <Grid
-                size={{
-                  xs: field.xs || 6,
-                  sm: field.sm || 4,
-                  md: field.md || 4,
-                  lg: field.lg || 3,
-                }}
+                item
+                xs={field.xs || 6}
+                sm={field.sm || 4}
+                md={field.md || 4}
+                lg={field.lg || 3}
                 key={index}
               >
                 <Box>
                   <Grid container spacing={1}>
-                    <Grid size={{ xs: 4, sm: 4, md: 3, lg: 2 }}>
+                    <Grid item xs={4} sm={4} md={3} lg={2}>
                       <BSOperators
-                        type={field.type}
                         field={field.field}
-                        value={currentOperator}
-                        onValueChange={(val) => {
-                          updateFieldValue(val.field, "operator", val.operator)
+                        type={field.type || "string"}
+                        value={value.find(v => v.field === field.field)?.operator || ""}
+                        onValueChange={(newVal) => {
+                          console.log(newVal)
+                          updateFieldValue(newVal.field, "operator", newVal.operator)
                         }
                         }
                       />
                     </Grid>
-                    <Grid size={{ xs: 8, sm: 8, md: 9, lg: 10 }}>
+                    <Grid item xs={8} sm={8} md={9} lg={10}>
                       {renderFilterComponent(field)}
                     </Grid>
                   </Grid>

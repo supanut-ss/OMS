@@ -1,5 +1,5 @@
-import { Autocomplete, FormControl, InputLabel, MenuItem, Select, TextField } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { Autocomplete, TextField } from "@mui/material";
+import { useEffect, useState } from "react";
 
 const BSOperators = ({
     label,
@@ -7,10 +7,11 @@ const BSOperators = ({
     value,
     onValueChange,
     type = "string", // "string" | "number" | "date"
-    md = 3,
-    operators = [], // custom operator เช่น [{value:'=',label:'เท่ากับ'}]
+    operators = [], // custom operators [{ value, label }]
 }) => {
-    const [operatorValue, setOperatorValue] = useState();
+    const [operatorValue, setOperatorValue] = useState(null);
+
+    // 🔹 default operator สำหรับแต่ละ type
     const defaultOperators = {
         string: [
             { value: "=", code: "=" },
@@ -36,27 +37,27 @@ const BSOperators = ({
             { value: "<=", code: "<=" },
         ],
     };
-    const ops = operators.length > 0 ? operators : defaultOperators[type] || defaultOperators.string
+
+    const ops =
+        operators.length > 0 ? operators : defaultOperators[type] || defaultOperators.string;
+
+    // ✅ เรียก onValueChange แค่ตอน mount ครั้งแรก
     useEffect(() => {
         if (!value) {
             setOperatorValue(ops[0] || {})
             onValueChange({ field: field, operator: ops[0] })
         }
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value])
 
-    return <>
+    return (
         <Autocomplete
             disableClearable
             options={ops}
-            getOptionLabel={(option) => option.value || ""}
+            getOptionLabel={(option) => option?.value || ""}
             value={operatorValue || null}
             onChange={(event, newValue) => {
                 setOperatorValue(newValue);
-                onValueChange({ field: field, operator: newValue })
-            }}
-            sx={{
+                onValueChange({ field, operator: newValue });
             }}
             renderInput={(params) => (
                 <TextField
@@ -67,14 +68,10 @@ const BSOperators = ({
                         ...params.inputProps,
                         readOnly: true,
                     }}
-                // sx={{
-                //     "& .MuiOutlinedInput-root": {
-                //         height: 40,
-                //     },
-                // }}
                 />
             )}
         />
-    </>
-}
+    );
+};
+
 export default BSOperators;

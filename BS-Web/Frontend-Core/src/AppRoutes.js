@@ -24,8 +24,8 @@ import PartPage from "./pages/Master/PartPage";
 import SubPage from "./pages/Master/SubPage";
 import TagPage from "./pages/Master/TagPage";
 import BSTextFieldExamples from "./examples/BSTextFieldExamples";
-import BSDatepickerExample from "./examples/ฺฺBSDatepickerExamples";
 import BSFilterCustomExamples from "./examples/BSFilterCustomExamples";
+import BSDatepickerExamples from "./examples/BSDatepickerExamples";
 
 export default function AppRoutes() {
   return (
@@ -57,7 +57,7 @@ export default function AppRoutes() {
         {/* route สำหรับ Enhanced SP Test with Metadata */}
         <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
         <Route path="test/textfield" element={<BSTextFieldExamples />} />
-        <Route path="test/datepicker" element={<BSDatepickerExample />} />
+        <Route path="test/datepicker" element={<BSDatepickerExamples />} />
         <Route path="test/filtercustom" element={<BSFilterCustomExamples />} />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
