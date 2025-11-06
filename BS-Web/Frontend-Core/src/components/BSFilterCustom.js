@@ -10,8 +10,8 @@ const BSFilterCustom = ({
   bsFilterField = [],
   bsFilterValue,
   bsFilterValueOnChanage,
-  bsOnSearch,
-  bsOnClear,
+  bsSearch,
+  bsClear,
   spacing = 1,
   justifyButtons = "flex-end",
 }) => {
@@ -156,25 +156,25 @@ const BSFilterCustom = ({
         </Grid>
 
         <Stack direction="row" spacing={2} justifyContent={justifyButtons}>
-          <Button
+          {bsSearch && <Button
             variant="contained"
             color="primary"
             onClick={OnClickSearch}
             sx={{ minWidth: 100 }}
           >
             ค้นหา
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={() => {
-              setDefaultFilter();
-              bsOnClear?.();
-            }}
-            sx={{ minWidth: 100 }}
-          >
-            ล้างค่า
-          </Button>
+          </Button>}
+          {bsClear &&
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => {
+                setDefaultFilter();
+              }}
+              sx={{ minWidth: 100 }}
+            >
+              ล้างค่า
+            </Button>}
         </Stack>
       </Stack>
     </Paper>

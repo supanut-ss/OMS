@@ -60,13 +60,6 @@ export default function BSFilterCustomExamples() {
     }
   ];
 
-  const handleSearch = () => {
-    console.log("🔍 ค้นหา:", valueFilter);
-  };
-
-  const handleClear = () => {
-  };
-
   return (
     <div style={{ padding: 20 }}>
       <BSFilterCustom
@@ -75,8 +68,8 @@ export default function BSFilterCustomExamples() {
         bsFilterValueOnChanage={(e) =>
           setValueFilter(e)
         }
-        bsOnSearch={handleSearch}
-        bsOnClear={handleClear}
+        bsSearch={true}
+        bsClear={true}
       />
     </div>
   );
