@@ -37,7 +37,6 @@ const BSFilterCustom = ({
     const updated = [...value.map((f) =>
       f.field === fieldName ? { ...f, [key]: newValue } : f
     )];
-    console.log(updated)
     setValue(updated);
     let c = [...updated.filter(f => f.value !== "")];
     let newData = [];
@@ -139,7 +138,6 @@ const BSFilterCustom = ({
                         field={field.field}
                         value={currentOperator}
                         onValueChange={(val) => {
-                          console.log(value, val)
                           updateFieldValue(val.field, "operator", val.operator)
                         }
                         }
