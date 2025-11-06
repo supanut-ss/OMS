@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import BSTextField from '../components/BSTextField';
+import BSTextField from './BSTextField';
 export default function BSTextFieldExamples() {
   const [username, setUsername] = useState("");
   const [age, setAge] = useState("");
