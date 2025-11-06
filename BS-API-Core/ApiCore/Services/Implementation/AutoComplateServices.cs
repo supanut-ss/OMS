@@ -66,15 +66,17 @@ namespace ApiCore.Services.Implementation
 
                             do
                             {
-                                dynamic row = new ExpandoObject();
+                                var dict = new Dictionary<string, object>();
 
-                                var dict = (request.columns ?? Enumerable.Empty<ColumnItem>()).Where(c => c.key)
-                                .ToDictionary(
-                                    c => c.field,
-                                    c => (object)(reader[c.field]?.ToString() ?? "")
-                                );
+                                // 🟢 ดึงทุกคอลัมน์จาก reader เข้า dict อัตโนมัติ
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string colName = reader.GetName(i);
+                                    object colValue = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                    dict[colName] = colValue;
+                                }
 
-                                // เพิ่ม code + value
+                                // 🟢 เพิ่ม code + value จาก request.columns (ถ้ามี)
                                 int index = request.columns?.FindIndex(c => c.key) ?? -1;
                                 if (index >= 0)
                                 {
@@ -87,7 +89,19 @@ namespace ApiCore.Services.Implementation
                                     dict["value"] = string.Join(" ", displayValues);
                                 }
 
+                                // 🟢 เพิ่ม option ว่าง (เฉพาะกรณี include_blank = true)
+                                if (request.include_blank && response.data.Count == 0)
+                                {
+                                        response.data.Add(new Dictionary<string, object>
+                                {
+                                    { "code", "" },
+                                    { "value", "--Please Select--" }
+                                });
+                                }
+
+                                // 🟢 เพิ่มแถวนี้ลงใน response.data
                                 response.data.Add(dict);
+
                             } while (await reader.ReadAsync());
                         }
                     }

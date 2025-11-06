@@ -16,13 +16,13 @@ const BSAutoComplete = ({
     bsValue = null,           // pre-selected value(s)
     bsOnChange,               // function callback on change
     bsLoadOnOpen = false,       // true = fetch only on open
-    bsCacheKey,                 // string, localStorage key for cache
+    bsCacheKey,                 // string, localStorage key for cache\
 }) => {
     const multiple = bsMode === "multi";
     const isSelect = bsMode === "select";
     const [options, setOptions] = useState(bsData);
     const [loading, setLoading] = useState(false);
-    const [value, setValue] = useState(bsValue || (multiple ? [] : ""));
+    const [value, setValue] = useState(null);
     const [loaded, setLoaded] = useState(bsData.length > 0); // track if options loaded
 
     // ✅ ใช้ useMemo แทน object literal
@@ -33,7 +33,7 @@ const BSAutoComplete = ({
         where: bsObjWh,
         order_by: bsObjBy,
         include_blank: bsMode === "select",
-    }), [bsObj, bsPreObj, bsColumes,bsObjBy , bsObjWh, bsMode]);
+    }), [bsObj, bsPreObj, bsColumes, bsObjBy, bsObjWh, bsMode]);
 
     const fetchData = useCallback(async () => {
         if (loaded) return;
@@ -83,6 +83,9 @@ const BSAutoComplete = ({
             setLoading(false);
         }
     }, [loaded, bsCacheKey, requestBody, bsValue, multiple, isSelect]);
+    useEffect(() => {
+        setValue(bsValue || (multiple ? [] : ""));
+    }, [bsValue])
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
