@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import BSDatepicker from "../components/BSDatepicker";
 
-export default function BSDatepickerExample() {
+export default function BSDatepickerExamples() {
   const [date, setDate] = useState(null);
   const [birthDate, setBirthDate] = useState(null);
 
