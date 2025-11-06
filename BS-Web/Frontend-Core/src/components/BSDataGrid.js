@@ -42,6 +42,10 @@ import {
   GridActionsCellItem,
   GridToolbarContainer,
   GridToolbarQuickFilter,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
   GridRowModes,
   GridRowEditStopReasons,
 } from "@mui/x-data-grid-pro";
@@ -371,22 +375,7 @@ const DynamicGridToolbar = ({
 
   return (
     <GridToolbarContainer>
-      {/* Visual indicator */}
-      {/* <Typography
-        variant="body2"
-        sx={{
-          mr: 2,
-          backgroundColor: "warning.main",
-          color: "warning.contrastText",
-          px: 1,
-          py: 0.5,
-          borderRadius: 1,
-        }}
-      >
-        🔧 BS-TOOLBAR
-      </Typography> */}
-
-      {/* Add button */}
+      {/* Custom BS Buttons */}
       {showAdd && (
         <Button
           size="small"
@@ -425,20 +414,10 @@ const DynamicGridToolbar = ({
         />
       )}
 
-      {/* Quick Filter */}
+      {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
+
       <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={500} />
-
-      {/* {headerFiltersEnabled && (
-        <Chip
-          label="Header Filters Enabled"
-          size="small"
-          color="primary"
-          variant="filled"
-          sx={{ ml: 1 }}
-        />
-      )} */}
-
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -451,6 +430,29 @@ const DynamicGridToolbar = ({
       >
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
+
+      {/* Default MUI DataGrid Toolbar Components - Icon only */}
+      <Box
+        sx={{
+          "& .MuiButton-root": {
+            minWidth: "auto",
+            padding: "4px 8px",
+            fontSize: 0,
+            color: "transparent",
+            "& .MuiButton-startIcon": {
+              margin: 0,
+              fontSize: "1.5rem",
+              color: "rgba(0, 0, 0, 0.54)",
+            },
+          },
+        }}
+      >
+        <GridToolbarColumnsButton />
+        <GridToolbarFilterButton />
+        <GridToolbarDensitySelector />
+
+        <GridToolbarExport />
+      </Box>
     </GridToolbarContainer>
   );
 };
@@ -623,7 +625,7 @@ const ComboBoxField = ({
         {loading
           ? "Loading options..."
           : description ||
-          `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+            `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
       </FormHelperText>
     </FormControl>
   );
@@ -973,12 +975,12 @@ const BSDataGrid = forwardRef(
     const [filterModel, setFilterModel] = useState(() => ({
       items: bsObjWh
         ? [
-          {
-            field: "custom_where",
-            operator: "custom",
-            value: bsObjWh,
-          },
-        ]
+            {
+              field: "custom_where",
+              operator: "custom",
+              value: bsObjWh,
+            },
+          ]
         : [],
     }));
 
@@ -1033,7 +1035,7 @@ const BSDataGrid = forwardRef(
       if (isLoadMetadata) {
         loadMetadata(bsPreObj);
       }
-    }, [bsPreObj, isLoadMetadata, loadMetadata])
+    }, [bsPreObj, isLoadMetadata, loadMetadata]);
 
     // Use refs to store current state values to avoid dependency issues
     const paginationModelRef = useRef(paginationModel);
@@ -1311,9 +1313,9 @@ const BSDataGrid = forwardRef(
             sortModel:
               bsFilterMode === "server"
                 ? currentSortModel.map((sort) => ({
-                  field: sort.field,
-                  sort: sort.sort,
-                }))
+                    field: sort.field,
+                    sort: sort.sort,
+                  }))
                 : [], // Only send sort for server-side mode
             filterModel:
               bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
@@ -1340,6 +1342,14 @@ const BSDataGrid = forwardRef(
 
             setRows(processedRows);
             setRowCount(result.rowCount || processedRows.length);
+
+            // Check if no data returned
+            if (processedRows.length === 0) {
+              Logger.log("ℹ️ Enhanced SP returned no data:", {
+                rowCount: result.rowCount,
+                message: result.message,
+              });
+            }
 
             // Call onDataBind callback with the loaded data
             if (onDataBind && typeof onDataBind === "function") {
@@ -1591,41 +1601,43 @@ const BSDataGrid = forwardRef(
     }, []);
 
     // Helper: Get column width based on data type
-    const getColumnWidth = useCallback((dataType, maxLength = 0) => {
-      switch (dataType?.toLowerCase()) {
-        case "bit":
-          return 80;
-        case "int":
-        case "smallint":
-        case "tinyint":
-          return 100;
-        case "bigint":
-          return 120;
-        case "decimal":
-        case "float":
-        case "real":
-        case "money":
-          return 120;
-        case "datetime":
-        case "datetime2":
-        case "date":
-        case "time":
-          return 180;
-        case "varchar":
-        case "nvarchar":
-          if (maxLength > 0) {
-            return maxLength > 100 ? 300 : maxLength > 50 ? 200 : 150;
-          }
-          return 200;
-        case "text":
-        case "ntext":
-          return 300;
-        case "uniqueidentifier":
-          return 250;
-        default:
-          return 150;
-      }
-    }, []);
+    // NOTE: Currently not used - columns are auto-sized by DataGrid
+    // Kept for reference in case manual width control is needed
+    // const getColumnWidth = useCallback((dataType, maxLength = 0) => {
+    //   switch (dataType?.toLowerCase()) {
+    //     case "bit":
+    //       return 80;
+    //     case "int":
+    //     case "smallint":
+    //     case "tinyint":
+    //       return 100;
+    //     case "bigint":
+    //       return 120;
+    //     case "decimal":
+    //     case "float":
+    //     case "real":
+    //     case "money":
+    //       return 120;
+    //     case "datetime":
+    //     case "datetime2":
+    //     case "date":
+    //     case "time":
+    //       return 180;
+    //     case "varchar":
+    //     case "nvarchar":
+    //       if (maxLength > 0) {
+    //         return maxLength > 100 ? 300 : maxLength > 50 ? 200 : 150;
+    //       }
+    //       return 200;
+    //     case "text":
+    //     case "ntext":
+    //       return 300;
+    //     case "uniqueidentifier":
+    //       return 250;
+    //     default:
+    //       return 150;
+    //   }
+    // }, []);
 
     // Helper: Get DataGrid column type
     const getGridColumnType = useCallback((dataType) => {
@@ -2006,7 +2018,7 @@ const BSDataGrid = forwardRef(
           const allPrimaryKeys = [
             ...metadataPrimaryKeys,
             ...(detectedPrimaryKey &&
-              !metadataPrimaryKeys.includes(detectedPrimaryKey)
+            !metadataPrimaryKeys.includes(detectedPrimaryKey)
               ? [detectedPrimaryKey]
               : []),
           ];
@@ -2425,7 +2437,8 @@ const BSDataGrid = forwardRef(
               errors.push(
                 `${formatColumnName(
                   columnName
-                )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
+                )}: Maximum ${maxLength} characters allowed (current: ${
+                  stringValue.length
                 })`
               );
             }
@@ -3113,8 +3126,8 @@ const BSDataGrid = forwardRef(
               inputProps={{
                 ...(maxLength > 0 &&
                   (inputType === "text" || multiline) && {
-                  maxLength: maxLength,
-                }),
+                    maxLength: maxLength,
+                  }),
               }}
               error={maxLength > 0 && String(val).length > maxLength}
             />
@@ -3487,7 +3500,7 @@ const BSDataGrid = forwardRef(
               const columnConfig = {
                 field: key,
                 headerName: formatColumnName(key),
-                width: width,
+                // Removed width - let DataGrid auto-calculate from content
                 type: "string", // Use string type to avoid MUI X Date object requirements
                 editable: false, // Enhanced SP handles editing through operations
               };
@@ -3627,7 +3640,7 @@ const BSDataGrid = forwardRef(
               field: "actions",
               type: "actions",
               headerName: "", // Hide column header
-              width: 120,
+              // Removed width - let DataGrid auto-calculate
               sortable: false,
               filterable: false,
               hideable: false,
@@ -3642,7 +3655,7 @@ const BSDataGrid = forwardRef(
             const rowNumberCol = {
               field: "__rowNumber",
               headerName: "No.",
-              width: 70,
+              // Removed width - let DataGrid auto-calculate
               sortable: false,
               filterable: false,
               hideable: false,
@@ -3724,7 +3737,7 @@ const BSDataGrid = forwardRef(
             const baseColumn = {
               field: col.columnName,
               headerName: col.displayName || formatColumnName(col.columnName),
-              width: getColumnWidth(col.dataType, col.maxLength),
+              // Removed width - let DataGrid auto-calculate from content
               type:
                 comboConfig || isActiveField(columnName)
                   ? "singleSelect"
@@ -3928,7 +3941,7 @@ const BSDataGrid = forwardRef(
             field: "actions",
             type: "actions",
             headerName: "", // Hide column header
-            width: bulkEditMode ? 80 : 120, // Smaller width in bulk edit mode
+            // Removed width - let DataGrid auto-calculate
             sortable: false,
             filterable: false,
             hideable: false,
@@ -3943,7 +3956,7 @@ const BSDataGrid = forwardRef(
           const rowNumberCol = {
             field: "__rowNumber",
             headerName: "No.",
-            width: 70,
+            // Removed width - let DataGrid auto-calculate
             sortable: false,
             filterable: false,
             hideable: false,
@@ -4061,7 +4074,7 @@ const BSDataGrid = forwardRef(
           field: col.field,
           headerName: col.headerName,
           type: col.type || "string",
-          width: col.width || 150,
+          // Removed default width - let DataGrid auto-calculate
           editable: Boolean(col.editable),
           sortable: col.sortable !== false,
           filterable: col.filterable !== false,
@@ -4091,7 +4104,40 @@ const BSDataGrid = forwardRef(
         Logger.error("❌ Error building columns:", error);
         return []; // Always return empty array on error
       }
-    }, [metadata, readOnly, bulkEditMode, bsBulkAddInline, bsShowRowNumber, bsRowPerPage, paginationModel, bsVisibleEdit, bsVisibleDelete, parsedCols, comboBoxConfig, onView, handleEditClick, handleDeleteClick, bsStoredProcedure, rows, handleRestoreRow, formatColumnName, getColumnWidth, getGridColumnType, formatCellValue, isColumnHidden, renderComboBoxCell, getComboBoxOptions, isActiveField, isAuditField, getIsActiveOptions, rowModesModel, handleInlineEditClick, handleInlineSaveClick, handleInlineCancelClick, handleInlineDeleteClick, detectPrimaryKeyFromData]);
+    }, [
+      metadata,
+      readOnly,
+      bulkEditMode,
+      bsBulkAddInline,
+      bsShowRowNumber,
+      bsRowPerPage,
+      paginationModel,
+      bsVisibleEdit,
+      bsVisibleDelete,
+      parsedCols,
+      comboBoxConfig,
+      onView,
+      handleEditClick,
+      handleDeleteClick,
+      bsStoredProcedure,
+      rows,
+      handleRestoreRow,
+      formatColumnName,
+      getGridColumnType,
+      formatCellValue,
+      isColumnHidden,
+      renderComboBoxCell,
+      getComboBoxOptions,
+      isActiveField,
+      isAuditField,
+      getIsActiveOptions,
+      rowModesModel,
+      handleInlineEditClick,
+      handleInlineSaveClick,
+      handleInlineCancelClick,
+      handleInlineDeleteClick,
+      detectPrimaryKeyFromData,
+    ]);
 
     // Handle row selection changes for checkbox selection
     const handleRowSelectionChange = useCallback(
@@ -4129,10 +4175,10 @@ const BSDataGrid = forwardRef(
             firstRowAllIds:
               rows.length > 0
                 ? {
-                  id: rows[0].id,
-                  Id: rows[0].Id,
-                  [primaryKey]: rows[0][primaryKey],
-                }
+                    id: rows[0].id,
+                    Id: rows[0].Id,
+                    [primaryKey]: rows[0][primaryKey],
+                  }
                 : "NO ROWS",
           });
 
@@ -4700,10 +4746,10 @@ const BSDataGrid = forwardRef(
         >
           <Box sx={{ textAlign: "center" }}>
             <CircularProgress sx={{ mb: 2 }} />
-            <Typography variant="body1">Loading table metadata...</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1">Loading data...</Typography>
+            {/* <Typography variant="body2" color="text.secondary">
               {effectiveTableName}
-            </Typography>
+            </Typography> */}
           </Box>
         </Paper>
       );
@@ -4888,8 +4934,8 @@ const BSDataGrid = forwardRef(
               columnsValid: Array.isArray(columns) && columns.length > 0,
               sampleColumns: Array.isArray(columns)
                 ? columns
-                  .slice(0, 2)
-                  .map((c) => ({ field: c.field, type: c.type }))
+                    .slice(0, 2)
+                    .map((c) => ({ field: c.field, type: c.type }))
                 : "N/A",
               metadataExists: !!metadata,
               metadataColumnsCount: metadata?.columns?.length,
@@ -4919,8 +4965,11 @@ const BSDataGrid = forwardRef(
               hasValidRows: rows.length > 0,
             });
 
-            // If no valid columns, show loading state
+            // If no valid columns, show appropriate message
             if (validColumns.length === 0) {
+              // Check if we're still loading data
+              const isStillLoading = loading || metadataLoading;
+
               return (
                 <Box
                   sx={{
@@ -4931,12 +4980,37 @@ const BSDataGrid = forwardRef(
                   }}
                 >
                   <Box sx={{ textAlign: "center" }}>
-                    <CircularProgress sx={{ mb: 2 }} />
-                    <Typography variant="body1">
-                      {metadataLoading
-                        ? "Loading columns..."
-                        : "No valid columns available"}
-                    </Typography>
+                    {isStillLoading ? (
+                      <>
+                        <CircularProgress sx={{ mb: 2 }} />
+                        <Typography variant="body1">
+                          {metadataLoading
+                            ? "Loading columns..."
+                            : "Loading data..."}
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Typography
+                          variant="h6"
+                          color="text.secondary"
+                          sx={{ mb: 1 }}
+                        >
+                          {bsLocale === "th"
+                            ? "ไม่มีข้อมูล"
+                            : "No data available"}
+                        </Typography>
+                        <Typography variant="body2" color="text.disabled">
+                          {bsStoredProcedure
+                            ? bsLocale === "th"
+                              ? "ไม่พบข้อมูลในฐานข้อมูล"
+                              : "The database returned no data"
+                            : bsLocale === "th"
+                            ? "ไม่พบข้อมูลในตาราง"
+                            : "No records found in the table"}
+                        </Typography>
+                      </>
+                    )}
                   </Box>
                 </Box>
               );
@@ -4976,14 +5050,16 @@ const BSDataGrid = forwardRef(
                   loading={
                     loading ||
                     metadataLoading ||
-                    !Array.isArray(columns) ||
-                    columns.length === 0
+                    (!Array.isArray(columns) && loading) ||
+                    (columns.length === 0 && loading)
                   }
                   // Ensure we don't render until we have valid data structure
                   // Include rowCount and content hash in key to force re-render when data changes
-                  key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length
-                    }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${Array.isArray(columns) ? columns.length : 0
-                    }`}
+                  key={`datagrid-${effectiveTableName}-${rowCount}-${
+                    rows.length
+                  }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
+                    Array.isArray(columns) ? columns.length : 0
+                  }`}
                   // Editing
                   editMode="row"
                   processRowUpdate={
@@ -5021,7 +5097,18 @@ const BSDataGrid = forwardRef(
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
                   headerFilterHeight={52}
-                  showToolbar={showToolbar && !bulkEditMode}
+                  // Auto-sizing columns
+                  autosizeOnMount
+                  autosizeOptions={{
+                    columns: columns.map((col) => col.field),
+                    includeHeaders: true,
+                    includeOutliers: false,
+                    expand: true,
+                  }}
+                  // Row Heights
+                  rowHeight={40} //{() => "auto"}
+                  // showToolbar={showToolbar && !bulkEditMode}
+                  //showToolbar
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||
@@ -5045,16 +5132,16 @@ const BSDataGrid = forwardRef(
                     // Use the same primary key detection logic as handleRowSelectionChange
                     const primaryKey = getEffectivePrimaryKey(row);
 
-                    Logger.log("🆔 getRowId called:", {
-                      primaryKey,
-                      rowPrimaryValue: row[primaryKey],
-                      rowKeys: Object.keys(row),
-                      hasValue: row[primaryKey] != null,
-                      actualRowData: row,
-                      idField: row.id,
-                      IdField: row.Id,
-                      countTagIdField: row.count_tag_id,
-                    });
+                    // Logger.log("🆔 getRowId called:", {
+                    //   primaryKey,
+                    //   rowPrimaryValue: row[primaryKey],
+                    //   rowKeys: Object.keys(row),
+                    //   hasValue: row[primaryKey] != null,
+                    //   actualRowData: row,
+                    //   idField: row.id,
+                    //   IdField: row.Id,
+                    //   countTagIdField: row.count_tag_id,
+                    // });
 
                     if (primaryKey && row[primaryKey] != null) {
                       return String(row[primaryKey]);
@@ -5091,15 +5178,26 @@ const BSDataGrid = forwardRef(
                   }}
                   // Localization
                   localeText={getLocalization()}
-                  // Row styling for unsaved changes
+                  // Row styling for unsaved changes and striped rows
                   getRowClassName={(params) => {
                     const primaryKey =
                       metadata?.primaryKeys?.[0] || "Id" || "id";
                     const rowId =
                       params.row[primaryKey] || params.row.id || params.row.Id;
-                    return unsavedChangesRef.current[rowId]
-                      ? "unsaved-changes"
-                      : "";
+
+                    const classes = [];
+
+                    // Add striped styling
+                    if (params.indexRelativeToCurrentPage % 2 === 0) {
+                      classes.push("even");
+                    }
+
+                    // Add unsaved changes styling
+                    if (unsavedChangesRef.current[rowId]) {
+                      classes.push("unsaved-changes");
+                    }
+
+                    return classes.join(" ");
                   }}
                   // Custom Toolbar (use slots + slotProps for better compatibility)
                   slots={
@@ -5110,33 +5208,33 @@ const BSDataGrid = forwardRef(
                   slotProps={
                     showToolbar && !bulkEditMode
                       ? {
-                        toolbar: {
-                          onAdd: handleAddClick,
-                          showAdd,
-                          headerFiltersEnabled,
-                          onToggleHeaderFilters: handleToggleHeaderFilters,
-                          bsBulkEdit,
-                          bsBulkAdd,
-                          bsBulkDelete,
-                          selectedRowCount: rowSelectionModel.length,
-                          onBulkEdit: handleBulkEdit,
-                          onBulkDelete: handleBulkDelete,
-                          onBulkAdd: handleBulkAdd,
-                          showBulkDelete: bsBulkDelete,
-                        },
-                        // Header filter cell props to show inline clear button
-                        headerFilterCell: {
-                          showClearIcon: true,
-                        },
-                      }
+                          toolbar: {
+                            onAdd: handleAddClick,
+                            showAdd,
+                            headerFiltersEnabled,
+                            onToggleHeaderFilters: handleToggleHeaderFilters,
+                            bsBulkEdit,
+                            bsBulkAdd,
+                            bsBulkDelete,
+                            selectedRowCount: rowSelectionModel.length,
+                            onBulkEdit: handleBulkEdit,
+                            onBulkDelete: handleBulkDelete,
+                            onBulkAdd: handleBulkAdd,
+                            showBulkDelete: bsBulkDelete,
+                          },
+                          // Header filter cell props to show inline clear button
+                          headerFilterCell: {
+                            showClearIcon: true,
+                          },
+                        }
                       : headerFiltersEnabled
-                        ? {
+                      ? {
                           // Header filter cell props when toolbar is disabled but header filters are enabled
                           headerFilterCell: {
                             showClearIcon: true,
                           },
                         }
-                        : undefined
+                      : undefined
                   }
                   // Styling with required field indicator
                   sx={{
@@ -5158,9 +5256,9 @@ const BSDataGrid = forwardRef(
                     },
                     // Force header text bold
                     "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                    {
-                      fontWeight: "bold",
-                    },
+                      {
+                        fontWeight: "bold",
+                      },
                     // Required field styling
                     "& .required-field .MuiDataGrid-columnHeaderTitle": {
                       color: "error.main",
@@ -5169,6 +5267,10 @@ const BSDataGrid = forwardRef(
                     [`& .${gridClasses.row}`]: {
                       "&:hover": {
                         backgroundColor: "#f9f9f9",
+                      },
+                      // Striped rows styling
+                      "&.even": {
+                        backgroundColor: "#fafafa",
                       },
                       // Highlight rows with unsaved changes
                       "&.unsaved-changes": {
@@ -5350,8 +5452,9 @@ const BSDataGrid = forwardRef(
                                     </InputLabel>
                                     <Select
                                       value={val || "YES"}
-                                      label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
-                                        }`}
+                                      label={`${formatColumnName(columnName)} ${
+                                        !isNullable ? "*" : ""
+                                      }`}
                                       onChange={(e) =>
                                         updateBulkRow(
                                           rowIndex,
@@ -5441,8 +5544,9 @@ const BSDataGrid = forwardRef(
                                         }
                                       />
                                     }
-                                    label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
-                                      }`}
+                                    label={`${formatColumnName(columnName)} ${
+                                      !isNullable ? "*" : ""
+                                    }`}
                                   />
                                 </Grid>
                               );
@@ -5468,8 +5572,9 @@ const BSDataGrid = forwardRef(
                                 <TextField
                                   fullWidth
                                   size="small"
-                                  label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
-                                    }`}
+                                  label={`${formatColumnName(columnName)} ${
+                                    !isNullable ? "*" : ""
+                                  }`}
                                   type={inputType}
                                   value={val}
                                   onChange={(e) =>
@@ -5486,8 +5591,8 @@ const BSDataGrid = forwardRef(
                                   inputProps={{
                                     ...(maxLength > 0 &&
                                       (inputType === "text" || multiline) && {
-                                      maxLength: maxLength,
-                                    }),
+                                        maxLength: maxLength,
+                                      }),
                                   }}
                                   error={
                                     maxLength > 0 &&

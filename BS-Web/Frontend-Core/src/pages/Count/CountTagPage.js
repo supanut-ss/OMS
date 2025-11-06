@@ -27,12 +27,13 @@ const CountTag = (props) => {
         }
         for (let row of selectedRows) {
             await AxiosMaster.post("/PushNotification/SendNotificationUsers", {
-                "title": `Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_no}`,
+                "title": `Please re-count ${row.area_name ?? ""}(${row.area_code} ) Tag ${row.tag_number}`,
                 "body": `Loc: ${row.location} Fixs Part No: ${row.part_no}`,
                 "tokens": [selectedUser.fcm_token],
                 "data":
                 {
                     "tag_no": row.tag_no,
+                    "tag_number": row.tag_number,
                     "create_by": userInfo.UserId,
                     "routeApp": "/count_tag"
                 }
@@ -40,12 +41,12 @@ const CountTag = (props) => {
                 dataGridRef.current?.refreshData();
                 BSAlertSwal2.show(
                     "success",
-                    `Re-count notification for tag ${row.tag_no} sent to user successfully.`
+                    `Re-count notification for tag ${row.tag_number} sent to user successfully.`
                 );
             }).catch((error) => {
                 BSAlertSwal2.show(
                     "error",
-                    `Failed to send re-count notification for tag ${row.tag_no}.`
+                    `Failed to send re-count notification for tag ${row.tag_number}.`
                 );
             });
         }
@@ -99,7 +100,8 @@ const CountTag = (props) => {
                     bsObj="tbt_count_tag"
                     bsCols="
       tag_no
-         ,area_code
+      ,tag_number
+        ,area_code
       ,area_name
       ,location
       ,part_no

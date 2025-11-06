@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -44,12 +44,13 @@ const UserPage = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
-  const { registerUser, updateUser } = UserContext();
+  const { registerUser, updateUser, deleteUser } = UserContext();
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectLocale, setSelectLocale] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const gridRef = useRef();
 
   const handleOpenAdd = () => {
     setForm(initialForm);
@@ -65,6 +66,21 @@ const UserPage = () => {
     setSelectLocale(row.locale_id || "");
     setEditMode(true);
     setOpen(true);
+  };
+
+  const handleOpenDelete = async (row) => {
+    const result = await deleteUser(row);
+    Logger.log("Resulttt :", result);
+    if (result && String(result.message_code) === "0") {
+      BSAlertSwal2.show("success", result.message_text, {
+        timer: 2000,
+      });
+    } else {
+      BSAlertSwal2.show(
+        "error",
+        result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+      );
+    }
   };
 
   const handleClose = () => setOpen(false);
@@ -130,13 +146,11 @@ const UserPage = () => {
       return;
     }
     if (editMode) {
-      //Logger.log("Edit:", form);
       const result = await updateUser(form);
       if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, {
-          timer: 2000,
-        });
+        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
         setOpen(false);
+        gridRef.current?.refreshData(); // รีเฟรช grid
       } else {
         BSAlertSwal2.show(
           "error",
@@ -144,14 +158,11 @@ const UserPage = () => {
         );
       }
     } else {
-      Logger.log("Add:", form);
-      //form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
       const result = await registerUser(form);
       if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, {
-          timer: 2000,
-        });
+        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
         setOpen(false);
+        gridRef.current?.refreshData(); // รีเฟรช grid
       } else {
         BSAlertSwal2.show(
           "error",
@@ -164,11 +175,8 @@ const UserPage = () => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          User Management
-        </Typography>
-
         <BSDataGrid
+          ref={gridRef}
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user"
@@ -203,6 +211,7 @@ const UserPage = () => {
           bsShowDescColumn={false}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
+          onDelete={handleOpenDelete}
         />
       </Paper>
 

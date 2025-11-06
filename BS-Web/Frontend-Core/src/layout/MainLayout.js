@@ -71,6 +71,8 @@ const openedMixin = (theme) => ({
   overflowX: "hidden",
   backgroundColor: theme.palette.background.paper,
   borderRight: `1px solid ${theme.palette.divider}`,
+  
+  borderRadius: "unset !importent",
 });
 
 const closedMixin = (theme) => ({
@@ -392,9 +394,11 @@ export default function MainLayout({ lang, onChangeLang }) {
                 />
               </Box>
             )}
+            {!isDashboard && !isMobile && open && <CustomBreadcrumbs lang={lang} />}
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+
             <LanguageSwitch lang={lang} changeLanguage={(s) => onChangeLang(s)} />
             {/* Theme toggle */}
             {/* <Tooltip title="เปลี่ยนธีม">
@@ -632,11 +636,11 @@ export default function MainLayout({ lang, onChangeLang }) {
               alignItems: "center",
               justifyContent: open ? "space-between" : "center",
               width: "100%",
-              px: open ? 2 : 0,
+              px: open ? 2 : 0
             }}
           >
             {open && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, border: "unset" }}>
                 {/* <img
                   src={logoMiniSvg}
                   alt="Timesheet Logo"
@@ -682,7 +686,7 @@ export default function MainLayout({ lang, onChangeLang }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3 },
+          p: { xs: 2, sm: 3, md: 1 },
           mt: 8,
           width: {
             xs: "100%",
@@ -698,7 +702,6 @@ export default function MainLayout({ lang, onChangeLang }) {
           position: "relative",
         }}
       >
-        <Box sx={{ mb: 3 }}>{!isDashboard && <CustomBreadcrumbs lang={lang} />}</Box>
         <Outlet />
       </Box>
       {/* Reset Password Popup */}
