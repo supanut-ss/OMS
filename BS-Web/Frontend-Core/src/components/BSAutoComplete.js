@@ -16,7 +16,8 @@ const BSAutoComplete = ({
     bsValue = null,           // pre-selected value(s)
     bsOnChange,               // function callback on change
     bsLoadOnOpen = false,       // true = fetch only on open
-    bsCacheKey,                 // string, localStorage key for cache
+    bsCacheKey,                 // string, localStorage key for cache\
+    css
 }) => {
     const multiple = bsMode === "multi";
     const isSelect = bsMode === "select";
@@ -33,7 +34,7 @@ const BSAutoComplete = ({
         where: bsObjWh,
         order_by: bsObjBy,
         include_blank: bsMode === "select",
-    }), [bsObj, bsPreObj, bsColumes,bsObjBy , bsObjWh, bsMode]);
+    }), [bsObj, bsPreObj, bsColumes, bsObjBy, bsObjWh, bsMode]);
 
     const fetchData = useCallback(async () => {
         if (loaded) return;
@@ -126,6 +127,7 @@ const BSAutoComplete = ({
                 isOptionEqualToValue={(option, val) => option.code === val.code}
                 renderInput={(params) => (
                     <TextField
+                        sx={css || ""}
                         {...params}
                         label={bsTitle}
                         variant="outlined"
@@ -162,6 +164,7 @@ const BSAutoComplete = ({
             renderInput={(params) => (
                 <TextField
                     {...params}
+                    sx={css || ""}
                     label={bsTitle}
                     variant="outlined"
                     InputProps={{
