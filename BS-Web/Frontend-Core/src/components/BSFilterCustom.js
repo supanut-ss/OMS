@@ -21,50 +21,43 @@ const BSFilterCustom = ({
   const setDefaultFilter = useCallback(() => {
     const defaultData = bsFilterField.map((f) => ({
       field: f.field,
-      operator: "",
+      operator: f.defaultOperator || "", // ✅ ตั้ง default operator จาก field config
       value: "",
     }));
     setValue(defaultData);
   }, [bsFilterField]);
 
   useEffect(() => {
-    setDefaultFilter();
-  }, [setDefaultFilter]);
+    if (value.length === 0) {
+      setDefaultFilter();
+    }
+  }, []);
 
-  // ✅ อัปเดตค่า filter field
-  const updateFieldValue = useCallback(
-    (fieldName, key, newValue) => {
-      if (typeof newValue === "undefined") return;
+  const updateFieldValue = useCallback((fieldName, key, newValue) => {
+    if (typeof newValue === "undefined") return;
+    setValue((prev) => {
+      const newValues = prev.map((item) =>
+        item.field === fieldName ? { ...item, [key]: newValue } : item
+      );
+      return newValues;
+    });
+  }, []);
 
-      setValue((prev) => {
-        let newValues = [...prev];
-        let index = newValues.findIndex((f) => f.field === fieldName);
 
-        if (index === -1) {
-          newValues.push({
-            field: fieldName,
-            operator: key === "operator" ? newValue : "",
-            value: key === "value" ? newValue : "",
-          });
-               console.log("new ",newValues)
-        } else {
-          newValues[index] = {
-            ...newValues[index],
-            [key]: newValue,
-          };
-          console.log("update",newValues[index])
-        }
-        return newValues;
-      });
-    },
-    []
-  );
+  const OnClickSearch = (e) => {
+    e.preventDefault();
+    // กรองเฉพาะ field ที่มีค่าจริง
 
-  const OnClickSearch = () => {
-    console.log(value)
-    bsOnSearch?.(true);
+    let val = [...value
+      .filter(f => f.value !== null && f.value !== "")
+      .map(m => ({
+        ...m,
+        operator: m.operator?.code || m.operator,
+        value: m.value?.code || m.value
+      }))];
+
+    bsFilterValueOnChanage(val)
   };
-
   // ✅ render component ตาม type
   const renderFilterComponent = (field) => {
     const currentValue = value.find((f) => f.field === field.field)?.value || "";
@@ -147,8 +140,7 @@ const BSFilterCustom = ({
                         type={field.type || "string"}
                         value={value.find(v => v.field === field.field)?.operator || ""}
                         onValueChange={(newVal) => {
-                          console.log(newVal)
-                          updateFieldValue(newVal.field, "operator", newVal.operator)
+                          updateFieldValue(field.field, "operator", newVal.operator)
                         }
                         }
                       />

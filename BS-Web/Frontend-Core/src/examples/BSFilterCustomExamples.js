@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import BSFilterCustom from "../components/BSFilterCustom";
 
 export default function BSFilterCustomExamples() {
-  const [value, setValue] = useState([]);
+  const [valueFilter, setValueFilter] = useState([]);
 
   const filterFields = [
     {
@@ -10,7 +10,9 @@ export default function BSFilterCustomExamples() {
       component: "BSTextField",
       bsTitle: "ชื่อสินค้า",
       type: "string",
-      grid: { md: 4, lg: 3 }
+      grid: { md: 4, lg: 3 },
+      defaultOperator: "LIKE"
+
     },
     {
       field: "item_start",
@@ -18,13 +20,15 @@ export default function BSFilterCustomExamples() {
       bsTitle: "วันที่เริ่มต้น",
       type: "date",
       grid: { md: 4, lg: 4 },
+      defaultOperator: ">="
     },
     {
       field: "item_end",
       component: "BSDatepicker",
       bsTitle: "วันที่สิ้นสุด",
       type: "date",
-      grid: { md: 4, lg: 4 }
+      grid: { md: 4, lg: 4 },
+      defaultOperator: "<="
     },
     {
       field: "item_price",
@@ -32,7 +36,8 @@ export default function BSFilterCustomExamples() {
       bsTitle: "ราคา",
       type: "float",
       decimals: 2,
-      grid: { md: 4, lg: 4 }
+      grid: { md: 4, lg: 4 },
+      defaultOperator: "="
     },
     {
       field: "combobox",
@@ -50,12 +55,13 @@ export default function BSFilterCustomExamples() {
       bsObjBy: "",
       bsObjWh: "",
       bsLoadOnOpen: true,
-      grid: { md: 4, lg: 4 }
+      grid: { md: 4, lg: 4 },
+      defaultOperator: "="
     }
   ];
 
   const handleSearch = () => {
-    console.log("🔍 ค้นหา:", value);
+    console.log("🔍 ค้นหา:", valueFilter);
   };
 
   const handleClear = () => {
@@ -65,8 +71,10 @@ export default function BSFilterCustomExamples() {
     <div style={{ padding: 20 }}>
       <BSFilterCustom
         bsFilterField={filterFields}
-        bsFilterValue={value}
-        bsFilterValueOnChanage={setValue}
+        bsFilterValue={valueFilter}
+        bsFilterValueOnChanage={(e) =>
+          setValueFilter(e)
+        }
         bsOnSearch={handleSearch}
         bsOnClear={handleClear}
       />

@@ -7,7 +7,7 @@ const BSOperators = ({
     value,
     onValueChange,
     type = "string", // "string" | "number" | "date"
-    operators = [], // custom operators [{ value, label }]
+    operators = [], // custom operators [{ value, code }]
 }) => {
     const [operatorValue, setOperatorValue] = useState(null);
 
@@ -19,6 +19,7 @@ const BSOperators = ({
             { value: "contains", code: "contains" },
             { value: "startsWith", code: "starts with" },
             { value: "endsWith", code: "ends with" },
+            { value: "LIKE", code: "LIKE" }
         ],
         number: [
             { value: "=", code: "=" },
@@ -41,19 +42,27 @@ const BSOperators = ({
     const ops =
         operators.length > 0 ? operators : defaultOperators[type] || defaultOperators.string;
 
-    // ✅ เรียก onValueChange แค่ตอน mount ครั้งแรก
+    // ✅ ตั้งค่าเริ่มต้นและ sync เมื่อ value เปลี่ยน
     useEffect(() => {
+        // ถ้ายังไม่มีค่า operator ให้ใช้ตัวแรกเป็น default
         if (!value) {
-            setOperatorValue(ops[0] || {})
-            onValueChange({ field: field, operator: ops[0] })
+            setOperatorValue(ops[0]);
+            onValueChange({ field, operator: ops[0] });
+        } else if (typeof value === "string") {
+            // ถ้ามีค่าเป็น string เช่น "=" → map ให้ตรงกับ object
+            const found = ops.find((op) => op.code === value || op.value === value);
+            setOperatorValue(found || ops[0]);
+        } else {
+            // ถ้าเป็น object อยู่แล้ว
+            setOperatorValue(value);
         }
-    }, [value])
+    }, [value]);
 
     return (
         <Autocomplete
             disableClearable
             options={ops}
-            getOptionLabel={(option) => option?.value || ""}
+            getOptionLabel={(option) => option?.code || ""}
             value={operatorValue || null}
             onChange={(event, newValue) => {
                 setOperatorValue(newValue);
