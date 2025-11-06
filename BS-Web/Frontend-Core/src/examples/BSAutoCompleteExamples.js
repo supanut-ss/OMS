@@ -25,7 +25,6 @@ const BSAutoCompleteExamples = () => {
             bsValue={select} // ค่าเริ่มต้น = code ของ option
             bsCacheKey="select"
             bsOnChange={(val) => {
-                console.log(val);
                 setSelect(val);
             }}
             bsLoadOnOpen={true}
@@ -48,7 +47,6 @@ const BSAutoCompleteExamples = () => {
             bsValue={single} // ค่าเริ่มต้น = code ของ option
             bsCacheKey="signle"
             bsOnChange={(val) => {
-                console.log(val);
                 setSingle(val)
             }}
             bsLoadOnOpen={true}
@@ -71,7 +69,6 @@ const BSAutoCompleteExamples = () => {
             bsValue={multi} // ค่าเริ่มต้น = code ของ option
             bsCacheKey="multi"
             bsOnChange={(val) => {
-                console.log(val);
                 setMulti(val);
             }}
             bsLoadOnOpen={true}
