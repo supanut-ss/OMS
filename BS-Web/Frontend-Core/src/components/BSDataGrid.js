@@ -670,11 +670,116 @@ const ComboBoxField = ({
  *       ObjBy: "name asc"
  *     }
  *   ]}
+ *   bsColumnDefs={[
+ *     {
+ *       field: "name",
+ *       headerName: "ชื่อ-นามสกุล",
+ *       width: 200,
+ *       type: "string",
+ *       editable: false,
+ *       readOnly: true,
+ *       required: true,
+ *       description: "Full name of the customer",
+ *       align: "left",
+ *       headerAlign: "center"
+ *     },
+ *     {
+ *       field: "salary",
+ *       headerName: "เงินเดือน",
+ *       width: 120,
+ *       type: "number",
+ *       format: "currency",
+ *       currencySymbol: "฿",
+ *       decimals: 2,
+ *       align: "right"
+ *     },
+ *     {
+ *       field: "joinDate",
+ *       headerName: "วันที่เริ่มงาน",
+ *       width: 150,
+ *       type: "date",
+ *       dateFormat: "dd/MM/yyyy",
+ *       dateTimeFormat: "dd/MM/yyyy HH:mm:ss",
+ *       timeFormat: "HH:mm"
+ *     },
+ *     {
+ *       field: "isActive",
+ *       headerName: "สถานะ",
+ *       width: 100,
+ *       type: "boolean",
+ *       trueLabel: "Active",
+ *       falseLabel: "Inactive",
+ *       trueColor: "success",
+ *       falseColor: "error"
+ *     },
+ *     {
+ *       field: "status",
+ *       headerName: "สถานะ",
+ *       width: 120,
+ *       type: "singleSelect",
+ *       valueOptions: ["Active", "Inactive", "Pending"],
+ *       hideable: false,
+ *       sortable: true,
+ *       filterable: true
+ *     }
+ *   ]}
  *   onCheckBoxSelected={(selectedRows) => console.log(selectedRows)}
  *   onEdit={(row) => console.log('Edit:', row)}
  *   onDelete={(id) => console.log('Delete:', id)}
  *   onAdd={() => console.log('Add new')}
  * />
+ *
+ * @bsColumnDefs Configuration:
+ * Custom column definitions to override or extend metadata-driven columns.
+ * Supports both dynamic metadata tables and Enhanced Stored Procedures.
+ *
+ * Available Properties:
+ * - field: string (required) - Column field name
+ * - headerName: string - Display name in header
+ * - width: number - Column width in pixels
+ * - type: "string" | "number" | "boolean" | "date" | "dateTime" | "singleSelect" | "currency"
+ * - editable: boolean - Allow inline editing (default: true)
+ * - readOnly: boolean - Disable editing in forms (default: false)
+ * - required: boolean - Force required validation (overrides metadata)
+ * - description: string - Helper text in forms
+ * - align: "left" | "center" | "right" - Cell content alignment
+ * - headerAlign: "left" | "center" | "right" - Header alignment
+ * - sortable: boolean - Allow sorting (default: true)
+ * - filterable: boolean - Allow filtering (default: true)
+ * - hideable: boolean - Allow hiding column (default: true)
+ * - hide: boolean - Initially hide column (default: false)
+ *
+ * Type-specific Properties:
+ * Number/Currency:
+ * - format: "number" | "currency" | "percent"
+ * - currencySymbol: string (default: "$")
+ * - decimals: number (default: 2)
+ * - thousandSeparator: boolean (default: true)
+ * - min: number - Minimum value
+ * - max: number - Maximum value
+ *
+ * Date/DateTime:
+ * - dateFormat: string (default: "dd/MM/yyyy")
+ * - dateTimeFormat: string (default: "dd/MM/yyyy HH:mm:ss")
+ * - timeFormat: string (default: "HH:mm")
+ * - minDate: Date - Minimum date
+ * - maxDate: Date - Maximum date
+ *
+ * Boolean:
+ * - trueLabel: string (default: "Yes")
+ * - falseLabel: string (default: "No")
+ * - trueColor: "success" | "info" | "warning" | "error"
+ * - falseColor: "success" | "info" | "warning" | "error"
+ *
+ * Select:
+ * - valueOptions: string[] | {value: any, label: string}[]
+ * - multiple: boolean - Allow multiple selection
+ *
+ * Rendering:
+ * - renderCell: (params) => ReactNode - Custom cell renderer
+ * - valueGetter: (params) => any - Custom value getter
+ * - valueFormatter: (params) => string - Custom value formatter
+ * - valueSetter: (params) => row - Custom value setter
  *
  * @filterMode Configuration:
  * - bsFilterMode="server" (default): Filters are processed on the server side
@@ -764,6 +869,7 @@ const BSDataGrid = forwardRef(
       bsComboBox = [],
       bsFilterMode = "server", // "server" | "client"
       bsShowCharacterCount = false, // Show character count in helper text
+      bsColumnDefs = [], // Custom column definitions (overrides metadata)
 
       // Enhanced Stored Procedure support
       bsStoredProcedure, // Enhanced stored procedure name
@@ -850,6 +956,24 @@ const BSDataGrid = forwardRef(
       }
       return config;
     }, [bsComboBox]);
+
+    // Parse bsColumnDefs into a lookup object
+    const columnDefsConfig = useMemo(() => {
+      const config = {};
+      if (Array.isArray(bsColumnDefs) && bsColumnDefs.length > 0) {
+        bsColumnDefs.forEach((colDef) => {
+          if (colDef.field) {
+            config[colDef.field] = colDef;
+          }
+        });
+        Logger.log("📊 Parsed bsColumnDefs:", {
+          count: Object.keys(config).length,
+          fields: Object.keys(config),
+          definitions: config,
+        });
+      }
+      return config;
+    }, [bsColumnDefs]);
 
     // Get current user for locale information
     const { user } = useAuth();
@@ -2885,6 +3009,15 @@ const BSDataGrid = forwardRef(
           .map((fieldName) => {
             const value = formData[fieldName] ?? selectedRow[fieldName] ?? "";
 
+            // Get custom column definition if exists
+            const customDef = columnDefsConfig[fieldName];
+
+            // Determine if field is read-only
+            const isReadOnly = customDef?.readOnly === true || readOnly;
+
+            // Determine if field is required
+            const isRequired = customDef?.required === true;
+
             return (
               <Grid item xs={12} sm={6} key={fieldName}>
                 <TextField
@@ -2899,7 +3032,12 @@ const BSDataGrid = forwardRef(
                     }))
                   }
                   variant="outlined"
-                  helperText={`Enhanced SP field (${typeof value})`}
+                  // helperText={
+                  //   customDef?.description ||
+                  //   `Enhanced SP field (${typeof value})`
+                  // }
+                  disabled={isReadOnly}
+                  required={isRequired}
                 />
               </Grid>
             );
@@ -2972,6 +3110,16 @@ const BSDataGrid = forwardRef(
         let inputType = "text";
         let multiline = false;
 
+        // Get custom column definition if exists
+        const customDef = columnDefsConfig[columnName];
+
+        // Determine if field is read-only (from customDef or component-level readOnly)
+        const isReadOnly = customDef?.readOnly === true || readOnly;
+
+        // Determine if field is required (customDef overrides metadata)
+        const isRequired =
+          customDef?.required !== undefined ? customDef.required : !isNullable;
+
         // Check if this column has a combobox configuration
         const comboConfig = comboBoxConfig[columnName];
         if (comboConfig) {
@@ -2992,10 +3140,11 @@ const BSDataGrid = forwardRef(
                 onChange={(value) =>
                   setFormData((p) => ({ ...p, [columnName]: value }))
                 }
-                required={!isNullable}
+                required={isRequired}
                 dataType={dataType}
                 isNullable={isNullable}
-                description={description}
+                description={customDef?.description || description}
+                disabled={isReadOnly}
               />
             </Grid>
           );
@@ -3005,7 +3154,12 @@ const BSDataGrid = forwardRef(
         if (isActiveField(columnName)) {
           return (
             <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <FormControl fullWidth size="small" required={!isNullable}>
+              <FormControl
+                fullWidth
+                size="small"
+                required={isRequired}
+                disabled={isReadOnly}
+              >
                 <InputLabel>{formatColumnName(columnName)}</InputLabel>
                 <Select
                   value={val || "YES"}
@@ -3013,6 +3167,7 @@ const BSDataGrid = forwardRef(
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, [columnName]: e.target.value }))
                   }
+                  disabled={isReadOnly}
                 >
                   {getIsActiveOptions().map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -3083,9 +3238,11 @@ const BSDataGrid = forwardRef(
                         [columnName]: e.target.checked,
                       }))
                     }
+                    disabled={isReadOnly}
                   />
                 }
                 label={formatColumnName(columnName)}
+                disabled={isReadOnly}
               />
             </Grid>
           );
@@ -3095,7 +3252,7 @@ const BSDataGrid = forwardRef(
         const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
 
         // Build helper text with length information
-        let helperText = description || "";
+        let helperText = customDef?.description || description || "";
         if (
           bsShowCharacterCount &&
           maxLength > 0 &&
@@ -3119,7 +3276,8 @@ const BSDataGrid = forwardRef(
               onChange={(e) =>
                 setFormData((p) => ({ ...p, [columnName]: e.target.value }))
               }
-              required={!isNullable}
+              required={isRequired}
+              disabled={isReadOnly}
               multiline={multiline}
               rows={multiline ? 3 : 1}
               helperText={helperText}
@@ -3153,6 +3311,8 @@ const BSDataGrid = forwardRef(
       bsShowCharacterCount,
       bsStoredProcedure,
       detectPrimaryKeyFromData,
+      columnDefsConfig,
+      readOnly,
     ]);
 
     // Function to restore a single row to its original state
@@ -3329,6 +3489,178 @@ const BSDataGrid = forwardRef(
     const handleRowModesModelChange = useCallback((newRowModesModel) => {
       setRowModesModel(newRowModesModel);
     }, []);
+
+    /**
+     * Helper: Apply custom column definitions from bsColumnDefs
+     * Merges custom properties with metadata-derived or data-derived column config
+     */
+    const applyColumnDefs = useCallback(
+      (column, fieldName) => {
+        const customDef = columnDefsConfig[fieldName];
+        if (!customDef) return column;
+
+        Logger.log(`🎨 Applying custom column def for: ${fieldName}`, {
+          original: column,
+          custom: customDef,
+        });
+
+        // Merge custom properties with original column
+        const mergedColumn = { ...column };
+
+        // Basic properties
+        if (customDef.headerName !== undefined)
+          mergedColumn.headerName = customDef.headerName;
+        if (customDef.width !== undefined) mergedColumn.width = customDef.width;
+        if (customDef.type !== undefined) mergedColumn.type = customDef.type;
+        if (customDef.editable !== undefined)
+          mergedColumn.editable = customDef.editable;
+        if (customDef.sortable !== undefined)
+          mergedColumn.sortable = customDef.sortable;
+        if (customDef.filterable !== undefined)
+          mergedColumn.filterable = customDef.filterable;
+        if (customDef.hideable !== undefined)
+          mergedColumn.hideable = customDef.hideable;
+        if (customDef.hide !== undefined) mergedColumn.hide = customDef.hide;
+        if (customDef.align !== undefined) mergedColumn.align = customDef.align;
+        if (customDef.headerAlign !== undefined)
+          mergedColumn.headerAlign = customDef.headerAlign;
+        if (customDef.description !== undefined)
+          mergedColumn.description = customDef.description;
+
+        // Number/Currency formatting
+        if (customDef.format === "currency" || customDef.type === "currency") {
+          const currencySymbol = customDef.currencySymbol || "$";
+          const decimals = customDef.decimals ?? 2;
+          const thousandSeparator = customDef.thousandSeparator !== false;
+
+          mergedColumn.valueFormatter = (params) => {
+            if (params.value == null) return "";
+            const num = Number(params.value);
+            if (isNaN(num)) return params.value;
+            const formatted = num.toFixed(decimals);
+            const parts = formatted.split(".");
+            if (thousandSeparator) {
+              parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            return `${currencySymbol}${parts.join(".")}`;
+          };
+          mergedColumn.align = mergedColumn.align || "right";
+        } else if (
+          customDef.format === "number" ||
+          customDef.type === "number"
+        ) {
+          const decimals = customDef.decimals ?? 2;
+          const thousandSeparator = customDef.thousandSeparator !== false;
+
+          mergedColumn.valueFormatter = (params) => {
+            if (params.value == null) return "";
+            const num = Number(params.value);
+            if (isNaN(num)) return params.value;
+            const formatted = num.toFixed(decimals);
+            const parts = formatted.split(".");
+            if (thousandSeparator) {
+              parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            return parts.join(".");
+          };
+          mergedColumn.align = mergedColumn.align || "right";
+        } else if (customDef.format === "percent") {
+          const decimals = customDef.decimals ?? 0;
+          mergedColumn.valueFormatter = (params) => {
+            if (params.value == null) return "";
+            const num = Number(params.value);
+            if (isNaN(num)) return params.value;
+            return `${(num * 100).toFixed(decimals)}%`;
+          };
+          mergedColumn.align = mergedColumn.align || "right";
+        }
+
+        // Date/DateTime formatting
+        if (
+          customDef.type === "date" ||
+          customDef.type === "dateTime" ||
+          customDef.dateFormat ||
+          customDef.dateTimeFormat
+        ) {
+          const dateFormat =
+            customDef.dateFormat || customDef.dateTimeFormat || "dd/MM/yyyy";
+          const includeTime = customDef.type === "dateTime";
+
+          mergedColumn.valueFormatter = (params) => {
+            if (!params.value) return "";
+            try {
+              const date = new Date(params.value);
+              if (isNaN(date.getTime())) return params.value;
+
+              // Simple date formatting based on format string
+              const day = String(date.getDate()).padStart(2, "0");
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const year = date.getFullYear();
+              const hours = String(date.getHours()).padStart(2, "0");
+              const minutes = String(date.getMinutes()).padStart(2, "0");
+              const seconds = String(date.getSeconds()).padStart(2, "0");
+
+              let formatted = dateFormat
+                .replace("yyyy", year)
+                .replace("MM", month)
+                .replace("dd", day);
+
+              if (includeTime && customDef.timeFormat) {
+                const timeStr = customDef.timeFormat
+                  .replace("HH", hours)
+                  .replace("mm", minutes)
+                  .replace("ss", seconds);
+                formatted += ` ${timeStr}`;
+              } else if (includeTime) {
+                formatted += ` ${hours}:${minutes}:${seconds}`;
+              }
+
+              return formatted;
+            } catch (e) {
+              return params.value;
+            }
+          };
+        }
+
+        // Boolean formatting
+        if (customDef.type === "boolean") {
+          const trueLabel = customDef.trueLabel || "Yes";
+          const falseLabel = customDef.falseLabel || "No";
+          const trueColor = customDef.trueColor || "success";
+          const falseColor = customDef.falseColor || "default";
+
+          mergedColumn.renderCell = (params) => {
+            const isTrue = params.value === true || params.value === "true";
+            return (
+              <Chip
+                label={isTrue ? trueLabel : falseLabel}
+                color={isTrue ? trueColor : falseColor}
+                size="small"
+              />
+            );
+          };
+        }
+
+        // Select type
+        if (customDef.type === "singleSelect" && customDef.valueOptions) {
+          mergedColumn.type = "singleSelect";
+          mergedColumn.valueOptions = customDef.valueOptions;
+        }
+
+        // Custom renderers (highest priority)
+        if (customDef.renderCell)
+          mergedColumn.renderCell = customDef.renderCell;
+        if (customDef.valueGetter)
+          mergedColumn.valueGetter = customDef.valueGetter;
+        if (customDef.valueFormatter)
+          mergedColumn.valueFormatter = customDef.valueFormatter;
+        if (customDef.valueSetter)
+          mergedColumn.valueSetter = customDef.valueSetter;
+
+        return mergedColumn;
+      },
+      [columnDefsConfig]
+    );
 
     // Build columns from metadata
     const columns = useMemo(() => {
@@ -3597,7 +3929,8 @@ const BSDataGrid = forwardRef(
                 valueType: typeof firstValue,
               });
 
-              return columnConfig;
+              // Apply custom column definitions if provided
+              return applyColumnDefs(columnConfig, key);
             });
 
           // Add actions column if not read-only (for Enhanced Stored Procedure)
@@ -3828,7 +4161,8 @@ const BSDataGrid = forwardRef(
               return value;
             };
 
-            return baseColumn;
+            // Apply custom column definitions if provided
+            return applyColumnDefs(baseColumn, columnName);
           });
 
         // Actions: always show when not read-only
@@ -4137,6 +4471,7 @@ const BSDataGrid = forwardRef(
       handleInlineCancelClick,
       handleInlineDeleteClick,
       detectPrimaryKeyFromData,
+      applyColumnDefs,
     ]);
 
     // Handle row selection changes for checkbox selection

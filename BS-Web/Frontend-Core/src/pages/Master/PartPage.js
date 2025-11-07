@@ -121,7 +121,23 @@ const PartPage = () => {
           bsFilterMode="client"
           bsVisibleDelete={false}
           onDataBind={handleDataBind}
-        // onEdit={handleOpenEdit}
+          // onEdit={handleOpenEdit}
+          bsColumnDefs={[
+            {
+              field: "part_no",
+              // headerName: "Part No.",
+              // width: 200,
+              // type: "string",
+              readOnly: true,
+              // required: true,
+              //description: "Part Number (ไม่สามารถแก้ไขได้)",
+              // align: "left"
+            },
+            {
+              field: "area_code",
+              readOnly: true,
+            },
+          ]}
         />
 
         {/* สรุปผลรวม */}
