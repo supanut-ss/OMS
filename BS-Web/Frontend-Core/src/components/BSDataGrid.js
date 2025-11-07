@@ -2019,20 +2019,21 @@ const BSDataGrid = forwardRef(
       // Common primary key patterns (in order of priority) - enhanced for device compatibility
       const primaryKeyPatterns = [
         // Device-specific patterns (highest priority for compatibility)
-        /^@id$/i, // @id parameter from some devices
-        /^@part_id$/i, // @part_id parameter from other devices
+        ///^@part_id$/i, // @part_id parameter from some devices (prioritize specific over generic)
+        /^@.*_id$/i, // @table_id, @user_id, etc.
+        /^@id$/i, // @id parameter (fallback for device params)
 
-        // Exact matches (high priority)
-        /^id$/i,
+        // Table-specific patterns (HIGH PRIORITY - before generic "id")
+        /^.*_id$/i, // part_id, user_id, order_id, etc. (PRIORITIZED)
+        /^.*Id$/, // partId, userId, orderId, etc. (PRIORITIZED)
+        /^.*ID$/, // partID, userID, orderID, etc. (PRIORITIZED)
+
+        // Generic patterns (LOWER PRIORITY - after table-specific)
+        /^id$/i, // Generic "id" (MOVED DOWN to avoid DataGrid internal IDs)
         /^ID$/,
         /^Id$/,
 
-        // Table-specific patterns
-        /^.*_id$/i, // table_id, user_id, etc.
-        /^.*Id$/, // tableId, userId, etc.
-        /^.*ID$/, // tableID, userID, etc.
-
-        // Generic patterns
+        // Other patterns
         /^pk_/i, // pk_something
         /^primary_/i, // primary_key
         /^key$/i, // key
