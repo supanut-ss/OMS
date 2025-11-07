@@ -137,6 +137,10 @@ const PartPage = () => {
               field: "area_code",
               readOnly: true,
             },
+            {
+              field: "area_name",
+              readOnly: true,
+            },
           ]}
         />
 
