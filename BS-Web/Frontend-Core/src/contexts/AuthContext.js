@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
         refresh_token: SecureStorage.get("refresh_token") ?? ""
       }).then((res) => {
         if (res.data.message_code === "0") {
-          SecureStorage.clear();
+          SecureStorage.clearLogout();
           json.status = true;
           json.message = res.data.message_text;
         } else {
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
       });
     } catch (err) {
       // ถ้าเจอ 401 จะเข้ามาที่นี่
-      SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
+      SecureStorage.clearLogout(); // อาจจะเคลียร์ token แล้วบังคับ logout
       json.status = false;
       json.message = err?.Message || "Unauthorized";
     }
@@ -154,7 +154,8 @@ export const AuthProvider = ({ children }) => {
       }).finally();
     } catch (err) {
       // ถ้าเจอ 401 จะเข้ามาที่นี่
-      SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
+      SecureStorage.clearLogout();
+      // อาจจะเคลียร์ token แล้วบังคับ logout
       return false;
     }
 
@@ -183,6 +184,15 @@ export const AuthProvider = ({ children }) => {
       return false;
     }
   }
+  const version = async (data) => {
+
+    let res = await AxiosMaster.post('/version', data);
+    if (res.status === 200) {
+      return res.data.version || ""
+    } else {
+      return "";
+    }
+  }
   const value = {
     isAuthenticated,
     user,
@@ -193,6 +203,7 @@ export const AuthProvider = ({ children }) => {
     role,
     switchLang,
     loading,
+    version
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -34,20 +34,20 @@ import {
 import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
-  Brightness4 as Brightness4Icon,
-  Brightness7 as Brightness7Icon,
+  //  Brightness4 as Brightness4Icon,
+  // Brightness7 as Brightness7Icon,
   Notifications as NotificationsIcon,
-  Settings as SettingsIcon,
+  // Settings as SettingsIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
 } from "@mui/icons-material";
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useColorMode } from "../themes/ThemeContext";
+//import { useColorMode } from "../themes/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
 import { styled } from "@mui/material/styles";
-import logoMiniSvg from "../assets/logo.jpg";
+//import logoMiniSvg from "../assets/logo.jpg";
 import logoHorizontalSvg from "../assets/logo.jpg";
 
 import { useAlive } from "../contexts/AliveContext";
@@ -71,7 +71,7 @@ const openedMixin = (theme) => ({
   overflowX: "hidden",
   backgroundColor: theme.palette.background.paper,
   borderRight: `1px solid ${theme.palette.divider}`,
-  
+
   borderRadius: "unset !importent",
 });
 
@@ -111,7 +111,7 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
 
 export default function MainLayout({ lang, onChangeLang }) {
   const theme = useTheme();
-  const { toggleColorMode, mode } = useColorMode();
+  //const { toggleColorMode, mode } = useColorMode();
   const { logout } = useAuth();
   const location = useLocation();
 
@@ -287,8 +287,6 @@ export default function MainLayout({ lang, onChangeLang }) {
     // เรียกใช้ logout function จาก AuthContext
     let data = await logout();
     // Navigate ไปหน้า login
-
-    console.log(data);
     if (data.status) {
       BSAlertSwal2.fire({
         icon: "success",
