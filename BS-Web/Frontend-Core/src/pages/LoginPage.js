@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -22,12 +22,16 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import logoSvg from "../assets/logo.jpg";
 import Config from "../utils/Config";
+import secureStorage from "../utils/SecureStorage";
+import { useResource } from "../hooks/useResource";
 
 export default function LoginPage({ setLang }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, resource, menu, role } = useAuth();
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState();
+  const { login, resource, menu, role, version } = useAuth();
 
   const [formData, setFormData] = useState({
     usersname: "",
@@ -36,7 +40,8 @@ export default function LoginPage({ setLang }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
+  let checkVersion = false;
+  const [isVersion, setIsVersion] = useState(false);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -64,7 +69,7 @@ export default function LoginPage({ setLang }) {
       let data = await login(formData);
       setLang(data?.lang ?? "en");
       if (data.status) {
-        let status_resource = await resource();
+        let status_resource = isVersion ? await resource() : true;
         if (status_resource) {
           await role();
           let status_menu = await menu();
@@ -78,23 +83,7 @@ export default function LoginPage({ setLang }) {
         setError(data.message)
       }
       setLoading(false);
-
-      // For demo purposes, accept any username/password
-      // In real app, validate credentials with backend
-      // if (formData.username && formData.password) {
-
-
-      //   // Use login function from AuthContext
-      //   login(formData);
-
-      //   // Navigate to intended page or dashboard
-      //   const from = location.state?.from?.pathname || "/";
-      //   navigate(from, { replace: true });
-      // } else {
-      //   setError("ผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง");
-      // }
     } catch (err) {
-      console.log(err);
       setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
     } finally {
       setLoading(false);
@@ -104,7 +93,26 @@ export default function LoginPage({ setLang }) {
   const toggleShowPassword = () => {
     setShowPassword((prev) => !prev);
   };
+  const getVersion = useCallback(async () => {
+    if (!checkVersion) {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      checkVersion = true;
+      setResourceData(await getResources("Login"));
+      let vs = await version({
+        version_control_name: "RESOURCE_WEB",
+        application_license: Config.LICENSE_KEY
+      });
+      if (secureStorage.get("version") !== vs) {
+        secureStorage.set("version", vs);
+        setIsVersion(true);
+      }
 
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    getVersion();
+  }, [getVersion]);
   return (
     <Box
       sx={{
@@ -181,7 +189,7 @@ export default function LoginPage({ setLang }) {
             <TextField
               fullWidth
               name="usersname"
-              label="Username"
+              label={getResource(resourceData, "Username")}
               type="text"
               value={formData.usersname}
               onChange={handleChange}
@@ -207,7 +215,7 @@ export default function LoginPage({ setLang }) {
             <TextField
               fullWidth
               name="password"
-              label="Password"
+              label={getResource(resourceData, "Password")}
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={handleChange}
@@ -260,7 +268,7 @@ export default function LoginPage({ setLang }) {
               }}
             >
               {/* {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"} */}
-              {loading ? "Logging in..." : "Login"}
+              {loading ? getResource(resourceData, "Login in") : getResource(resourceData, "Login")}
             </Button>
 
             {/* <Box sx={{ textAlign: "center" }}>
@@ -284,19 +292,15 @@ export default function LoginPage({ setLang }) {
           <Box
             sx={{
               mt: 4,
-              p: 2,
-              bgcolor: "grey.50",
-              borderRadius: 2,
-              border: `1px solid ${theme.palette.divider}`,
             }}
           >
-            {/* <Typography
+            <Typography
               variant="caption"
               color="text.secondary"
               sx={{ fontWeight: 500 }}
             >
-              📌 สำหรับการทดสอบ: ใส่อีเมลและรหัสผ่านอะไรก็ได้เพื่อเข้าสู่ระบบ
-            </Typography> */}
+              {getResource(resourceData, "Version")}  : {secureStorage.get("version")}
+            </Typography>
           </Box>
         </CardContent>
       </Card>

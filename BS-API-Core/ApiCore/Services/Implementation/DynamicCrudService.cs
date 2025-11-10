@@ -1306,7 +1306,6 @@ namespace ApiCore.Services.Implementation
                 if (metadataResultSet != null)
                 {
                     _logger.LogInformation("� METADATA RESULT SET FOUND: {RowCount} columns defined", metadataResultSet.Count);
-
                     var columns = new List<DynamicColumnInfo>();
                     var detectedPrimaryKeys = new List<string>();
 

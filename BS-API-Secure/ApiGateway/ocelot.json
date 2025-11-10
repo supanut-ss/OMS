@@ -1114,6 +1114,20 @@
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
+    },
+    {
+      "DownstreamPathTemplate": "/version",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/version",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
     }
   ],
   "GlobalConfiguration": {

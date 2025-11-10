@@ -23,7 +23,7 @@ const BSAutoComplete = ({
   const isSelect = bsMode === "select";
   const [options, setOptions] = useState(bsData);
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState(bsValue || (multiple ? [] : ""));
+  const [value, setValue] = useState(null);
   const [loaded, setLoaded] = useState(bsData.length > 0); // track if options loaded
 
   // ✅ ใช้ useMemo แทน object literal
@@ -90,7 +90,9 @@ const BSAutoComplete = ({
       setLoading(false);
     }
   }, [loaded, bsCacheKey, requestBody, bsValue, multiple, isSelect]);
-
+ useEffect(() => {
+        setValue(bsValue || (multiple ? [] : ""));
+    }, [bsValue])
   const handleChange = (event, newValue) => {
     setValue(newValue);
     if (bsOnChange) {
