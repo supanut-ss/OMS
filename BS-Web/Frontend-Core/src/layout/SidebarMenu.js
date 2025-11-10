@@ -19,6 +19,11 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import useMenuItems from "../contexts/useMenuItems";
 import { useResource } from "../hooks/useResource";
 import SidebarSubmenu from "./SidebarSubmenu";
+import HouseIcon from '@mui/icons-material/House';
+import SettingsIcon from '@mui/icons-material/Settings';
+import StorageIcon from '@mui/icons-material/Storage';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const navigate = useNavigate();
@@ -84,9 +89,26 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
     getMenu();
   }, [resourceData, search]);
 
+  // ICON MENU
+  const showIcon = (index) => {
+    switch (index) {
+      case 0:
+        return <HouseIcon />;
+      case 1:
+        return <SettingsIcon />
+      case 2:
+        return <StorageIcon />
+      case 3:
+        return <ImportExportIcon />
+      case 4:
+        return <LocalOfferIcon />
+      default:
+        return <MenuOpenIcon />
+    }
+  }
   // ✅ สร้างเมนู UI
-  const menuDiv = filteredMenu?.map(({ text, path, icon, submenu }) => {
-    const key = `${text}-${path}`;
+  const menuDiv = filteredMenu?.map(({ text, path, icon, submenu },index) => {
+    const key = `${index}-${path}`;
     const hasSubmenu = submenu?.length > 0;
 
     return (
@@ -124,7 +146,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
                 color: "inherit",
               }}
             >
-              {icon || <MenuOpenIcon />}
+              {icon || showIcon(index)}
             </ListItemIcon>
             {open && (
               <ListItemText
