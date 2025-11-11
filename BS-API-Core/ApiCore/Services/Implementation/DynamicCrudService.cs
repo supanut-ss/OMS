@@ -287,7 +287,8 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
 
                 // Build ORDER BY clause
-                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata, request.CustomOrderBy);
+                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
+                _logger.LogInformation("🏗️ Generated ORDER BY clause: {OrderByClause}", orderByClause);
 
                 // Build final query
                 var query = $@"
@@ -1052,26 +1053,33 @@ namespace ApiCore.Services.Implementation
             // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
             if (!string.IsNullOrEmpty(customOrderBy))
             {
-                _logger.LogInformation("🎯 Using CustomOrderBy: {CustomOrderBy}", customOrderBy);
-                return $"ORDER BY {customOrderBy}";
+                _logger.LogInformation("🏗️ No sorting specified, using default.");
+                // Default sort by first primary key or first column
+                var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
+                return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
             }
 
-            // Priority 2: Sort model from DataGrid
-            if (sortModel != null && sortModel.Any())
-            {
-                var orderItems = sortModel
-                    .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
-                    .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
+            // var orderItems = sortModel
+            //     .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
+            //     .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
 
-                if (orderItems.Any())
+            // return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
+
+            var orderByClauses = new List<string>();
+            foreach (var sort in sortModel)
+            {
+                _logger.LogInformation("🏗️ Processing sort: {SortField} {SortDirection}", sort.Field, sort.Sort);
+                // Validate field name against metadata
+                var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase));
+                if (column != null)
                 {
-                    return $"ORDER BY {string.Join(", ", orderItems)}";
+                    var direction = sort.Sort?.ToUpper() == "DESC" ? "DESC" : "ASC";
+                    orderByClauses.Add($"[{sort.Field}] {direction}");
+                    _logger.LogInformation("✅ Added ORDER BY clause: [{SortField}] {SortDirection}", sort.Field, direction);
                 }
             }
-
-            // Priority 3: Default sort by first primary key or first column
-            var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
-            return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
+            //return string.Join(", ", orderByClauses);
+            return orderByClauses.Any() ? $"ORDER BY {string.Join(", ", orderByClauses)}" : "ORDER BY 1 ASC";
         }
 
 
@@ -1081,133 +1089,6 @@ namespace ApiCore.Services.Implementation
             return searchableTypes.Contains(column.DataType.ToLower());
         }
 
-        public async Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request)
-        {
-            ValidateSecurityConstraints("", request.SchemaName ?? "dbo");
-
-            using var connection = _connectionFactory.CreateConnection(DatabaseType.Main);
-            await connection.OpenAsync();
-
-            var command = new SqlCommand($"[{request.SchemaName}].[{request.ProcedureName}]", connection)
-            {
-                CommandType = CommandType.StoredProcedure,
-                CommandTimeout = 300 // 5 minutes
-            };
-
-            // Add operation parameter
-            command.Parameters.Add(new SqlParameter("@Operation", SqlDbType.VarChar) { Value = request.Operation });
-
-            // Add pagination parameters for SELECT operations
-            if (request.Operation.Equals("SELECT", StringComparison.OrdinalIgnoreCase))
-            {
-                if (request.Page.HasValue && request.PageSize.HasValue)
-                {
-                    command.Parameters.Add(new SqlParameter("@Page", SqlDbType.Int) { Value = request.Page.Value });
-                    command.Parameters.Add(new SqlParameter("@PageSize", SqlDbType.Int) { Value = request.PageSize.Value });
-                }
-
-                // Add sorting parameters
-                if (request.SortModel?.Any() == true)
-                {
-                    var orderBy = string.Join(", ", request.SortModel.Select(s => $"{s.Field} {s.Sort}"));
-                    command.Parameters.Add(new SqlParameter("@OrderBy", SqlDbType.VarChar) { Value = orderBy });
-                }
-
-                // Add filter parameters
-                if (request.FilterModel?.Items?.Any() == true)
-                {
-                    var filterJson = JsonSerializer.Serialize(request.FilterModel);
-                    command.Parameters.Add(new SqlParameter("@FilterModel", SqlDbType.VarChar) { Value = filterJson });
-                }
-            }
-
-            // Add user ID for audit operations
-            if (!string.IsNullOrEmpty(request.UserId))
-            {
-                command.Parameters.Add(new SqlParameter("@UserId", SqlDbType.VarChar) { Value = request.UserId });
-            }
-
-            // Add custom parameters
-            if (request.Parameters?.Any() == true)
-            {
-                foreach (var param in request.Parameters)
-                {
-                    var sqlParam = new SqlParameter($"@{param.Key}", ConvertJsonElementValue(param.Value));
-                    command.Parameters.Add(sqlParam);
-                }
-            }
-
-            // Add output parameters for affected rows and messages
-            var outputRowCount = new SqlParameter("@OutputRowCount", SqlDbType.Int) { Direction = ParameterDirection.Output };
-            var outputMessage = new SqlParameter("@OutputMessage", SqlDbType.VarChar, 4000) { Direction = ParameterDirection.Output };
-            command.Parameters.Add(outputRowCount);
-            command.Parameters.Add(outputMessage);
-
-            _logger.LogInformation("🚀 Executing Enhanced Stored Procedure: [{Schema}].[{Procedure}] with Operation: {Operation}",
-                request.SchemaName, request.ProcedureName, request.Operation);
-
-            var result = new EnhancedStoredProcedureResponse
-            {
-                Operation = request.Operation,
-                ExecutedAt = DateTime.UtcNow
-            };
-
-            try
-            {
-                using var reader = await command.ExecuteReaderAsync();
-                var data = new List<Dictionary<string, object>>();
-
-                // Read result sets
-                do
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        var row = new Dictionary<string, object>();
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            var columnName = reader.GetName(i);
-                            var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                            row[columnName] = value;
-                        }
-                        data.Add(row);
-                    }
-                } while (await reader.NextResultAsync());
-
-                result.Data = data;
-                result.Success = true;
-
-                // Get output parameters after reader is closed
-                await reader.CloseAsync();
-
-                result.RowCount = outputRowCount.Value != DBNull.Value ? (int)outputRowCount.Value : data.Count;
-                result.Message = outputMessage.Value?.ToString();
-
-                // Collect output parameters
-                result.OutputParameters = new Dictionary<string, object>();
-                foreach (SqlParameter param in command.Parameters)
-                {
-                    if (param.Direction == ParameterDirection.Output || param.Direction == ParameterDirection.InputOutput)
-                    {
-                        result.OutputParameters[param.ParameterName] = param.Value ?? DBNull.Value;
-                    }
-                }
-
-                _logger.LogInformation("✅ Enhanced Stored Procedure executed successfully. Operation: {Operation}, Rows: {RowCount}",
-                    request.Operation, result.RowCount);
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                result.Success = false;
-                result.Message = ex.Message;
-
-                _logger.LogError(ex, "❌ Enhanced Stored Procedure execution failed: [{Schema}].[{Procedure}]",
-                    request.SchemaName, request.ProcedureName);
-
-                throw;
-            }
-        }
 
         /// <summary>
         /// Converts JsonElement values to proper .NET types for SQL parameters
@@ -1419,13 +1300,12 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🔍 ENHANCED METADATA DETECTION - Starting for Enhanced SP: {ProcedureName}", request.ProcedureName);
 
                 // Look for metadata in Result Set 0 (columns with COLUMN_NAME, DATA_TYPE, etc.)
-                var metadataResultSet = resultSets.FirstOrDefault(rs => 
+                var metadataResultSet = resultSets.FirstOrDefault(rs =>
                     rs.Any() && rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase));
 
                 if (metadataResultSet != null)
                 {
                     _logger.LogInformation("� METADATA RESULT SET FOUND: {RowCount} columns defined", metadataResultSet.Count);
-                    
                     var columns = new List<DynamicColumnInfo>();
                     var detectedPrimaryKeys = new List<string>();
 

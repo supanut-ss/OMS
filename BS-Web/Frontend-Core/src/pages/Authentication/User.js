@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BsAutoComplete from "../../components/BSAutoComplete";
-import Logger, { log } from "../../utils/logger";
+import Logger from "../../utils/logger";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
@@ -29,7 +29,7 @@ const initialForm = {
   user_group_id: "",
   first_name: "",
   last_name: "",
-  locale_id: "en",
+  locale_id: "",
   department: "",
   supervisor: "",
   email_address: "",
@@ -40,18 +40,22 @@ const initialForm = {
 
 const UserPage = () => {
   const [locale_id, setLocale_id] = useState("en");
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
-  const { registerUser, updateUser } = UserContext();
+  const { registerUser, updateUser, deleteUser } = UserContext();
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
+  const [selectLocale, setSelectLocale] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const gridRef = useRef();
 
   const handleOpenAdd = () => {
     setForm(initialForm);
     setSelectedGroup("");
+    setSelectLocale("");
     setEditMode(false);
     setOpen(true);
   };
@@ -59,14 +63,31 @@ const UserPage = () => {
   const handleOpenEdit = (row) => {
     setForm(row);
     setSelectedGroup(row.user_group_id || "");
+    setSelectLocale(row.locale_id || "");
     setEditMode(true);
     setOpen(true);
+  };
+
+  const handleOpenDelete = async (row) => {
+    const result = await deleteUser(row);
+    Logger.log("Resulttt :", result);
+    if (result && String(result.message_code) === "0") {
+      BSAlertSwal2.show("success", result.message_text, {
+        timer: 2000,
+      });
+    } else {
+      BSAlertSwal2.show(
+        "error",
+        result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+      );
+    }
   };
 
   const handleClose = () => setOpen(false);
 
   const handleChange = (eOrName, value) => {
     let name, val;
+
     // กรณีเป็น event จาก TextField
     if (eOrName?.target) {
       name = eOrName.target.name;
@@ -80,7 +101,7 @@ const UserPage = () => {
         Logger.log("handleChange:", name, val);
       } else if (eOrName === "locale_id") {
         name = eOrName;
-        val = value?.value_member ?? null;
+        val = value?.value ?? null;
         Logger.log("handleChange:", name, val);
       }
     }
@@ -94,12 +115,21 @@ const UserPage = () => {
         val && !emailPattern.test(val) ? "Invalid email address" : ""
       );
     }
+
+    // // Sync dropdown value for user_group_id
+    // if (name === "user_group_id") {
+    //   setSelectedGroup(val);
+    // }
   };
 
   const handleGroupChange = (val) => {
-    log("handleGroupChange:", val);
     setSelectedGroup(val);
     setForm({ ...form, user_group_id: val });
+  };
+
+  const handleLocaleChange = (val) => {
+    setSelectLocale(val);
+    setForm({ ...form, locale_id: val });
   };
 
   const handleSave = async () => {
@@ -116,13 +146,11 @@ const UserPage = () => {
       return;
     }
     if (editMode) {
-      //Logger.log("Edit:", form);
       const result = await updateUser(form);
       if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, {
-          timer: 2000,
-        });
+        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
         setOpen(false);
+        gridRef.current?.refreshData(); // รีเฟรช grid
       } else {
         BSAlertSwal2.show(
           "error",
@@ -130,14 +158,11 @@ const UserPage = () => {
         );
       }
     } else {
-      Logger.log("Add:", form);
-      //form.password = "password"; // กำหนดรหัสผ่านเริ่มต้น
       const result = await registerUser(form);
       if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, {
-          timer: 2000,
-        });
+        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
         setOpen(false);
+        gridRef.current?.refreshData(); // รีเฟรช grid
       } else {
         BSAlertSwal2.show(
           "error",
@@ -150,11 +175,8 @@ const UserPage = () => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          User Management
-        </Typography>
-
         <BSDataGrid
+          ref={gridRef}
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user"
@@ -170,7 +192,8 @@ const UserPage = () => {
                   create_by,
                   create_date,
                   update_by,
-                  update_date"
+                  update_date,
+                  user_group_id"
           bsObjBy="user_id asc"
           bsComboBox={[
             {
@@ -188,6 +211,7 @@ const UserPage = () => {
           bsShowDescColumn={false}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
+          onDelete={handleOpenDelete}
         />
       </Paper>
 
@@ -273,8 +297,8 @@ const UserPage = () => {
                   bsObjWh="is_active='YES'"
                   cacheKey="group_name"
                   //bsLoadOnOpen={true}
-                  bsOnChange={(val) => handleChange("user_group_id", val)}
-                  bsValue={form.user_group_id}
+                  bsOnChange={(val) => handleGroupChange(val.user_group_id)}
+                  bsValue={selectedGroup}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
@@ -285,24 +309,24 @@ const UserPage = () => {
                   bsObj="combobox_item"
                   bsColumes={[
                     {
-                      field: "display_member",
-                      display: true,
-                      filter: false,
-                      key: false,
-                    },
-                    {
                       field: "value_member",
                       display: false,
                       filter: false,
                       key: true,
+                    },
+                    {
+                      field: "display_member",
+                      display: true,
+                      filter: false,
+                      key: false,
                     },
                   ]}
                   bsObjBy=""
                   bsObjWh="group_name='locale_id'"
                   cacheKey="locale_id"
                   //bsLoadOnOpen={frue}
-                  bsOnChange={(val) => handleChange("locale_id", val)}
-                  bsValue={form.locale_id}
+                  bsOnChange={(val) => handleLocaleChange(val.code)}
+                  bsValue={selectLocale}
                 />
               </Box>
             </Box>

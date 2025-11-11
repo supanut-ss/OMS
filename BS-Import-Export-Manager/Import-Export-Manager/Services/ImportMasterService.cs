@@ -53,6 +53,9 @@ namespace Import_Export_Manager.Services
                     case "is_active":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.IsActive) : data.OrderBy(x => x.IsActive);
                         break;
+                    case "confirm_message":
+                        data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ConfirmMessage) : data.OrderBy(x => x.ConfirmMessage);
+                        break;
                     case "create_by":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.CreateBy) : data.OrderBy(x => x.CreateBy);
                         break;
@@ -84,6 +87,7 @@ namespace Import_Export_Manager.Services
                         excel_example_file_path = item.ExcelExampleFilePath,
                         seq = item.Seq,
                         is_active = item.IsActive,
+                        confirm_message = item.ConfirmMessage,
                         create_by = item.CreateBy,
                         created_date = item.CreatedDate,
                         update_by = item.UpdateBy,
@@ -132,6 +136,7 @@ namespace Import_Export_Manager.Services
                         excel_example_file_path = data.ExcelExampleFilePath,
                         seq = data.Seq,
                         is_active = data.IsActive,
+                        confirm_message = data.ConfirmMessage,
                         create_by = data.CreateBy,
                         created_date = data.CreatedDate,
                         update_by = data.UpdateBy,

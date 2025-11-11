@@ -1,5 +1,5 @@
 {
-  "homepage": "/ams_kpmt_count_tag",
+  "homepage": "/inventory_count",
   "name": "BS-Web-Framework",
   "version": "0.1.0",
   "private": true,
@@ -20,9 +20,12 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
-    "dayjs": "^1.11.19",
+    "dayjs": "^1.11.18",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
     "jwt-decode": "^4.0.0",
     "papaparse": "^5.5.3",
+    "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.7.0",
@@ -34,7 +37,8 @@
   },
   "scripts": {
     "start": "env-cmd -f .env.development react-scripts start",
-    "build": "react-scripts build",
+    "build": "craco build",
+    "build:secure": "npm run build && javascript-obfuscator build/static/js --output build/static/js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "start:dev": "env-cmd -f .env.development react-scripts start",
@@ -59,6 +63,8 @@
     ]
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "env-cmd": "^10.1.0"
   }
 }

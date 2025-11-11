@@ -42,6 +42,10 @@ import {
   GridActionsCellItem,
   GridToolbarContainer,
   GridToolbarQuickFilter,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
   GridRowModes,
   GridRowEditStopReasons,
 } from "@mui/x-data-grid-pro";
@@ -371,22 +375,7 @@ const DynamicGridToolbar = ({
 
   return (
     <GridToolbarContainer>
-      {/* Visual indicator */}
-      {/* <Typography
-        variant="body2"
-        sx={{
-          mr: 2,
-          backgroundColor: "warning.main",
-          color: "warning.contrastText",
-          px: 1,
-          py: 0.5,
-          borderRadius: 1,
-        }}
-      >
-        🔧 BS-TOOLBAR
-      </Typography> */}
-
-      {/* Add button */}
+      {/* Custom BS Buttons */}
       {showAdd && (
         <Button
           size="small"
@@ -425,20 +414,10 @@ const DynamicGridToolbar = ({
         />
       )}
 
-      {/* Quick Filter */}
+      {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
+
       <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={500} />
-
-      {/* {headerFiltersEnabled && (
-        <Chip
-          label="Header Filters Enabled"
-          size="small"
-          color="primary"
-          variant="filled"
-          sx={{ ml: 1 }}
-        />
-      )} */}
-
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -451,6 +430,29 @@ const DynamicGridToolbar = ({
       >
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
+
+      {/* Default MUI DataGrid Toolbar Components - Icon only */}
+      <Box
+        sx={{
+          "& .MuiButton-root": {
+            minWidth: "auto",
+            padding: "4px 8px",
+            fontSize: 0,
+            color: "transparent",
+            "& .MuiButton-startIcon": {
+              margin: 0,
+              fontSize: "1.5rem",
+              color: "rgba(0, 0, 0, 0.54)",
+            },
+          },
+        }}
+      >
+        <GridToolbarColumnsButton />
+        <GridToolbarFilterButton />
+        <GridToolbarDensitySelector />
+
+        <GridToolbarExport />
+      </Box>
     </GridToolbarContainer>
   );
 };
@@ -668,11 +670,116 @@ const ComboBoxField = ({
  *       ObjBy: "name asc"
  *     }
  *   ]}
+ *   bsColumnDefs={[
+ *     {
+ *       field: "name",
+ *       headerName: "ชื่อ-นามสกุล",
+ *       width: 200,
+ *       type: "string",
+ *       editable: false,
+ *       readOnly: true,
+ *       required: true,
+ *       description: "Full name of the customer",
+ *       align: "left",
+ *       headerAlign: "center"
+ *     },
+ *     {
+ *       field: "salary",
+ *       headerName: "เงินเดือน",
+ *       width: 120,
+ *       type: "number",
+ *       format: "currency",
+ *       currencySymbol: "฿",
+ *       decimals: 2,
+ *       align: "right"
+ *     },
+ *     {
+ *       field: "joinDate",
+ *       headerName: "วันที่เริ่มงาน",
+ *       width: 150,
+ *       type: "date",
+ *       dateFormat: "dd/MM/yyyy",
+ *       dateTimeFormat: "dd/MM/yyyy HH:mm:ss",
+ *       timeFormat: "HH:mm"
+ *     },
+ *     {
+ *       field: "isActive",
+ *       headerName: "สถานะ",
+ *       width: 100,
+ *       type: "boolean",
+ *       trueLabel: "Active",
+ *       falseLabel: "Inactive",
+ *       trueColor: "success",
+ *       falseColor: "error"
+ *     },
+ *     {
+ *       field: "status",
+ *       headerName: "สถานะ",
+ *       width: 120,
+ *       type: "singleSelect",
+ *       valueOptions: ["Active", "Inactive", "Pending"],
+ *       hideable: false,
+ *       sortable: true,
+ *       filterable: true
+ *     }
+ *   ]}
  *   onCheckBoxSelected={(selectedRows) => console.log(selectedRows)}
  *   onEdit={(row) => console.log('Edit:', row)}
  *   onDelete={(id) => console.log('Delete:', id)}
  *   onAdd={() => console.log('Add new')}
  * />
+ *
+ * @bsColumnDefs Configuration:
+ * Custom column definitions to override or extend metadata-driven columns.
+ * Supports both dynamic metadata tables and Enhanced Stored Procedures.
+ *
+ * Available Properties:
+ * - field: string (required) - Column field name
+ * - headerName: string - Display name in header
+ * - width: number - Column width in pixels
+ * - type: "string" | "number" | "boolean" | "date" | "dateTime" | "singleSelect" | "currency"
+ * - editable: boolean - Allow inline editing (default: true)
+ * - readOnly: boolean - Disable editing in forms (default: false)
+ * - required: boolean - Force required validation (overrides metadata)
+ * - description: string - Helper text in forms
+ * - align: "left" | "center" | "right" - Cell content alignment
+ * - headerAlign: "left" | "center" | "right" - Header alignment
+ * - sortable: boolean - Allow sorting (default: true)
+ * - filterable: boolean - Allow filtering (default: true)
+ * - hideable: boolean - Allow hiding column (default: true)
+ * - hide: boolean - Initially hide column (default: false)
+ *
+ * Type-specific Properties:
+ * Number/Currency:
+ * - format: "number" | "currency" | "percent"
+ * - currencySymbol: string (default: "$")
+ * - decimals: number (default: 2)
+ * - thousandSeparator: boolean (default: true)
+ * - min: number - Minimum value
+ * - max: number - Maximum value
+ *
+ * Date/DateTime:
+ * - dateFormat: string (default: "dd/MM/yyyy")
+ * - dateTimeFormat: string (default: "dd/MM/yyyy HH:mm:ss")
+ * - timeFormat: string (default: "HH:mm")
+ * - minDate: Date - Minimum date
+ * - maxDate: Date - Maximum date
+ *
+ * Boolean:
+ * - trueLabel: string (default: "Yes")
+ * - falseLabel: string (default: "No")
+ * - trueColor: "success" | "info" | "warning" | "error"
+ * - falseColor: "success" | "info" | "warning" | "error"
+ *
+ * Select:
+ * - valueOptions: string[] | {value: any, label: string}[]
+ * - multiple: boolean - Allow multiple selection
+ *
+ * Rendering:
+ * - renderCell: (params) => ReactNode - Custom cell renderer
+ * - valueGetter: (params) => any - Custom value getter
+ * - valueFormatter: (params) => string - Custom value formatter
+ * - valueSetter: (params) => row - Custom value setter
  *
  * @filterMode Configuration:
  * - bsFilterMode="server" (default): Filters are processed on the server side
@@ -762,6 +869,7 @@ const BSDataGrid = forwardRef(
       bsComboBox = [],
       bsFilterMode = "server", // "server" | "client"
       bsShowCharacterCount = false, // Show character count in helper text
+      bsColumnDefs = [], // Custom column definitions (overrides metadata)
 
       // Enhanced Stored Procedure support
       bsStoredProcedure, // Enhanced stored procedure name
@@ -848,6 +956,24 @@ const BSDataGrid = forwardRef(
       }
       return config;
     }, [bsComboBox]);
+
+    // Parse bsColumnDefs into a lookup object
+    const columnDefsConfig = useMemo(() => {
+      const config = {};
+      if (Array.isArray(bsColumnDefs) && bsColumnDefs.length > 0) {
+        bsColumnDefs.forEach((colDef) => {
+          if (colDef.field) {
+            config[colDef.field] = colDef;
+          }
+        });
+        Logger.log("📊 Parsed bsColumnDefs:", {
+          count: Object.keys(config).length,
+          fields: Object.keys(config),
+          definitions: config,
+        });
+      }
+      return config;
+    }, [bsColumnDefs]);
 
     // Get current user for locale information
     const { user } = useAuth();
@@ -997,7 +1123,7 @@ const BSDataGrid = forwardRef(
     const [selectedRow, setSelectedRow] = useState(null);
     const [formData, setFormData] = useState({});
     const [formLoading, setFormLoading] = useState(false);
-
+    const [isLoadMetadata, setIsLoadMetadata] = useState(false);
     // Bulk Add specific states
     const [bulkAddDialogOpen, setBulkAddDialogOpen] = useState(false);
     const [bulkAddRows, setBulkAddRows] = useState([]);
@@ -1022,18 +1148,18 @@ const BSDataGrid = forwardRef(
             "🚀 Using Enhanced Stored Procedure mode - creating mock metadata"
           );
           // Skip metadata loading for Enhanced SP since it will handle everything
-        } else if (effectiveTableName) {
+        } else if (effectiveTableName && isLoadMetadata === false) {
           // For regular table mode, load metadata as usual
-          loadMetadata(bsPreObj);
+          setIsLoadMetadata(true);
         }
       }
-    }, [
-      effectiveTableName,
-      autoLoad,
-      loadMetadata,
-      bsPreObj,
-      bsStoredProcedure,
-    ]);
+    }, [autoLoad, bsStoredProcedure, effectiveTableName, isLoadMetadata]);
+
+    useEffect(() => {
+      if (isLoadMetadata) {
+        loadMetadata(bsPreObj);
+      }
+    }, [bsPreObj, isLoadMetadata, loadMetadata]);
 
     // Use refs to store current state values to avoid dependency issues
     const paginationModelRef = useRef(paginationModel);
@@ -1087,6 +1213,11 @@ const BSDataGrid = forwardRef(
             field: sort.field,
             sort: sort.sort,
           }));
+
+          Logger.log(
+            "🟡 [BSDataGrid] sortModelForApi to API:",
+            sortModelForApi
+          );
 
           // Include ComboBox fields in the query even if they're not in bsCols for display
           let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
@@ -1336,6 +1467,14 @@ const BSDataGrid = forwardRef(
             setRows(processedRows);
             setRowCount(result.rowCount || processedRows.length);
 
+            // Check if no data returned
+            if (processedRows.length === 0) {
+              Logger.log("ℹ️ Enhanced SP returned no data:", {
+                rowCount: result.rowCount,
+                message: result.message,
+              });
+            }
+
             // Call onDataBind callback with the loaded data
             if (onDataBind && typeof onDataBind === "function") {
               try {
@@ -1527,6 +1666,24 @@ const BSDataGrid = forwardRef(
       loadDataRef.current();
     }, [paginationModel, sortModel, filterModel, bsFilterMode]);
 
+    // Handler for sort model changes with debugging
+    const handleSortModelChange = useCallback(
+      (newSortModel) => {
+        Logger.log("🔀 Sort model changed:", {
+          oldModel: sortModel,
+          newModel: newSortModel,
+          sortCount: newSortModel?.length || 0,
+          sortFields:
+            newSortModel?.map((s) => `${s.field} ${s.sort}`).join(", ") ||
+            "none",
+          filterMode: bsFilterMode,
+        });
+
+        setSortModel(newSortModel);
+      },
+      [sortModel, bsFilterMode]
+    );
+
     // Handler for filter model changes with debugging
     const handleFilterModelChange = useCallback(
       (newFilterModel) => {
@@ -1568,41 +1725,43 @@ const BSDataGrid = forwardRef(
     }, []);
 
     // Helper: Get column width based on data type
-    const getColumnWidth = useCallback((dataType, maxLength = 0) => {
-      switch (dataType?.toLowerCase()) {
-        case "bit":
-          return 80;
-        case "int":
-        case "smallint":
-        case "tinyint":
-          return 100;
-        case "bigint":
-          return 120;
-        case "decimal":
-        case "float":
-        case "real":
-        case "money":
-          return 120;
-        case "datetime":
-        case "datetime2":
-        case "date":
-        case "time":
-          return 180;
-        case "varchar":
-        case "nvarchar":
-          if (maxLength > 0) {
-            return maxLength > 100 ? 300 : maxLength > 50 ? 200 : 150;
-          }
-          return 200;
-        case "text":
-        case "ntext":
-          return 300;
-        case "uniqueidentifier":
-          return 250;
-        default:
-          return 150;
-      }
-    }, []);
+    // NOTE: Currently not used - columns are auto-sized by DataGrid
+    // Kept for reference in case manual width control is needed
+    // const getColumnWidth = useCallback((dataType, maxLength = 0) => {
+    //   switch (dataType?.toLowerCase()) {
+    //     case "bit":
+    //       return 80;
+    //     case "int":
+    //     case "smallint":
+    //     case "tinyint":
+    //       return 100;
+    //     case "bigint":
+    //       return 120;
+    //     case "decimal":
+    //     case "float":
+    //     case "real":
+    //     case "money":
+    //       return 120;
+    //     case "datetime":
+    //     case "datetime2":
+    //     case "date":
+    //     case "time":
+    //       return 180;
+    //     case "varchar":
+    //     case "nvarchar":
+    //       if (maxLength > 0) {
+    //         return maxLength > 100 ? 300 : maxLength > 50 ? 200 : 150;
+    //       }
+    //       return 200;
+    //     case "text":
+    //     case "ntext":
+    //       return 300;
+    //     case "uniqueidentifier":
+    //       return 250;
+    //     default:
+    //       return 150;
+    //   }
+    // }, []);
 
     // Helper: Get DataGrid column type
     const getGridColumnType = useCallback((dataType) => {
@@ -1860,20 +2019,21 @@ const BSDataGrid = forwardRef(
       // Common primary key patterns (in order of priority) - enhanced for device compatibility
       const primaryKeyPatterns = [
         // Device-specific patterns (highest priority for compatibility)
-        /^@id$/i, // @id parameter from some devices
-        /^@part_id$/i, // @part_id parameter from other devices
+        ///^@part_id$/i, // @part_id parameter from some devices (prioritize specific over generic)
+        /^@.*_id$/i, // @table_id, @user_id, etc.
+        /^@id$/i, // @id parameter (fallback for device params)
 
-        // Exact matches (high priority)
-        /^id$/i,
+        // Table-specific patterns (HIGH PRIORITY - before generic "id")
+        /^.*_id$/i, // part_id, user_id, order_id, etc. (PRIORITIZED)
+        /^.*Id$/, // partId, userId, orderId, etc. (PRIORITIZED)
+        /^.*ID$/, // partID, userID, orderID, etc. (PRIORITIZED)
+
+        // Generic patterns (LOWER PRIORITY - after table-specific)
+        /^id$/i, // Generic "id" (MOVED DOWN to avoid DataGrid internal IDs)
         /^ID$/,
         /^Id$/,
 
-        // Table-specific patterns
-        /^.*_id$/i, // table_id, user_id, etc.
-        /^.*Id$/, // tableId, userId, etc.
-        /^.*ID$/, // tableID, userID, etc.
-
-        // Generic patterns
+        // Other patterns
         /^pk_/i, // pk_something
         /^primary_/i, // primary_key
         /^key$/i, // key
@@ -1937,20 +2097,20 @@ const BSDataGrid = forwardRef(
     // Helper: Get effective primary key (from metadata or detected from data)
     const getEffectivePrimaryKey = useCallback(
       (rowData = null) => {
-        Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
-          hasMetadata: !!metadata?.primaryKeys,
-          metadataPrimaryKeys: metadata?.primaryKeys,
-          bsStoredProcedure: !!bsStoredProcedure,
-          hasRowData: !!rowData,
-          rowDataKeys: rowData ? Object.keys(rowData) : null,
-        });
+        // Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
+        //   hasMetadata: !!metadata?.primaryKeys,
+        //   metadataPrimaryKeys: metadata?.primaryKeys,
+        //   bsStoredProcedure: !!bsStoredProcedure,
+        //   hasRowData: !!rowData,
+        //   rowDataKeys: rowData ? Object.keys(rowData) : null,
+        // });
 
         // For Enhanced SP with metadata, use metadata primary key
         if (metadata?.primaryKeys?.[0]) {
-          Logger.log(
-            "🔑 Using primary key from metadata:",
-            metadata.primaryKeys[0]
-          );
+          // Logger.log(
+          //   "🔑 Using primary key from metadata:",
+          //   metadata.primaryKeys[0]
+          // );
           return metadata.primaryKeys[0];
         }
 
@@ -2720,12 +2880,12 @@ const BSDataGrid = forwardRef(
     }, []);
 
     // Helper: Check if field is required (not null)
-    const isFieldRequired = useCallback((columnName, metadata) => {
-      const column = metadata?.columns?.find(
-        (c) => c.columnName === columnName
-      );
-      return column && !column.isNullable;
-    }, []);
+    // const isFieldRequired = useCallback((columnName, metadata) => {
+    //   const column = metadata?.columns?.find(
+    //     (c) => c.columnName === columnName
+    //   );
+    //   return column && !column.isNullable;
+    // }, []);
 
     const isColumnHidden = useCallback(
       (columnName, dataType) => {
@@ -2850,6 +3010,15 @@ const BSDataGrid = forwardRef(
           .map((fieldName) => {
             const value = formData[fieldName] ?? selectedRow[fieldName] ?? "";
 
+            // Get custom column definition if exists
+            const customDef = columnDefsConfig[fieldName];
+
+            // Determine if field is read-only
+            const isReadOnly = customDef?.readOnly === true || readOnly;
+
+            // Determine if field is required
+            const isRequired = customDef?.required === true;
+
             return (
               <Grid item xs={12} sm={6} key={fieldName}>
                 <TextField
@@ -2864,7 +3033,12 @@ const BSDataGrid = forwardRef(
                     }))
                   }
                   variant="outlined"
-                  helperText={`Enhanced SP field (${typeof value})`}
+                  // helperText={
+                  //   customDef?.description ||
+                  //   `Enhanced SP field (${typeof value})`
+                  // }
+                  disabled={isReadOnly}
+                  required={isRequired}
                 />
               </Grid>
             );
@@ -2937,6 +3111,16 @@ const BSDataGrid = forwardRef(
         let inputType = "text";
         let multiline = false;
 
+        // Get custom column definition if exists
+        const customDef = columnDefsConfig[columnName];
+
+        // Determine if field is read-only (from customDef or component-level readOnly)
+        const isReadOnly = customDef?.readOnly === true || readOnly;
+
+        // Determine if field is required (customDef overrides metadata)
+        const isRequired =
+          customDef?.required !== undefined ? customDef.required : !isNullable;
+
         // Check if this column has a combobox configuration
         const comboConfig = comboBoxConfig[columnName];
         if (comboConfig) {
@@ -2957,10 +3141,11 @@ const BSDataGrid = forwardRef(
                 onChange={(value) =>
                   setFormData((p) => ({ ...p, [columnName]: value }))
                 }
-                required={!isNullable}
+                required={isRequired}
                 dataType={dataType}
                 isNullable={isNullable}
-                description={description}
+                description={customDef?.description || description}
+                disabled={isReadOnly}
               />
             </Grid>
           );
@@ -2970,7 +3155,12 @@ const BSDataGrid = forwardRef(
         if (isActiveField(columnName)) {
           return (
             <Grid item xs={12} sm={6} md={4} key={columnName}>
-              <FormControl fullWidth size="small" required={!isNullable}>
+              <FormControl
+                fullWidth
+                size="small"
+                required={isRequired}
+                disabled={isReadOnly}
+              >
                 <InputLabel>{formatColumnName(columnName)}</InputLabel>
                 <Select
                   value={val || "YES"}
@@ -2978,6 +3168,7 @@ const BSDataGrid = forwardRef(
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, [columnName]: e.target.value }))
                   }
+                  disabled={isReadOnly}
                 >
                   {getIsActiveOptions().map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -3048,9 +3239,11 @@ const BSDataGrid = forwardRef(
                         [columnName]: e.target.checked,
                       }))
                     }
+                    disabled={isReadOnly}
                   />
                 }
                 label={formatColumnName(columnName)}
+                disabled={isReadOnly}
               />
             </Grid>
           );
@@ -3060,7 +3253,7 @@ const BSDataGrid = forwardRef(
         const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
 
         // Build helper text with length information
-        let helperText = description || "";
+        let helperText = customDef?.description || description || "";
         if (
           bsShowCharacterCount &&
           maxLength > 0 &&
@@ -3084,7 +3277,8 @@ const BSDataGrid = forwardRef(
               onChange={(e) =>
                 setFormData((p) => ({ ...p, [columnName]: e.target.value }))
               }
-              required={!isNullable}
+              required={isRequired}
+              disabled={isReadOnly}
               multiline={multiline}
               rows={multiline ? 3 : 1}
               helperText={helperText}
@@ -3118,6 +3312,8 @@ const BSDataGrid = forwardRef(
       bsShowCharacterCount,
       bsStoredProcedure,
       detectPrimaryKeyFromData,
+      columnDefsConfig,
+      readOnly,
     ]);
 
     // Function to restore a single row to its original state
@@ -3295,6 +3491,178 @@ const BSDataGrid = forwardRef(
       setRowModesModel(newRowModesModel);
     }, []);
 
+    /**
+     * Helper: Apply custom column definitions from bsColumnDefs
+     * Merges custom properties with metadata-derived or data-derived column config
+     */
+    const applyColumnDefs = useCallback(
+      (column, fieldName) => {
+        const customDef = columnDefsConfig[fieldName];
+        if (!customDef) return column;
+
+        Logger.log(`🎨 Applying custom column def for: ${fieldName}`, {
+          original: column,
+          custom: customDef,
+        });
+
+        // Merge custom properties with original column
+        const mergedColumn = { ...column };
+
+        // Basic properties
+        if (customDef.headerName !== undefined)
+          mergedColumn.headerName = customDef.headerName;
+        if (customDef.width !== undefined) mergedColumn.width = customDef.width;
+        if (customDef.type !== undefined) mergedColumn.type = customDef.type;
+        if (customDef.editable !== undefined)
+          mergedColumn.editable = customDef.editable;
+        if (customDef.sortable !== undefined)
+          mergedColumn.sortable = customDef.sortable;
+        if (customDef.filterable !== undefined)
+          mergedColumn.filterable = customDef.filterable;
+        if (customDef.hideable !== undefined)
+          mergedColumn.hideable = customDef.hideable;
+        if (customDef.hide !== undefined) mergedColumn.hide = customDef.hide;
+        if (customDef.align !== undefined) mergedColumn.align = customDef.align;
+        if (customDef.headerAlign !== undefined)
+          mergedColumn.headerAlign = customDef.headerAlign;
+        if (customDef.description !== undefined)
+          mergedColumn.description = customDef.description;
+
+        // Number/Currency formatting
+        if (customDef.format === "currency" || customDef.type === "currency") {
+          const currencySymbol = customDef.currencySymbol || "$";
+          const decimals = customDef.decimals ?? 2;
+          const thousandSeparator = customDef.thousandSeparator !== false;
+
+          mergedColumn.valueFormatter = (params) => {
+            if (params.value == null) return "";
+            const num = Number(params.value);
+            if (isNaN(num)) return params.value;
+            const formatted = num.toFixed(decimals);
+            const parts = formatted.split(".");
+            if (thousandSeparator) {
+              parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            return `${currencySymbol}${parts.join(".")}`;
+          };
+          mergedColumn.align = mergedColumn.align || "right";
+        } else if (
+          customDef.format === "number" ||
+          customDef.type === "number"
+        ) {
+          const decimals = customDef.decimals ?? 2;
+          const thousandSeparator = customDef.thousandSeparator !== false;
+
+          mergedColumn.valueFormatter = (params) => {
+            if (params.value == null) return "";
+            const num = Number(params.value);
+            if (isNaN(num)) return params.value;
+            const formatted = num.toFixed(decimals);
+            const parts = formatted.split(".");
+            if (thousandSeparator) {
+              parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+            return parts.join(".");
+          };
+          mergedColumn.align = mergedColumn.align || "right";
+        } else if (customDef.format === "percent") {
+          const decimals = customDef.decimals ?? 0;
+          mergedColumn.valueFormatter = (params) => {
+            if (params.value == null) return "";
+            const num = Number(params.value);
+            if (isNaN(num)) return params.value;
+            return `${(num * 100).toFixed(decimals)}%`;
+          };
+          mergedColumn.align = mergedColumn.align || "right";
+        }
+
+        // Date/DateTime formatting
+        if (
+          customDef.type === "date" ||
+          customDef.type === "dateTime" ||
+          customDef.dateFormat ||
+          customDef.dateTimeFormat
+        ) {
+          const dateFormat =
+            customDef.dateFormat || customDef.dateTimeFormat || "dd/MM/yyyy";
+          const includeTime = customDef.type === "dateTime";
+
+          mergedColumn.valueFormatter = (params) => {
+            if (!params.value) return "";
+            try {
+              const date = new Date(params.value);
+              if (isNaN(date.getTime())) return params.value;
+
+              // Simple date formatting based on format string
+              const day = String(date.getDate()).padStart(2, "0");
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const year = date.getFullYear();
+              const hours = String(date.getHours()).padStart(2, "0");
+              const minutes = String(date.getMinutes()).padStart(2, "0");
+              const seconds = String(date.getSeconds()).padStart(2, "0");
+
+              let formatted = dateFormat
+                .replace("yyyy", year)
+                .replace("MM", month)
+                .replace("dd", day);
+
+              if (includeTime && customDef.timeFormat) {
+                const timeStr = customDef.timeFormat
+                  .replace("HH", hours)
+                  .replace("mm", minutes)
+                  .replace("ss", seconds);
+                formatted += ` ${timeStr}`;
+              } else if (includeTime) {
+                formatted += ` ${hours}:${minutes}:${seconds}`;
+              }
+
+              return formatted;
+            } catch (e) {
+              return params.value;
+            }
+          };
+        }
+
+        // Boolean formatting
+        if (customDef.type === "boolean") {
+          const trueLabel = customDef.trueLabel || "Yes";
+          const falseLabel = customDef.falseLabel || "No";
+          const trueColor = customDef.trueColor || "success";
+          const falseColor = customDef.falseColor || "default";
+
+          mergedColumn.renderCell = (params) => {
+            const isTrue = params.value === true || params.value === "true";
+            return (
+              <Chip
+                label={isTrue ? trueLabel : falseLabel}
+                color={isTrue ? trueColor : falseColor}
+                size="small"
+              />
+            );
+          };
+        }
+
+        // Select type
+        if (customDef.type === "singleSelect" && customDef.valueOptions) {
+          mergedColumn.type = "singleSelect";
+          mergedColumn.valueOptions = customDef.valueOptions;
+        }
+
+        // Custom renderers (highest priority)
+        if (customDef.renderCell)
+          mergedColumn.renderCell = customDef.renderCell;
+        if (customDef.valueGetter)
+          mergedColumn.valueGetter = customDef.valueGetter;
+        if (customDef.valueFormatter)
+          mergedColumn.valueFormatter = customDef.valueFormatter;
+        if (customDef.valueSetter)
+          mergedColumn.valueSetter = customDef.valueSetter;
+
+        return mergedColumn;
+      },
+      [columnDefsConfig]
+    );
+
     // Build columns from metadata
     const columns = useMemo(() => {
       Logger.log("🏗️ Building columns - START", {
@@ -3465,7 +3833,7 @@ const BSDataGrid = forwardRef(
               const columnConfig = {
                 field: key,
                 headerName: formatColumnName(key),
-                width: width,
+                // Removed width - let DataGrid auto-calculate from content
                 type: "string", // Use string type to avoid MUI X Date object requirements
                 editable: false, // Enhanced SP handles editing through operations
               };
@@ -3562,7 +3930,8 @@ const BSDataGrid = forwardRef(
                 valueType: typeof firstValue,
               });
 
-              return columnConfig;
+              // Apply custom column definitions if provided
+              return applyColumnDefs(columnConfig, key);
             });
 
           // Add actions column if not read-only (for Enhanced Stored Procedure)
@@ -3605,7 +3974,7 @@ const BSDataGrid = forwardRef(
               field: "actions",
               type: "actions",
               headerName: "", // Hide column header
-              width: 120,
+              // Removed width - let DataGrid auto-calculate
               sortable: false,
               filterable: false,
               hideable: false,
@@ -3620,7 +3989,7 @@ const BSDataGrid = forwardRef(
             const rowNumberCol = {
               field: "__rowNumber",
               headerName: "No.",
-              width: 70,
+              // Removed width - let DataGrid auto-calculate
               sortable: false,
               filterable: false,
               hideable: false,
@@ -3702,7 +4071,7 @@ const BSDataGrid = forwardRef(
             const baseColumn = {
               field: col.columnName,
               headerName: col.displayName || formatColumnName(col.columnName),
-              width: getColumnWidth(col.dataType, col.maxLength),
+              // Removed width - let DataGrid auto-calculate from content
               type:
                 comboConfig || isActiveField(columnName)
                   ? "singleSelect"
@@ -3793,7 +4162,8 @@ const BSDataGrid = forwardRef(
               return value;
             };
 
-            return baseColumn;
+            // Apply custom column definitions if provided
+            return applyColumnDefs(baseColumn, columnName);
           });
 
         // Actions: always show when not read-only
@@ -3906,7 +4276,7 @@ const BSDataGrid = forwardRef(
             field: "actions",
             type: "actions",
             headerName: "", // Hide column header
-            width: bulkEditMode ? 80 : 120, // Smaller width in bulk edit mode
+            // Removed width - let DataGrid auto-calculate
             sortable: false,
             filterable: false,
             hideable: false,
@@ -3921,7 +4291,7 @@ const BSDataGrid = forwardRef(
           const rowNumberCol = {
             field: "__rowNumber",
             headerName: "No.",
-            width: 70,
+            // Removed width - let DataGrid auto-calculate
             sortable: false,
             filterable: false,
             hideable: false,
@@ -4039,7 +4409,7 @@ const BSDataGrid = forwardRef(
           field: col.field,
           headerName: col.headerName,
           type: col.type || "string",
-          width: col.width || 150,
+          // Removed default width - let DataGrid auto-calculate
           editable: Boolean(col.editable),
           sortable: col.sortable !== false,
           filterable: col.filterable !== false,
@@ -4088,11 +4458,9 @@ const BSDataGrid = forwardRef(
       rows,
       handleRestoreRow,
       formatColumnName,
-      getColumnWidth,
       getGridColumnType,
       formatCellValue,
       isColumnHidden,
-      isFieldRequired,
       renderComboBoxCell,
       getComboBoxOptions,
       isActiveField,
@@ -4104,6 +4472,7 @@ const BSDataGrid = forwardRef(
       handleInlineCancelClick,
       handleInlineDeleteClick,
       detectPrimaryKeyFromData,
+      applyColumnDefs,
     ]);
 
     // Handle row selection changes for checkbox selection
@@ -4713,10 +5082,10 @@ const BSDataGrid = forwardRef(
         >
           <Box sx={{ textAlign: "center" }}>
             <CircularProgress sx={{ mb: 2 }} />
-            <Typography variant="body1">Loading table metadata...</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1">Loading data...</Typography>
+            {/* <Typography variant="body2" color="text.secondary">
               {effectiveTableName}
-            </Typography>
+            </Typography> */}
           </Box>
         </Paper>
       );
@@ -4932,8 +5301,11 @@ const BSDataGrid = forwardRef(
               hasValidRows: rows.length > 0,
             });
 
-            // If no valid columns, show loading state
+            // If no valid columns, show appropriate message
             if (validColumns.length === 0) {
+              // Check if we're still loading data
+              const isStillLoading = loading || metadataLoading;
+
               return (
                 <Box
                   sx={{
@@ -4944,12 +5316,37 @@ const BSDataGrid = forwardRef(
                   }}
                 >
                   <Box sx={{ textAlign: "center" }}>
-                    <CircularProgress sx={{ mb: 2 }} />
-                    <Typography variant="body1">
-                      {metadataLoading
-                        ? "Loading columns..."
-                        : "No valid columns available"}
-                    </Typography>
+                    {isStillLoading ? (
+                      <>
+                        <CircularProgress sx={{ mb: 2 }} />
+                        <Typography variant="body1">
+                          {metadataLoading
+                            ? "Loading columns..."
+                            : "Loading data..."}
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Typography
+                          variant="h6"
+                          color="text.secondary"
+                          sx={{ mb: 1 }}
+                        >
+                          {bsLocale === "th"
+                            ? "ไม่มีข้อมูล"
+                            : "No data available"}
+                        </Typography>
+                        <Typography variant="body2" color="text.disabled">
+                          {bsStoredProcedure
+                            ? bsLocale === "th"
+                              ? "ไม่พบข้อมูลในฐานข้อมูล"
+                              : "The database returned no data"
+                            : bsLocale === "th"
+                            ? "ไม่พบข้อมูลในตาราง"
+                            : "No records found in the table"}
+                        </Typography>
+                      </>
+                    )}
                   </Box>
                 </Box>
               );
@@ -4989,8 +5386,8 @@ const BSDataGrid = forwardRef(
                   loading={
                     loading ||
                     metadataLoading ||
-                    !Array.isArray(columns) ||
-                    columns.length === 0
+                    (!Array.isArray(columns) && loading) ||
+                    (columns.length === 0 && loading)
                   }
                   // Ensure we don't render until we have valid data structure
                   // Include rowCount and content hash in key to force re-render when data changes
@@ -5026,7 +5423,7 @@ const BSDataGrid = forwardRef(
                   // Sorting
                   sortingMode={bsFilterMode === "client" ? "client" : "server"}
                   sortModel={sortModel}
-                  onSortModelChange={setSortModel}
+                  onSortModelChange={handleSortModelChange}
                   // Filtering
                   filterMode={bsFilterMode}
                   filterModel={filterModel}
@@ -5036,6 +5433,18 @@ const BSDataGrid = forwardRef(
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
                   headerFilterHeight={52}
+                  // Auto-sizing columns
+                  autosizeOnMount
+                  autosizeOptions={{
+                    columns: columns.map((col) => col.field),
+                    includeHeaders: true,
+                    includeOutliers: false,
+                    expand: true,
+                  }}
+                  // Row Heights
+                  rowHeight={40} //{() => "auto"}
+                  // showToolbar={showToolbar && !bulkEditMode}
+                  //showToolbar
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||
@@ -5059,16 +5468,16 @@ const BSDataGrid = forwardRef(
                     // Use the same primary key detection logic as handleRowSelectionChange
                     const primaryKey = getEffectivePrimaryKey(row);
 
-                    Logger.log("🆔 getRowId called:", {
-                      primaryKey,
-                      rowPrimaryValue: row[primaryKey],
-                      rowKeys: Object.keys(row),
-                      hasValue: row[primaryKey] != null,
-                      actualRowData: row,
-                      idField: row.id,
-                      IdField: row.Id,
-                      countTagIdField: row.count_tag_id,
-                    });
+                    // Logger.log("🆔 getRowId called:", {
+                    //   primaryKey,
+                    //   rowPrimaryValue: row[primaryKey],
+                    //   rowKeys: Object.keys(row),
+                    //   hasValue: row[primaryKey] != null,
+                    //   actualRowData: row,
+                    //   idField: row.id,
+                    //   IdField: row.Id,
+                    //   countTagIdField: row.count_tag_id,
+                    // });
 
                     if (primaryKey && row[primaryKey] != null) {
                       return String(row[primaryKey]);
@@ -5105,15 +5514,26 @@ const BSDataGrid = forwardRef(
                   }}
                   // Localization
                   localeText={getLocalization()}
-                  // Row styling for unsaved changes
+                  // Row styling for unsaved changes and striped rows
                   getRowClassName={(params) => {
                     const primaryKey =
                       metadata?.primaryKeys?.[0] || "Id" || "id";
                     const rowId =
                       params.row[primaryKey] || params.row.id || params.row.Id;
-                    return unsavedChangesRef.current[rowId]
-                      ? "unsaved-changes"
-                      : "";
+
+                    const classes = [];
+
+                    // Add striped styling
+                    if (params.indexRelativeToCurrentPage % 2 === 0) {
+                      classes.push("even");
+                    }
+
+                    // Add unsaved changes styling
+                    if (unsavedChangesRef.current[rowId]) {
+                      classes.push("unsaved-changes");
+                    }
+
+                    return classes.join(" ");
                   }}
                   // Custom Toolbar (use slots + slotProps for better compatibility)
                   slots={
@@ -5183,6 +5603,10 @@ const BSDataGrid = forwardRef(
                     [`& .${gridClasses.row}`]: {
                       "&:hover": {
                         backgroundColor: "#f9f9f9",
+                      },
+                      // Striped rows styling
+                      "&.even": {
+                        backgroundColor: "#fafafa",
                       },
                       // Highlight rows with unsaved changes
                       "&.unsaved-changes": {

@@ -1,22 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-    Box,
     Typography,
     Paper,
-    Divider,
-    Button,
-    TextField,
-    Stack,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const MethodPage = () => {
-    const [selectedRows, setSelectedRows] = useState([]);
 
-    // ✅ state เก็บค่าฟิลเตอร์
-    const [filters, setFilters] = useState({
-        method: "",
-    });
+
+
 
 
     return (
@@ -26,11 +18,35 @@ const MethodPage = () => {
                     Master Method
                 </Typography>
                 {/* ตารางข้อมูล */}
-                <BSDataGrid
-                    bsLocale="th"
+                {/* <BSDataGrid
+                    bsLocale="en"
                     bsPreObj="ams"
                     bsObj="tbm_method"
-                    onCheckBoxSelected={(rows) => setSelectedRows(rows)}
+                    bsCols="method,create_by,create_date,update_by,update_date"
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
+                /> */}
+
+                <BSDataGrid
+                    // Enhanced Stored Procedure Configuration
+                    bsStoredProcedure="usp_tbm_method"
+                    bsStoredProcedureSchema="ams"
+                    bsShowRowNumber={true}
+                    bsCols="method,create_by,create_date,update_by,update_date"
+                    // showAdd={false}
+                    bsLocale="en"
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
+                    bsPageSize={25}
+                    bsFilterMode="client"
+                    bsColumnDefs={[
+                        {
+                            field: "method_id",
+                            readOnly: true,
+                        },
+                    ]}
                 />
             </Paper>
         </>

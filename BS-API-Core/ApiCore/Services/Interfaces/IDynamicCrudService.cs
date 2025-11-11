@@ -48,11 +48,6 @@ namespace ApiCore.Services.Interfaces
         Task<DynamicDataGridResponse> ExecuteStoredProcedureAsync(string procedureName, Dictionary<string, object>? parameters = null, string schemaName = "dbo");
 
         /// <summary>
-        /// Execute Enhanced Stored Procedure with SELECT, UPDATE, DELETE operations
-        /// </summary>
-        Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request);
-
-        /// <summary>
         /// Get stored procedure metadata
         /// </summary>
         Task<DynamicStoredProcedureInfo> GetStoredProcedureMetadataAsync(string procedureName, string schemaName = "dbo");

@@ -32,6 +32,7 @@ namespace Import_Export_Manager.Extensions
                 entity.Property(e => e.ExcelExampleFilePath).HasColumnName("excel_example_file_path").HasMaxLength(500);
                 entity.Property(e => e.Seq).HasColumnName("seq").IsRequired();
                 entity.Property(e => e.IsActive).HasColumnName("is_active").HasMaxLength(3).IsRequired().HasDefaultValue("YES");
+                entity.Property(e => e.ConfirmMessage).HasColumnName("confirm_message").HasColumnType("NVARCHAR(MAX)");
                 entity.Property(e => e.CreateBy).HasColumnName("create_by").IsRequired().HasMaxLength(40);
                 entity.Property(e => e.CreatedDate).HasColumnName("create_date").IsRequired();
                 entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(40);
@@ -79,6 +80,11 @@ namespace Import_Export_Manager.Extensions
                 Direction = ParameterDirection.Input,
                 Value = request.is_active
             };
+            var in_vchConfirmMessage = new SqlParameter("@in_vchConfirmMessage", SqlDbType.NVarChar, -1)
+            {
+                Direction = ParameterDirection.Input,
+                Value = (object?)request.confirm_message ?? DBNull.Value
+            };
             var in_vchCreateBy = new SqlParameter("@in_vchCreateBy", SqlDbType.NVarChar, 40)
             {
                 Direction = ParameterDirection.Input,
@@ -86,8 +92,8 @@ namespace Import_Export_Manager.Extensions
             };
             await Database.ExecuteSqlRawAsync(
                 $"EXEC imp.usp_insert_import_master " +
-                $"@in_vchImportName, @in_vchDescription, @in_vchExecSqlCommand, @in_vchExcelExampleFilePath, @in_intSeq, @in_vchIsActive, @in_vchCreateBy, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
-                in_vchImportName, in_vchDescription, in_vchExecSqlCommand, in_vchExcelExampleFilePath, in_intSeq, in_vchIsActive, in_vchCreateBy, errorCodeParam, errorMessageParam);
+                $"@in_vchImportName, @in_vchDescription, @in_vchExecSqlCommand, @in_vchExcelExampleFilePath, @in_intSeq, @in_vchIsActive, @in_vchConfirmMessage, @in_vchCreateBy, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
+                in_vchImportName, in_vchDescription, in_vchExecSqlCommand, in_vchExcelExampleFilePath, in_intSeq, in_vchIsActive, in_vchConfirmMessage, in_vchCreateBy, errorCodeParam, errorMessageParam);
             return new ImportMasterResponse
             {
                 code = errorCodeParam.Value?.ToString(),
@@ -141,6 +147,11 @@ namespace Import_Export_Manager.Extensions
                 Direction = ParameterDirection.Input,
                 Value = request.is_active
             };
+            var in_vchConfirmMessage = new SqlParameter("@in_vchConfirmMessage", SqlDbType.NVarChar, -1)
+            {
+                Direction = ParameterDirection.Input,
+                Value = (object?)request.confirm_message ?? DBNull.Value
+            };
             var in_vchUpdateBy = new SqlParameter("@in_vchUpdateBy", SqlDbType.NVarChar, 40)
             {
                 Direction = ParameterDirection.Input,
@@ -148,8 +159,8 @@ namespace Import_Export_Manager.Extensions
             };
             await Database.ExecuteSqlRawAsync(
                 $"EXEC imp.usp_update_import_master " +
-                $"@in_intImportId, @in_vchImportName, @in_vchDescription, @in_vchExecSqlCommand, @in_vchExcelExampleFilePath, @in_intSeq, @in_vchIsActive, @in_vchUpdateBy, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
-                in_intImportId, in_vchImportName, in_vchDescription, in_vchExecSqlCommand, in_vchExcelExampleFilePath, in_intSeq, in_vchIsActive, in_vchUpdateBy, errorCodeParam, errorMessageParam);
+                $"@in_intImportId, @in_vchImportName, @in_vchDescription, @in_vchExecSqlCommand, @in_vchExcelExampleFilePath, @in_intSeq, @in_vchIsActive, @in_vchConfirmMessage, @in_vchUpdateBy, @out_vchErrorCode OUTPUT, @out_vchErrorMessage OUTPUT",
+                in_intImportId, in_vchImportName, in_vchDescription, in_vchExecSqlCommand, in_vchExcelExampleFilePath, in_intSeq, in_vchIsActive, in_vchConfirmMessage, in_vchUpdateBy, errorCodeParam, errorMessageParam);
 
             return new ImportMasterResponse
             {
@@ -201,6 +212,7 @@ namespace Import_Export_Manager.Extensions
                 excel_example_file_path = im.ExcelExampleFilePath,
                 seq = im.Seq,
                 is_active = im.IsActive,
+                confirm_message = im.ConfirmMessage,
                 create_by = im.CreateBy,
                 created_date = im.CreatedDate,
                 update_by = im.UpdateBy,
@@ -209,47 +221,58 @@ namespace Import_Export_Manager.Extensions
         }
         public async Task<ExcelImportResponse> ExcelImportXMLData(ExcelImportRequest request)
         {
-            var entity = await TImportMasters
-                .FirstOrDefaultAsync(x => x.ImportId == request.import_id);
-
-            var execSqlCommand = entity?.ExecSqlCommand;
-            if (string.IsNullOrEmpty(execSqlCommand))
-            {
-                return new ExcelImportResponse
-                {
-                    code = "1",
-                    message = "Import configuration not found.",
-                    data = null
-                };
-            }
-
-            var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-            {
-                Direction = ParameterDirection.Output
-            };
-            var errorMessageParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-            {
-                Direction = ParameterDirection.Output
-            };
-            var errorRecordParam = new SqlParameter("@out_vchErrorRecord", SqlDbType.NVarChar, 100)
-            {
-                Direction = ParameterDirection.Output
-            };
-            var in_vchUserId = new SqlParameter("@in_vchUserId", SqlDbType.NVarChar, 40)
-            {
-                Direction = ParameterDirection.Input,
-                Value = request.user_id
-            };
-            var in_XMLData = new SqlParameter("@in_XMLData", SqlDbType.NVarChar, -1)
-            {
-                Direction = ParameterDirection.Input,
-                Value = (object?)request.xml_import_data ?? DBNull.Value
-            };
-
-            var errors = new List<ExcelImportListResponse>();
-
             try
             {
+                var entity = await this.TImportMasters
+                    .FirstOrDefaultAsync(x => x.ImportId == request.import_id);
+
+                if (entity == null)
+                {
+                    return new ExcelImportResponse
+                    {
+                        code = "1",
+                        message = "Import configuration not found.",
+                        data = null
+                    };
+                }
+
+                var execSqlCommand = entity?.ExecSqlCommand;
+                if (string.IsNullOrEmpty(execSqlCommand))
+                {
+                    return new ExcelImportResponse
+                    {
+                        code = "1",
+                        message = "Import configuration not found.",
+                        data = null
+                    };
+                }
+
+                var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                var errorMessageParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                var errorRecordParam = new SqlParameter("@out_vchErrorRecord", SqlDbType.NVarChar, 100)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                var in_vchUserId = new SqlParameter("@in_vchUserId", SqlDbType.NVarChar, 40)
+                {
+                    Direction = ParameterDirection.Input,
+                    Value = request.user_id
+                };
+                var in_XMLData = new SqlParameter("@in_XMLData", SqlDbType.NVarChar, -1)
+                {
+                    Direction = ParameterDirection.Input,
+                    Value = (object?)request.xml_import_data ?? DBNull.Value
+                };
+
+                var errors = new List<ExcelImportListResponse>();
+
+
                 using (var conn = Database.GetDbConnection())
                 {
                     await conn.OpenAsync();

@@ -269,7 +269,7 @@ const MenuTreeView = () => {
                 },
               ]}
               bsObjBy=""
-              bsObjWh="group_name='platform'"
+              bsObjWh="group_name='platform' AND is_active='YES'"
               bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
               cacheKey="platform"
               bsLoadOnOpen={true}

@@ -1,7 +1,8 @@
 import axios from "axios";
-import SecureStorage from "./SecureStorage"; // ถ้ามี secureStorage ที่คุณสร้างไว้
+import SecureStorage from "./SecureStorage";
 import Config from "./Config";
 import StorageRecovery from "./StorageRecovery";
+
 const AxiosMaster = axios.create({
   baseURL: Config.API_URL,
   headers: {
@@ -12,39 +13,27 @@ const AxiosMaster = axios.create({
 AxiosMaster.interceptors.request.use(
   async (config) => {
     try {
-      // Debug: ตรวจสอบ token source
       let token = SecureStorage.get("token");
       if (!token) {
-        // Fallback to localStorage/sessionStorage
         token =
           localStorage.getItem("token") || sessionStorage.getItem("token");
-        //console.log("🔑 Using fallback token from localStorage/sessionStorage");
       }
 
       if (token && typeof token === "string") {
-        // Validate token using StorageRecovery
         const validation = StorageRecovery.validateToken(token);
-
         if (validation.valid) {
           config.headers["Authorization"] = `Bearer ${token}`;
-          // console.log(
-          //   "🔑 Added Authorization header:",
-          //   `Bearer ${token.substring(0, 20)}...`
-          // );
         } else {
           console.warn("⚠️ Token validation failed:", validation.reason);
-          // Auto-fix token issues
           await StorageRecovery.autoFixTokenIssues();
         }
       } else {
         console.warn("⚠️ No valid JWT token found in any storage");
       }
 
-      // console.log("📡 API Request:", config.method?.toUpperCase(), config.url);
       return config;
     } catch (error) {
       console.error("❌ Error in request interceptor:", error);
-      // Auto-fix storage issues
       try {
         await StorageRecovery.cleanCorruptedData(["token"]);
       } catch (fixError) {
@@ -57,10 +46,7 @@ AxiosMaster.interceptors.request.use(
 );
 
 AxiosMaster.interceptors.response.use(
-  (response) => {
-    // console.log("✅ API Response:", response.status, response.config.url);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     console.error("❌ API Error:", {
       status: error.response?.status,
@@ -71,7 +57,7 @@ AxiosMaster.interceptors.response.use(
       fullError: error.response?.data,
     });
 
-    // Check for specific errors that indicate token corruption
+    // ตรวจจับ token เสีย
     if (
       error.message &&
       (error.message.includes("Malformed UTF-8") ||
@@ -87,41 +73,69 @@ AxiosMaster.interceptors.response.use(
       }
     }
 
+    // 🔒 Handle 401 Unauthorized
     if (error.response && error.response.status === 401) {
       console.warn("🔒 401 Unauthorized - Token may be expired or invalid");
 
-      // Try to refresh token
-      let refreshToken = null;
-      try {
-        refreshToken = SecureStorage.get("refresh_token");
-      } catch (storageError) {
-        console.warn(
-          "⚠️ Error getting refresh token from SecureStorage:",
-          storageError
-        );
+      const originalRequest = error.config;
+
+      // ป้องกัน loop 401 ซ้ำ
+      if (originalRequest._retry) {
+        console.error("🚫 Token refresh retry already attempted, redirecting to login");
+        clearCorruptedTokens();
+        window.location.href = Config.BASE_URL + "/login";
+        return Promise.reject(error);
       }
+
+      originalRequest._retry = true;
+
+      // ดึง refresh token
+      let refreshToken =
+        SecureStorage.get("refresh_token") ||
+        localStorage.getItem("refresh_token") ||
+        sessionStorage.getItem("refresh_token");
 
       if (!refreshToken) {
-        refreshToken =
-          localStorage.getItem("refresh_token") ||
-          sessionStorage.getItem("refresh_token");
+        console.error("❌ No refresh token found - redirecting to login");
+        clearCorruptedTokens();
+        window.location.href = Config.BASE_URL + "/login";
+        return Promise.reject(error);
       }
 
-      if (refreshToken) {
+      try {
         console.log("🔄 Attempting to refresh token...");
-        refresh();
-      } else {
-        console.error("❌ No refresh token found - redirecting to login");
-        // Clear all tokens
-        clearCorruptedTokens();
-        // Redirect to login if needed
-        if(Config.BASE_URL && Config.BASE_URL !== "/") {
-          window.location.href = Config.BASE_URL + "/login";
+        const refreshResponse = await axios.post(
+          Config.API_URL.replace("/gateway/v1/api", "") + "/gateway/v1/api/refresh",
+          { refresh_token: refreshToken },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (refreshResponse.data.message_code === "0") {
+          console.log("✅ Token refreshed successfully");
+
+          const newToken = refreshResponse.data.data.access_token;
+          const newRefresh = refreshResponse.data.data.refresh_token;
+
+          // เก็บ token ใหม่
+          SecureStorage.set("token", newToken);
+          SecureStorage.set("refresh_token", newRefresh);
+
+          // อัปเดต header ของ request เดิม
+          originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+
+          // 🔁 เรียก API เดิมใหม่อีกครั้ง
+          return AxiosMaster(originalRequest);
         } else {
-          window.location.href = "/login";
+          throw new Error(refreshResponse.data.message || "Token refresh failed");
         }
+      } catch (refreshError) {
+        console.error("❌ Token refresh failed:", refreshError);
+        clearCorruptedTokens();
+        window.location.href = Config.BASE_URL + "/login";
+        return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -137,63 +151,6 @@ const clearCorruptedTokens = () => {
     sessionStorage.removeItem("refresh_token");
   } catch (error) {
     console.error("❌ Error clearing tokens:", error);
-  }
-};
-
-const refresh = async () => {
-  try {
-    console.log("🔄 Starting token refresh...");
-
-    let refreshToken = null;
-
-    // Try to get refresh token safely
-    try {
-      refreshToken = SecureStorage.get("refresh_token");
-    } catch (error) {
-      console.warn("⚠️ Error getting refresh token from SecureStorage:", error);
-    }
-
-    if (!refreshToken) {
-      refreshToken =
-        localStorage.getItem("refresh_token") ||
-        sessionStorage.getItem("refresh_token");
-    }
-
-    if (!refreshToken) {
-      throw new Error("No refresh token available");
-    }
-
-    // Validate refresh token format
-    if (typeof refreshToken !== "string" || refreshToken.trim() === "") {
-      throw new Error("Invalid refresh token format");
-    }
-
-    SecureStorage.remove("token");
-
-    const response = await axios.post(
-      Config.API_URL.replace("/gateway/v1/api", "") + "/gateway/v1/api/refresh",
-      {
-        refresh_token: refreshToken,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (response.data.message_code === "0") {
-      console.log("✅ Token refreshed successfully");
-      SecureStorage.set("token", response.data.data.access_token);
-      SecureStorage.set("refresh_token", response.data.data.refresh_token);
-    } else {
-      throw new Error(response.data.message || "Token refresh failed");
-    }
-  } catch (error) {
-    console.error("❌ Token refresh failed:", error);
-    clearCorruptedTokens();
-    // Redirect to login
-    //window.location.href = "/login";
   }
 };
 

@@ -143,6 +143,19 @@ const secureStorage = {
       return 0;
     }
   },
+  clearLogout: () => {
+    try {
+      ls.remove("isAuthenticated");
+      ls.remove("menu");
+      ls.remove("refresh_token");
+      ls.remove("role");
+      ls.remove("token");
+      ls.remove("userInfo");
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
 };
 
 export default secureStorage;

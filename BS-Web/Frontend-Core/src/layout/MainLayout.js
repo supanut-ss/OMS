@@ -48,7 +48,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 import { styled } from "@mui/material/styles";
 //import logoMiniSvg from "../assets/logo.jpg";
-import logoHorizontalSvg from "../assets/logo.jpg";
+import logoHorizontalSvg from "../assets/images/Kubota-Logo_svg_.png";
 
 import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";

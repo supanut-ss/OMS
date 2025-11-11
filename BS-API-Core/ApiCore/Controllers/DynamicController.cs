@@ -147,20 +147,24 @@ namespace ApiCore.Controllers
                         .ToList();
                 }
 
-                // Parse custom ORDER BY
-                if (!string.IsNullOrEmpty(request.CustomOrderBy))
+                // Parse custom ORDER BY only if SortModel is not provided
+                // Priority: SortModel (from UI) > CustomOrderBy (from config)
+                if (request.SortModel == null || !request.SortModel.Any())
                 {
-                    request.SortModel = request.CustomOrderBy.Split(',')
-                        .Select(orderPart =>
-                        {
-                            var parts = orderPart.Trim().Split(' ');
-                            return new DataGridSortModel
+                    if (!string.IsNullOrEmpty(request.CustomOrderBy))
+                    {
+                        request.SortModel = request.CustomOrderBy.Split(',')
+                            .Select(orderPart =>
                             {
-                                Field = parts[0],
-                                Sort = parts.Length > 1 && parts[1].ToLower() == "desc" ? "desc" : "asc"
-                            };
-                        })
-                        .ToList();
+                                var parts = orderPart.Trim().Split(' ');
+                                return new DataGridSortModel
+                                {
+                                    Field = parts[0],
+                                    Sort = parts.Length > 1 && parts[1].ToLower() == "desc" ? "desc" : "asc"
+                                };
+                            })
+                            .ToList();
+                    }
                 }
 
                 // Add custom WHERE to filter model
@@ -673,35 +677,6 @@ namespace ApiCore.Controllers
         }
 
         /// <summary>
-        /// Execute Enhanced Stored Procedure with SELECT, UPDATE, DELETE operations
-        /// Supports pagination, sorting, and filtering for SELECT operations
-        /// </summary>
-        /// <param name="request">Enhanced stored procedure request</param>
-        /// <returns>Operation result with data and metadata</returns>
-        [HttpPost("enhanced-procedure")]
-        [ProducesResponseType(typeof(EnhancedStoredProcedureResponse), 200)]
-        [ProducesResponseType(typeof(object), 400)]
-        [ProducesResponseType(401)]
-        public async Task<ActionResult<EnhancedStoredProcedureResponse>> ExecuteEnhancedStoredProcedureAsync(
-            [FromBody] EnhancedStoredProcedureRequest request)
-        {
-            try
-            {
-                _logger.LogInformation("🚀 Executing Enhanced Stored Procedure: {Schema}.{Procedure} - Operation: {Operation}",
-                    request.SchemaName, request.ProcedureName, request.Operation);
-
-                var result = await _dynamicService.ExecuteEnhancedStoredProcedureAsync(request);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing enhanced stored procedure {ProcedureName}", request.ProcedureName);
-                return BadRequest(new { message = $"Error executing procedure: {ex.Message}" });
-            }
-        }
-
-        /// <summary>
         /// Check if table/view exists
         /// </summary>
         /// <param name="tableName">Name of the table or view</param>
@@ -743,13 +718,31 @@ namespace ApiCore.Controllers
         {
             try
             {
+                _logger.LogInformation("🔵 CONTROLLER: Executing Enhanced SP: {ProcedureName}.{SchemaName}, Operation: {Operation}",
+                    request.ProcedureName, request.SchemaName, request.Operation);
+
                 var result = await _dynamicService.ExecuteEnhancedStoredProcedureAsync(request);
+
+                // 🔍 DEBUG: Log response details
+                _logger.LogInformation("✅ CONTROLLER: Enhanced SP executed - Success: {Success}, RowCount: {RowCount}, HasMetadata: {HasMetadata}",
+                    result.Success, result.RowCount, result.Metadata != null);
+
+                if (result.Metadata != null)
+                {
+                    _logger.LogInformation("📋 CONTROLLER: Metadata included - Columns: {ColumnCount}, Primary Keys: [{PrimaryKeys}]",
+                        result.Metadata.Columns?.Count ?? 0,
+                        result.Metadata.PrimaryKeys != null ? string.Join(", ", result.Metadata.PrimaryKeys) : "NONE");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ CONTROLLER: NO METADATA in response!");
+                }
 
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing enhanced stored procedure {ProcedureName}", request.ProcedureName);
+                _logger.LogError(ex, "❌ CONTROLLER ERROR: Enhanced stored procedure {ProcedureName} failed", request.ProcedureName);
                 return BadRequest(new { message = $"Error executing enhanced stored procedure: {ex.Message}" });
             }
         }

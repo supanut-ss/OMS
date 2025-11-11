@@ -85,5 +85,55 @@ namespace Authentication.Controllers.Users
                 return ResponseError(ex.Message, 1);
             }
         }
+        [HttpGet("role")]
+        public async Task<IActionResult> GetRole()
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _iusers.GetRole(userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Role.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+        [HttpPost("switch/lang")]
+        public async Task<IActionResult> SwitchLang(UserLangRequest request) {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _iusers.UpdateLangAsync(request, userId);
+                return response != null ? AccessResponseSuccess("success",response): ResponseNotFound("No found Lang.");
+            }
+            catch (Exception ex) { 
+                return ResponseError(ex.Message, 1);
+            }
+        
+        }
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteUser(string userIdDel)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.DeleteUser(userIdDel, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+      
     }
 }

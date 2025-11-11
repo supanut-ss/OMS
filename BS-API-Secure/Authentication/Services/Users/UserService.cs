@@ -108,8 +108,8 @@ namespace Authentication.Services.Users
                       ",@create_date) ";  
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userReq.UserId);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt("password"));
+                cmd.Parameters.AddWithValue("@user_id", userReq.UserId);
+                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
                 cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
                 cmd.Parameters.AddWithValue("@first_name", userReq.FirstName);
                 cmd.Parameters.AddWithValue("@last_name", userReq.LastName);
@@ -173,9 +173,9 @@ namespace Authentication.Services.Users
                           "update_by = @update_by, " +
                           "update_date = @update_date";
 
-                var includePassword = !string.IsNullOrEmpty(userReq.Password);
-                if (includePassword)
-                    sql += ", password = @password";
+                //var includePassword = !string.IsNullOrEmpty(userReq.Password);
+                //if (includePassword)
+                //    sql += ", password = @password";
 
                 sql += " WHERE user_id = @userId";
 
@@ -193,8 +193,8 @@ namespace Authentication.Services.Users
                 cmd.Parameters.AddWithValue("@update_by", userId);
                 cmd.Parameters.AddWithValue("@update_date", DateTime.Now);
 
-                if (includePassword)
-                    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
+                //if (includePassword)
+                //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
                 if (rowsAffected == 0)
@@ -212,5 +212,120 @@ namespace Authentication.Services.Users
             }
         }
 
+        public async Task<AuthResponse> DeleteUser(string userIdDel, string userId)
+        {
+            try
+            {
+                if (userIdDel == null || string.IsNullOrWhiteSpace(userIdDel))
+                    return _auth.CreateErrorResponse("1", "UserId is required for update.");
+
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                // Check that the target user exists
+                var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
+                using (var checkCmd = new SqlCommand(checkSql, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@userId", userIdDel);
+                    var existsObj = await checkCmd.ExecuteScalarAsync();
+                    if (existsObj == null || Convert.ToInt32(existsObj) == 0)
+                        return _auth.CreateErrorResponse("1", "User not found.");
+                }
+
+                // Build update statement; include password only if provided
+                var sql = $"DELETE FROM [{schema}].t_com_user"; 
+
+                sql += " WHERE user_id = @userId";
+
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userIdDel); 
+
+                //if (includePassword)
+                //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
+
+                var rowsAffected = await cmd.ExecuteNonQueryAsync();
+                if (rowsAffected == 0)
+                    return _auth.CreateErrorResponse("1", "Delete failed.");
+
+                return new AuthResponse
+                {
+                    message_code = "0",
+                    message_text = "User Deleted successfully."
+                };
+            }
+            catch (Exception ex)
+            {
+                return _auth.CreateErrorResponse("1", $"An error occurred: {ex.Message}");
+            }
+        }
+
+        public async Task<RoleResponse> GetRole(string userId)
+        {
+            RoleResponse response = new RoleResponse();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    response.message_code = "1";
+                    response.message_text = "UserId is required.";
+                    return response;
+                }
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var sql = $"SELECT ug.name " +
+                          $"FROM [{schema}].t_com_user u " +
+                          $"JOIN [{schema}].t_com_user_group ug ON u.user_group_id = ug.user_group_id " +
+                          $"WHERE u.user_id = @userId";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userId);
+                var roleObj = await cmd.ExecuteScalarAsync();
+                if (roleObj != null)
+                {
+                    response.message_code = "0";
+                    response.message_text = "Role retrieved successfully.";
+                    response.role = roleObj.ToString();
+                }
+                else
+                {
+                    response.message_code = "1";
+                    response.message_text = "User not found or role not assigned.";
+                }
+            }
+            catch (Exception ex)
+            { 
+                response.message_code = "1";
+                response.message_text = $"An error occurred: {ex.Message}";
+            }
+            return response;
+         }
+
+        public async Task<UserLangResponse> UpdateLangAsync(UserLangRequest userReq, string userId)
+        {
+            UserLangResponse response = new UserLangResponse();
+            try
+            {
+                if (string.IsNullOrEmpty(userReq.lang))
+                {
+                    response.message_code = "1";
+                    response.message_text = "lang is required.";
+                }
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var sql = $"UPDATE [{schema}].t_com_user SET locale_id = @locale_id WHERE user_id = @userId";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@userId", userId);
+                cmd.Parameters.AddWithValue("@locale_id", userReq.lang);
+                await cmd.ExecuteNonQueryAsync();
+                conn.Close();
+                response.message_code = "0";
+                response.message_text = "Success";
+            }
+            catch(Exception ex)
+            {
+                response.message_code = "1";
+                response.message_text = $"An error occurred: {ex.Message}";
+            }
+            return response;
+        }
     }
 }
