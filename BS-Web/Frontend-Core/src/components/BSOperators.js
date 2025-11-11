@@ -16,31 +16,39 @@ const BSOperators = ({
     // 🔹 default operator สำหรับแต่ละ type
     const defaultOperators = {
         string: [
-            { value: "=", code: "=" },
-            { value: "!=", code: "!=" },
             { value: "contains", code: "contains" },
             { value: "startsWith", code: "starts with" },
             { value: "endsWith", code: "ends with" },
-            { value: "LIKE", code: "LIKE" },
-            { value: "Between", code: "between" }
+            { value: "equals / is", code: "equals / is" },
+            { value: "notEquals", code: "notEquals" },
+            { value: "isEmpty", code: "isEmpty" },
+            { value: "isNotEmpty", code: "isNotEmpty" },
+            { value: "isAnyOf", code: "isAnyOf" },
+            { value: "isBetween", code: "isBetween" },
         ],
         number: [
-            { value: "=", code: "=" },
-            { value: "!=", code: "!=" },
-            { value: ">", code: ">" },
-            { value: "<", code: "<" },
-            { value: ">=", code: ">=" },
-            { value: "<=", code: "<=" },
-            { value: "Between", code: "between" }
+            { value: "equals", code: "equals" },
+            { value: "notEquals", code: "notEquals" },
+            { value: "greaterThan", code: "greaterThan" },
+            { value: "greaterThanOrEqual", code: "greaterThanOrEqual" },
+            { value: "lessThan", code: "lessThan" },
+            { value: "lessThanOrEqual", code: "lessThanOrEqual" },
+            { value: "isBetween", code: "isBetween" },
+            { value: "isEmpty", code: "isEmpty" },
+            { value: "isNotEmpty", code: "isNotEmpty" },
+            { value: "isAnyOf", code: "isAnyOf" },
         ],
         date: [
+            { value: "is", code: "is" },
+            { value: "onOrAfter", code: "onOrAfter" },
+            { value: "onOrBefore", code: "onOrBefore" },
+            { value: "isBetween", code: "isBetween" },
+            { value: "isEmpty", code: "isEmpty" },
+            { value: "isNotEmpty", code: "isNotEmpty" },
+        ],
+        dropdown: [
             { value: "=", code: "=" },
-            { value: "!=", code: "!=" },
-            { value: ">", code: ">" },
-            { value: "<", code: "<" },
-            { value: ">=", code: ">=" },
-            { value: "<=", code: "<=" },
-            { value: "Between", code: "between" }
+            { value: "!=", code: "!=" }
         ],
     };
 

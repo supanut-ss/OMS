@@ -48,7 +48,7 @@ const BSFilterCustom = ({
         newValues[index] = { ...newValues[index], operator: newValue };
         let operator = newValue?.code ? newValue.code : newValue;
         // ถ้าเป็น between → เพิ่ม value2
-        if (operator === "between") {
+        if (operator === "isBetween") {
           newValues[index] = { ...newValues[index], value: "", value2: "" };
         } else {
           // ถ้าไม่ใช่ between → ลบ value2 ออก
@@ -125,7 +125,7 @@ const BSFilterCustom = ({
               borderLeftRadius="unset"
               {...commonProps}
             />
-            {operator === "between" && (
+            {operator === "isBetween" && (
               <BSDatepicker
                 label="ถึง"
                 value={currentValue2 ? dayjs(currentValue2) : null}
@@ -135,7 +135,6 @@ const BSFilterCustom = ({
                 minDate={field.minDate}
                 maxDate={field.maxDate}
                 format={field.format || "DD/MM/YYYY"}
-                borderLeftRadius="unset"
                 {...commonProps}
               />
             )}
@@ -152,12 +151,11 @@ const BSFilterCustom = ({
               borderLeftRadius="unset"
               {...commonProps}
             />
-            {operator === "between" && (
+            {operator === "isBetween" && (
               <BSTextField
                 label="ถึง"
                 value={currentValue2}
                 onChange={(val) => updateFieldValue(index, "value2", val)}
-                borderLeftRadius="unset"
                 {...commonProps}
               />
             )}
@@ -186,16 +184,22 @@ const BSFilterCustom = ({
         <Grid container spacing={spacing}>
           {defaultField.map((field, index) => (
             <Grid
-              item
-              xs={field.xs || 6}
-              sm={field.sm || 4}
-              md={field.md || 4}
-              lg={field.lg || 3}
+              size={{
+                xs: field.xs || 12,
+                sm: field.sm || 6,
+                md: field.md || 4,
+                lg: field.lg || 3
+              }}
               key={index}
             >
               <Box>
-                <Grid container>
-                  <Grid item xs={4} sm={4} md={3} lg={2}>
+                <Grid container width={"100%"}>
+                  <Grid size={{
+                    xs: 4,
+                    sm: 4,
+                    md: 4,
+                    lg: 3,
+                  }}>
                     <BSOperators
                       field={field.field}
                       type={field.type || "string"}
@@ -206,7 +210,12 @@ const BSFilterCustom = ({
                       borderRightRadius="unset"
                     />
                   </Grid>
-                  <Grid item xs={8} sm={8} md={9} lg={10}>
+                  <Grid size={{
+                    xs: 8,
+                    sm: 8,
+                    md: 8,
+                    lg: 9,
+                  }}>
                     {renderFilterComponent(field, index)}
                   </Grid>
                 </Grid>
