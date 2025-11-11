@@ -10,7 +10,7 @@ export default function BSFilterCustomExamples() {
       component: "BSTextField",
       bsTitle: "ชื่อสินค้า",
       type: "string",
-      defaultOperator: "LIKE"
+      defaultOperator: "contains"
 
     },
     {
@@ -18,21 +18,21 @@ export default function BSFilterCustomExamples() {
       component: "BSDatepicker",
       bsTitle: "วันที่เริ่มต้น",
       type: "date",
-      defaultOperator: ">="
+      defaultOperator: "is"
     },
     {
       field: "item_end",
       component: "BSDatepicker",
       bsTitle: "วันที่สิ้นสุด",
       type: "date",
-      defaultOperator: "<="
+      defaultOperator: "is"
     },
     {
       field: "item_price",
       component: "BSTextField",
       bsTitle: "ราคา",
       type: "float",
-      defaultOperator: "="
+      defaultOperator: "equals"
     },
     {
       field: "combobox",
@@ -50,8 +50,8 @@ export default function BSFilterCustomExamples() {
       bsObjBy: "",
       bsObjWh: "",
       bsLoadOnOpen: true,
-      defaultOperator: "=",
-      type: "dropdown",
+      defaultOperator: "contains",
+      type: "string",
     }
   ];
 
