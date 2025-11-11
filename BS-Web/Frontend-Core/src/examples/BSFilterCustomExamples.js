@@ -50,7 +50,8 @@ export default function BSFilterCustomExamples() {
       bsObjBy: "",
       bsObjWh: "",
       bsLoadOnOpen: true,
-      defaultOperator: "="
+      defaultOperator: "=",
+      type: "dropdown",
     }
   ];
 

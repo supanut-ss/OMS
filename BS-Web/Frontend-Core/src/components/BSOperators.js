@@ -42,6 +42,10 @@ const BSOperators = ({
             { value: "<=", code: "<=" },
             { value: "Between", code: "between" }
         ],
+        dropdown: [
+            { value: "=", code: "=" },
+            { value: "!=", code: "!=" }
+        ],
     };
 
     const ops =

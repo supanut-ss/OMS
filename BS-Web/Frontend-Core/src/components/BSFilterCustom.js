@@ -135,7 +135,6 @@ const BSFilterCustom = ({
                 minDate={field.minDate}
                 maxDate={field.maxDate}
                 format={field.format || "DD/MM/YYYY"}
-                borderLeftRadius="unset"
                 {...commonProps}
               />
             )}
@@ -157,7 +156,6 @@ const BSFilterCustom = ({
                 label="ถึง"
                 value={currentValue2}
                 onChange={(val) => updateFieldValue(index, "value2", val)}
-                borderLeftRadius="unset"
                 {...commonProps}
               />
             )}
