@@ -10,7 +10,6 @@ export default function BSFilterCustomExamples() {
       component: "BSTextField",
       bsTitle: "ชื่อสินค้า",
       type: "string",
-      grid: { md: 4, lg: 3 },
       defaultOperator: "LIKE"
 
     },
@@ -19,7 +18,6 @@ export default function BSFilterCustomExamples() {
       component: "BSDatepicker",
       bsTitle: "วันที่เริ่มต้น",
       type: "date",
-      grid: { md: 4, lg: 4 },
       defaultOperator: ">="
     },
     {
@@ -27,7 +25,6 @@ export default function BSFilterCustomExamples() {
       component: "BSDatepicker",
       bsTitle: "วันที่สิ้นสุด",
       type: "date",
-      grid: { md: 4, lg: 4 },
       defaultOperator: "<="
     },
     {
@@ -35,7 +32,6 @@ export default function BSFilterCustomExamples() {
       component: "BSTextField",
       bsTitle: "ราคา",
       type: "float",
-      grid: { md: 4, lg: 4 },
       defaultOperator: "="
     },
     {
@@ -54,7 +50,6 @@ export default function BSFilterCustomExamples() {
       bsObjBy: "",
       bsObjWh: "",
       bsLoadOnOpen: true,
-      grid: { md: 4, lg: 4 },
       defaultOperator: "="
     }
   ];

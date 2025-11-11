@@ -186,16 +186,22 @@ const BSFilterCustom = ({
         <Grid container spacing={spacing}>
           {defaultField.map((field, index) => (
             <Grid
-              item
-              xs={field.xs || 6}
-              sm={field.sm || 4}
-              md={field.md || 4}
-              lg={field.lg || 3}
+              size={{
+                xs: field.xs || 12,
+                sm: field.sm || 6,
+                md: field.md || 4,
+                lg: field.lg || 3
+              }}
               key={index}
             >
               <Box>
-                <Grid container>
-                  <Grid item xs={4} sm={4} md={3} lg={2}>
+                <Grid container width={"100%"}>
+                  <Grid size={{
+                    xs: 4,
+                    sm: 4,
+                    md: 4,
+                    lg: 3,
+                  }}>
                     <BSOperators
                       field={field.field}
                       type={field.type || "string"}
@@ -206,7 +212,12 @@ const BSFilterCustom = ({
                       borderRightRadius="unset"
                     />
                   </Grid>
-                  <Grid item xs={8} sm={8} md={9} lg={10}>
+                  <Grid size={{
+                    xs: 8,
+                    sm: 8,
+                    md: 8,
+                    lg: 9,
+                  }}>
                     {renderFilterComponent(field, index)}
                   </Grid>
                 </Grid>
