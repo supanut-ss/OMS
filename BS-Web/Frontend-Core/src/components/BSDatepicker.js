@@ -12,6 +12,8 @@ const BSDatepicker = ({
   error = false,
   helperText = "",
   format = "DD/MM/YYYY",
+  borderLeftRadius = null,
+  ...props
 }) => {
   return (
     <FormControl fullWidth error={error}>
@@ -24,10 +26,15 @@ const BSDatepicker = ({
           slotProps={{
             textField: {
               required,
-            //  size: "small",
+              //  size: "small",
               fullWidth: true,
               sx: {
-             //   "& .MuiOutlinedInput-root": { height: "3.5rem" }
+                ...(borderLeftRadius && {
+                  "& .MuiPickersInputBase-root": {
+                    borderTopLeftRadius: borderLeftRadius,
+                    borderBottomLeftRadius: borderLeftRadius,
+                  },
+                })
               },
             },
           }}
