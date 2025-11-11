@@ -20,7 +20,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import logoSvg from "../assets/logo.jpg";
+import logoSvg from "../assets/images/Kubota-Logo_svg_.png";
 import Config from "../utils/Config";
 import secureStorage from "../utils/SecureStorage";
 import { useResource } from "../hooks/useResource";

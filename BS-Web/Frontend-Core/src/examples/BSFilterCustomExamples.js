@@ -35,7 +35,6 @@ export default function BSFilterCustomExamples() {
       component: "BSTextField",
       bsTitle: "ราคา",
       type: "float",
-      decimals: 2,
       grid: { md: 4, lg: 4 },
       defaultOperator: "="
     },
@@ -65,8 +64,10 @@ export default function BSFilterCustomExamples() {
       <BSFilterCustom
         bsFilterField={filterFields}
         bsFilterValue={valueFilter}
-        bsFilterValueOnChanage={(e) =>
+        bsFilterValueOnChanage={(e) => {
           setValueFilter(e)
+          console.log(e)
+        }
         }
         bsSearch={true}
         bsClear={true}

@@ -61,7 +61,6 @@ const CountReconcile = (props) => {
       <Typography variant="h6" gutterBottom>
         Count Reconcile
       </Typography>
-      <hr />
       <Box mt={3}>
         <Box>
           <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={ExportToExcel}>
@@ -101,7 +100,8 @@ const CountReconcile = (props) => {
           // onEdit={(row) => console.log("Edit:", row)}
           //    onDelete={(id) => console.log("Delete:", id)}
           //  onAdd={() => console.log("Add new record")}
-          height={500}
+          bsPageSize={20}
+          bsShowRowNumber={true}
         />
       </Box>
     </Paper>

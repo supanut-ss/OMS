@@ -8,6 +8,8 @@ const BSOperators = ({
     onValueChange,
     type = "string", // "string" | "number" | "date"
     operators = [], // custom operators [{ value, code }]
+    borderRightRadius = null,
+    ...props
 }) => {
     const [operatorValue, setOperatorValue] = useState(null);
 
@@ -19,7 +21,8 @@ const BSOperators = ({
             { value: "contains", code: "contains" },
             { value: "startsWith", code: "starts with" },
             { value: "endsWith", code: "ends with" },
-            { value: "LIKE", code: "LIKE" }
+            { value: "LIKE", code: "LIKE" },
+            { value: "Between", code: "between" }
         ],
         number: [
             { value: "=", code: "=" },
@@ -28,6 +31,7 @@ const BSOperators = ({
             { value: "<", code: "<" },
             { value: ">=", code: ">=" },
             { value: "<=", code: "<=" },
+            { value: "Between", code: "between" }
         ],
         date: [
             { value: "=", code: "=" },
@@ -36,6 +40,7 @@ const BSOperators = ({
             { value: "<", code: "<" },
             { value: ">=", code: ">=" },
             { value: "<=", code: "<=" },
+            { value: "Between", code: "between" }
         ],
     };
 
@@ -56,17 +61,27 @@ const BSOperators = ({
             // ถ้าเป็น object อยู่แล้ว
             setOperatorValue(value);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
 
     return (
         <Autocomplete
             disableClearable
             options={ops}
-            getOptionLabel={(option) => option?.code || ""}
+            getOptionLabel={(option) => option?.value || ""}
             value={operatorValue || null}
             onChange={(event, newValue) => {
                 setOperatorValue(newValue);
                 onValueChange({ field, operator: newValue });
+            }}
+            sx={{
+                ...(borderRightRadius && {
+                    "& .MuiInputBase-root": {
+                        borderTopRightRadius: borderRightRadius,
+                        borderBottomRightRadius: borderRightRadius,
+                    },
+                }),
+
             }}
             renderInput={(params) => (
                 <TextField

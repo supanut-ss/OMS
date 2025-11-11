@@ -3,7 +3,6 @@ import { TextField, CircularProgress } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import SecureStorage from "../utils/SecureStorage";
 import AxiosMaster from "../utils/AxiosMaster";
-import Logger from "../utils/logger";
 
 const BSAutoComplete = ({
   bsMode = "single", // single, multi, select
@@ -18,6 +17,8 @@ const BSAutoComplete = ({
   bsOnChange, // function callback on change
   bsLoadOnOpen = false, // true = fetch only on open
   bsCacheKey, // string, localStorage key for cache
+  borderLeftRadius = null,
+  ...props
 }) => {
   const multiple = bsMode === "multi";
   const isSelect = bsMode === "select";
@@ -90,9 +91,10 @@ const BSAutoComplete = ({
       setLoading(false);
     }
   }, [loaded, bsCacheKey, requestBody, bsValue, multiple, isSelect]);
- useEffect(() => {
-        setValue(bsValue || (multiple ? [] : ""));
-    }, [bsValue])
+  useEffect(() => {
+    setValue(bsValue || (multiple ? [] : ""));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bsValue])
   const handleChange = (event, newValue) => {
     setValue(newValue);
     if (bsOnChange) {
@@ -133,6 +135,14 @@ const BSAutoComplete = ({
         loading={loading}
         onOpen={bsLoadOnOpen ? fetchData : undefined}
         isOptionEqualToValue={(option, val) => option.code === val.code}
+        sx={{
+          ...(borderLeftRadius && {
+            "& .MuiInputBase-root": {
+              borderTopLeftRadius: borderLeftRadius,
+              borderBottomLeftRadius: borderLeftRadius,
+            },
+          }),
+        }}
         renderInput={(params) => (
           <TextField
             {...params}
@@ -141,6 +151,12 @@ const BSAutoComplete = ({
             inputProps={{
               ...params.inputProps,
               readOnly: true, // 👈 ห้ามกรอกเอง
+            }}
+            sx={{
+              "& .MuiInputBase-root": {
+                borderBottomLeftRadius: "unset",
+                backgroundColor: "red"
+              }
             }}
             InputProps={{
               ...params.InputProps,
@@ -151,6 +167,7 @@ const BSAutoComplete = ({
                 </>
               ),
             }}
+
           />
         )}
       />
@@ -168,6 +185,14 @@ const BSAutoComplete = ({
       loading={loading}
       onOpen={handleOpen}
       isOptionEqualToValue={(option, val) => option.code === val.code}
+      sx={{
+          ...(borderLeftRadius && {
+            "& .MuiInputBase-root": {
+              borderTopLeftRadius: borderLeftRadius,
+              borderBottomLeftRadius: borderLeftRadius,
+            },
+          }),
+        }}
       renderInput={(params) => (
         <TextField
           {...params}

@@ -30,6 +30,7 @@ import secureStorage from "./utils/SecureStorage";
 import BSTextFieldExamples from "./examples/BSTextFieldExamples";
 import BSFilterCustomExamples from "./examples/BSFilterCustomExamples";
 import BSDatepickerExamples from "./examples/BSDatepickerExamples";
+import Home from "./pages/Home";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -53,7 +54,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<div />} />
+        <Route index element={<Home />} />
         <Route path="autocomplete" element={<BSAutoCompleteExamples />} />
         {/* route สำหรับ BSDataGrid Examples */}
         <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />

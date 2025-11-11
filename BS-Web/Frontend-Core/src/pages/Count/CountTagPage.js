@@ -66,7 +66,6 @@ const CountTag = (props) => {
             <Typography variant="h6" gutterBottom>
                 {getResource(resourceData, "Count Tag")}
             </Typography>
-            <hr />
             <Box mt={3}>
                 <Box>
                     <Typography variant="h6" gutterBottom>
@@ -161,7 +160,8 @@ const CountTag = (props) => {
                     onCheckBoxSelected={(rows) => {
                         setSelectedRows(rows);
                     }}
-                    height={500}
+                    bsPageSize={20}
+                    bsShowRowNumber={true}
                 />
             </Box>
         </Paper >

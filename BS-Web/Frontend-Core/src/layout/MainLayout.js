@@ -48,7 +48,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 import { styled } from "@mui/material/styles";
 //import logoMiniSvg from "../assets/logo.jpg";
-import logoHorizontalSvg from "../assets/logo.jpg";
+import logoHorizontalSvg from "../assets/images/Kubota-Logo_svg_.png";
 
 import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
@@ -694,10 +694,10 @@ export default function MainLayout({ lang, onChangeLang }) {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-          //  bgcolor: "background.default",
           bgcolor: "aliceblue",
-          minHeight: "100vh",
+          height: `calc(100vh - ${theme.spacing(8)})`, 
           position: "relative",
+          overflow: "auto",
         }}
       >
         <Outlet />
