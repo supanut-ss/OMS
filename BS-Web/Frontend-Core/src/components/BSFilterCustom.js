@@ -16,51 +16,81 @@ const BSFilterCustom = ({
   justifyButtons = "flex-end",
 }) => {
   const [value, setValue] = useState([]);
+  const [defaultField, setDefaultField] = useState([]);
 
-  // 🔹 ตั้งค่า default ตอน mount
-  const setDefaultFilter = useCallback(() => {
-    const defaultData = bsFilterField.map((f) => ({
-      field: f.field,
-      operator: f.defaultOperator || "", // ✅ ตั้ง default operator จาก field config
-      value: "",
-    }));
-    setValue(defaultData);
-  }, [bsFilterField]);
-
+  // 🔹 ตั้งค่าเริ่มต้นตอน bsFilterField เปลี่ยน
   useEffect(() => {
-    if (value.length === 0) {
-      setDefaultFilter();
+    if (
+      bsFilterField.length > 0 &&
+      (defaultField.length === 0 ||
+        JSON.stringify(defaultField) !== JSON.stringify(bsFilterField))
+    ) {
+      setDefaultField(bsFilterField);
+      const def = bsFilterField.map((f) => ({
+        field: f.field,
+        operator: f.defaultOperator || "",
+        value: "",
+      }));
+      setValue(def);
     }
-  }, []);
+  }, [bsFilterField, defaultField]);
 
-  const updateFieldValue = useCallback((fieldName, key, newValue) => {
+
+  // ✅ อัปเดตค่าของ field (รวมถึง between)
+  const updateFieldValue = useCallback((index, key, newValue) => {
     if (typeof newValue === "undefined") return;
+
     setValue((prev) => {
-      const newValues = prev.map((item) =>
-        item.field === fieldName ? { ...item, [key]: newValue } : item
-      );
+      let newValues = [...prev];
+
+      // เมื่อเปลี่ยน operator
+      if (key === "operator") {
+        newValues[index] = { ...newValues[index], operator: newValue };
+        let operator = newValue?.code ? newValue.code : newValue;
+        // ถ้าเป็น between → เพิ่ม value2
+        if (operator === "isBetween") {
+          newValues[index] = { ...newValues[index], value: "", value2: "" };
+        } else {
+          // ถ้าไม่ใช่ between → ลบ value2 ออก
+          const { value2, ...rest } = newValues[index];
+          newValues[index] = rest;
+        }
+      }
+      else if (key === "value" || key === "value2") {
+        newValues[index] = { ...newValues[index], [key]: newValue };
+      }
+
       return newValues;
     });
   }, []);
 
-
+  // ✅ ปุ่มค้นหา
   const OnClickSearch = (e) => {
     e.preventDefault();
-    // กรองเฉพาะ field ที่มีค่าจริง
 
     let val = [...value
-      .filter(f => f.value !== null && f.value !== "")
-      .map(m => ({
+      .filter((f) => f.value !== null && f.value !== "")
+      .map((m) => ({
         ...m,
         operator: m.operator?.code || m.operator,
-        value: m.value?.code || m.value
+        value: m.value?.code || m.value,
+        value2: m.value2?.code || m.value2,
       }))];
 
-    bsFilterValueOnChanage(val)
+    bsFilterValueOnChanage(val);
   };
-  // ✅ render component ตาม type
-  const renderFilterComponent = (field) => {
-    const currentValue = value.find((f) => f.field === field.field)?.value || "";
+
+  // ✅ render component ตาม type + ตรวจ operator between
+  const renderFilterComponent = (field, index) => {
+    const currentItem = value[index] || {};
+    const currentValue = currentItem.value || "";
+    const currentValue2 = currentItem.value2 || "";
+    const operator = currentItem.operator?.code ?? currentItem.operator;
+    const commonProps = {
+      required: field.required,
+      type: field.type || "string",
+      decimals: field.decimals || 2,
+    };
 
     switch (field.component) {
       case "BSAutoComplete":
@@ -74,42 +104,62 @@ const BSFilterCustom = ({
             bsObjBy={field.bsObjBy}
             bsObjWh={field.bsObjWh}
             bsValue={currentValue}
-            bsOnChange={(val) =>
-              updateFieldValue(field.field, "value", val)
-            }
+            bsOnChange={(val) => updateFieldValue(index, "value", val)}
             bsLoadOnOpen={field.bsLoadOnOpen}
+            borderLeftRadius="unset"
           />
         );
 
       case "BSDatepicker":
         return (
-          <BSDatepicker
-            label={field.bsTitle}
-            value={currentValue ? dayjs(currentValue) : null}
-            onChange={(val) =>
-              updateFieldValue(
-                field.field,
-                "value",
-                val ? val.toISOString() : null
-              )
-            }
-            required={field.required}
-            minDate={field.minDate}
-            maxDate={field.maxDate}
-            format={field.format || "DD/MM/YYYY"}
-          />
+          <Stack direction="row" spacing={1}>
+            <BSDatepicker
+              label={field.bsTitle}
+              value={currentValue ? dayjs(currentValue) : null}
+              onChange={(val) =>
+                updateFieldValue(index, "value", val ? val.toISOString() : null)
+              }
+              minDate={field.minDate}
+              maxDate={field.maxDate}
+              format={field.format || "DD/MM/YYYY"}
+              borderLeftRadius="unset"
+              {...commonProps}
+            />
+            {operator === "isBetween" && (
+              <BSDatepicker
+                label="ถึง"
+                value={currentValue2 ? dayjs(currentValue2) : null}
+                onChange={(val) =>
+                  updateFieldValue(index, "value2", val ? val.toISOString() : null)
+                }
+                minDate={field.minDate}
+                maxDate={field.maxDate}
+                format={field.format || "DD/MM/YYYY"}
+                {...commonProps}
+              />
+            )}
+          </Stack>
         );
 
       case "BSTextField":
         return (
-          <BSTextField
-            label={field.bsTitle}
-            value={currentValue}
-            onChange={(val) => updateFieldValue(field.field, "value", val)}
-            required={field.required}
-            type={field.type || "string"}
-            decimals={field.decimals || 2}
-          />
+          <Stack direction="row" spacing={1}>
+            <BSTextField
+              label={field.bsTitle}
+              value={currentValue}
+              onChange={(val) => updateFieldValue(index, "value", val)}
+              borderLeftRadius="unset"
+              {...commonProps}
+            />
+            {operator === "isBetween" && (
+              <BSTextField
+                label="ถึง"
+                value={currentValue2}
+                onChange={(val) => updateFieldValue(index, "value2", val)}
+                {...commonProps}
+              />
+            )}
+          </Stack>
         );
 
       default:
@@ -117,64 +167,84 @@ const BSFilterCustom = ({
     }
   };
 
+  // ✅ ปุ่มล้างค่า
+  const onClear = () => {
+    const cleared = defaultField.map((f) => ({
+      field: f.field,
+      operator: f.defaultOperator || "",
+      value: "",
+      value2: undefined,
+    }));
+    setValue(cleared);
+  };
+
   return (
     <Paper sx={{ p: { xs: 1, md: 2 } }}>
       <Stack spacing={2}>
         <Grid container spacing={spacing}>
-          {bsFilterField.map((field, index) => {
-
-            return (
-              <Grid
-                item
-                xs={field.xs || 6}
-                sm={field.sm || 4}
-                md={field.md || 4}
-                lg={field.lg || 3}
-                key={index}
-              >
-                <Box>
-                  <Grid container spacing={1}>
-                    <Grid item xs={4} sm={4} md={3} lg={2}>
-                      <BSOperators
-                        field={field.field}
-                        type={field.type || "string"}
-                        value={value.find(v => v.field === field.field)?.operator || ""}
-                        onValueChange={(newVal) => {
-                          updateFieldValue(field.field, "operator", newVal.operator)
-                        }
-                        }
-                      />
-                    </Grid>
-                    <Grid item xs={8} sm={8} md={9} lg={10}>
-                      {renderFilterComponent(field)}
-                    </Grid>
+          {defaultField.map((field, index) => (
+            <Grid
+              size={{
+                xs: field.xs || 12,
+                sm: field.sm || 6,
+                md: field.md || 4,
+                lg: field.lg || 3
+              }}
+              key={index}
+            >
+              <Box>
+                <Grid container width={"100%"}>
+                  <Grid size={{
+                    xs: 4,
+                    sm: 4,
+                    md: 4,
+                    lg: 3,
+                  }}>
+                    <BSOperators
+                      field={field.field}
+                      type={field.type || "string"}
+                      value={value.find(v => v.field === field.field)?.operator || ""}
+                      onValueChange={(newVal) =>
+                        updateFieldValue(index, "operator", newVal.operator)
+                      }
+                      borderRightRadius="unset"
+                    />
                   </Grid>
-                </Box>
-              </Grid>
-            );
-          })}
+                  <Grid size={{
+                    xs: 8,
+                    sm: 8,
+                    md: 8,
+                    lg: 9,
+                  }}>
+                    {renderFilterComponent(field, index)}
+                  </Grid>
+                </Grid>
+              </Box>
+            </Grid>
+          ))}
         </Grid>
 
         <Stack direction="row" spacing={2} justifyContent={justifyButtons}>
-          {bsSearch && <Button
-            variant="contained"
-            color="primary"
-            onClick={OnClickSearch}
-            sx={{ minWidth: 100 }}
-          >
-            ค้นหา
-          </Button>}
-          {bsClear &&
+          {bsSearch && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={OnClickSearch}
+              sx={{ minWidth: 100 }}
+            >
+              ค้นหา
+            </Button>
+          )}
+          {bsClear && (
             <Button
               variant="outlined"
               color="secondary"
-              onClick={() => {
-                setDefaultFilter();
-              }}
+              onClick={onClear}
               sx={{ minWidth: 100 }}
             >
               ล้างค่า
-            </Button>}
+            </Button>
+          )}
         </Stack>
       </Stack>
     </Paper>
