@@ -24,7 +24,7 @@ const BSAutoComplete = ({
   const isSelect = bsMode === "select";
   const [options, setOptions] = useState(bsData);
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState(null);
+  const [value, setValue] = useState(multiple ? [] : null);
   const [loaded, setLoaded] = useState(bsData.length > 0); // track if options loaded
 
   // ✅ ใช้ useMemo แทน object literal
@@ -93,7 +93,7 @@ const BSAutoComplete = ({
   }, [loaded, bsCacheKey, requestBody, bsValue, multiple, isSelect]);
   useEffect(() => {
     setValue(bsValue || (multiple ? [] : ""));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bsValue])
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -186,13 +186,13 @@ const BSAutoComplete = ({
       onOpen={handleOpen}
       isOptionEqualToValue={(option, val) => option.code === val.code}
       sx={{
-          ...(borderLeftRadius && {
-            "& .MuiInputBase-root": {
-              borderTopLeftRadius: borderLeftRadius,
-              borderBottomLeftRadius: borderLeftRadius,
-            },
-          }),
-        }}
+        ...(borderLeftRadius && {
+          "& .MuiInputBase-root": {
+            borderTopLeftRadius: borderLeftRadius,
+            borderBottomLeftRadius: borderLeftRadius,
+          },
+        }),
+      }}
       renderInput={(params) => (
         <TextField
           {...params}

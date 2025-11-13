@@ -55,7 +55,7 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="autocomplete" element={<BSAutoCompleteExamples />} />
+        <Route path="test/autocomplete" element={<BSAutoCompleteExamples />} />
         {/* route สำหรับ BSDataGrid Examples */}
         <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />
         {/* route สำหรับ BSDataGridClient Examples */}
