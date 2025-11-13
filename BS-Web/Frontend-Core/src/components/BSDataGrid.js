@@ -914,6 +914,41 @@ const ComboBoxField = ({
  *     - Working with Enhanced Stored Procedures without metadata
  *     - Primary key detection is unreliable or ambiguous
  *     - Need guaranteed correct primary key for data operations
+ *
+ * @bsCustomFilters Configuration:
+ * - bsCustomFilters={filterValues}: Array of custom filter objects from BSFilterCustom component
+ *   * Integrates with BSFilterCustom component for advanced filtering
+ *   * Each filter object contains: { field, operator, value, value2? }
+ *   * Supports both server-side and client-side filtering modes
+ *   * Filter Modes:
+ *     - Server-side (bsFilterMode="server"): Filters sent to API in customFilters parameter
+ *     - Client-side (bsFilterMode="client"): Filters applied to loaded data in browser
+ *   * Supported Operators:
+ *     - String: equals, contains, startsWith, endsWith, isEmpty, isNotEmpty, isAnyOf, not
+ *     - Number: equals, >, >=, <, <=, isBetween, not
+ *     - Date: is, after, onOrAfter, before, onOrBefore, isBetween
+ *   * Example Usage:
+ *     ```jsx
+ *     const [filterValues, setFilterValues] = useState([]);
+ *
+ *     <BSFilterCustom
+ *       bsFilterField={filterFields}
+ *       bsFilterValue={filterValues}
+ *       bsFilterValueOnChanage={(values) => setFilterValues(values)}
+ *       bsSearch={true}
+ *       bsClear={true}
+ *     />
+ *
+ *     <BSDataGrid
+ *       bsObj="t_customers"
+ *       bsCustomFilters={filterValues}
+ *       bsFilterMode="client"
+ *     />
+ *     ```
+ *   * Tips:
+ *     - Use client-side mode for small datasets (<1000 rows) for instant filtering
+ *     - Use server-side mode for large datasets to reduce data transfer
+ *     - Combine with bsObjWh for static WHERE conditions
  */
 const BSDataGrid = forwardRef(
   (
@@ -955,6 +990,7 @@ const BSDataGrid = forwardRef(
       bsShowCharacterCount = false, // Show character count in helper text
       bsColumnDefs = [], // Custom column definitions (overrides metadata)
       bsKeyId, // Manual primary key specification (fallback if metadata unavailable)
+      bsCustomFilters = [], // Custom filters from BSFilterCustom component
 
       // Enhanced Stored Procedure support
       bsStoredProcedure, // Enhanced stored procedure name
@@ -1257,6 +1293,150 @@ const BSDataGrid = forwardRef(
     sortModelRef.current = sortModel;
     filterModelRef.current = filterModel;
 
+    // Watch for changes in bsCustomFilters and apply them
+    useEffect(() => {
+      if (!bsCustomFilters || bsCustomFilters.length === 0) {
+        Logger.log("🔍 No custom filters applied");
+        return;
+      }
+
+      Logger.log("🔍 Custom filters changed:", bsCustomFilters);
+
+      // For client-side filtering, reload data to apply filters
+      if (bsFilterMode === "client" && hasLoadedRef.current) {
+        Logger.log("🔄 Reloading data with custom filters (client-side)");
+        loadDataRef.current();
+      }
+      // For server-side filtering, reload data with custom filters
+      else if (bsFilterMode === "server" && hasLoadedRef.current) {
+        Logger.log("🔄 Reloading data with custom filters (server-side)");
+        loadDataRef.current();
+      }
+    }, [bsCustomFilters, bsFilterMode]);
+
+    // Helper function to apply custom filters to rows (client-side)
+    const applyCustomFilters = useCallback((data, customFilters) => {
+      if (!customFilters || customFilters.length === 0) {
+        return data;
+      }
+
+      Logger.log("🔍 Applying custom filters to data:", {
+        rowCount: data.length,
+        filters: customFilters,
+      });
+
+      return data.filter((row) => {
+        // All filters must match (AND logic)
+        return customFilters.every((filter) => {
+          const { field, operator, value, value2 } = filter;
+          const rowValue = row[field];
+
+          // Skip if no value provided
+          if (value === null || value === undefined || value === "") {
+            return true;
+          }
+
+          // Apply operator
+          switch (operator) {
+            case "equals":
+            case "is":
+              return (
+                String(rowValue).toLowerCase() === String(value).toLowerCase()
+              );
+
+            case "contains":
+              return String(rowValue)
+                .toLowerCase()
+                .includes(String(value).toLowerCase());
+
+            case "startsWith":
+              return String(rowValue)
+                .toLowerCase()
+                .startsWith(String(value).toLowerCase());
+
+            case "endsWith":
+              return String(rowValue)
+                .toLowerCase()
+                .endsWith(String(value).toLowerCase());
+
+            case "isEmpty":
+              return !rowValue || rowValue === "";
+
+            case "isNotEmpty":
+              return rowValue && rowValue !== "";
+
+            case "isAnyOf":
+              // value should be an array
+              const values = Array.isArray(value) ? value : [value];
+              return values.some(
+                (v) =>
+                  String(rowValue).toLowerCase() === String(v).toLowerCase()
+              );
+
+            case ">":
+            case "after":
+              if (rowValue instanceof Date || typeof rowValue === "string") {
+                const rowDate = new Date(rowValue);
+                const filterDate = new Date(value);
+                return rowDate > filterDate;
+              }
+              return Number(rowValue) > Number(value);
+
+            case ">=":
+            case "onOrAfter":
+              if (rowValue instanceof Date || typeof rowValue === "string") {
+                const rowDate = new Date(rowValue);
+                const filterDate = new Date(value);
+                return rowDate >= filterDate;
+              }
+              return Number(rowValue) >= Number(value);
+
+            case "<":
+            case "before":
+              if (rowValue instanceof Date || typeof rowValue === "string") {
+                const rowDate = new Date(rowValue);
+                const filterDate = new Date(value);
+                return rowDate < filterDate;
+              }
+              return Number(rowValue) < Number(value);
+
+            case "<=":
+            case "onOrBefore":
+              if (rowValue instanceof Date || typeof rowValue === "string") {
+                const rowDate = new Date(rowValue);
+                const filterDate = new Date(value);
+                return rowDate <= filterDate;
+              }
+              return Number(rowValue) <= Number(value);
+
+            case "isBetween":
+              if (!value2) return true;
+
+              if (rowValue instanceof Date || typeof rowValue === "string") {
+                const rowDate = new Date(rowValue);
+                const filterDate1 = new Date(value);
+                const filterDate2 = new Date(value2);
+                return rowDate >= filterDate1 && rowDate <= filterDate2;
+              }
+              return (
+                Number(rowValue) >= Number(value) &&
+                Number(rowValue) <= Number(value2)
+              );
+
+            case "not":
+            case "!=":
+              return (
+                String(rowValue).toLowerCase() !== String(value).toLowerCase()
+              );
+
+            default:
+              Logger.warn(`Unknown operator: ${operator}`);
+              return true;
+          }
+        });
+      });
+    }, []);
+
     // Load data from API
     const loadData = useCallback(
       async (forceRefresh = false) => {
@@ -1331,6 +1511,13 @@ const BSDataGrid = forwardRef(
             columns: columnsForQuery ? columnsForQuery.join(",") : undefined,
             customWhere: bsObjWh,
             customOrderBy: bsObjBy,
+            // Add custom filters for server-side processing
+            customFilters:
+              bsFilterMode === "server" &&
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
+                ? bsCustomFilters
+                : undefined,
           };
 
           // Add cache buster for force refresh (like after bulk edit)
@@ -1351,7 +1538,7 @@ const BSDataGrid = forwardRef(
           const result = await getTableData(request);
 
           // Extract actual row data from nested structure
-          const processedRows = (result.rows || [])
+          let processedRows = (result.rows || [])
             .map((row, index) => {
               // If row has nested data structure, extract the data
               let rowData = row;
@@ -1388,6 +1575,22 @@ const BSDataGrid = forwardRef(
               return rowData;
             })
             .filter((row) => row !== null); // Remove null rows
+
+          // Apply custom filters if in client-side mode
+          if (
+            bsFilterMode === "client" &&
+            bsCustomFilters &&
+            bsCustomFilters.length > 0
+          ) {
+            Logger.log("🔍 Applying custom filters (client-side):", {
+              beforeCount: processedRows.length,
+              filters: bsCustomFilters,
+            });
+            processedRows = applyCustomFilters(processedRows, bsCustomFilters);
+            Logger.log("✅ Custom filters applied:", {
+              afterCount: processedRows.length,
+            });
+          }
 
           setRows(processedRows);
           setRowCount(result.rowCount || 0);
@@ -1478,6 +1681,8 @@ const BSDataGrid = forwardRef(
         parsedCols,
         comboBoxConfig,
         onDataBind,
+        applyCustomFilters,
+        bsCustomFilters,
       ]
     );
 
@@ -1533,6 +1738,13 @@ const BSDataGrid = forwardRef(
               ...bsStoredProcedureParams,
               // Add any additional parameters here
             },
+            // Add custom filters for server-side processing
+            customFilters:
+              bsFilterMode === "server" &&
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
+                ? bsCustomFilters
+                : undefined,
             userId:
               user?.UserId ||
               user?.UserId ||
@@ -1545,10 +1757,32 @@ const BSDataGrid = forwardRef(
           const result = await executeEnhancedStoredProcedure(request);
 
           if (result.success) {
-            const processedRows = (result.data || []).map((row, index) => ({
+            let processedRows = (result.data || []).map((row, index) => ({
               ...row,
               id: row.id || row.ID || `sp_row_${index}`, // Ensure unique ID
             }));
+
+            // Apply custom filters if in client-side mode
+            if (
+              bsFilterMode === "client" &&
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
+            ) {
+              Logger.log(
+                "🔍 Applying custom filters to Enhanced SP (client-side):",
+                {
+                  beforeCount: processedRows.length,
+                  filters: bsCustomFilters,
+                }
+              );
+              processedRows = applyCustomFilters(
+                processedRows,
+                bsCustomFilters
+              );
+              Logger.log("✅ Custom filters applied to Enhanced SP:", {
+                afterCount: processedRows.length,
+              });
+            }
 
             setRows(processedRows);
             setRowCount(result.rowCount || processedRows.length);
@@ -1727,6 +1961,8 @@ const BSDataGrid = forwardRef(
         bsFilterMode,
         onDataBind,
         bsKeyId,
+        applyCustomFilters,
+        bsCustomFilters,
       ]
     );
 

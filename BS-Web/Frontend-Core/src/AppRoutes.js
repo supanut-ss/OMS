@@ -30,6 +30,7 @@ import secureStorage from "./utils/SecureStorage";
 import BSTextFieldExamples from "./examples/BSTextFieldExamples";
 import BSFilterCustomExamples from "./examples/BSFilterCustomExamples";
 import BSDatepickerExamples from "./examples/BSDatepickerExamples";
+import BSDataGridWithCustomFilterExample from "./examples/BSDataGridWithCustomFilterExample";
 import Home from "./pages/Home";
 
 export default function AppRoutes() {
@@ -42,10 +43,13 @@ export default function AppRoutes() {
         secureStorage.set("lang", lang);
       }
     }
-  }
+  };
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage setLang={(v) => onChangeLang(v)} />} />
+      <Route
+        path="/login"
+        element={<LoginPage setLang={(v) => onChangeLang(v)} />}
+      />
       <Route
         path="/"
         element={
@@ -78,6 +82,11 @@ export default function AppRoutes() {
         <Route path="test/textfield" element={<BSTextFieldExamples />} />
         <Route path="test/datepicker" element={<BSDatepickerExamples />} />
         <Route path="test/filtercustom" element={<BSFilterCustomExamples />} />
+        {/* route สำหรับ BSDataGrid with Custom Filter Example */}
+        <Route
+          path="examples/datagrid-custom-filter"
+          element={<BSDataGridWithCustomFilterExample />}
+        />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
         <Route path="importMaster" element={<ImportMaster />} />
@@ -87,7 +96,10 @@ export default function AppRoutes() {
         <Route path="user_logon" element={<UserLogOnPage />} />
         <Route path="count">
           <Route path="count_tag" element={<CountTag lang={lang} />} />
-          <Route path="count_reconcile" element={<CountReconcile lang={lang} />} />
+          <Route
+            path="count_reconcile"
+            element={<CountReconcile lang={lang} />}
+          />
         </Route>
         <Route path="master">
           <Route path="part_master" element={<PartPage />} />
