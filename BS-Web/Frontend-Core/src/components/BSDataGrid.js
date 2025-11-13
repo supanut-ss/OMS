@@ -830,6 +830,22 @@ const ComboBoxField = ({
  *   * Receives array of row objects from the current page or all data (client-side filtering)
  *   * Useful for calculating summaries, totals, or other derived values
  *   * Example: onDataBind={(data) => setTotalQty(data.reduce((sum, row) => sum + (row.qty || 0), 0))}
+ *
+ * @bsKeyId Configuration:
+ * - bsKeyId="method_id": Manually specify the primary key field name
+ *   * Used when API metadata is unavailable (Enhanced Stored Procedures returning metadata: null)
+ *   * Overrides auto-detection and metadata-based primary key resolution
+ *   * Essential for correct UPDATE/DELETE operations in Enhanced SP mode
+ *   * Primary Key Resolution Priority:
+ *     1. bsKeyId (manual specification) - HIGHEST PRIORITY
+ *     2. metadata.primaryKeys[0] (from API metadata)
+ *     3. Auto-detect from data (pattern matching: *_id > *Id > *ID > id)
+ *     4. Fallback to "Id"
+ *   * Example: <BSDataGrid bsKeyId="method_id" bsStoredProcedure="usp_tbm_method" />
+ *   * Recommended when:
+ *     - Working with Enhanced Stored Procedures without metadata
+ *     - Primary key detection is unreliable or ambiguous
+ *     - Need guaranteed correct primary key for data operations
  */
 const BSDataGrid = forwardRef(
   (
@@ -870,6 +886,7 @@ const BSDataGrid = forwardRef(
       bsFilterMode = "server", // "server" | "client"
       bsShowCharacterCount = false, // Show character count in helper text
       bsColumnDefs = [], // Custom column definitions (overrides metadata)
+      bsKeyId, // Manual primary key specification (fallback if metadata unavailable)
 
       // Enhanced Stored Procedure support
       bsStoredProcedure, // Enhanced stored procedure name
@@ -892,6 +909,7 @@ const BSDataGrid = forwardRef(
       tableName,
       bsPreObjType: typeof bsPreObj,
       bsPreObjValue: bsPreObj,
+      bsKeyId,
     });
 
     // Determine effective table name (bsObj takes priority over tableName)
@@ -1530,8 +1548,73 @@ const BSDataGrid = forwardRef(
               });
             } else {
               Logger.warn(
-                "⚠️ Enhanced SP did not return metadata - using fallback detection"
+                "⚠️ Enhanced SP did not return metadata - generating fallback from data"
               );
+
+              // Generate fallback metadata from data structure
+              if (processedRows.length > 0) {
+                const firstRow = processedRows[0];
+
+                // Priority 1: Use bsKeyId if specified
+                let detectedPrimaryKey = bsKeyId;
+
+                // Priority 2: Auto-detect from data if bsKeyId not specified
+                if (!detectedPrimaryKey) {
+                  const keys = Object.keys(firstRow);
+                  const primaryKeyPatterns = [
+                    /^.*_id$/i, // part_id, user_id, method_id (PRIORITY)
+                    /^.*Id$/, // partId, userId, methodId
+                    /^.*ID$/, // partID, userID, methodID
+                    /^id$/i, // Generic id (fallback)
+                  ];
+
+                  for (const pattern of primaryKeyPatterns) {
+                    const foundKey = keys.find((key) => pattern.test(key));
+                    if (foundKey) {
+                      detectedPrimaryKey = foundKey;
+                      break;
+                    }
+                  }
+                }
+
+                const fallbackColumns = Object.keys(firstRow).map((key) => ({
+                  columnName: key,
+                  dataType:
+                    typeof firstRow[key] === "number"
+                      ? "int"
+                      : firstRow[key] instanceof Date
+                      ? "datetime"
+                      : "nvarchar",
+                  isNullable: firstRow[key] === null,
+                  isPrimaryKey: key === detectedPrimaryKey,
+                  isIdentity: key === detectedPrimaryKey,
+                  maxLength: typeof firstRow[key] === "string" ? 255 : null,
+                }));
+
+                const fallbackMetadata = {
+                  tableName: bsStoredProcedure,
+                  schemaName: bsStoredProcedureSchema || "dbo",
+                  primaryKeys: detectedPrimaryKey ? [detectedPrimaryKey] : [],
+                  columns: fallbackColumns,
+                  tableType: "Enhanced SP (Auto-detected)",
+                  totalRows: result.rowCount || processedRows.length,
+                };
+
+                setEnhancedMetadata(fallbackMetadata);
+
+                Logger.log("✅ Fallback metadata generated from data:", {
+                  primaryKey: detectedPrimaryKey,
+                  primaryKeySource: bsKeyId
+                    ? "bsKeyId (manual)"
+                    : "auto-detected",
+                  columnsCount: fallbackColumns.length,
+                  columns: fallbackColumns.map((c) => c.columnName),
+                });
+              } else {
+                Logger.warn(
+                  "⚠️ No data available to generate fallback metadata"
+                );
+              }
             }
 
             Logger.log(
@@ -1575,6 +1658,7 @@ const BSDataGrid = forwardRef(
         setEnhancedMetadata,
         bsFilterMode,
         onDataBind,
+        bsKeyId,
       ]
     );
 
@@ -1875,12 +1959,32 @@ const BSDataGrid = forwardRef(
         // Additional check: Skip primary key fields that use sequences (like SQL Server NEXT VALUE FOR)
         // This is a fallback for when metadata doesn't properly indicate hasDefault or isIdentity
         if (dialogMode === "add") {
-          // Check if this field is in the primaryKeys array from metadata
-          const isPrimaryKey = metadata?.primaryKeys?.includes(columnName);
+          // Check if this field is in the primaryKeys array from metadata (case-insensitive)
+          const isPrimaryKey = metadata?.primaryKeys?.some(
+            (pk) => pk.toLowerCase() === columnName.toLowerCase()
+          );
 
           if (isPrimaryKey) {
             Logger.log(
-              `❌ Skipping ${columnName} - is primary key from metadata`
+              `❌ Skipping ${columnName} - is primary key from metadata (primaryKeys: ${JSON.stringify(
+                metadata?.primaryKeys
+              )})`
+            );
+            return false;
+          }
+
+          // Skip generic ID field (case-insensitive) - common auto-generated field
+          if (columnName.toLowerCase() === "id") {
+            Logger.log(
+              `❌ Skipping ${columnName} - is generic ID field (auto-generated)`
+            );
+            return false;
+          }
+
+          // Skip bsKeyId field if specified
+          if (bsKeyId && columnName.toLowerCase() === bsKeyId.toLowerCase()) {
+            Logger.log(
+              `❌ Skipping ${columnName} - matches bsKeyId (${bsKeyId})`
             );
             return false;
           }
@@ -1900,12 +2004,32 @@ const BSDataGrid = forwardRef(
           //   return false;
           // }
         } else if (dialogMode === "edit") {
-          // Check if this field is in the primaryKeys array from metadata
-          const isPrimaryKey = metadata?.primaryKeys?.includes(columnName);
+          // Check if this field is in the primaryKeys array from metadata (case-insensitive)
+          const isPrimaryKey = metadata?.primaryKeys?.some(
+            (pk) => pk.toLowerCase() === columnName.toLowerCase()
+          );
 
           if (isPrimaryKey) {
             Logger.log(
-              `❌ Skipping ${columnName} - is primary key from metadata`
+              `❌ Skipping ${columnName} - is primary key from metadata (primaryKeys: ${JSON.stringify(
+                metadata?.primaryKeys
+              )})`
+            );
+            return false;
+          }
+
+          // Skip generic ID field (case-insensitive) - common auto-generated field
+          if (columnName.toLowerCase() === "id") {
+            Logger.log(
+              `❌ Skipping ${columnName} - is generic ID field (auto-generated)`
+            );
+            return false;
+          }
+
+          // Skip bsKeyId field if specified
+          if (bsKeyId && columnName.toLowerCase() === bsKeyId.toLowerCase()) {
+            Logger.log(
+              `❌ Skipping ${columnName} - matches bsKeyId (${bsKeyId})`
             );
             return false;
           }
@@ -1938,7 +2062,7 @@ const BSDataGrid = forwardRef(
 
         return true;
       },
-      [dialogMode, metadata?.primaryKeys]
+      [dialogMode, metadata?.primaryKeys, bsKeyId]
     );
 
     // Helper: Check if field is is_active
@@ -2097,35 +2221,41 @@ const BSDataGrid = forwardRef(
     // Helper: Get effective primary key (from metadata or detected from data)
     const getEffectivePrimaryKey = useCallback(
       (rowData = null) => {
-        // Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
-        //   hasMetadata: !!metadata?.primaryKeys,
-        //   metadataPrimaryKeys: metadata?.primaryKeys,
-        //   bsStoredProcedure: !!bsStoredProcedure,
-        //   hasRowData: !!rowData,
-        //   rowDataKeys: rowData ? Object.keys(rowData) : null,
-        // });
+        // Priority 1: Manual bsKeyId specification (highest priority)
+        if (bsKeyId) {
+          Logger.log(
+            "🔑 Using manually specified primary key (bsKeyId):",
+            bsKeyId
+          );
+          return bsKeyId;
+        }
 
-        // For Enhanced SP with metadata, use metadata primary key
+        // Priority 2: Metadata primary key
         if (metadata?.primaryKeys?.[0]) {
-          // Logger.log(
-          //   "🔑 Using primary key from metadata:",
-          //   metadata.primaryKeys[0]
-          // );
+          Logger.log(
+            "🔑 Using primary key from metadata:",
+            metadata.primaryKeys[0]
+          );
           return metadata.primaryKeys[0];
         }
 
-        // For Enhanced SP without metadata, try to detect from data
+        // Priority 3: Auto-detect from data (for Enhanced SP)
         if (bsStoredProcedure && rowData) {
           const detected = detectPrimaryKeyFromData(rowData);
           Logger.log("🔑 Detected primary key from data:", detected);
           return detected;
         }
 
-        // Fallback to common names
+        // Priority 4: Fallback to common name
         Logger.log("🔑 Using fallback primary key: Id");
         return "Id";
       },
-      [metadata?.primaryKeys, bsStoredProcedure, detectPrimaryKeyFromData]
+      [
+        bsKeyId,
+        metadata?.primaryKeys,
+        bsStoredProcedure,
+        detectPrimaryKeyFromData,
+      ]
     );
 
     // Initialize form data based on metadata
@@ -2334,10 +2464,18 @@ const BSDataGrid = forwardRef(
         return;
       }
 
-      // For offline mode without metadata, show simple alert
-      if (!metadata) {
+      // For offline mode without metadata AND no Enhanced SP data, show alert
+      if (!metadata && !bsStoredProcedure) {
         alert(
           `Add Record for ${tableName}\n\nOffline mode: Cannot create form without metadata.\nPlease connect to backend server.`
+        );
+        return;
+      }
+
+      // For Enhanced SP without metadata but with data, allow form creation
+      if (!metadata && bsStoredProcedure && rows.length === 0) {
+        alert(
+          `Add Record\n\nNo data available to generate form fields.\nPlease load data first or define bsColumnDefs.`
         );
         return;
       }
@@ -2367,7 +2505,15 @@ const BSDataGrid = forwardRef(
       setSelectedRow(null);
       setFormData(initializeFormData());
       setDialogOpen(true);
-    }, [onAdd, initializeFormData, metadata, tableName, bsBulkAddInline]);
+    }, [
+      onAdd,
+      initializeFormData,
+      metadata,
+      tableName,
+      bsBulkAddInline,
+      bsStoredProcedure,
+      rows.length,
+    ]);
 
     // Open Edit dialog or delegate
     const handleEditClick = useCallback(
@@ -2947,7 +3093,10 @@ const BSDataGrid = forwardRef(
         bsStoredProcedure &&
         (!metadata?.columns || metadata.columns.length === 0)
       ) {
-        if (!selectedRow || !Object.keys(selectedRow).length) {
+        // Use selectedRow for Edit mode, or first row as template for Add mode
+        const templateRow = selectedRow || rows[0];
+
+        if (!templateRow || !Object.keys(templateRow).length) {
           return (
             <Typography color="warning.main" sx={{ p: 2 }}>
               ⚠️ No data available to create form fields for Enhanced Stored
@@ -2956,24 +3105,39 @@ const BSDataGrid = forwardRef(
           );
         }
 
-        // Detect primary key from selected row data
-        const detectedPrimaryKey = detectPrimaryKeyFromData(selectedRow);
+        // Detect primary key from bsKeyId or auto-detect from template row data
+        const detectedPrimaryKey =
+          bsKeyId || detectPrimaryKeyFromData(templateRow);
+
+        Logger.log("🔍 Enhanced SP Form - Primary Key Detection:", {
+          dialogMode,
+          isAddMode: !selectedRow,
+          bsKeyId,
+          detectedPrimaryKey,
+          primaryKeySource: bsKeyId ? "bsKeyId (manual)" : "auto-detected",
+          templateRowKeys: Object.keys(templateRow),
+          templateRow, // Show full template row data
+        });
 
         // Define fields that should be excluded from Enhanced SP forms
         const excludedFields = [
           "__rowNumber", // Special row number field
           // Primary key field (detected dynamically)
           ...(detectedPrimaryKey ? [detectedPrimaryKey] : []),
-          // Common primary key variants (fallback)
+          // DataGrid internal ID patterns (case-insensitive)
           "id",
           "Id",
           "ID",
+          // Common table-specific primary keys
           "part_id",
+          "method_id",
           "app_id",
           "user_id",
           "customer_id",
           "product_id",
           "order_id",
+          "area_id",
+          "location_id",
           // Audit fields - Created by
           "create_by",
           "created_by",
@@ -2999,16 +3163,46 @@ const BSDataGrid = forwardRef(
           "timestamp",
         ];
 
-        const fields = Object.keys(selectedRow)
+        Logger.log("🔍 Enhanced SP Form - Field Exclusion Setup:", {
+          excludedFields,
+          excludedFieldsCount: excludedFields.length,
+          templateRowFieldsCount: Object.keys(templateRow).length,
+        });
+
+        const fields = Object.keys(templateRow)
           .filter((key) => {
+            // Exclude DataGrid internal IDs (sp_row_*, generated-*, etc.)
+            if (key.startsWith("sp_row_") || key.startsWith("generated-")) {
+              Logger.log(`🚫 Excluding DataGrid internal ID: ${key}`);
+              return false;
+            }
+
             // Check if field should be excluded (case-insensitive)
-            return !excludedFields.some(
+            const isExcluded = excludedFields.some(
               (excludedField) =>
                 key.toLowerCase() === excludedField.toLowerCase()
             );
+
+            if (isExcluded) {
+              Logger.log(
+                `🚫 Excluding field from form (${dialogMode} mode): ${key} (matched: ${excludedFields.find(
+                  (f) => f.toLowerCase() === key.toLowerCase()
+                )})`
+              );
+            } else {
+              Logger.log(
+                `✅ Including field in form (${dialogMode} mode): ${key}`
+              );
+            }
+
+            return !isExcluded;
           })
           .map((fieldName) => {
-            const value = formData[fieldName] ?? selectedRow[fieldName] ?? "";
+            // For Add mode, use empty string; for Edit mode, use actual data
+            const value =
+              formData[fieldName] ??
+              (selectedRow ? selectedRow[fieldName] : "") ??
+              "";
 
             // Get custom column definition if exists
             const customDef = columnDefsConfig[fieldName];
@@ -3314,6 +3508,8 @@ const BSDataGrid = forwardRef(
       detectPrimaryKeyFromData,
       columnDefsConfig,
       readOnly,
+      bsKeyId,
+      rows,
     ]);
 
     // Function to restore a single row to its original state
