@@ -4162,7 +4162,6 @@ const BSDataGrid = forwardRef(
                   icon={<Delete />}
                   label="Delete"
                   onClick={() => handleDeleteClick(params.row)}
-                  showInMenu
                 />
               ));
             }
@@ -4463,7 +4462,6 @@ const BSDataGrid = forwardRef(
                   icon={<Delete />}
                   label="Delete"
                   onClick={() => handleDeleteClick(params.row)}
-                  showInMenu
                 />
               ));
             }
