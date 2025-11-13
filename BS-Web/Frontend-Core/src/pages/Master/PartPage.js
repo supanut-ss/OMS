@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
-import { Typography, Box, Paper } from "@mui/material";
+import { Typography, Box, Paper, Chip } from "@mui/material";
+import { Inventory } from "@mui/icons-material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const PartPage = () => {
@@ -73,15 +74,22 @@ const PartPage = () => {
           sx={{
             display: "flex",
             justifyContent: "flex-end",
-            textAlign: "right",
-            px: 2,
-            fontWeight: "bold",
+            gap: 2,
             mt: 2,
           }}
         >
-          <Typography variant="body1">
-            Total Qty: {totals.qty.toLocaleString()}
-          </Typography>
+          <Chip
+            icon={<Inventory />}
+            label={`Total Qty: ${totals.qty.toLocaleString()}`}
+            color="primary"
+            variant="outlined"
+            sx={{
+              fontSize: "0.95rem",
+              color: "black",
+              px: 1,
+              py: 2,
+            }}
+          />
         </Box>
       </Paper>
 
