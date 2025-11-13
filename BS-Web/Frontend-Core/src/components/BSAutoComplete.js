@@ -152,12 +152,7 @@ const BSAutoComplete = ({
               ...params.inputProps,
               readOnly: true, // 👈 ห้ามกรอกเอง
             }}
-            sx={{
-              "& .MuiInputBase-root": {
-                borderBottomLeftRadius: "unset",
-                backgroundColor: "red"
-              }
-            }}
+            
             InputProps={{
               ...params.InputProps,
               endAdornment: (
