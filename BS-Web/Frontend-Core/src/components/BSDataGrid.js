@@ -378,6 +378,7 @@ const DynamicGridToolbar = ({
   bsBulkEdit = false,
   bsBulkAdd = false,
   bsBulkDelete = false,
+  bsEnableBulkMode = false,
   selectedRowCount = 0,
   onBulkEdit,
   onBulkDelete,
@@ -430,7 +431,7 @@ const DynamicGridToolbar = ({
       )}
 
       {/* Bulk Add button */}
-      {bsBulkAdd && (
+      {bsEnableBulkMode && bsBulkAdd && (
         <Button
           size="small"
           startIcon={<Add />}
@@ -455,15 +456,17 @@ const DynamicGridToolbar = ({
       )}
 
       {/* Bulk Edit/Delete Split Button - show only when rows are selected and checkbox is enabled */}
-      {selectedRowCount > 0 && (bsBulkEdit || bsBulkDelete) && (
-        <BulkSplitButton
-          selectedRowCount={selectedRowCount}
-          onBulkEdit={onBulkEdit}
-          onBulkDelete={onBulkDelete}
-          bsBulkEdit={bsBulkEdit}
-          showBulkDelete={showBulkDelete}
-        />
-      )}
+      {bsEnableBulkMode &&
+        selectedRowCount > 0 &&
+        (bsBulkEdit || bsBulkDelete) && (
+          <BulkSplitButton
+            selectedRowCount={selectedRowCount}
+            onBulkEdit={onBulkEdit}
+            onBulkDelete={onBulkDelete}
+            bsBulkEdit={bsBulkEdit}
+            showBulkDelete={showBulkDelete}
+          />
+        )}
 
       {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
@@ -977,6 +980,7 @@ const BSDataGrid = forwardRef(
       bsBulkAdd = false,
       bsBulkDelete = false,
       bsBulkAddInline = false, // Inline bulk add mode
+      bsEnableBulkMode = false, // Enable all bulk operations (default: disabled)
       bsShowCheckbox = false, // Show checkbox selection
       bsShowDescColumn = true,
       bsShowRowNumber = true, // Show row number column
@@ -1879,19 +1883,40 @@ const BSDataGrid = forwardRef(
                   }
                 }
 
-                const fallbackColumns = Object.keys(firstRow).map((key) => ({
-                  columnName: key,
-                  dataType:
-                    typeof firstRow[key] === "number"
-                      ? "int"
-                      : firstRow[key] instanceof Date
-                      ? "datetime"
-                      : "nvarchar",
-                  isNullable: firstRow[key] === null,
-                  isPrimaryKey: key === detectedPrimaryKey,
-                  isIdentity: key === detectedPrimaryKey,
-                  maxLength: typeof firstRow[key] === "string" ? 255 : null,
-                }));
+                const fallbackColumns = Object.keys(firstRow).map((key) => {
+                  const value = firstRow[key];
+                  let dataType = "nvarchar";
+
+                  // Detect data type
+                  if (value === null || value === undefined) {
+                    dataType = "nvarchar";
+                  } else if (typeof value === "number") {
+                    dataType = "int";
+                  } else if (value instanceof Date) {
+                    dataType = "datetime";
+                  } else if (typeof value === "string") {
+                    // Check if string is datetime format (ISO 8601)
+                    // Pattern: YYYY-MM-DDTHH:mm:ss or YYYY-MM-DD HH:mm:ss
+                    const isoDatePattern =
+                      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/;
+                    const simpleDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+                    if (isoDatePattern.test(value)) {
+                      dataType = "datetime";
+                    } else if (simpleDatePattern.test(value)) {
+                      dataType = "date";
+                    }
+                  }
+
+                  return {
+                    columnName: key,
+                    dataType: dataType,
+                    isNullable: value === null,
+                    isPrimaryKey: key === detectedPrimaryKey,
+                    isIdentity: key === detectedPrimaryKey,
+                    maxLength: typeof value === "string" ? 255 : null,
+                  };
+                });
 
                 const fallbackMetadata = {
                   tableName: bsStoredProcedure,
@@ -5125,6 +5150,11 @@ const BSDataGrid = forwardRef(
 
     // Bulk operations handlers
     const handleBulkAdd = useCallback(() => {
+      if (!bsEnableBulkMode) {
+        Logger.warn("⚠️ Bulk mode is disabled");
+        return;
+      }
+
       if (!metadata?.columns) {
         Logger.warn("⚠️ Cannot open bulk add dialog without metadata");
         return;
@@ -5139,9 +5169,14 @@ const BSDataGrid = forwardRef(
       setBulkAddRows(emptyRows);
       setBulkAddDialogOpen(true);
       Logger.log("📝 Bulk Add dialog opened with", bulkRowCount, "empty rows");
-    }, [metadata, bulkRowCount, initializeFormData]);
+    }, [bsEnableBulkMode, metadata, bulkRowCount, initializeFormData]);
 
     const handleBulkEdit = useCallback(() => {
+      if (!bsEnableBulkMode) {
+        Logger.warn("⚠️ Bulk mode is disabled");
+        return;
+      }
+
       const selectedRows = rows.filter((row) => {
         const primaryKey = getEffectivePrimaryKey(row);
         const rowId = row[primaryKey];
@@ -5157,9 +5192,14 @@ const BSDataGrid = forwardRef(
       unsavedChangesRef.current = {};
       setHasUnsavedChanges(false);
       Logger.log("📝 Bulk Edit mode enabled for", selectedRows.length, "rows");
-    }, [rows, rowSelectionModel, getEffectivePrimaryKey]);
+    }, [bsEnableBulkMode, rows, rowSelectionModel, getEffectivePrimaryKey]);
 
     const handleBulkDelete = useCallback(async () => {
+      if (!bsEnableBulkMode) {
+        Logger.warn("⚠️ Bulk mode is disabled");
+        return;
+      }
+
       const selectedRows = rows.filter((row) => {
         const primaryKey = getEffectivePrimaryKey(row);
         const rowId = row[primaryKey];
@@ -5192,6 +5232,7 @@ const BSDataGrid = forwardRef(
         }
       }
     }, [
+      bsEnableBulkMode,
       rows,
       rowSelectionModel,
       deleteRecord,
@@ -5537,6 +5578,18 @@ const BSDataGrid = forwardRef(
     const handleRowEditStart = useCallback(
       (params) => {
         Logger.log("📝 Row edit started:", params.id);
+
+        // If bulk mode is disabled, prevent any editing
+        if (!bsEnableBulkMode) {
+          Logger.warn("⚠️ Bulk edit mode is disabled - preventing edit");
+          // Prevent entering edit mode
+          if (params.event) {
+            params.event.defaultMuiPrevented = true;
+          }
+          return; // Stop execution here
+        }
+
+        // Only enable bulk edit mode if bsEnableBulkMode is true
         if (!bulkEditMode) {
           setBulkEditMode(true);
           unsavedChangesRef.current = {};
@@ -5544,7 +5597,7 @@ const BSDataGrid = forwardRef(
           Logger.log("📝 Bulk Edit mode enabled via row double-click");
         }
       },
-      [bulkEditMode]
+      [bulkEditMode, bsEnableBulkMode]
     );
 
     const handleRowEditStop = useCallback(
@@ -5946,14 +5999,19 @@ const BSDataGrid = forwardRef(
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||
-                    bsBulkEdit ||
-                    bsBulkDelete ||
+                    (bsEnableBulkMode && (bsBulkEdit || bsBulkDelete)) ||
                     !!onCheckBoxSelected
                   }
                   rowSelectionModel={rowSelectionModel}
                   onRowSelectionModelChange={handleRowSelectionChange}
                   // Enable multi-row selection by clicking on rows directly (no checkbox required)
                   disableRowSelectionOnClick={false}
+                  // disableRowSelectionOnClick={
+                  //   !bsShowCheckbox &&
+                  //   !bsBulkEdit &&
+                  //   !bsBulkDelete &&
+                  //   !onCheckBoxSelected
+                  // }
                   // Column Pinning (Pro feature)
                   pinnedColumns={pinnedColumns}
                   onPinnedColumnsChange={setPinnedColumns}
@@ -6046,6 +6104,7 @@ const BSDataGrid = forwardRef(
                             bsBulkEdit,
                             bsBulkAdd,
                             bsBulkDelete,
+                            bsEnableBulkMode,
                             selectedRowCount: rowSelectionModel.length,
                             onBulkEdit: handleBulkEdit,
                             onBulkDelete: handleBulkDelete,
