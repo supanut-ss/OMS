@@ -496,6 +496,7 @@ const ComboBoxField = ({
           displayField: config.Display, // ✅ Fixed: displayColumn → displayField
           customWhere: config.ObjWh || null, // ✅ Fixed: whereClause → customWhere
           customOrderBy: config.ObjBy || null, // ✅ Fixed: orderBy → customOrderBy
+          groupBy: config.ObjGrp || null, // GROUP BY clause to remove duplicates
         };
 
         Logger.log("🔍 Loading combobox options:", comboConfig);
@@ -667,7 +668,8 @@ const ComboBoxField = ({
  *       PreObj: "default",
  *       Obj: "t_wms_status",
  *       ObjWh: "active=1",
- *       ObjBy: "name asc"
+ *       ObjBy: "name asc",
+ *       ObjGrp: "id, name"
  *     }
  *   ]}
  *   bsColumnDefs={[
@@ -4160,7 +4162,6 @@ const BSDataGrid = forwardRef(
                   icon={<Delete />}
                   label="Delete"
                   onClick={() => handleDeleteClick(params.row)}
-                  showInMenu
                 />
               ));
             }
@@ -4461,7 +4462,6 @@ const BSDataGrid = forwardRef(
                   icon={<Delete />}
                   label="Delete"
                   onClick={() => handleDeleteClick(params.row)}
-                  showInMenu
                 />
               ));
             }
