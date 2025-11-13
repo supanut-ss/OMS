@@ -250,8 +250,21 @@ const FallbackToolbar = ({
           size="small"
           startIcon={<Add />}
           onClick={onAdd || (() => Logger.warn("No onAdd handler provided"))}
-          variant="contained"
-          color="primary"
+          sx={{
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "0.8125rem",
+            padding: "4px 8px",
+            minHeight: "32px",
+            color: "primary.main",
+            borderColor: "primary.main",
+            border: "1px solid",
+            backgroundColor: "transparent",
+            "&:hover": {
+              backgroundColor: "primary.main",
+              color: "white",
+            },
+          }}
         >
           Add Record
         </Button>
@@ -261,10 +274,25 @@ const FallbackToolbar = ({
       <Button
         size="small"
         onClick={onToggleHeaderFilters}
-        variant={headerFiltersEnabled ? "outlined" : "text"}
         startIcon={
           headerFiltersEnabled ? <FilterListIcon /> : <FilterListOffIcon />
         }
+        sx={{
+          textTransform: "none",
+          fontWeight: 500,
+          fontSize: "0.8125rem",
+          padding: "4px 8px",
+          minHeight: "32px",
+          color: headerFiltersEnabled ? "primary.main" : "text.primary",
+          borderColor: headerFiltersEnabled ? "primary.main" : "transparent",
+          border: headerFiltersEnabled ? "1px solid" : "none",
+          backgroundColor: "transparent",
+          "&:hover": {
+            backgroundColor: headerFiltersEnabled
+              ? "rgba(25, 118, 210, 0.04)"
+              : "rgba(0, 0, 0, 0.04)",
+          },
+        }}
       >
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
@@ -381,11 +409,23 @@ const DynamicGridToolbar = ({
           size="small"
           startIcon={<Add />}
           onClick={onAdd || (() => Logger.warn("No onAdd handler provided"))}
-          variant="contained"
-          color="primary"
-          sx={{ mr: 1 }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "0.8125rem",
+            padding: "4px 8px",
+            minHeight: "32px",
+            color: "primary.main",
+            borderColor: "primary.main",
+            border: "1px solid",
+            backgroundColor: "transparent",
+            "&:hover": {
+              backgroundColor: "primary.main",
+              color: "white",
+            },
+          }}
         >
-          Add Record
+          Add
         </Button>
       )}
 
@@ -395,9 +435,20 @@ const DynamicGridToolbar = ({
           size="small"
           startIcon={<Add />}
           onClick={onBulkAdd}
-          variant="outlined"
-          color="primary"
-          sx={{ mr: 1 }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "0.8125rem",
+            padding: "4px 8px",
+            minHeight: "32px",
+            color: "primary.main",
+            borderColor: "primary.main",
+            border: "1px solid",
+            backgroundColor: "transparent",
+            "&:hover": {
+              backgroundColor: "rgba(25, 118, 210, 0.04)",
+            },
+          }}
         >
           Bulk Add
         </Button>
@@ -422,11 +473,26 @@ const DynamicGridToolbar = ({
       <Button
         size="small"
         onClick={onToggleHeaderFilters}
-        variant={headerFiltersEnabled ? "outlined" : "text"}
         startIcon={
           headerFiltersEnabled ? <FilterListIcon /> : <FilterListOffIcon />
         }
-        sx={{ mr: 1 }}
+        sx={{
+          textTransform: "none",
+          fontWeight: 500,
+          fontSize: "0.8125rem",
+          padding: "4px 8px",
+          minHeight: "32px",
+          mr: 1,
+          color: headerFiltersEnabled ? "primary.main" : "text.primary",
+          borderColor: headerFiltersEnabled ? "primary.main" : "transparent",
+          border: headerFiltersEnabled ? "1px solid" : "none",
+          backgroundColor: "transparent",
+          "&:hover": {
+            backgroundColor: headerFiltersEnabled
+              ? "rgba(25, 118, 210, 0.04)"
+              : "rgba(0, 0, 0, 0.04)",
+          },
+        }}
       >
         {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
       </Button>
