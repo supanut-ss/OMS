@@ -1,11 +1,6 @@
 import React, { useState, useCallback } from "react";
-import {
-  Typography,
-  Box,
-  Paper,
-} from "@mui/material";
+import { Typography, Box, Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
-
 
 const PartPage = () => {
   // ===============================
@@ -81,6 +76,7 @@ const PartPage = () => {
             textAlign: "right",
             px: 2,
             fontWeight: "bold",
+            mt: 2,
           }}
         >
           <Typography variant="body1">

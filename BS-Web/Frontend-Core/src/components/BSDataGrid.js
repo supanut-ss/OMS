@@ -5952,12 +5952,8 @@ const BSDataGrid = forwardRef(
                   }
                   rowSelectionModel={rowSelectionModel}
                   onRowSelectionModelChange={handleRowSelectionChange}
-                  disableRowSelectionOnClick={
-                    !bsShowCheckbox &&
-                    !bsBulkEdit &&
-                    !bsBulkDelete &&
-                    !onCheckBoxSelected
-                  }
+                  // Enable multi-row selection by clicking on rows directly (no checkbox required)
+                  disableRowSelectionOnClick={false}
                   // Column Pinning (Pro feature)
                   pinnedColumns={pinnedColumns}
                   onPinnedColumnsChange={setPinnedColumns}
@@ -6111,6 +6107,13 @@ const BSDataGrid = forwardRef(
                         backgroundColor: "#fff3cd",
                         "&:hover": {
                           backgroundColor: "#ffeaa7",
+                        },
+                      },
+                      // Selected row styling - darker background
+                      "&.Mui-selected": {
+                        backgroundColor: "#bbdefb !important",
+                        "&:hover": {
+                          backgroundColor: "#90caf9 !important",
                         },
                       },
                     },
