@@ -64,6 +64,8 @@ import {
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import { useAuth } from "../contexts/AuthContext";
+import { useResource } from "../hooks/useResource";
+import { getLocaleText } from "./BSDataGrid/locales";
 import Logger from "../utils/logger";
 import muiLicenseManager from "../utils/muiLicenseManager";
 
@@ -471,7 +473,7 @@ const DynamicGridToolbar = ({
       {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
 
-      <GridToolbarQuickFilter placeholder="ค้นหาข้อมูล..." debounceMs={500} />
+      <GridToolbarQuickFilter debounceMs={500} />
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -1104,6 +1106,10 @@ const BSDataGrid = forwardRef(
     // Get current user for locale information
     const { user } = useAuth();
 
+    // Get resource hook for multi-language support
+    const { getResource, getResources } = useResource();
+    const [resourceData, setResourceData] = useState(null);
+
     // Helper: Get effective locale for date formatting
     const getEffectiveLocale = useCallback(() => {
       // Priority: bsLocale prop > user.locale_id > default 'en'
@@ -1263,6 +1269,21 @@ const BSDataGrid = forwardRef(
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModel] = useState({});
     const newRowIdCounter = useRef(0);
+
+    // Load resources for multi-language support when table or locale changes
+    useEffect(() => {
+      const loadResourceData = async () => {
+        if (effectiveTableName || bsStoredProcedure) {
+          const resourceGroup = bsStoredProcedure || effectiveTableName;
+          Logger.log("🌐 Loading resources for:", resourceGroup);
+          const res = await getResources(resourceGroup);
+          setResourceData(res);
+          Logger.log("✅ Resources loaded:", res);
+        }
+      };
+      loadResourceData();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [effectiveTableName, bsStoredProcedure, bsLocale]);
 
     // Load metadata when table name changes or for Enhanced Stored Procedure
     useEffect(() => {
@@ -2114,28 +2135,41 @@ const BSDataGrid = forwardRef(
       [filterModel, bsFilterMode]
     );
 
-    // Helper: Format column name for display (underscore to space + title case)
-    const formatColumnName = useCallback((columnName) => {
-      if (!columnName) return "";
+    // Helper: Format column name for display with multi-language support
+    const formatColumnName = useCallback(
+      (columnName) => {
+        if (!columnName) return "";
 
-      return (
-        columnName
-          // Replace underscores with spaces
-          .replace(/_/g, " ")
-          // Convert to title case (first letter of each word capitalized)
-          .replace(
-            /\w\S*/g,
-            (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-          )
-          // Handle special cases for common abbreviations
-          .replace(/\bId\b/g, "ID")
-          .replace(/\bApi\b/g, "API")
-          .replace(/\bUrl\b/g, "URL")
-          .replace(/\bHtml\b/g, "HTML")
-          .replace(/\bJson\b/g, "JSON")
-          .replace(/\bXml\b/g, "XML")
-      );
-    }, []);
+        // Try to get resource first
+        if (resourceData) {
+          const resourceText = getResource(resourceData, columnName);
+          // If resource found and different from original, use it
+          if (resourceText && resourceText !== columnName) {
+            return resourceText;
+          }
+        }
+
+        // Fallback: Format column name (underscore to space + title case)
+        return (
+          columnName
+            // Replace underscores with spaces
+            .replace(/_/g, " ")
+            // Convert to title case (first letter of each word capitalized)
+            .replace(
+              /\w\S*/g,
+              (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+            )
+            // Handle special cases for common abbreviations
+            .replace(/\bId\b/g, "ID")
+            .replace(/\bApi\b/g, "API")
+            .replace(/\bUrl\b/g, "URL")
+            .replace(/\bHtml\b/g, "HTML")
+            .replace(/\bJson\b/g, "JSON")
+            .replace(/\bXml\b/g, "XML")
+        );
+      },
+      [resourceData, getResource]
+    );
 
     // Helper: Get column width based on data type
     // NOTE: Currently not used - columns are auto-sized by DataGrid
@@ -5103,50 +5137,9 @@ const BSDataGrid = forwardRef(
 
     // Get localization object for DataGrid
     const getLocalization = useCallback(() => {
-      // Basic Thai translations - can be extended
-      const thaiLocaleText = {
-        // Toolbar
-        toolbarQuickFilterPlaceholder: "ค้นหา...",
-        toolbarColumns: "คอลัมน์",
-        toolbarFilters: "ตัวกรอง",
-        toolbarDensity: "ความหนาแน่น",
-        toolbarExport: "ส่งออก",
-
-        // Column menu
-        columnMenuLabel: "เมนู",
-        columnMenuShowColumns: "แสดงคอลัมน์",
-        columnMenuFilter: "ตัวกรอง",
-        columnMenuHideColumn: "ซ่อน",
-        columnMenuUnsort: "ยกเลิกการเรียง",
-        columnMenuSortAsc: "เรียงจากน้อยไปมาก",
-        columnMenuSortDesc: "เรียงจากมากไปน้อย",
-
-        // Filter
-        filterPanelColumns: "คอลัมน์",
-        filterPanelOperator: "ตัวดำเนินการ",
-        filterPanelInputLabel: "ค่า",
-        filterPanelInputPlaceholder: "ค่าตัวกรอง",
-
-        // Pagination
-        MuiTablePagination: {
-          labelRowsPerPage: "แถวต่อหน้า:",
-          labelDisplayedRows: ({ from, to, count }) =>
-            `${from}–${to} จาก ${count !== -1 ? count : `มากกว่า ${to}`}`,
-        },
-
-        // Selection
-        checkboxSelectionHeaderName: "เลือก",
-        checkboxSelectionSelectAllRows: "เลือกทั้งหมด",
-        checkboxSelectionUnselectAllRows: "ยกเลิกการเลือกทั้งหมด",
-
-        // Other common texts
-        noRowsLabel: "ไม่มีข้อมูล",
-        noResultsOverlayLabel: "ไม่พบผลลัพธ์",
-        errorOverlayDefaultLabel: "เกิดข้อผิดพลาด",
-      };
-
-      return bsLocale === "th" ? thaiLocaleText : {};
-    }, [bsLocale]);
+      const effectiveLocale = getEffectiveLocale();
+      return getLocaleText(effectiveLocale);
+    }, [getEffectiveLocale]);
 
     // Bulk operations handlers
     const handleBulkAdd = useCallback(() => {
