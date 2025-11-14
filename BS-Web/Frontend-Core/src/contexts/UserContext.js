@@ -32,9 +32,22 @@ export function UserContext() {
     }
   };
 
+  const resetPassword = async (user_id) => {
+    try {
+      const res = await AxiosMaster.post(`/users/reset`, {
+        userId: user_id,
+      });
+      return res.data;
+    } catch (err) {
+      console.error("error ", err);
+      return null;
+    }
+  };
+
   return {
     registerUser,
     updateUser,
     deleteUser,
+    resetPassword,
   };
 }
