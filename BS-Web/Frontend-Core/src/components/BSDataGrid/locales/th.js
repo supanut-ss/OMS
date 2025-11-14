@@ -225,4 +225,28 @@ export const thaiLocaleText = {
     `ลากมาที่นี่เพื่อใช้คอลัมน์เป็น ${dimensionLabel}`,
   chartsDragToValues: (valuesLabel) =>
     `ลากมาที่นี่เพื่อใช้คอลัมน์เป็น ${valuesLabel}`,
+
+  // BSDataGrid Custom UI Elements
+  bsAddRecord: "เพิ่มข้อมูล",
+  bsBulkAdd: "เพิ่มหลายรายการ",
+  bsBulkEdit: "แก้ไขหลายรายการ",
+  bsBulkDelete: "ลบหลายรายการ",
+  bsEdit: "แก้ไข",
+  bsDelete: "ลบ",
+  bsView: "ดู",
+  bsSave: "บันทึก",
+  bsSaving: "กำลังบันทึก...",
+  bsCancel: "ยกเลิก",
+  bsClose: "ปิด",
+  bsDiscardAllChanges: "ยกเลิกการเปลี่ยนแปลงทั้งหมด",
+  bsHideFilters: "ซ่อนตัวกรอง",
+  bsShowFilters: "แสดงตัวกรอง",
+  bsHeaderFiltersEnabled: "เปิดใช้งานตัวกรองส่วนหัว",
+  bsOfflineToolbar: "🔧 โหมดออฟไลน์",
+  bsBulkEditMode: "🔄 โหมดแก้ไขหลายรายการ",
+  bsBulkEditMessage:
+    "แก้ไขเซลล์โดยตรงในตาราง การเปลี่ยนแปลงจะถูกติดตามแต่จะไม่ถูกบันทึกจนกว่าคุณจะคลิกบันทึก",
+  bsUnsavedChanges: "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+  bsRowNumber: "#",
+  bsActions: "การดำเนินการ",
 };

@@ -225,4 +225,28 @@ export const englishLocaleText = {
     `Drag here to use column as ${dimensionLabel}`,
   chartsDragToValues: (valuesLabel) =>
     `Drag here to use column as ${valuesLabel}`,
+
+  // BSDataGrid Custom UI Elements
+  bsAddRecord: "Add Record",
+  bsBulkAdd: "Bulk Add",
+  bsBulkEdit: "Bulk Edit",
+  bsBulkDelete: "Bulk Delete",
+  bsEdit: "Edit",
+  bsDelete: "Delete",
+  bsView: "View",
+  bsSave: "Save",
+  bsSaving: "Saving...",
+  bsCancel: "Cancel",
+  bsClose: "Close",
+  bsDiscardAllChanges: "Discard All Changes",
+  bsHideFilters: "Hide Filters",
+  bsShowFilters: "Show Filters",
+  bsHeaderFiltersEnabled: "Header Filters Enabled",
+  bsOfflineToolbar: "🔧 Offline Toolbar",
+  bsBulkEditMode: "🔄 Bulk Edit Mode",
+  bsBulkEditMessage:
+    "Edit cells directly in the grid. Changes are tracked but not saved until you click Save.",
+  bsUnsavedChanges: "unsaved changes",
+  bsRowNumber: "#",
+  bsActions: "Actions",
 };

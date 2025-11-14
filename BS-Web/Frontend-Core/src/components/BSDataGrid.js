@@ -89,6 +89,7 @@ const BulkSplitButton = ({
   onBulkDelete,
   bsBulkEdit = false,
   showBulkDelete = true,
+  localeText,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -96,14 +97,14 @@ const BulkSplitButton = ({
 
   const options = [
     {
-      label: `Bulk Edit (${selectedRowCount})`,
+      label: `${localeText.bsBulkEdit} (${selectedRowCount})`,
       icon: <Edit />,
       action: onBulkEdit,
       color: "info",
       show: bsBulkEdit,
     },
     {
-      label: `Bulk Delete (${selectedRowCount})`,
+      label: `${localeText.bsBulkDelete} (${selectedRowCount})`,
       icon: <Delete />,
       action: onBulkDelete,
       color: "error",
@@ -218,6 +219,7 @@ const FallbackToolbar = ({
   showAdd = true,
   headerFiltersEnabled,
   onToggleHeaderFilters,
+  localeText,
 }) => {
   return (
     <Box
@@ -243,7 +245,7 @@ const FallbackToolbar = ({
           borderRadius: 1,
         }}
       >
-        🔧 OFFLINE TOOLBAR
+        {localeText.bsOfflineToolbar}
       </Typography>
 
       {/* Add button */}
@@ -268,7 +270,7 @@ const FallbackToolbar = ({
             },
           }}
         >
-          Add Record
+          {localeText.bsAddRecord}
         </Button>
       )}
 
@@ -296,14 +298,16 @@ const FallbackToolbar = ({
           },
         }}
       >
-        {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
+        {headerFiltersEnabled
+          ? localeText.bsHideFilters
+          : localeText.bsShowFilters}
       </Button>
 
       <Box sx={{ flexGrow: 1 }} />
 
       {headerFiltersEnabled && (
         <Chip
-          label="Header Filters Enabled"
+          label={localeText.bsHeaderFiltersEnabled}
           size="small"
           color="primary"
           variant="filled"
@@ -320,6 +324,7 @@ const BulkEditToolbar = ({
   hasUnsavedChanges,
   formLoading,
   changesCount,
+  localeText,
 }) => {
   return (
     <Box
@@ -334,16 +339,16 @@ const BulkEditToolbar = ({
       }}
     >
       <Typography variant="h6" sx={{ color: "warning.contrastText" }}>
-        🔄 Bulk Edit Mode
+        {localeText.bsBulkEditMode}
       </Typography>
 
       <Typography
         variant="body2"
         sx={{ color: "warning.contrastText", flexGrow: 1 }}
       >
-        Edit cells directly in the grid. Changes are tracked but not saved until
-        you click Save.
-        {changesCount > 0 && ` (${changesCount} unsaved changes)`}
+        {localeText.bsBulkEditMessage}
+        {changesCount > 0 &&
+          ` (${changesCount} ${localeText.bsUnsavedChanges})`}
       </Typography>
 
       <Button
@@ -355,7 +360,7 @@ const BulkEditToolbar = ({
           borderColor: "warning.contrastText",
         }}
       >
-        DISCARD ALL CHANGES
+        {localeText.bsDiscardAllChanges}
       </Button>
 
       <Button
@@ -365,7 +370,7 @@ const BulkEditToolbar = ({
         startIcon={formLoading ? <CircularProgress size={16} /> : undefined}
         sx={{ bgcolor: "success.main", "&:hover": { bgcolor: "success.dark" } }}
       >
-        {formLoading ? "SAVING..." : "SAVE"}
+        {formLoading ? localeText.bsSaving : localeText.bsSave}
       </Button>
     </Box>
   );
@@ -386,6 +391,7 @@ const DynamicGridToolbar = ({
   onBulkDelete,
   onBulkAdd,
   showBulkDelete = true,
+  localeText,
 }) => {
   Logger.log("🔧 DynamicGridToolbar rendering:", {
     onAdd: typeof onAdd,
@@ -428,7 +434,7 @@ const DynamicGridToolbar = ({
             },
           }}
         >
-          Add
+          {localeText.bsAddRecord}
         </Button>
       )}
 
@@ -453,7 +459,7 @@ const DynamicGridToolbar = ({
             },
           }}
         >
-          Bulk Add
+          {localeText.bsBulkAdd}
         </Button>
       )}
 
@@ -467,6 +473,7 @@ const DynamicGridToolbar = ({
             onBulkDelete={onBulkDelete}
             bsBulkEdit={bsBulkEdit}
             showBulkDelete={showBulkDelete}
+            localeText={localeText}
           />
         )}
 
@@ -499,7 +506,9 @@ const DynamicGridToolbar = ({
           },
         }}
       >
-        {headerFiltersEnabled ? "Hide Filters" : "Show Filters"}
+        {headerFiltersEnabled
+          ? localeText.bsHideFilters
+          : localeText.bsShowFilters}
       </Button>
 
       {/* Default MUI DataGrid Toolbar Components - Icon only */}
@@ -2586,31 +2595,31 @@ const BSDataGrid = forwardRef(
       (rowData = null) => {
         // Priority 1: Manual bsKeyId specification (highest priority)
         if (bsKeyId) {
-          Logger.log(
-            "🔑 Using manually specified primary key (bsKeyId):",
-            bsKeyId
-          );
+          // Logger.log(
+          //   "🔑 Using manually specified primary key (bsKeyId):",
+          //   bsKeyId
+          // );
           return bsKeyId;
         }
 
         // Priority 2: Metadata primary key
         if (metadata?.primaryKeys?.[0]) {
-          Logger.log(
-            "🔑 Using primary key from metadata:",
-            metadata.primaryKeys[0]
-          );
+          // Logger.log(
+          //   "🔑 Using primary key from metadata:",
+          //   metadata.primaryKeys[0]
+          // );
           return metadata.primaryKeys[0];
         }
 
         // Priority 3: Auto-detect from data (for Enhanced SP)
         if (bsStoredProcedure && rowData) {
           const detected = detectPrimaryKeyFromData(rowData);
-          Logger.log("🔑 Detected primary key from data:", detected);
+          // Logger.log("🔑 Detected primary key from data:", detected);
           return detected;
         }
 
         // Priority 4: Fallback to common name
-        Logger.log("🔑 Using fallback primary key: Id");
+        // Logger.log("🔑 Using fallback primary key: Id");
         return "Id";
       },
       [
@@ -4222,6 +4231,15 @@ const BSDataGrid = forwardRef(
       [columnDefsConfig]
     );
 
+    // Get localization object for DataGrid
+    const getLocalization = useCallback(() => {
+      const effectiveLocale = getEffectiveLocale();
+      return getLocaleText(effectiveLocale);
+    }, [getEffectiveLocale]);
+
+    // Get current locale text for custom UI elements
+    const localeText = getLocalization();
+
     // Build columns from metadata
     const columns = useMemo(() => {
       Logger.log("🏗️ Building columns - START", {
@@ -4521,7 +4539,7 @@ const BSDataGrid = forwardRef(
               actions.push((params) => (
                 <GridActionsCellItem
                   icon={<Delete />}
-                  label="Delete"
+                  label={localeText.bsDelete}
                   onClick={() => handleDeleteClick(params.row)}
                 />
               ));
@@ -4546,7 +4564,7 @@ const BSDataGrid = forwardRef(
           if (bsShowRowNumber) {
             const rowNumberCol = {
               field: "__rowNumber",
-              headerName: "No.",
+              headerName: localeText.bsRowNumber,
               // Removed width - let DataGrid auto-calculate
               sortable: false,
               filterable: false,
@@ -4821,7 +4839,7 @@ const BSDataGrid = forwardRef(
               actions.push((params) => (
                 <GridActionsCellItem
                   icon={<Delete />}
-                  label="Delete"
+                  label={localeText.bsDelete}
                   onClick={() => handleDeleteClick(params.row)}
                 />
               ));
@@ -4847,7 +4865,7 @@ const BSDataGrid = forwardRef(
         if (bsShowRowNumber) {
           const rowNumberCol = {
             field: "__rowNumber",
-            headerName: "No.",
+            headerName: localeText.bsRowNumber,
             // Removed width - let DataGrid auto-calculate
             sortable: false,
             filterable: false,
@@ -5030,6 +5048,7 @@ const BSDataGrid = forwardRef(
       handleInlineDeleteClick,
       detectPrimaryKeyFromData,
       applyColumnDefs,
+      localeText,
     ]);
 
     // Handle row selection changes for checkbox selection
@@ -5134,12 +5153,6 @@ const BSDataGrid = forwardRef(
         bsStoredProcedure,
       ]
     );
-
-    // Get localization object for DataGrid
-    const getLocalization = useCallback(() => {
-      const effectiveLocale = getEffectiveLocale();
-      return getLocaleText(effectiveLocale);
-    }, [getEffectiveLocale]);
 
     // Bulk operations handlers
     const handleBulkAdd = useCallback(() => {
@@ -5711,6 +5724,7 @@ const BSDataGrid = forwardRef(
               showAdd={showAdd}
               headerFiltersEnabled={headerFiltersEnabled}
               onToggleHeaderFilters={handleToggleHeaderFilters}
+              localeText={localeText}
             />
           )}
 
@@ -5771,6 +5785,7 @@ const BSDataGrid = forwardRef(
             hasUnsavedChanges={hasUnsavedChanges}
             formLoading={formLoading}
             changesCount={Object.keys(unsavedChangesRef.current).length}
+            localeText={localeText}
           />
         )}
 
@@ -5926,7 +5941,8 @@ const BSDataGrid = forwardRef(
                     // Return empty array if no valid columns to prevent MUI errors
                     return validColumns.length > 0 ? validColumns : [];
                   })()}
-                  rowCount={rowCount}
+                  // Only set rowCount for server-side pagination
+                  {...(bsFilterMode === "server" && { rowCount })}
                   loading={
                     loading ||
                     metadataLoading ||
@@ -6103,6 +6119,7 @@ const BSDataGrid = forwardRef(
                             onBulkDelete: handleBulkDelete,
                             onBulkAdd: handleBulkAdd,
                             showBulkDelete: bsBulkDelete,
+                            localeText,
                           },
                           // Header filter cell props to show inline clear button
                           headerFilterCell: {
