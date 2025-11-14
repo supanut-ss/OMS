@@ -2595,31 +2595,31 @@ const BSDataGrid = forwardRef(
       (rowData = null) => {
         // Priority 1: Manual bsKeyId specification (highest priority)
         if (bsKeyId) {
-          Logger.log(
-            "🔑 Using manually specified primary key (bsKeyId):",
-            bsKeyId
-          );
+          // Logger.log(
+          //   "🔑 Using manually specified primary key (bsKeyId):",
+          //   bsKeyId
+          // );
           return bsKeyId;
         }
 
         // Priority 2: Metadata primary key
         if (metadata?.primaryKeys?.[0]) {
-          Logger.log(
-            "🔑 Using primary key from metadata:",
-            metadata.primaryKeys[0]
-          );
+          // Logger.log(
+          //   "🔑 Using primary key from metadata:",
+          //   metadata.primaryKeys[0]
+          // );
           return metadata.primaryKeys[0];
         }
 
         // Priority 3: Auto-detect from data (for Enhanced SP)
         if (bsStoredProcedure && rowData) {
           const detected = detectPrimaryKeyFromData(rowData);
-          Logger.log("🔑 Detected primary key from data:", detected);
+          // Logger.log("🔑 Detected primary key from data:", detected);
           return detected;
         }
 
         // Priority 4: Fallback to common name
-        Logger.log("🔑 Using fallback primary key: Id");
+        // Logger.log("🔑 Using fallback primary key: Id");
         return "Id";
       },
       [
@@ -5941,7 +5941,8 @@ const BSDataGrid = forwardRef(
                     // Return empty array if no valid columns to prevent MUI errors
                     return validColumns.length > 0 ? validColumns : [];
                   })()}
-                  rowCount={rowCount}
+                  // Only set rowCount for server-side pagination
+                  {...(bsFilterMode === "server" && { rowCount })}
                   loading={
                     loading ||
                     metadataLoading ||
