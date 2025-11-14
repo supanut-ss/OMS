@@ -44,12 +44,14 @@ const UserPage = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
-  const { registerUser, updateUser, deleteUser } = UserContext();
+  const { registerUser, updateUser, deleteUser, resetPassword } = UserContext();
   const [emailError, setEmailError] = useState("");
   // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectLocale, setSelectLocale] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
+    useState(false);
   const gridRef = useRef();
 
   const handleOpenAdd = () => {
@@ -70,7 +72,7 @@ const UserPage = () => {
 
   const handleOpenDelete = async (row) => {
     const result = await deleteUser(row);
-    Logger.log("Resulttt :", result);
+    // Logger.log("Resulttt :", result);
     if (result && String(result.message_code) === "0") {
       BSAlertSwal2.show("success", result.message_text, {
         timer: 2000,
@@ -84,6 +86,8 @@ const UserPage = () => {
   };
 
   const handleClose = () => setOpen(false);
+
+  const handleResetPass = () => setIsPopupResetPasswordOpen(true);
 
   const handleChange = (eOrName, value) => {
     let name, val;
@@ -169,6 +173,21 @@ const UserPage = () => {
           result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
         );
       }
+    }
+  };
+
+  const sendChangePassword = async () => {
+    const user_id = form.user_id;
+    const result = await resetPassword(user_id);
+    if (result && String(result.message_code) === "0") {
+      BSAlertSwal2.show("success", "New Password : " + result.message_text, {
+        timer: 2000,
+      });
+    } else {
+      BSAlertSwal2.show(
+        "error",
+        result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+      );
     }
   };
 
@@ -386,10 +405,55 @@ const UserPage = () => {
             </Box>
           </Box>
         </DialogContent>
+        <DialogActions
+          sx={{ display: "flex", justifyContent: "space-between" }}
+        >
+          <Button onClick={handleResetPass} variant="contained" color="error">
+            Reset Password
+          </Button>
+          <Box>
+            <Button onClick={handleClose} sx={{ mr: 1 }}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} variant="contained" color="primary">
+              {editMode ? "Save Changes" : "Add"}
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reset Password Popup */}
+      <Dialog
+        open={isPopupResetPasswordOpen}
+        onClose={() => setIsPopupResetPasswordOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        {/* เนื้อหาของ Popup Reset Password จะอยู่ที่นี่ */}
+        <DialogTitle>
+          {locale_id === "th" ? "เปลี่ยนรหัสผ่าน" : "Reset Password"}
+        </DialogTitle>
+        <DialogContent>
+          {/* ใส่ฟอร์มเปลี่ยนรหัสผ่านที่นี่ */}
+          <Typography variant="body2" color="text.secondary">
+            {locale_id === "th"
+              ? "ยืนยันการรีเซ็ตรหัสผ่านของผู้ใช้"
+              : "Confirm resetting the user's password."}
+          </Typography>
+        </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" color="primary">
-            {editMode ? "Save Changes" : "Add"}
+          <Button
+            onClick={() => setIsPopupResetPasswordOpen(false)}
+            color="primary"
+          >
+            {locale_id === "th" ? "ยกเลิก" : "Cancel"}
+          </Button>
+          <Button
+            onClick={sendChangePassword}
+            color="primary"
+            variant="contained"
+          >
+            {locale_id === "th" ? "ยืนยัน" : "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
