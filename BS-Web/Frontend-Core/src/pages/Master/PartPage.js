@@ -45,8 +45,8 @@ const PartPage = () => {
           bsAllowAdd={true}
           bsAllowEdit={true}
           bsAllowDelete={true}
-          bsRowPerPage={100}
-          bsPageSizeOptions={[100, 200, 500, 1000]}
+          bsRowPerPage={20}
+          bsPageSizeOptions={[20,100, 200, 500, 1000]}
           bsFilterMode="client"
           bsVisibleDelete={false}
           onDataBind={handleDataBind}
