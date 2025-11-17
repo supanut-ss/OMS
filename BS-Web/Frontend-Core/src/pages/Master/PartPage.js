@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { Typography, Box, Paper, Chip } from "@mui/material";
 import { Inventory } from "@mui/icons-material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const PartPage = () => {
+  const dataGridRef = useRef();
+  //  dataGridRef.current
   // ===============================
   // 📊 State สำหรับเก็บข้อมูล summary
   // ===============================
@@ -33,6 +35,7 @@ const PartPage = () => {
 
         {/* ตารางข้อมูล */}
         <BSDataGrid
+          ref={dataGridRef}
           bsStoredProcedure="usp_tbm_part"
           bsStoredProcedureSchema="ams"
           bsShowRowNumber={true}
@@ -42,7 +45,8 @@ const PartPage = () => {
           bsAllowAdd={true}
           bsAllowEdit={true}
           bsAllowDelete={true}
-          bsPageSize={25}
+          bsRowPerPage={20}
+          bsPageSizeOptions={[20,100, 200, 500, 1000]}
           bsFilterMode="client"
           bsVisibleDelete={false}
           onDataBind={handleDataBind}
