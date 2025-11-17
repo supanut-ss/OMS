@@ -63,7 +63,11 @@ const UserPage = () => {
   };
 
   const handleOpenEdit = (row) => {
-    setForm(row);
+    setForm({
+      ...row,
+      [row.name]: (row.val ?? "").toString(),
+    });
+    // setForm(row);
     setSelectedGroup(row.user_group_id || "");
     setSelectLocale(row.locale_id || "");
     setEditMode(true);
@@ -72,7 +76,6 @@ const UserPage = () => {
 
   const handleOpenDelete = async (row) => {
     const result = await deleteUser(row);
-    // Logger.log("Resulttt :", result);
     if (result && String(result.message_code) === "0") {
       BSAlertSwal2.show("success", result.message_text, {
         timer: 2000,
@@ -231,6 +234,7 @@ const UserPage = () => {
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
           onDelete={handleOpenDelete}
+          bsKeyId="user_id"
         />
       </Paper>
 
