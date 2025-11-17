@@ -180,8 +180,8 @@ const UserPage = () => {
     const user_id = form.user_id;
     const result = await resetPassword(user_id);
     if (result && String(result.message_code) === "0") {
-      BSAlertSwal2.show("success", "New Password : " + result.message_text, {
-        timer: 2000,
+      BSAlertSwal2.show("success", "New Password " + result.message_text, {
+        timer: 200000,
       });
     } else {
       BSAlertSwal2.show(
