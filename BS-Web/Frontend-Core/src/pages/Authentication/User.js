@@ -180,6 +180,7 @@ const UserPage = () => {
   };
 
   const sendChangePassword = async () => {
+    setIsPopupResetPasswordOpen(false);
     const user_id = form.user_id;
     const result = await resetPassword(user_id);
     if (result && String(result.message_code) === "0") {
