@@ -706,7 +706,7 @@ const ComboBoxField = ({
         {loading
           ? "Loading options..."
           : description ||
-            `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
+          `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
       </FormHelperText>
     </FormControl>
   );
@@ -1016,7 +1016,7 @@ const BSDataGrid = forwardRef(
 
       // Data binding callback
       onDataBind, // Callback to receive loaded data for external processing
-
+      bsPageSizeOptions = [10, 25, 50, 100],
       ...props
     },
     ref
@@ -1240,12 +1240,12 @@ const BSDataGrid = forwardRef(
     const [filterModel, setFilterModel] = useState(() => ({
       items: bsObjWh
         ? [
-            {
-              field: "custom_where",
-              operator: "custom",
-              value: bsObjWh,
-            },
-          ]
+          {
+            field: "custom_where",
+            operator: "custom",
+            value: bsObjWh,
+          },
+        ]
         : [],
     }));
 
@@ -1548,8 +1548,8 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-              bsCustomFilters &&
-              bsCustomFilters.length > 0
+                bsCustomFilters &&
+                bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
           };
@@ -1762,9 +1762,9 @@ const BSDataGrid = forwardRef(
             sortModel:
               bsFilterMode === "server"
                 ? currentSortModel.map((sort) => ({
-                    field: sort.field,
-                    sort: sort.sort,
-                  }))
+                  field: sort.field,
+                  sort: sort.sort,
+                }))
                 : [], // Only send sort for server-side mode
             filterModel:
               bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
@@ -1775,8 +1775,8 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-              bsCustomFilters &&
-              bsCustomFilters.length > 0
+                bsCustomFilters &&
+                bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             userId:
@@ -2645,7 +2645,7 @@ const BSDataGrid = forwardRef(
           const allPrimaryKeys = [
             ...metadataPrimaryKeys,
             ...(detectedPrimaryKey &&
-            !metadataPrimaryKeys.includes(detectedPrimaryKey)
+              !metadataPrimaryKeys.includes(detectedPrimaryKey)
               ? [detectedPrimaryKey]
               : []),
           ];
@@ -3080,8 +3080,7 @@ const BSDataGrid = forwardRef(
               errors.push(
                 `${formatColumnName(
                   columnName
-                )}: Maximum ${maxLength} characters allowed (current: ${
-                  stringValue.length
+                )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
                 })`
               );
             }
@@ -3851,8 +3850,8 @@ const BSDataGrid = forwardRef(
               inputProps={{
                 ...(maxLength > 0 &&
                   (inputType === "text" || multiline) && {
-                    maxLength: maxLength,
-                  }),
+                  maxLength: maxLength,
+                }),
               }}
               error={maxLength > 0 && String(val).length > maxLength}
             />
@@ -5087,10 +5086,10 @@ const BSDataGrid = forwardRef(
             firstRowAllIds:
               rows.length > 0
                 ? {
-                    id: rows[0].id,
-                    Id: rows[0].Id,
-                    [primaryKey]: rows[0][primaryKey],
-                  }
+                  id: rows[0].id,
+                  Id: rows[0].Id,
+                  [primaryKey]: rows[0][primaryKey],
+                }
                 : "NO ROWS",
           });
 
@@ -5829,8 +5828,8 @@ const BSDataGrid = forwardRef(
               columnsValid: Array.isArray(columns) && columns.length > 0,
               sampleColumns: Array.isArray(columns)
                 ? columns
-                    .slice(0, 2)
-                    .map((c) => ({ field: c.field, type: c.type }))
+                  .slice(0, 2)
+                  .map((c) => ({ field: c.field, type: c.type }))
                 : "N/A",
               metadataExists: !!metadata,
               metadataColumnsCount: metadata?.columns?.length,
@@ -5901,8 +5900,8 @@ const BSDataGrid = forwardRef(
                               ? "ไม่พบข้อมูลในฐานข้อมูล"
                               : "The database returned no data"
                             : bsLocale === "th"
-                            ? "ไม่พบข้อมูลในตาราง"
-                            : "No records found in the table"}
+                              ? "ไม่พบข้อมูลในตาราง"
+                              : "No records found in the table"}
                         </Typography>
                       </>
                     )}
@@ -5951,11 +5950,9 @@ const BSDataGrid = forwardRef(
                   }
                   // Ensure we don't render until we have valid data structure
                   // Include rowCount and content hash in key to force re-render when data changes
-                  key={`datagrid-${effectiveTableName}-${rowCount}-${
-                    rows.length
-                  }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
-                    Array.isArray(columns) ? columns.length : 0
-                  }`}
+                  key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length
+                    }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${Array.isArray(columns) ? columns.length : 0
+                    }`}
                   // Editing
                   editMode="row"
                   processRowUpdate={
@@ -5979,7 +5976,7 @@ const BSDataGrid = forwardRef(
                   }
                   paginationModel={paginationModel}
                   onPaginationModelChange={setPaginationModel}
-                  pageSizeOptions={[10, 25, 50, 100]}
+                  pageSizeOptions={bsPageSizeOptions}
                   // Sorting
                   sortingMode={bsFilterMode === "client" ? "client" : "server"}
                   sortModel={sortModel}
@@ -6105,35 +6102,35 @@ const BSDataGrid = forwardRef(
                   slotProps={
                     showToolbar && !bulkEditMode
                       ? {
-                          toolbar: {
-                            onAdd: handleAddClick,
-                            showAdd,
-                            headerFiltersEnabled,
-                            onToggleHeaderFilters: handleToggleHeaderFilters,
-                            bsBulkEdit,
-                            bsBulkAdd,
-                            bsBulkDelete,
-                            bsEnableBulkMode,
-                            selectedRowCount: rowSelectionModel.length,
-                            onBulkEdit: handleBulkEdit,
-                            onBulkDelete: handleBulkDelete,
-                            onBulkAdd: handleBulkAdd,
-                            showBulkDelete: bsBulkDelete,
-                            localeText,
-                          },
-                          // Header filter cell props to show inline clear button
-                          headerFilterCell: {
-                            showClearIcon: true,
-                          },
-                        }
+                        toolbar: {
+                          onAdd: handleAddClick,
+                          showAdd,
+                          headerFiltersEnabled,
+                          onToggleHeaderFilters: handleToggleHeaderFilters,
+                          bsBulkEdit,
+                          bsBulkAdd,
+                          bsBulkDelete,
+                          bsEnableBulkMode,
+                          selectedRowCount: rowSelectionModel.length,
+                          onBulkEdit: handleBulkEdit,
+                          onBulkDelete: handleBulkDelete,
+                          onBulkAdd: handleBulkAdd,
+                          showBulkDelete: bsBulkDelete,
+                          localeText,
+                        },
+                        // Header filter cell props to show inline clear button
+                        headerFilterCell: {
+                          showClearIcon: true,
+                        },
+                      }
                       : headerFiltersEnabled
-                      ? {
+                        ? {
                           // Header filter cell props when toolbar is disabled but header filters are enabled
                           headerFilterCell: {
                             showClearIcon: true,
                           },
                         }
-                      : undefined
+                        : undefined
                   }
                   // Styling with required field indicator
                   sx={{
@@ -6155,9 +6152,9 @@ const BSDataGrid = forwardRef(
                     },
                     // Force header text bold
                     "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                      {
-                        fontWeight: "bold",
-                      },
+                    {
+                      fontWeight: "bold",
+                    },
                     // Required field styling
                     "& .required-field .MuiDataGrid-columnHeaderTitle": {
                       color: "error.main",
@@ -6358,9 +6355,8 @@ const BSDataGrid = forwardRef(
                                     </InputLabel>
                                     <Select
                                       value={val || "YES"}
-                                      label={`${formatColumnName(columnName)} ${
-                                        !isNullable ? "*" : ""
-                                      }`}
+                                      label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
+                                        }`}
                                       onChange={(e) =>
                                         updateBulkRow(
                                           rowIndex,
@@ -6450,9 +6446,8 @@ const BSDataGrid = forwardRef(
                                         }
                                       />
                                     }
-                                    label={`${formatColumnName(columnName)} ${
-                                      !isNullable ? "*" : ""
-                                    }`}
+                                    label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
+                                      }`}
                                   />
                                 </Grid>
                               );
@@ -6478,9 +6473,8 @@ const BSDataGrid = forwardRef(
                                 <TextField
                                   fullWidth
                                   size="small"
-                                  label={`${formatColumnName(columnName)} ${
-                                    !isNullable ? "*" : ""
-                                  }`}
+                                  label={`${formatColumnName(columnName)} ${!isNullable ? "*" : ""
+                                    }`}
                                   type={inputType}
                                   value={val}
                                   onChange={(e) =>
@@ -6497,8 +6491,8 @@ const BSDataGrid = forwardRef(
                                   inputProps={{
                                     ...(maxLength > 0 &&
                                       (inputType === "text" || multiline) && {
-                                        maxLength: maxLength,
-                                      }),
+                                      maxLength: maxLength,
+                                    }),
                                   }}
                                   error={
                                     maxLength > 0 &&
