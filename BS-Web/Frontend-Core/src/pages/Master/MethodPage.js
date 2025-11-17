@@ -32,14 +32,15 @@ const MethodPage = () => {
           bsAllowAdd={true}
           bsAllowEdit={true}
           bsAllowDelete={true}
-          bsPageSize={25}
+          bsRowPerPage={20}
+          bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           bsFilterMode="client"
-          //   bsColumnDefs={[
-          //     {
-          //       field: "method_id",
-          //       readOnly: true,
-          //     },
-          //   ]}
+        //   bsColumnDefs={[
+        //     {
+        //       field: "method_id",
+        //       readOnly: true,
+        //     },
+        //   ]}
         />
       </Paper>
     </>

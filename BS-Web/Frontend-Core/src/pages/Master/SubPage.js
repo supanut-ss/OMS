@@ -80,7 +80,8 @@ const SubPage = () => {
                     bsAllowAdd={true}
                     bsAllowEdit={true}
                     bsAllowDelete={true}
-                    bsPageSize={25}
+                    bsRowPerPage={20}
+                    bsPageSizeOptions={[20, 100, 200, 500, 1000]}
                     bsFilterMode="client"
                     onEdit={handleOpenEdit}
                     showAdd={false}
