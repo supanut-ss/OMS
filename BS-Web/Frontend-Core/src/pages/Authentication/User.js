@@ -40,19 +40,19 @@ const initialForm = {
 
 const UserPage = () => {
   const [locale_id, setLocale_id] = useState("en");
-
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
   const { registerUser, updateUser, deleteUser, resetPassword } = UserContext();
   const [emailError, setEmailError] = useState("");
-  // Fix: Add selectedGroup state and sync with form.user_group_id
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectLocale, setSelectLocale] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
     useState(false);
   const gridRef = useRef();
+  const [newPassword, setNewPassword] = useState("");
+  const [openPwDialog, setOpenPwDialog] = useState(false);
 
   const handleOpenAdd = () => {
     setForm(initialForm);
@@ -181,12 +181,12 @@ const UserPage = () => {
 
   const sendChangePassword = async () => {
     setIsPopupResetPasswordOpen(false);
-    const user_id = form.user_id;
-    const result = await resetPassword(user_id);
+
+    const result = await resetPassword(form.user_id);
+
     if (result && String(result.message_code) === "0") {
-      BSAlertSwal2.show("success", "New Password " + result.message_text, {
-        timer: 200000,
-      });
+      setNewPassword(result.message_text);
+      setOpenPwDialog(true);
     } else {
       BSAlertSwal2.show(
         "error",
@@ -459,6 +459,42 @@ const UserPage = () => {
             variant="contained"
           >
             {locale_id === "th" ? "ยืนยัน" : "Confirm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* New Password Popup */}
+      <Dialog
+        open={openPwDialog}
+        onClose={() => setOpenPwDialog(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            padding: 2,
+            minWidth: 350,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{ fontWeight: "bold", textAlign: "center", fontSize: "1.3rem" }}
+        >
+          New Password
+        </DialogTitle>
+        <DialogContent>
+          <TextField fullWidth value={newPassword} disabled />
+        </DialogContent>
+
+        <DialogActions sx={{ justifyContent: "center", paddingBottom: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigator.clipboard.writeText(newPassword)}
+          >
+            Copy
+          </Button>
+
+          <Button variant="outlined" onClick={() => setOpenPwDialog(false)}>
+            Close
           </Button>
         </DialogActions>
       </Dialog>
