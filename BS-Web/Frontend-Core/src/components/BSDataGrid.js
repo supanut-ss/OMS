@@ -1627,7 +1627,18 @@ const BSDataGrid = forwardRef(
           }
 
           setRows(processedRows);
-          setRowCount(result.rowCount || 0);
+
+          // If backend didn't provide a total rowCount (some table endpoints
+          // may omit it), fall back to the number of rows we received so the
+          // DataGrid can still render pagination controls (rows-per-page selector).
+          // For large server-side datasets this should be provided by the API,
+          // but this fallback prevents the selector from disappearing when
+          // the API only returns the current page data.
+          const effectiveRowCount =
+            result.rowCount && result.rowCount > 0
+              ? result.rowCount
+              : processedRows.length || 0;
+          setRowCount(effectiveRowCount);
 
           // Call onDataBind callback with the loaded data
           if (onDataBind && typeof onDataBind === "function") {
