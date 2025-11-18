@@ -179,7 +179,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่มีช่องว่าง' : 'Password must not contain spaces.' };
     } else if (pw.toLowerCase().includes(currentUser?.FirstName.toLowerCase()) || pw.toLowerCase().includes(currentUser?.LastName.toLowerCase())) {
       return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยชื่อหรือสกุลของคุณ' : 'Password must not contain your first or last name.' };
-    } else if (pw.toLowerCase().includes(currentUser?.Email.toLowerCase())) {
+    } else if (pw.toLowerCase().includes(currentUser?.Email.toLowerCase()) && pw !== "@" ) {
       return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยอีเมลของคุณ' : 'Password must not contain your email.' };
     } else if (pw.toLowerCase().includes("1234") || pw.toLowerCase().includes("abcd")) {
       return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยลำดับตัวอักษรหรือตัวเลขที่ง่ายต่อการคาดเดา เช่น 1234 หรือ abcd' : 'Password must not contain easily guessable sequences like 1234 or abcd.' };
