@@ -196,7 +196,7 @@ const ImportExcel = () => {
                 key: false,
               },
             ]}
-            bsObjBy="import_name"
+            bsObjBy="seq"
             bsObjWh=""
             bsValue={select}
             bsOnChange={(val) => {
