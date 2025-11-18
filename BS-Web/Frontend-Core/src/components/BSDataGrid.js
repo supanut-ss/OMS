@@ -480,7 +480,28 @@ const DynamicGridToolbar = ({
       {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
 
-      <GridToolbarQuickFilter debounceMs={500} />
+      <GridToolbarQuickFilter
+        debounceMs={500}
+        variant="outlined"
+        sx={{
+          mr: 1,
+          "& .MuiInputBase-root": {
+            fontSize: "0.875rem",
+            minHeight: "32px",
+            paddingTop: "2px",
+            paddingBottom: "2px",
+          },
+          "& .MuiInputBase-input": {
+            padding: "5px 14px",
+          },
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(0, 0, 0, 0.23)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "primary.main",
+          },
+        }}
+      />
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -4577,19 +4598,21 @@ const BSDataGrid = forwardRef(
               ));
             }
 
-            // Insert actions column at the beginning
-            dataColumns.unshift({
-              field: "actions",
-              type: "actions",
-              headerName: "", // Hide column header
-              // Removed width - let DataGrid auto-calculate
-              sortable: false,
-              filterable: false,
-              hideable: false,
-              disableColumnMenu: true,
-              getActions: (params) =>
-                actions.map((a) => a(params)).filter(Boolean),
-            });
+            // Only insert actions column if there are actual actions
+            if (actions.length > 0) {
+              dataColumns.unshift({
+                field: "actions",
+                type: "actions",
+                headerName: "", // Hide column header
+                width: 80, // Set fixed minimal width for actions
+                sortable: false,
+                filterable: false,
+                hideable: false,
+                disableColumnMenu: true,
+                getActions: (params) =>
+                  actions.map((a) => a(params)).filter(Boolean),
+              });
+            }
           }
 
           // Add row number column if enabled (for Enhanced Stored Procedure)
@@ -4886,19 +4909,30 @@ const BSDataGrid = forwardRef(
             }
           }
 
-          // Insert actions column at the beginning (after checkbox if present)
-          dataColumns.unshift({
-            field: "actions",
-            type: "actions",
-            headerName: "", // Hide column header
-            // Removed width - let DataGrid auto-calculate
-            sortable: false,
-            filterable: false,
-            hideable: false,
-            disableColumnMenu: true,
-            getActions: (params) =>
-              actions.map((a) => a(params)).filter(Boolean),
-          });
+          // Only insert actions column if there are actual actions
+          // Note: bulkEditMode and bsBulkAddInline always have actions, so check for them first
+          // For normal mode, check if we have any visible actions (onView, bsVisibleEdit, bsVisibleDelete)
+          const hasActions =
+            bulkEditMode ||
+            bsBulkAddInline ||
+            onView ||
+            bsVisibleEdit ||
+            bsVisibleDelete;
+
+          if (hasActions && actions.length > 0) {
+            dataColumns.unshift({
+              field: "actions",
+              type: "actions",
+              headerName: "", // Hide column header
+              width: 80, // Set fixed minimal width for actions
+              sortable: false,
+              filterable: false,
+              hideable: false,
+              disableColumnMenu: true,
+              getActions: (params) =>
+                actions.map((a) => a(params)).filter(Boolean),
+            });
+          }
         }
 
         // Add row number column if enabled
@@ -6179,6 +6213,11 @@ const BSDataGrid = forwardRef(
                           headerFilterCell: {
                             showClearIcon: true,
                           },
+                          // Pagination props to show first/last page buttons
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
                         }
                       : headerFiltersEnabled
                       ? {
@@ -6186,8 +6225,19 @@ const BSDataGrid = forwardRef(
                           headerFilterCell: {
                             showClearIcon: true,
                           },
+                          // Pagination props
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
                         }
-                      : undefined
+                      : {
+                          // Always show pagination buttons
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
+                        }
                   }
                   // Styling with required field indicator
                   sx={{
@@ -6244,16 +6294,34 @@ const BSDataGrid = forwardRef(
                     [`& .MuiDataGrid-headerFilterRow`]: {
                       backgroundColor: "#f9f9f9",
                       borderBottom: "1px solid #e0e0e0",
+                      minHeight: "52px",
                       "& .MuiInputBase-root": {
                         fontSize: "0.875rem",
+                        minHeight: "32px",
                       },
                       "& .MuiInputBase-input": {
-                        padding: "8px 12px",
+                        padding: "5px 14px",
+                      },
+                      "& .MuiOutlinedInput-root": {
+                        backgroundColor: "#fff",
+                        "& fieldset": {
+                          borderColor: "rgba(0, 0, 0, 0.23)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "primary.main",
+                        },
+                        "&.Mui-focused fieldset": {
+                          borderColor: "primary.main",
+                          borderWidth: "2px",
+                        },
+                      },
+                      "& .MuiSelect-select": {
+                        padding: "5px 14px",
                       },
                     },
                     // Header filter cells
                     "& .MuiDataGrid-headerFilterCell": {
-                      padding: "4px",
+                      padding: "8px 4px",
                     },
                   }}
                   {...props}
