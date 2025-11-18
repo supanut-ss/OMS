@@ -102,10 +102,10 @@ export default function AppRoutes() {
           />
         </Route>
         <Route path="master">
-          <Route path="part_master" element={<PartPage />} />
-          <Route path="sub_master" element={<SubPage />} />
-          <Route path="tag_master" element={<TagPage />} />
-          <Route path="method_master" element={<MethodPage />} />
+          <Route path="part_master" element={<PartPage lang={lang} />} />
+          <Route path="sub_master" element={<SubPage lang={lang} />} />
+          <Route path="tag_master" element={<TagPage lang={lang} />} />
+          <Route path="method_master" element={<MethodPage lang={lang} />} />
         </Route>
         <Route path="authentication">
           <Route path="user_group" element={<UserGroupPage />} />
