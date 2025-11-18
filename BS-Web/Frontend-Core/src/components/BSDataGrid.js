@@ -5993,10 +5993,14 @@ const BSDataGrid = forwardRef(
                   }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
                     Array.isArray(columns) ? columns.length : 0
                   }`}
-                  // Editing
+                  // Editing - only enable if bsEnableBulkMode is true
                   editMode="row"
                   processRowUpdate={
-                    bsBulkAddInline ? processRowUpdate : processBulkRowUpdate
+                    bsEnableBulkMode
+                      ? bsBulkAddInline
+                        ? processRowUpdate
+                        : processBulkRowUpdate
+                      : undefined
                   }
                   onRowEditStart={handleRowEditStart}
                   onRowEditStop={
@@ -6004,6 +6008,8 @@ const BSDataGrid = forwardRef(
                       ? handleInlineRowEditStop
                       : handleRowEditStop
                   }
+                  // Disable all cell editing when bsEnableBulkMode is false
+                  isCellEditable={() => bsEnableBulkMode}
                   // Inline editing for bsBulkAddInline
                   {...(bsBulkAddInline && {
                     rowModesModel,
