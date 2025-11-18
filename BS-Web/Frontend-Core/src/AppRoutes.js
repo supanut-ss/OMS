@@ -77,7 +77,7 @@ export default function AppRoutes() {
         <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
         <Route path="import">
           <Route path="importExcel" element={<ImportExcel />} />
-          <Route path="importMaster" element={<ImportMaster />} />
+          <Route path="importMaster" element={<ImportMaster lang={lang} />} />
         </Route>
         <Route path="test/textfield" element={<BSTextFieldExamples />} />
         <Route path="test/datepicker" element={<BSDatepickerExamples />} />
@@ -89,7 +89,7 @@ export default function AppRoutes() {
         />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
-        <Route path="importMaster" element={<ImportMaster />} />
+        <Route path="importMaster" element={<ImportMaster lang={lang} />} />
         <Route path="user" element={<UserPage />} />
         <Route path="user_group" element={<UserGroupPage />} />
         <Route path="menu" element={<MenuPage />} />
