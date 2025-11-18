@@ -6080,7 +6080,7 @@ const BSDataGrid = forwardRef(
                   filterDebounceMs={500}
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
-                  headerFilterHeight={52}
+                  headerFilterHeight={48}
                   // Auto-sizing columns
                   autosizeOnMount
                   autosizeOptions={{
@@ -6292,36 +6292,66 @@ const BSDataGrid = forwardRef(
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: "#f9f9f9",
-                      borderBottom: "1px solid #e0e0e0",
-                      minHeight: "52px",
+                      backgroundColor: "#E0DEDEFF !important",
+                      borderBottom: "1px solid #E0DEDEFF !important",
+                      minHeight: "30px !important",
+                      maxHeight: "46px !important",
+                      // "& .MuiDataGrid-columnHeader": {
+                      //   height: "38px",
+                      //   width: "191.125px",
+                      //   borderRadius: "10px",
+                      //   border: "1px solid #cccccc",
+                      // },
                       "& .MuiInputBase-root": {
-                        fontSize: "0.875rem",
-                        minHeight: "32px",
+                        fontSize: "0.875rem !important",
+                        minHeight: "30px !important",
+                        height: "30px !important",
+                        maxHeight: "30px !important",
                       },
                       "& .MuiInputBase-input": {
-                        padding: "5px 14px",
+                        padding: "4px 10px !important",
+                        height: "auto !important",
+                      },
+                      "& .MuiFormControl-root": {
+                        minHeight: "30px !important",
+                        height: "30px !important",
                       },
                       "& .MuiOutlinedInput-root": {
-                        backgroundColor: "#fff",
+                        backgroundColor: "#fff !important",
+                        height: "30px !important",
                         "& fieldset": {
-                          borderColor: "rgba(0, 0, 0, 0.23)",
+                          borderColor: "rgba(0, 0, 0, 0.15) !important",
                         },
                         "&:hover fieldset": {
-                          borderColor: "primary.main",
+                          borderColor: "rgba(25, 118, 210, 0.5) !important",
                         },
                         "&.Mui-focused fieldset": {
-                          borderColor: "primary.main",
-                          borderWidth: "2px",
+                          borderColor: "#1976d2 !important",
+                          borderWidth: "1px !important",
                         },
                       },
                       "& .MuiSelect-select": {
-                        padding: "5px 14px",
+                        padding: "4px 10px !important",
+                        minHeight: "auto !important",
+                        height: "auto !important",
+                        lineHeight: "1.5 !important",
+                      },
+                      "& .MuiInputLabel-root": {
+                        fontSize: "0.875rem !important",
+                        transform: "translate(10px, 6px) scale(1) !important",
+                        "&.MuiInputLabel-shrink": {
+                          transform:
+                            "translate(14px, -9px) scale(0.75) !important",
+                        },
+                      },
+                      "& label + .MuiInputBase-root": {
+                        marginTop: "10px !important",
                       },
                     },
                     // Header filter cells
                     "& .MuiDataGrid-headerFilterCell": {
-                      padding: "8px 4px",
+                      padding: "6px 4px !important",
+                      height: "46px !important",
                     },
                   }}
                   {...props}
