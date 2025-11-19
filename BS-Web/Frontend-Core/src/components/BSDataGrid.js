@@ -480,7 +480,28 @@ const DynamicGridToolbar = ({
       {/* Quick Filter - Right aligned */}
       <Box sx={{ flexGrow: 1 }} />
 
-      <GridToolbarQuickFilter debounceMs={500} />
+      <GridToolbarQuickFilter
+        debounceMs={500}
+        variant="outlined"
+        sx={{
+          mr: 1,
+          "& .MuiInputBase-root": {
+            fontSize: "0.875rem",
+            minHeight: "32px",
+            paddingTop: "2px",
+            paddingBottom: "2px",
+          },
+          "& .MuiInputBase-input": {
+            padding: "5px 14px",
+          },
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(0, 0, 0, 0.23)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "primary.main",
+          },
+        }}
+      />
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -1627,7 +1648,18 @@ const BSDataGrid = forwardRef(
           }
 
           setRows(processedRows);
-          setRowCount(result.rowCount || 0);
+
+          // If backend didn't provide a total rowCount (some table endpoints
+          // may omit it), fall back to the number of rows we received so the
+          // DataGrid can still render pagination controls (rows-per-page selector).
+          // For large server-side datasets this should be provided by the API,
+          // but this fallback prevents the selector from disappearing when
+          // the API only returns the current page data.
+          const effectiveRowCount =
+            result.rowCount && result.rowCount > 0
+              ? result.rowCount
+              : processedRows.length || 0;
+          setRowCount(effectiveRowCount);
 
           // Call onDataBind callback with the loaded data
           if (onDataBind && typeof onDataBind === "function") {
@@ -4566,19 +4598,21 @@ const BSDataGrid = forwardRef(
               ));
             }
 
-            // Insert actions column at the beginning
-            dataColumns.unshift({
-              field: "actions",
-              type: "actions",
-              headerName: "", // Hide column header
-              // Removed width - let DataGrid auto-calculate
-              sortable: false,
-              filterable: false,
-              hideable: false,
-              disableColumnMenu: true,
-              getActions: (params) =>
-                actions.map((a) => a(params)).filter(Boolean),
-            });
+            // Only insert actions column if there are actual actions
+            if (actions.length > 0) {
+              dataColumns.unshift({
+                field: "actions",
+                type: "actions",
+                headerName: "", // Hide column header
+                width: 80, // Set fixed minimal width for actions
+                sortable: false,
+                filterable: false,
+                hideable: false,
+                disableColumnMenu: true,
+                getActions: (params) =>
+                  actions.map((a) => a(params)).filter(Boolean),
+              });
+            }
           }
 
           // Add row number column if enabled (for Enhanced Stored Procedure)
@@ -4875,19 +4909,30 @@ const BSDataGrid = forwardRef(
             }
           }
 
-          // Insert actions column at the beginning (after checkbox if present)
-          dataColumns.unshift({
-            field: "actions",
-            type: "actions",
-            headerName: "", // Hide column header
-            // Removed width - let DataGrid auto-calculate
-            sortable: false,
-            filterable: false,
-            hideable: false,
-            disableColumnMenu: true,
-            getActions: (params) =>
-              actions.map((a) => a(params)).filter(Boolean),
-          });
+          // Only insert actions column if there are actual actions
+          // Note: bulkEditMode and bsBulkAddInline always have actions, so check for them first
+          // For normal mode, check if we have any visible actions (onView, bsVisibleEdit, bsVisibleDelete)
+          const hasActions =
+            bulkEditMode ||
+            bsBulkAddInline ||
+            onView ||
+            bsVisibleEdit ||
+            bsVisibleDelete;
+
+          if (hasActions && actions.length > 0) {
+            dataColumns.unshift({
+              field: "actions",
+              type: "actions",
+              headerName: "", // Hide column header
+              width: 80, // Set fixed minimal width for actions
+              sortable: false,
+              filterable: false,
+              hideable: false,
+              disableColumnMenu: true,
+              getActions: (params) =>
+                actions.map((a) => a(params)).filter(Boolean),
+            });
+          }
         }
 
         // Add row number column if enabled
@@ -6035,7 +6080,7 @@ const BSDataGrid = forwardRef(
                   filterDebounceMs={500}
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
-                  headerFilterHeight={52}
+                  headerFilterHeight={48}
                   // Auto-sizing columns
                   autosizeOnMount
                   autosizeOptions={{
@@ -6168,6 +6213,11 @@ const BSDataGrid = forwardRef(
                           headerFilterCell: {
                             showClearIcon: true,
                           },
+                          // Pagination props to show first/last page buttons
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
                         }
                       : headerFiltersEnabled
                       ? {
@@ -6175,8 +6225,19 @@ const BSDataGrid = forwardRef(
                           headerFilterCell: {
                             showClearIcon: true,
                           },
+                          // Pagination props
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
                         }
-                      : undefined
+                      : {
+                          // Always show pagination buttons
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
+                        }
                   }
                   // Styling with required field indicator
                   sx={{
@@ -6231,18 +6292,66 @@ const BSDataGrid = forwardRef(
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: "#f9f9f9",
-                      borderBottom: "1px solid #e0e0e0",
+                      backgroundColor: "#E0DEDEFF !important",
+                      borderBottom: "1px solid #E0DEDEFF !important",
+                      minHeight: "30px !important",
+                      maxHeight: "46px !important",
+                      // "& .MuiDataGrid-columnHeader": {
+                      //   height: "38px",
+                      //   width: "191.125px",
+                      //   borderRadius: "10px",
+                      //   border: "1px solid #cccccc",
+                      // },
                       "& .MuiInputBase-root": {
-                        fontSize: "0.875rem",
+                        fontSize: "0.875rem !important",
+                        minHeight: "30px !important",
+                        height: "30px !important",
+                        maxHeight: "30px !important",
                       },
                       "& .MuiInputBase-input": {
-                        padding: "8px 12px",
+                        padding: "4px 10px !important",
+                        height: "auto !important",
+                      },
+                      "& .MuiFormControl-root": {
+                        minHeight: "30px !important",
+                        height: "30px !important",
+                      },
+                      "& .MuiOutlinedInput-root": {
+                        backgroundColor: "#fff !important",
+                        height: "30px !important",
+                        "& fieldset": {
+                          borderColor: "rgba(0, 0, 0, 0.15) !important",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(25, 118, 210, 0.5) !important",
+                        },
+                        "&.Mui-focused fieldset": {
+                          borderColor: "#1976d2 !important",
+                          borderWidth: "1px !important",
+                        },
+                      },
+                      "& .MuiSelect-select": {
+                        padding: "4px 10px !important",
+                        minHeight: "auto !important",
+                        height: "auto !important",
+                        lineHeight: "1.5 !important",
+                      },
+                      "& .MuiInputLabel-root": {
+                        fontSize: "0.875rem !important",
+                        transform: "translate(10px, 6px) scale(1) !important",
+                        "&.MuiInputLabel-shrink": {
+                          transform:
+                            "translate(14px, -9px) scale(0.75) !important",
+                        },
+                      },
+                      "& label + .MuiInputBase-root": {
+                        marginTop: "10px !important",
                       },
                     },
                     // Header filter cells
                     "& .MuiDataGrid-headerFilterCell": {
-                      padding: "4px",
+                      padding: "6px 4px !important",
+                      height: "46px !important",
                     },
                   }}
                   {...props}

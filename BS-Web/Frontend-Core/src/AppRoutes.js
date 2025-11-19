@@ -77,7 +77,7 @@ export default function AppRoutes() {
         <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
         <Route path="import">
           <Route path="importExcel" element={<ImportExcel />} />
-          <Route path="importMaster" element={<ImportMaster />} />
+          <Route path="importMaster" element={<ImportMaster lang={lang} />} />
         </Route>
         <Route path="test/textfield" element={<BSTextFieldExamples />} />
         <Route path="test/datepicker" element={<BSDatepickerExamples />} />
@@ -89,10 +89,10 @@ export default function AppRoutes() {
         />
         <Route path="assign_menu" element={<AssignMenu />} />
         <Route path="importExcel" element={<ImportExcel />} />
-        <Route path="importMaster" element={<ImportMaster />} />
-        <Route path="user" element={<UserPage />} />
-        <Route path="user_group" element={<UserGroupPage />} />
-        <Route path="menu" element={<MenuPage />} />
+        <Route path="importMaster" element={<ImportMaster lang={lang} />} />
+        <Route path="user" element={<UserPage lang={lang} />} />
+        <Route path="user_group" element={<UserGroupPage lang={lang} />} />
+        <Route path="menu" element={<MenuPage lang={lang} />} />
         <Route path="user_logon" element={<UserLogOnPage />} />
         <Route path="count">
           <Route path="count_tag" element={<CountTag lang={lang} />} />
@@ -102,17 +102,17 @@ export default function AppRoutes() {
           />
         </Route>
         <Route path="master">
-          <Route path="part_master" element={<PartPage />} />
-          <Route path="sub_master" element={<SubPage />} />
-          <Route path="tag_master" element={<TagPage />} />
-          <Route path="method_master" element={<MethodPage />} />
+          <Route path="part_master" element={<PartPage lang={lang} />} />
+          <Route path="sub_master" element={<SubPage lang={lang} />} />
+          <Route path="tag_master" element={<TagPage lang={lang} />} />
+          <Route path="method_master" element={<MethodPage lang={lang} />} />
         </Route>
         <Route path="authentication">
-          <Route path="user_group" element={<UserGroupPage />} />
-          <Route path="user" element={<UserPage />} />
+          <Route path="user_group" element={<UserGroupPage lang={lang} />} />
+          <Route path="user" element={<UserPage lang={lang} />} />
           <Route path="assign_menu" element={<AssignMenu />} />
           <Route path="resource" element={<Resource lang={lang} />} />
-          <Route path="menu" element={<MenuPage />} />
+          <Route path="menu" element={<MenuPage lang={lang} />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

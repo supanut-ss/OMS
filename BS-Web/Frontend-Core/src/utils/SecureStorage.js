@@ -151,6 +151,9 @@ const secureStorage = {
       ls.remove("role");
       ls.remove("token");
       ls.remove("userInfo");
+      ls.remove("multi");
+      ls.remove("select");
+      ls.remove("signle");
       return true;
     } catch (error) {
       return false;

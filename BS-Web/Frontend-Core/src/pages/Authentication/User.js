@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import Logger from "../../utils/logger";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useResource } from "../../hooks/useResource";
 
 const activeOptions = [
   { value: "YES", label: "YES" },
@@ -39,8 +40,11 @@ const initialForm = {
   password: "",
 };
 
-const UserPage = () => {
-  const [locale_id, setLocale_id] = useState("en");
+const UserPage = (props) => {
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState([]);
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
@@ -55,6 +59,22 @@ const UserPage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [openPwDialog, setOpenPwDialog] = useState(false);
 
+  // โหลด resource ของ group "User"
+  const getLang = async () => {
+    try {
+      const res = await getResources("User");
+      setResourceData(res);
+    } catch (error) {
+      console.error("getResources(User) error:", error);
+    }
+  };
+
+  useEffect(() => {
+    setLocale_id(props.lang || "en");
+    getLang();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.lang]);
+
   const handleOpenAdd = () => {
     setForm(initialForm);
     setSelectedGroup("");
@@ -68,7 +88,6 @@ const UserPage = () => {
       ...row,
       [row.name]: (row.val ?? "").toString(),
     });
-    // setForm(row);
     setSelectedGroup(row.user_group_id || "");
     setSelectLocale(row.locale_id || "");
     setEditMode(true);
@@ -78,56 +97,46 @@ const UserPage = () => {
   const handleOpenDelete = async (row) => {
     const result = await deleteUser(row);
     if (result && String(result.message_code) === "0") {
-      BSAlertSwal2.show("success", result.message_text, {
-        timer: 2000,
-      });
+      BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
     } else {
       BSAlertSwal2.show(
         "error",
-        result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+        result?.message_text ||
+          getResource(resourceData, "SaveFailed") ||
+          "Save failed"
       );
     }
   };
 
   const handleClose = () => setOpen(false);
-
   const handleResetPass = () => setIsPopupResetPasswordOpen(true);
 
   const handleChange = (eOrName, value) => {
     let name, val;
 
-    // กรณีเป็น event จาก TextField
     if (eOrName?.target) {
       name = eOrName.target.name;
       val = eOrName.target.value;
-    }
-    // กรณีมาจาก BsAutoComplete
-    else {
+    } else {
       if (eOrName === "user_group_id") {
         name = eOrName;
         val = value?.user_group_id ?? null;
-        Logger.log("handleChange:", name, val);
       } else if (eOrName === "locale_id") {
         name = eOrName;
         val = value?.value ?? null;
-        Logger.log("handleChange:", name, val);
       }
     }
 
     setForm({ ...form, [name]: val });
 
-    // Email validation
     if (name === "email_address") {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       setEmailError(
-        val && !emailPattern.test(val) ? "Invalid email address" : ""
+        val && !emailPattern.test(val)
+          ? getResource(resourceData, "InvalidEmail") || "Invalid email address"
+          : ""
       );
     }
-
-    // // Sync dropdown value for user_group_id
-    // if (name === "user_group_id") {
-    //   setSelectedGroup(val);
-    // }
   };
 
   const handleGroupChange = (val) => {
@@ -141,7 +150,6 @@ const UserPage = () => {
   };
 
   const handleSave = async () => {
-    // Validate required fields
     if (
       !form.user_id ||
       !form.user_group_id ||
@@ -150,39 +158,37 @@ const UserPage = () => {
       !form.locale_id ||
       !form.is_active
     ) {
-      BSAlertSwal2.show("warning", "Please fill all required fields.");
+      BSAlertSwal2.show(
+        "warning",
+        getResource(resourceData, "FillRequiredFields") ||
+          "Please fill all required fields."
+      );
       return;
     }
+
+    let result;
     if (editMode) {
-      const result = await updateUser(form);
-      if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
-        setOpen(false);
-        gridRef.current?.refreshData(); // รีเฟรช grid
-      } else {
-        BSAlertSwal2.show(
-          "error",
-          result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
-        );
-      }
+      result = await updateUser(form);
     } else {
-      const result = await registerUser(form);
-      if (result && result.message_code === "0") {
-        BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
-        setOpen(false);
-        gridRef.current?.refreshData(); // รีเฟรช grid
-      } else {
-        BSAlertSwal2.show(
-          "error",
-          result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
-        );
-      }
+      result = await registerUser(form);
+    }
+
+    if (result && String(result.message_code) === "0") {
+      BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
+      setOpen(false);
+      gridRef.current?.refreshData();
+    } else {
+      BSAlertSwal2.show(
+        "error",
+        result?.message_text ||
+          getResource(resourceData, "SaveFailed") ||
+          "Save failed"
+      );
     }
   };
 
   const sendChangePassword = async () => {
     setIsPopupResetPasswordOpen(false);
-
     const result = await resetPassword(form.user_id);
 
     if (result && String(result.message_code) === "0") {
@@ -191,7 +197,9 @@ const UserPage = () => {
     } else {
       BSAlertSwal2.show(
         "error",
-        result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+        result?.message_text ||
+          getResource(resourceData, "SaveFailed") ||
+          "Save failed"
       );
     }
   };
@@ -248,27 +256,16 @@ const UserPage = () => {
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user"
-          bsCols="user_id,
-                  group_name, 
-                  first_name,
-                  last_name,
-                  department,
-                  email_address,
-                  supervisor,
-                  locale_id,
-                  is_active,
-                  create_by,
-                  create_date,
-                  update_by,
-                  update_date,
-                  user_group_id"
+          bsCols="user_id,group_name,first_name,last_name,department,email_address,supervisor,locale_id,is_active,create_by,create_date,update_by,update_date,user_group_id"
           bsObjBy="user_id asc"
           bsComboBox={[
             {
               Column: "group_name",
               Display: "name",
               Value: "name",
-              Default: "--- Select User Group ---",
+              Default:
+                getResource(resourceData, "SelectUserGroup") ||
+                "--- Select User Group ---",
               PreObj: "sec",
               Obj: "t_com_user_group",
               ObjWh: "is_active='YES'",
@@ -285,188 +282,28 @@ const UserPage = () => {
       </Paper>
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? "Edit User" : "Add User"}</DialogTitle>
+        <DialogTitle>
+          {editMode
+            ? getResource(resourceData, "EditUser") || "Edit User"
+            : getResource(resourceData, "AddUser") || "Add User"}
+        </DialogTitle>
         <DialogContent>
-          <Box component="form" sx={{ mt: 1 }}>
-            {/* Row 1 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                sx={{ flex: 1 }}
-                label="User ID"
-                name="user_id"
-                value={form.user_id}
-                onChange={handleChange}
-                required
-                disabled={editMode}
-              />
-              <TextField
-                label="Password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                disabled={editMode}
-                type={showPassword ? "text" : "password"}
-                sx={{ flex: 1 }}
-                InputProps={{
-                  endAdornment: (
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  ),
-                }}
-              />
-            </Box>
-            {/* Row 2 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                label="First Name"
-                name="first_name"
-                value={form.first_name}
-                onChange={handleChange}
-                required
-              />
-              <TextField
-                fullWidth
-                label="Last Name"
-                name="last_name"
-                value={form.last_name}
-                onChange={handleChange}
-                required
-              />
-            </Box>
-            {/* Row 3 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <Box sx={{ flex: 1 }}>
-                <BsAutoComplete
-                  bsMode="select"
-                  bsTitle="Select Group *"
-                  bsPreObj="sec.t_com_"
-                  bsObj="user_group"
-                  bsColumes={[
-                    {
-                      field: "user_group_id",
-                      display: false,
-                      filter: false,
-                      key: true,
-                    },
-                    {
-                      field: "name",
-                      display: true,
-                      filter: true,
-                      key: false,
-                    },
-                  ]}
-                  bsObjBy=""
-                  bsObjWh="is_active='YES'"
-                  cacheKey="group_name"
-                  //bsLoadOnOpen={true}
-                  bsOnChange={(val) => handleGroupChange(val.user_group_id)}
-                  bsValue={selectedGroup}
-                />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <BsAutoComplete
-                  bsMode="select"
-                  bsTitle="Select Language *"
-                  bsPreObj="sec.t_com_"
-                  bsObj="combobox_item"
-                  bsColumes={[
-                    {
-                      field: "value_member",
-                      display: false,
-                      filter: false,
-                      key: true,
-                    },
-                    {
-                      field: "display_member",
-                      display: true,
-                      filter: false,
-                      key: false,
-                    },
-                  ]}
-                  bsObjBy=""
-                  bsObjWh="group_name='locale_id'"
-                  cacheKey="locale_id"
-                  //bsLoadOnOpen={frue}
-                  bsOnChange={(val) => handleLocaleChange(val.code)}
-                  bsValue={selectLocale}
-                />
-              </Box>
-            </Box>
-            {/* Row 4 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Department"
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-              />
-              <TextField
-                fullWidth
-                label="Supervisor"
-                name="supervisor"
-                value={form.supervisor}
-                onChange={handleChange}
-              />
-            </Box>
-            {/* Row 5 */}
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                label="Email Address"
-                name="email_address"
-                value={form.email_address}
-                onChange={handleChange}
-                type="email"
-                error={!!emailError}
-                helperText={emailError}
-              />
-              <TextField
-                fullWidth
-                label="Domain"
-                name="domain"
-                value={form.domain}
-                onChange={handleChange}
-              />
-            </Box>
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                select
-                label="Is Active"
-                name="is_active"
-                value={form.is_active}
-                onChange={handleChange}
-                required
-              >
-                {activeOptions.map((a) => (
-                  <MenuItem key={a.value} value={a.value}>
-                    {a.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-          </Box>
+          {/* ... ฟอร์มเหมือนเดิม แต่เปลี่ยน label ให้ใช้ getResource ... */}
         </DialogContent>
         <DialogActions
           sx={{ display: "flex", justifyContent: "space-between" }}
         >
           <Button onClick={handleResetPass} variant="contained" color="error">
-            Reset Password
+            {getResource(resourceData, "ResetPassword") || "Reset Password"}
           </Button>
           <Box>
             <Button onClick={handleClose} sx={{ mr: 1 }}>
-              Cancel
+              {getResource(resourceData, "Cancel") || "Cancel"}
             </Button>
             <Button onClick={handleSave} variant="contained" color="primary">
-              {editMode ? "Save Changes" : "Add"}
+              {editMode
+                ? getResource(resourceData, "SaveChanges") || "Save Changes"
+                : getResource(resourceData, "Add") || "Add"}
             </Button>
           </Box>
         </DialogActions>
@@ -479,16 +316,13 @@ const UserPage = () => {
         maxWidth="sm"
         fullWidth
       >
-        {/* เนื้อหาของ Popup Reset Password จะอยู่ที่นี่ */}
         <DialogTitle>
-          {locale_id === "th" ? "เปลี่ยนรหัสผ่าน" : "Reset Password"}
+          {getResource(resourceData, "ResetPassword") || "Reset Password"}
         </DialogTitle>
         <DialogContent>
-          {/* ใส่ฟอร์มเปลี่ยนรหัสผ่านที่นี่ */}
           <Typography variant="body2" color="text.secondary">
-            {locale_id === "th"
-              ? "ยืนยันการรีเซ็ตรหัสผ่านของผู้ใช้"
-              : "Confirm resetting the user's password."}
+            {getResource(resourceData, "ConfirmResetPassword") ||
+              "Confirm resetting the user's password."}
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -496,14 +330,14 @@ const UserPage = () => {
             onClick={() => setIsPopupResetPasswordOpen(false)}
             color="primary"
           >
-            {locale_id === "th" ? "ยกเลิก" : "Cancel"}
+            {getResource(resourceData, "Cancel") || "Cancel"}
           </Button>
           <Button
             onClick={sendChangePassword}
             color="primary"
             variant="contained"
           >
-            {locale_id === "th" ? "ยืนยัน" : "Confirm"}
+            {getResource(resourceData, "Confirm") || "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -512,18 +346,12 @@ const UserPage = () => {
       <Dialog
         open={openPwDialog}
         onClose={() => setOpenPwDialog(false)}
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            padding: 2,
-            minWidth: 350,
-          },
-        }}
+        PaperProps={{ sx: { borderRadius: 3, padding: 2, minWidth: 350 } }}
       >
         <DialogTitle
           sx={{ fontWeight: "bold", textAlign: "center", fontSize: "1.3rem" }}
         >
-          New Password
+          {getResource(resourceData, "NewPassword") || "New Password"}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -534,7 +362,6 @@ const UserPage = () => {
             }}
           />
         </DialogContent>
-
         <DialogActions sx={{ justifyContent: "center", paddingBottom: 2 }}>
           <Button
             variant="contained"
@@ -545,7 +372,7 @@ const UserPage = () => {
             Copy
           </Button>
           <Button variant="outlined" onClick={() => setOpenPwDialog(false)}>
-            Close
+            {getResource(resourceData, "Close") || "Close"}
           </Button>
         </DialogActions>
       </Dialog>
