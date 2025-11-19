@@ -13,6 +13,7 @@ const UserGroupPage = (props) => {
     try {
       const res = await getResources("UserGroup"); // ตั้งชื่อ group ตามที่ backend กำหนด
       setResourceData(res);
+      console.log("Loaded User resources:", res);
     } catch (error) {
       console.error("getResources(UserGroup) error:", error);
     }
@@ -52,8 +53,8 @@ const UserGroupPage = (props) => {
               ObjBy: "application_name asc",
             },
           ]}
-        // bsBulkDelete={true}
-        // bsBulkEdit={true}
+          // bsBulkDelete={true}
+          // bsBulkEdit={true}
         />
       </Paper>
     </>

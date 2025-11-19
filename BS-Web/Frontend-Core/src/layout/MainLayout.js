@@ -30,6 +30,7 @@ import {
   InputLabel,
   FormHelperText,
   Input,
+  InputAdornment,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -40,6 +41,8 @@ import {
   // Settings as SettingsIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
+  Visibility,
+  VisibilityOff,
 } from "@mui/icons-material";
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
@@ -121,6 +124,10 @@ export default function MainLayout({ lang, onChangeLang }) {
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
+  // State สำหรับควบคุมการโชว์พาสเวิร์ด
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const navigate = useNavigate();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
@@ -147,73 +154,161 @@ export default function MainLayout({ lang, onChangeLang }) {
   const [role, setRole] = useState("User");
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] = useState(false);
+  const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
+    useState(false);
   const [password, setPassword] = useState({
     new_password: "",
-    confirm_password: ""
+    confirm_password: "",
   });
   const [errorPassword, setErrorPassword] = useState({
     new_password: {
       status: false,
-      message: ""
+      message: "",
     },
     confirm_password: {
       status: false,
-      message: ""
-    }
-  })
+      message: "",
+    },
+  });
   const validatePassword = (pw) => {
     if (pw.length < 8) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' : 'Password must be at least 8 characters long.' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร"
+            : "Password must be at least 8 characters long.",
+      };
     } else if (pw.length > 20) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีความยาวไม่เกิน 20 ตัวอักษร' : 'Password must not exceed 20 characters.' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องมีความยาวไม่เกิน 20 ตัวอักษร"
+            : "Password must not exceed 20 characters.",
+      };
     } else if (!/[A-Z]/.test(pw)) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่ อย่างน้อย 1 ตัว' : 'Password must contain at least one uppercase letter.' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่ อย่างน้อย 1 ตัว"
+            : "Password must contain at least one uppercase letter.",
+      };
     } else if (!/[a-z]/.test(pw)) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีตัวอักษรพิมพ์เล็ก อย่างน้อย 1 ตัว' : 'Password must contain at least one lowercase letter.' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องมีตัวอักษรพิมพ์เล็ก อย่างน้อย 1 ตัว"
+            : "Password must contain at least one lowercase letter.",
+      };
     } else if (!/[0-9]/.test(pw)) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีตัวเลข อย่างน้อย 1 ตัว' : 'Password must contain at least one number.' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องมีตัวเลข อย่างน้อย 1 ตัว"
+            : "Password must contain at least one number.",
+      };
     } else if (!/[!@#$%^&*]/.test(pw)) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องมีอักขระพิเศษ อย่างน้อย 1 ตัว (!@#$%^&*)' : 'Password must contain at least one special character (!@#$%^&*).' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องมีอักขระพิเศษ อย่างน้อย 1 ตัว (!@#$%^&*)"
+            : "Password must contain at least one special character (!@#$%^&*).",
+      };
     } else if (/\s/.test(pw)) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่มีช่องว่าง' : 'Password must not contain spaces.' };
-    } else if (pw.toLowerCase().includes(currentUser?.FirstName.toLowerCase()) || pw.toLowerCase().includes(currentUser?.LastName.toLowerCase())) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยชื่อหรือสกุลของคุณ' : 'Password must not contain your first or last name.' };
-    // } else if (pw.toLowerCase().includes(currentUser?.Email.toLowerCase()) && pw !== "@" ) {
-    //   return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยอีเมลของคุณ' : 'Password must not contain your email.' };
-    } else if (pw.toLowerCase().includes("1234") || pw.toLowerCase().includes("abcd")) {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยลำดับตัวอักษรหรือตัวเลขที่ง่ายต่อการคาดเดา เช่น 1234 หรือ abcd' : 'Password must not contain easily guessable sequences like 1234 or abcd.' };
-    } else if (pw.toLowerCase() === "password" || pw.toLowerCase() === "qwerty" || pw.toLowerCase() === "letmein") {
-      return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ใช่รหัสผ่านที่ใช้บ่อยหรือคาดเดาได้ง่าย เช่น password, qwerty, letmein' : 'Password must not be a commonly used or easily guessable password like password, qwerty, letmein.' };
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องไม่มีช่องว่าง"
+            : "Password must not contain spaces.",
+      };
+    } else if (
+      pw.toLowerCase().includes(currentUser?.FirstName.toLowerCase()) ||
+      pw.toLowerCase().includes(currentUser?.LastName.toLowerCase())
+    ) {
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องไม่ประกอบด้วยชื่อหรือสกุลของคุณ"
+            : "Password must not contain your first or last name.",
+      };
+      // } else if (pw.toLowerCase().includes(currentUser?.Email.toLowerCase()) && pw !== "@" ) {
+      //   return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยอีเมลของคุณ' : 'Password must not contain your email.' };
+    } else if (
+      pw.toLowerCase().includes("1234") ||
+      pw.toLowerCase().includes("abcd")
+    ) {
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องไม่ประกอบด้วยลำดับตัวอักษรหรือตัวเลขที่ง่ายต่อการคาดเดา เช่น 1234 หรือ abcd"
+            : "Password must not contain easily guessable sequences like 1234 or abcd.",
+      };
+    } else if (
+      pw.toLowerCase() === "password" ||
+      pw.toLowerCase() === "qwerty" ||
+      pw.toLowerCase() === "letmein"
+    ) {
+      return {
+        status: true,
+        message:
+          lang === "th"
+            ? "รหัสผ่านต้องไม่ใช่รหัสผ่านที่ใช้บ่อยหรือคาดเดาได้ง่าย เช่น password, qwerty, letmein"
+            : "Password must not be a commonly used or easily guessable password like password, qwerty, letmein.",
+      };
     } else if (pw.length === 0) {
-      return { status: true, message: lang === "th" ? 'กรุณากรอกรหัสผ่าน' : 'Please enter a password.' };
+      return {
+        status: true,
+        message:
+          lang === "th" ? "กรุณากรอกรหัสผ่าน" : "Please enter a password.",
+      };
     } else {
       return { status: false, message: "" };
     }
-  }
+  };
   const onChangePassword = (e) => {
     let validate = validatePassword(e.target.value);
     if (validate.status) {
       setErrorPassword({ ...errorPassword, new_password: validate });
-
     } else {
-      setErrorPassword({ ...errorPassword, new_password: { status: false, message: "" } });
+      setErrorPassword({
+        ...errorPassword,
+        new_password: { status: false, message: "" },
+      });
     }
     setPassword({ ...password, new_password: e.target.value });
-
-  }
+  };
   const onChangeConfirmPassword = (e) => {
     let validate = validatePassword(password.new_password);
     if (validate.status) {
       setErrorPassword({ ...errorPassword, confirm_password: validate });
     } else if (password.new_password !== e.target.value) {
-      setErrorPassword({ ...errorPassword, confirm_password: { status: true, message: lang === "th" ? 'รหัสผ่านไม่ตรงกัน' : 'Passwords do not match.' } });
+      setErrorPassword({
+        ...errorPassword,
+        confirm_password: {
+          status: true,
+          message:
+            lang === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match.",
+        },
+      });
     } else {
-      setErrorPassword({ ...errorPassword, confirm_password: { status: false, message: "" } });
+      setErrorPassword({
+        ...errorPassword,
+        confirm_password: { status: false, message: "" },
+      });
     }
     setPassword({ ...password, confirm_password: e.target.value });
   };
   const handleResetPassword = () => {
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setIsPopupResetPasswordOpen(true);
     handleUserMenuClose();
   };
@@ -223,45 +318,66 @@ export default function MainLayout({ lang, onChangeLang }) {
     if (validateNewPassword.status) {
       setErrorPassword({ ...errorPassword, new_password: validateNewPassword });
     }
-    if (validateConfirmPassword.status || password.new_password !== password.confirm_password) {
-      setErrorPassword({ ...errorPassword, confirm_password: validateConfirmPassword.status ? validateConfirmPassword : { status: true, message: lang === "th" ? 'รหัสผ่านไม่ตรงกัน' : 'Passwords do not match.' } });
-    }
-    if (!validateNewPassword.status && !validateConfirmPassword.status && password.new_password === password.confirm_password) {
-      setLoading(true);
-      await AxiosMaster.post("/reset_password", password).then((res) => {
-        if (res.data.message_code === "0") {
-          BSAlertSwal2.fire({
-            icon: "success",
-            title: lang === "th" ? 'เปลี่ยนรหัสผ่านสำเร็จ' : 'Password Changed Successfully',
-            confirmButtonText: "OK"
-          });
-        } else {
-          BSAlertSwal2.fire({
-            icon: "warning",
-            title: res.data.message_text,
-            confirmButtonText: "OK"
-          });
-        }
-        setIsPopupResetPasswordOpen(false);
-        setPassword({
-          new_password: "",
-          confirm_password: ""
-        });
-        setErrorPassword({
-          new_password: {
-            status: false,
-            message: ""
-          },
-          confirm_password: {
-            status: false,
-            message: ""
-          }
-        });
-      }).finally(() => {
-        setLoading(false);
+    if (
+      validateConfirmPassword.status ||
+      password.new_password !== password.confirm_password
+    ) {
+      setErrorPassword({
+        ...errorPassword,
+        confirm_password: validateConfirmPassword.status
+          ? validateConfirmPassword
+          : {
+              status: true,
+              message:
+                lang === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match.",
+            },
       });
     }
-  }
+    if (
+      !validateNewPassword.status &&
+      !validateConfirmPassword.status &&
+      password.new_password === password.confirm_password
+    ) {
+      setLoading(true);
+      await AxiosMaster.post("/reset_password", password)
+        .then((res) => {
+          if (res.data.message_code === "0") {
+            BSAlertSwal2.fire({
+              icon: "success",
+              title:
+                lang === "th"
+                  ? "เปลี่ยนรหัสผ่านสำเร็จ"
+                  : "Password Changed Successfully",
+              confirmButtonText: "OK",
+            });
+          } else {
+            BSAlertSwal2.fire({
+              icon: "warning",
+              title: res.data.message_text,
+              confirmButtonText: "OK",
+            });
+          }
+          setIsPopupResetPasswordOpen(false);
+          setPassword({
+            new_password: "",
+            confirm_password: "",
+          });
+          setErrorPassword({
+            new_password: {
+              status: false,
+              message: "",
+            },
+            confirm_password: {
+              status: false,
+              message: "",
+            },
+          });
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  };
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   const toggleDrawer = () => setOpen((prev) => !prev);
@@ -291,7 +407,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       BSAlertSwal2.fire({
         icon: "success",
         title: "Logout Success",
-        confirmButtonText: "OK"
+        confirmButtonText: "OK",
       }).then((result) => {
         navigate("/login");
       });
@@ -299,12 +415,11 @@ export default function MainLayout({ lang, onChangeLang }) {
       BSAlertSwal2.fire({
         icon: "warning",
         title: "Logout Failed",
-        confirmButtonText: "OK"
+        confirmButtonText: "OK",
       }).then((result) => {
         window.location.reload();
       });
     }
-
   };
 
   const getInitials = (name) => {
@@ -319,7 +434,10 @@ export default function MainLayout({ lang, onChangeLang }) {
     intervalMs: 120000, // 2 นาที
   });
   useEffect(() => {
-    if (SecureStorage.get("userInfo") !== null && SecureStorage.get("userInfo") !== "") {
+    if (
+      SecureStorage.get("userInfo") !== null &&
+      SecureStorage.get("userInfo") !== ""
+    ) {
       setCurrentUser(SecureStorage.get("userInfo"));
       setRole(SecureStorage.get("role") ?? "User");
     } else {
@@ -354,14 +472,14 @@ export default function MainLayout({ lang, onChangeLang }) {
           }),
           ...(open &&
             !isMobile && {
-            marginLeft: drawerWidth,
-            width: `calc(100% - ${drawerWidth}px)`,
-            transition: theme.transitions.create(["width", "margin"], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
+              marginLeft: drawerWidth,
+              width: `calc(100% - ${drawerWidth}px)`,
+              transition: theme.transitions.create(["width", "margin"], {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
             }),
-          }),
-          borderRadius: "unset"
+          borderRadius: "unset",
         }}
       >
         <Toolbar
@@ -392,12 +510,16 @@ export default function MainLayout({ lang, onChangeLang }) {
                 />
               </Box>
             )}
-            {!isDashboard && !isMobile && open && <CustomBreadcrumbs lang={lang} />}
+            {!isDashboard && !isMobile && open && (
+              <CustomBreadcrumbs lang={lang} />
+            )}
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-
-            <LanguageSwitch lang={lang} changeLanguage={(s) => onChangeLang(s)} />
+            <LanguageSwitch
+              lang={lang}
+              changeLanguage={(s) => onChangeLang(s)}
+            />
             {/* Theme toggle */}
             {/* <Tooltip title="เปลี่ยนธีม">
               <IconButton
@@ -443,7 +565,9 @@ export default function MainLayout({ lang, onChangeLang }) {
                     fontWeight: 600,
                   }}
                 >
-                  {getInitials(currentUser?.FirstName + " " + currentUser?.LastName)}
+                  {getInitials(
+                    currentUser?.FirstName + " " + currentUser?.LastName
+                  )}
                 </Avatar>
               </IconButton>
             </Tooltip>
@@ -562,7 +686,9 @@ export default function MainLayout({ lang, onChangeLang }) {
                 fontWeight: 600,
               }}
             >
-              {getInitials(currentUser?.FirstName + " " + currentUser?.LastName)}
+              {getInitials(
+                currentUser?.FirstName + " " + currentUser?.LastName
+              )}
             </Avatar>
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -590,7 +716,9 @@ export default function MainLayout({ lang, onChangeLang }) {
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary={lang === "th" ? 'เปลี่ยนรหัสผ่าน' : 'Reset Password'} />
+          <ListItemText
+            primary={lang === "th" ? "เปลี่ยนรหัสผ่าน" : "Reset Password"}
+          />
         </MenuItem>
         {/*
         <MenuItem onClick={handleUserMenuClose} sx={{ py: 1.5, px: 3 }}>
@@ -616,7 +744,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           <ListItemIcon>
             <LogoutIcon fontSize="small" sx={{ color: "error.main" }} />
           </ListItemIcon>
-          <ListItemText primary={lang === "th" ? 'ออกจากระบบ' : 'Logout'} />
+          <ListItemText primary={lang === "th" ? "ออกจากระบบ" : "Logout"} />
         </MenuItem>
       </Menu>
 
@@ -634,11 +762,18 @@ export default function MainLayout({ lang, onChangeLang }) {
               alignItems: "center",
               justifyContent: open ? "space-between" : "center",
               width: "100%",
-              px: open ? 2 : 0
+              px: open ? 2 : 0,
             }}
           >
             {open && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, border: "unset" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  border: "unset",
+                }}
+              >
                 {/* <img
                   src={logoMiniSvg}
                   alt="Timesheet Logo"
@@ -670,13 +805,12 @@ export default function MainLayout({ lang, onChangeLang }) {
         <Divider />
         <SidebarMenu
           setLoading={setLoading}
-          open={open}           // state ที่ควบคุม sidebar เปิด/ปิด
-          isMobile={isMobile}   // ไว้ใช้สำหรับ mobile responsive
-          setOpen={setOpen}     // ฟังก์ชันเปลี่ยนค่า open
-          theme={theme}         // ส่ง theme ของ MUI เข้าไป
+          open={open} // state ที่ควบคุม sidebar เปิด/ปิด
+          isMobile={isMobile} // ไว้ใช้สำหรับ mobile responsive
+          setOpen={setOpen} // ฟังก์ชันเปลี่ยนค่า open
+          theme={theme} // ส่ง theme ของ MUI เข้าไป
           lang={lang}
         />
-
       </StyledDrawer>
 
       {/* Main content */}
@@ -695,7 +829,7 @@ export default function MainLayout({ lang, onChangeLang }) {
             duration: theme.transitions.duration.enteringScreen,
           }),
           bgcolor: "aliceblue",
-          height: `calc(100vh - ${theme.spacing(8)})`, 
+          height: `calc(100vh - ${theme.spacing(8)})`,
           position: "relative",
           overflow: "auto",
         }}
@@ -703,45 +837,94 @@ export default function MainLayout({ lang, onChangeLang }) {
         <Outlet />
       </Box>
       {/* Reset Password Popup */}
-      <Dialog open={isPopupResetPasswordOpen} onClose={() => setIsPopupResetPasswordOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={isPopupResetPasswordOpen}
+        onClose={() => setIsPopupResetPasswordOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         {/* เนื้อหาของ Popup Reset Password จะอยู่ที่นี่ */}
-        <DialogTitle>{lang === "th" ? 'เปลี่ยนรหัสผ่าน' : 'Reset Password'}</DialogTitle>
+        <DialogTitle>
+          {lang === "th" ? "เปลี่ยนรหัสผ่าน" : "Reset Password"}
+        </DialogTitle>
         <DialogContent>
           {/* ใส่ฟอร์มเปลี่ยนรหัสผ่านที่นี่ */}
           <Typography variant="body2" color="text.secondary">
-            {lang === "th" ? 'กรุณากรอกรหัสผ่านใหม่ของคุณด้านล่าง' : 'Please enter your new password below.'}
+            {lang === "th"
+              ? "กรุณากรอกรหัสผ่านใหม่ของคุณด้านล่าง"
+              : "Please enter your new password below."}
           </Typography>
           <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel htmlFor="new-password">{lang === "th" ? 'รหัสผ่านใหม่' : 'New Password'}</InputLabel>
+            <InputLabel htmlFor="new-password">
+              {lang === "th" ? "รหัสผ่านใหม่" : "New Password"}
+            </InputLabel>
             <Input
               id="new-password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password.new_password}
               onChange={(e) => onChangePassword(e)}
-              label={lang === "th" ? 'รหัสผ่านใหม่' : 'New Password'}
+              label={lang === "th" ? "รหัสผ่านใหม่" : "New Password"}
+              endAdornment={
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              }
             />
             {errorPassword.new_password.status && (
-              <FormHelperText sx={{ color: "red" }}>{errorPassword.new_password.message}</FormHelperText>
+              <FormHelperText sx={{ color: "red" }}>
+                {errorPassword.new_password.message}
+              </FormHelperText>
             )}
-
           </FormControl>
           <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel htmlFor="confirm-password">{lang === "th" ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password'}</InputLabel>
+            <InputLabel htmlFor="confirm-password">
+              {lang === "th" ? "ยืนยันรหัสผ่านใหม่" : "Confirm New Password"}
+            </InputLabel>
             <Input
               id="confirm-password"
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               value={password.confirm_password}
               onChange={(e) => onChangeConfirmPassword(e)}
-              label={lang === "th" ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password'}
+              label={
+                lang === "th" ? "ยืนยันรหัสผ่านใหม่" : "Confirm New Password"
+              }
+              endAdornment={
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    edge="end"
+                  >
+                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              }
             />
             {errorPassword.confirm_password.status && (
-              <FormHelperText sx={{ color: "red" }}>{errorPassword.confirm_password.message}</FormHelperText>
+              <FormHelperText sx={{ color: "red" }}>
+                {errorPassword.confirm_password.message}
+              </FormHelperText>
             )}
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsPopupResetPasswordOpen(false)} color="primary">{lang === "th" ? 'ยกเลิก' : 'Cancel'}</Button>
-          <Button onClick={sendChangePassword} color="primary" variant="contained">{lang === "th" ? 'บันทึก' : 'Save'}</Button>
+          <Button
+            onClick={() => setIsPopupResetPasswordOpen(false)}
+            color="primary"
+          >
+            {lang === "th" ? "ยกเลิก" : "Cancel"}
+          </Button>
+          <Button
+            onClick={sendChangePassword}
+            color="primary"
+            variant="contained"
+          >
+            {lang === "th" ? "บันทึก" : "Save"}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
