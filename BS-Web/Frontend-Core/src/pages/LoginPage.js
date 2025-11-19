@@ -20,7 +20,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import logoSvg from "../assets/images/Kubota-Logo_svg_.png";
+import logoSvg from "../assets/logo.svg";
 import Config from "../utils/Config";
 import secureStorage from "../utils/SecureStorage";
 import { useResource } from "../hooks/useResource";
@@ -152,7 +152,7 @@ export default function LoginPage({ setLang }) {
               <img
                 src={logoSvg}
                 alt="Timesheet Logo"
-                style={{ width: "100%", height: "100%" }}
+                style={{ width: "50%", height: "50%" }}
               />
             </Box>
             <Typography

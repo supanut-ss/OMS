@@ -1124,7 +1124,7 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/version",
+      "UpstreamPathTemplate": "/gateway/v1/api/version",
       "UpstreamHttpMethod": [
         "post"
       ]
