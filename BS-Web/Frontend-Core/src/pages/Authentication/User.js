@@ -102,8 +102,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-          getResource(resourceData, "SaveFailed") ||
-          "Save failed"
+        getResource(resourceData, "SaveFailed") ||
+        "Save failed"
       );
     }
   };
@@ -161,7 +161,7 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "warning",
         getResource(resourceData, "FillRequiredFields") ||
-          "Please fill all required fields."
+        "Please fill all required fields."
       );
       return;
     }
@@ -181,8 +181,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-          getResource(resourceData, "SaveFailed") ||
-          "Save failed"
+        getResource(resourceData, "SaveFailed") ||
+        "Save failed"
       );
     }
   };
@@ -198,8 +198,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-          getResource(resourceData, "SaveFailed") ||
-          "Save failed"
+        getResource(resourceData, "SaveFailed") ||
+        "Save failed"
       );
     }
   };
@@ -288,7 +288,173 @@ const UserPage = (props) => {
             : getResource(resourceData, "AddUser") || "Add User"}
         </DialogTitle>
         <DialogContent>
-          {/* ... ฟอร์มเหมือนเดิม แต่เปลี่ยน label ให้ใช้ getResource ... */}
+          <Box component="form" sx={{ mt: 1 }}>
+            {/* Row 1 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField
+                sx={{ flex: 1 }}
+                label="User ID"
+                name="user_id"
+                value={form.user_id}
+                onChange={handleChange}
+                required
+                disabled={editMode}
+              />
+              <TextField
+                label="Password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                disabled={editMode}
+                type={showPassword ? "text" : "password"}
+                sx={{ flex: 1 }}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  ),
+                }}
+              />
+            </Box>
+            {/* Row 2 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                label="First Name"
+                name="first_name"
+                value={form.first_name}
+                onChange={handleChange}
+                required
+              />
+              <TextField
+                fullWidth
+                label="Last Name"
+                name="last_name"
+                value={form.last_name}
+                onChange={handleChange}
+                required
+              />
+            </Box>
+            {/* Row 3 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="select"
+                  bsTitle="Select Group *"
+                  bsPreObj="sec.t_com_"
+                  bsObj="user_group"
+                  bsColumes={[
+                    {
+                      field: "user_group_id",
+                      display: false,
+                      filter: false,
+                      key: true,
+                    },
+                    {
+                      field: "name",
+                      display: true,
+                      filter: true,
+                      key: false,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh="is_active='YES'"
+                  cacheKey="group_name"
+                  //bsLoadOnOpen={true}
+                  bsOnChange={(val) => handleGroupChange(val.user_group_id)}
+                  bsValue={selectedGroup}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="select"
+                  bsTitle="Select Language *"
+                  bsPreObj="sec.t_com_"
+                  bsObj="combobox_item"
+                  bsColumes={[
+                    {
+                      field: "value_member",
+                      display: false,
+                      filter: false,
+                      key: true,
+                    },
+                    {
+                      field: "display_member",
+                      display: true,
+                      filter: false,
+                      key: false,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh="group_name='locale_id'"
+                  cacheKey="locale_id"
+                  //bsLoadOnOpen={frue}
+                  bsOnChange={(val) => handleLocaleChange(val.code)}
+                  bsValue={selectLocale}
+                />
+              </Box>
+            </Box>
+            {/* Row 4 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Department"
+                name="department"
+                value={form.department}
+                onChange={handleChange}
+              />
+              <TextField
+                fullWidth
+                label="Supervisor"
+                name="supervisor"
+                value={form.supervisor}
+                onChange={handleChange}
+              />
+            </Box>
+            {/* Row 5 */}
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                label="Email Address"
+                name="email_address"
+                value={form.email_address}
+                onChange={handleChange}
+                type="email"
+                error={!!emailError}
+                helperText={emailError}
+              />
+              <TextField
+                fullWidth
+                label="Domain"
+                name="domain"
+                value={form.domain}
+                onChange={handleChange}
+              />
+            </Box>
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                select
+                label="Is Active"
+                name="is_active"
+                value={form.is_active}
+                onChange={handleChange}
+                required
+              >
+                {activeOptions.map((a) => (
+                  <MenuItem key={a.value} value={a.value}>
+                    {a.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+          </Box>
         </DialogContent>
         <DialogActions
           sx={{ display: "flex", justifyContent: "space-between" }}
