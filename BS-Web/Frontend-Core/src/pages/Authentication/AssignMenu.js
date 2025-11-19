@@ -13,6 +13,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import CustomTreeView from "../../components/CustomTreeView";
+import Logger from "../../utils/logger";
 
 const MenuTreeView = () => {
   const { getMenuAssign, saveMenuAssign } = useMenuContext();
@@ -225,34 +226,55 @@ const MenuTreeView = () => {
       <Paper sx={{ p: 3 }}>
         <Box display="flex" gap={3} alignItems="center">
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
-            <InputLabel id="user-group-label">User Group</InputLabel>
-            <Select
-              labelId="user-group-label"
-              label="User Group"
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-            >
-              {userGroups.map((ug) => (
-                <MenuItem key={ug.user_group_id} value={ug.user_group_id}>
-                  {ug.user_group_name}
-                </MenuItem>
-              ))}
-            </Select>
+            <BsAutoComplete
+              bsMode="single"
+              bsTitle="เลือก Group"
+              bsPreObj="sec.t_com_"
+              bsObj="user_group"
+              bsColumes={[
+                {
+                  field: "user_group_id",
+                  display: false,
+                  filter: false,
+                  key: true,
+                },
+                { field: "name", display: true, filter: false, key: false },
+              ]}
+              bsObjBy="name asc"
+              bsObjWh=""
+              bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
+              cacheKey="group"
+              bsLoadOnOpen={true}
+              bsOnChange={(val) => setSelectedGroup(val)}
+            />
           </FormControl>
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
-            <InputLabel id="platform-label">Platform</InputLabel>
-            <Select
-              labelId="platform-label"
-              label="Platform"
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-            >
-              {platforms.map((pf) => (
-                <MenuItem key={pf.app_id} value={pf.app_id}>
-                  {pf.app_name}
-                </MenuItem>
-              ))}
-            </Select>
+            <BsAutoComplete
+              bsMode="single"
+              bsTitle="เลือก Platform"
+              bsPreObj="sec.t_com_"
+              bsObj="combobox_item"
+              bsColumes={[
+                {
+                  field: "display_member",
+                  display: true,
+                  filter: false,
+                  key: true,
+                },
+                {
+                  field: "group_name",
+                  display: false,
+                  filter: false,
+                  key: false,
+                },
+              ]}
+              bsObjBy=""
+              bsObjWh="group_name='platform' AND is_active='YES'"
+              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
+              cacheKey="platform"
+              bsLoadOnOpen={true}
+              bsOnChange={(val) => setSelectedPlatform(val)}
+            />
           </FormControl>
 
           <Box sx={{ mb: 3 }}>
