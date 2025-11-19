@@ -26,8 +26,11 @@ namespace Authentication.Controllers.Auth
             try
             {
                 var usergroupid = Convert.ToInt32(User.FindFirst("Role")?.Value);
+                string userId = User.FindFirst("UserId")?.Value ?? "";
 
-                var response = await _imenu.GetAuthenMenu(usergroupid, platform);
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _imenu.GetAuthenMenu(usergroupid, platform, userId);
                 return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
             }
             catch (Exception ex)
@@ -44,7 +47,7 @@ namespace Authentication.Controllers.Auth
                 if (user_group_id == 0)
                     ResponseNotFound("No found Menu.");
 
-                var response = await _imenu.GetAuthenMenu(user_group_id, platform);
+                var response = await _imenu.GetAuthenMenu(user_group_id, platform,"");
                 return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
             }
             catch (Exception ex)
@@ -68,6 +71,23 @@ namespace Authentication.Controllers.Auth
                 return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu.");
             }
             catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+        [HttpPost("favorite")]
+        public async Task<IActionResult> Favorite(MenuFavoriteRequest request)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _imenu.Favorite(request,userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Menu Favorite.");
+            }
+            catch(Exception ex)
             {
                 return ResponseError(ex.Message, 1);
             }

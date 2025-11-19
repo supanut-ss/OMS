@@ -1,5 +1,5 @@
 import { Box, useTheme } from "@mui/material";
-import bgImage from "../assets/images/BG.png";
+//import bgImage from "../assets/images/BG.png";
 const Home = () => {
     const theme = useTheme();
     return (<Box

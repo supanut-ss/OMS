@@ -3,6 +3,7 @@ using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Authentication.Models.Responses.Auth;
 using Authentication.Prototype;
+using Azure.Core;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Text.RegularExpressions;
@@ -19,7 +20,37 @@ namespace Authentication.Services.Auth
             _clientInfo = clientInfo ?? throw new ArgumentNullException(nameof(clientInfo));
         }
 
-        public async Task<MenuResponse> GetAuthenMenu(int groupId, string platform)
+        public async Task<MasterResponse> Favorite(MenuFavoriteRequest request, string userId)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("sec.usp_menu_favorite", conn);
+
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@in_vchUserID", userId);
+                cmd.Parameters.AddWithValue("@in_IntMenuId", request.menu_id);
+
+                var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                cmd.Parameters.Add(errorCodeParam);
+                cmd.Parameters.Add(errorMsgParam);
+                await cmd.ExecuteNonQueryAsync();
+
+                string errorCode = errorCodeParam.Value?.ToString() ?? "1";
+                string errorMessage = errorMsgParam.Value?.ToString() ?? "error";
+
+                return new MasterResponse { message_code = errorCode, message_text = errorMessage };
+            }
+         }
+
+        public async Task<MenuResponse> GetAuthenMenu(int groupId, string platform,string userId)
         {
             using (var conn = new SqlConnection(_connectionString))
             {
@@ -30,7 +61,7 @@ namespace Authentication.Services.Auth
 
                 cmd.Parameters.AddWithValue("@in_intUserGroupId", groupId);
                 cmd.Parameters.AddWithValue("@in_vchPlatform", platform);
-
+                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 var response = new MenuResponse
@@ -58,6 +89,7 @@ namespace Authentication.Services.Auth
                             menu_path = reader["process"].ToString() ?? "",
                             menu_group_sequence = reader["menu_group_sequence"] != DBNull.Value ? int.Parse(reader["menu_group_sequence"].ToString() ?? "0") : 0,
                             menu_sequence = reader["menu_sequence"] != DBNull.Value ? int.Parse(reader["menu_sequence"].ToString() ?? "0") : 0,
+                            menu_favorite_id = reader["manu_favorite_id"] != DBNull.Value ? int.Parse(reader["manu_favorite_id"].ToString() ?? "0") : 0,
                         };
 
                         response.data.Add(data);
@@ -135,6 +167,7 @@ namespace Authentication.Services.Auth
                 }
                 return response;
             }
+            
         }
     }
 }
