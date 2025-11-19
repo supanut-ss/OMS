@@ -1,0 +1,131 @@
+# BS Platform - API Core Docker Compose Configuration
+# For development and local deployment
+
+version: "3.8"
+
+services:
+  # API Core Service
+  bs-api-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+        DOTNET_VERSION: "9.0"
+        APP_NAME: ApiCore
+    container_name: bs-api-core
+    ports:
+      - "5000:8080" # HTTP
+      - "5001:8081" # HTTPS (if configured)
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - TZ=Asia/Bangkok
+    volumes:
+      # Mount logs directory for debugging
+      - ./logs:/app/logs
+      # Mount data directory for file storage
+      - ./data:/app/data
+      # Mount configuration (optional)
+      - ./appsettings.json:/app/appsettings.json:ro
+      - ./appsettings.Development.json:/app/appsettings.Development.json:ro
+    networks:
+      - bs-platform-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - sqlserver
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # SQL Server Database (for development)
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: bs-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      # Persistent data storage
+      - sqlserver_data:/var/opt/mssql
+      # Custom initialization scripts
+      - ./SQL:/docker-entrypoint-initdb.d:ro
+    networks:
+      - bs-platform-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: bs-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bs-platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: redis-server --appendonly yes --requirepass "YourRedisPassword"
+
+# Networks
+networks:
+  bs-platform-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volumes
+volumes:
+  sqlserver_data:
+    driver: local
+  redis_data:
+    driver: local
+# Development override - uncomment for development
+# services:
+#   bs-api-core:
+#     build:
+#       args:
+#         BUILD_CONFIGURATION: Debug
+#     environment:
+#       - ASPNETCORE_ENVIRONMENT=Development
+#     volumes:
+#       # Mount source code for hot reload
+#       - .:/app/src
+#     ports:
+#       - "5000:8080"
+#       - "5001:8081"

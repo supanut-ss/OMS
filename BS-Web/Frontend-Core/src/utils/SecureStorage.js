@@ -1,13 +1,13 @@
 import SecureLS from "secure-ls";
 import Logger from "./logger";
+import Config from "./Config";
 
 // กำหนดค่าเพื่อความปลอดภัยสูงสุด
 const ls = new SecureLS({
   encodingType: "aes",
   isCompression: true, // บีบอัดข้อมูลเพื่อประสิทธิภาพ
-  encryptionSecret:
-    process.env.REACT_APP_STORAGE_SECRET || "default-secret-2025",
-  encryptionNamespace: "TimeSheet-App",
+  encryptionSecret: Config.LICENSE_KEY || "default-secret-2025",
+  encryptionNamespace: Config.ENCRYPYION,
 });
 
 const secureStorage = {
@@ -65,6 +65,20 @@ const secureStorage = {
       return data;
     } catch (error) {
       Logger.warn(`Error getting key ${key} from SecureLS:`, error);
+
+      // Check if this is a Malformed UTF-8 error
+      if (error.message && error.message.includes("Malformed UTF-8")) {
+        Logger.error(
+          `🚨 Detected corrupted data for key ${key}, removing it...`
+        );
+        try {
+          // Remove corrupted data
+          this.remove(key);
+        } catch (removeError) {
+          Logger.error(`Failed to remove corrupted key ${key}:`, removeError);
+        }
+      }
+
       return null;
     }
   },
@@ -129,6 +143,22 @@ const secureStorage = {
       return 0;
     }
   },
+  clearLogout: () => {
+    try {
+      ls.remove("isAuthenticated");
+      ls.remove("menu");
+      ls.remove("refresh_token");
+      ls.remove("role");
+      ls.remove("token");
+      ls.remove("userInfo");
+      ls.remove("multi");
+      ls.remove("select");
+      ls.remove("signle");
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
 };
 
 export default secureStorage;

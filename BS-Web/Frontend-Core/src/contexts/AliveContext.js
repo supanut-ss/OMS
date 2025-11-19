@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import AxiosMaster from "../utils/AxiosMaster";
 import SecureStorage from "../utils/SecureStorage";
-const DEFAULT_INTERVAL_MS = 30_000;
+const DEFAULT_INTERVAL_MS = 12000;
 
 export function useAlive({
   endpoint = "/api/alive",
@@ -16,11 +16,7 @@ export function useAlive({
     try {
      await AxiosMaster.post(endpoint, {
         refresh_token: SecureStorage.get("refresh_token"),
-      }).then(async(res)=>{
-        if(res.data.message_code !== "0"){
-           SecureStorage.clear();
-        }
-      });
+      }).then(async(res)=>{});
       setLastPingAt(new Date()); // stamp เวลา ping ล่าสุด
     } catch (err) {
       console.error("alive error", err);

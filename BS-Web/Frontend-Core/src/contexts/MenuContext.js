@@ -5,10 +5,13 @@ export function useMenuContext() {
   // ฟังก์ชันเรียกเมนู AssignMenu
   const getMenuAssign = useCallback(async (selectedGroup, selectedPlatform) => {
     try {
-      const res = await AxiosMaster.get(
+      let response = null;
+      await AxiosMaster.get(
         `/menu/menuAssign?user_group_id=${selectedGroup}&platform=${selectedPlatform}`
-      );
-      return res.data;
+      ).then((res)=>{
+          response = res?.data ?? null;
+      })
+      return response;
     } catch (err) {
       console.error("getMenuAssign error", err);
       return null;

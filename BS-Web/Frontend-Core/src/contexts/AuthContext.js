@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
       if (authStatus === "true" && userInfo) {
         setIsAuthenticated(true);
-        setUser(JSON.parse(userInfo));
+        setUser(userInfo);
       }
       setLoading(false);
     };
@@ -48,13 +48,16 @@ export const AuthProvider = ({ children }) => {
         SecureStorage.set("token", res.data.data.access_token ?? "")
         SecureStorage.set("refresh_token", res.data.data.refresh_token ?? "")
         SecureStorage.set("isAuthenticated", "true");
-        SecureStorage.set("userInfo", userinfo);
+        SecureStorage.set("userInfo", JSON.parse(userinfo));
+        SecureStorage.set("lang", JSON.parse(userinfo).LocaleId ?? "en")
         setUser(userinfo);
         json.status = true;
         json.message = res.data.message_text;
+        json.lang = SecureStorage.get("lang");
       } else {
         json.status = false;
         json.message = res.data.message_text;
+        json.lang = "en";
       }
     }).finally();
     return json;
@@ -67,23 +70,23 @@ export const AuthProvider = ({ children }) => {
     };
 
     try {
-      const res = await AxiosMaster.post("/logout", {
+      await AxiosMaster.post("/logout", {
         refresh_token: SecureStorage.get("refresh_token") ?? ""
+      }).then((res) => {
+        if (res.data.message_code === "0") {
+          SecureStorage.clearLogout();
+          json.status = true;
+          json.message = res.data.message_text;
+        } else {
+          json.status = false;
+          json.message = res.data.message_text;
+        }
       });
-
-      if (res.data.message_code === "0") {
-        SecureStorage.clear();
-        json.status = true;
-        json.message = res.data.message_text;
-      } else {
-        json.status = false;
-        json.message = res.data.message_text;
-      }
     } catch (err) {
       // ถ้าเจอ 401 จะเข้ามาที่นี่
-      SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
+      SecureStorage.clearLogout(); // อาจจะเคลียร์ token แล้วบังคับ logout
       json.status = false;
-      json.message = err.response?.data?.message_text || "Unauthorized";
+      json.message = err?.Message || "Unauthorized";
     }
 
     return json;
@@ -96,9 +99,9 @@ export const AuthProvider = ({ children }) => {
       platform: "web" // web,pda
     }).then((res) => {
       if (res.data.message_code === "0") {
-        SecureStorage.set("resouce", res.data.data)
+        SecureStorage.set("resource", res.data.data)
       } else {
-        SecureStorage.remove("resouce")
+        SecureStorage.remove("resource")
       }
     }).finally();
     return true;
@@ -151,13 +154,45 @@ export const AuthProvider = ({ children }) => {
       }).finally();
     } catch (err) {
       // ถ้าเจอ 401 จะเข้ามาที่นี่
-      SecureStorage.clear(); // อาจจะเคลียร์ token แล้วบังคับ logout
+      SecureStorage.clearLogout();
+      // อาจจะเคลียร์ token แล้วบังคับ logout
       return false;
     }
 
     return true;
   }
+  const role = async () => {
+    await AxiosMaster.get("/role").then((res) => {
+      if (res.data.message_code === "0") {
+        SecureStorage.set("role", res.data.role)
+      } else {
+        SecureStorage.remove("role")
+      }
+    }).finally();
+  }
+  const switchLang = async (lang) => {
+    try {
+      await AxiosMaster.post("/users/switch/lang", { lang: lang }).then(
+        (res) => {
+          if (res.data.message_code !== "0") {
+            return false;
+          }
+        }
+      ).finally();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  const version = async (data) => {
 
+    let res = await AxiosMaster.post('/version', data);
+    if (res.status === 200) {
+      return res.data.version || ""
+    } else {
+      return "";
+    }
+  }
   const value = {
     isAuthenticated,
     user,
@@ -165,7 +200,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     resource,
     menu,
+    role,
+    switchLang,
     loading,
+    version
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

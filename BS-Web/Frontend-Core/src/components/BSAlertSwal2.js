@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
  * https://sweetalert2.github.io/#configuration
  */
 const BSAlertSwal2 = {
-   /**
+  /**
    * fire - เรียก Swal ตาม options ที่ส่งมา
    * @param {object} options
    *   เช่น: { title, text, icon, timer, showConfirmButton, position, etc. }
@@ -14,6 +14,10 @@ const BSAlertSwal2 = {
       position: "center", // ค่า default
       allowOutsideClick: false,
       allowEscapeKey: true,
+      // เพิ่ม customClass เพื่อ z-index สูงกว่า MUI Dialog
+      customClass: {
+        popup: "swal2-zindex-override",
+      },
       ...options, // spread options เพื่อให้ override ได้
     });
   },

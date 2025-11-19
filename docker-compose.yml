@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 services:
   api_gateway:
     build:
@@ -10,10 +10,10 @@ services:
       - "8080:8080"
     environment:
       - TZ=Asia/Bangkok
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB_SECURITY=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.103
+      - VALID_AUDIENCE=http://10.10.60.103
       - ALLOWIP_WEB=*
       - KEY_WEB=API_KEY_WEB
     networks:
@@ -28,11 +28,11 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.103
+      - VALID_AUDIENCE=http://10.10.60.103
       - EXPIRES=15
       - REFRESH=30
       - ACCESS_FAILURE_LIMIT=5
@@ -52,11 +52,38 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - SERVERDB=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
-      - SERVERDB_SECURITY=Server=10.10.60.66;Database=Timesheet;user id=sa;password=Local@dmin;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
       - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
-      - VALID_ISSUER=http://10.10.60.66
-      - VALID_AUDIENCE=http://10.10.60.66
+      - VALID_ISSUER=http://10.10.60.103
+      - VALID_AUDIENCE=http://10.10.60.103
+      - EXPIRES=15
+      - REFRESH=30
+      - ACCESS_FAILURE_LIMIT=5
+      - ALLOWIP_WEB=*
+      - KEY_WEB=API_KEY_WEB
+      - DB_SCHEMA=sec
+      - USERNAME_ADMIN=Wau7MCRQswc=
+    networks:
+      - internal
+    restart: always
+  bs_import_export_manager:
+    build:
+      context: .
+      dockerfile: ./BS-Import-Export-Manager/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    environment:
+      - TZ=Asia/Bangkok
+      - ASPNETCORE_ENVIRONMENT=Production
+      - DATABASE_CONNECTION=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;User Id=sa;Password=Local@dmin;Encrypt=False;TrustServerCertificate=True;
+      - SERVERDB=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - SERVERDB_SECURITY=Server=10.10.60.103;Database=AMS_KPMT_COUNT_TAG;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
+      - ISSUER_SIGIN_KEY=LqpOSpdD9FpngQnVzunOxe4hnxXdoN99bnYld4Pc16I=
+      - VALID_ISSUER=http://10.10.60.103
+      - VALID_AUDIENCE=http://10.10.60.103
       - EXPIRES=15
       - REFRESH=30
       - ACCESS_FAILURE_LIMIT=5
@@ -70,6 +97,3 @@ services:
 networks:
   internal:
     driver: bridge
-
-
-

@@ -14,7 +14,39 @@ const BSDataGridExamples = () => {
       <Typography variant="h6" gutterBottom>
         1. การใช้งานพื้นฐาน
       </Typography>
-      <BSDataGrid bsObj="t_wms_customer" height={400} />
+      <BSDataGrid bsObj="t_tmt_holiday" height={400} />
+
+      <BSDataGrid bsPreObj="sec" bsObj="t_com_user_group" height={400} />
+
+      <BSDataGrid
+        bsPreObj="sec"
+        bsObj="t_com_user_group"
+        bsCols="name,description,is_active,create_by,create_date,update_by,update_date"
+        bsObjBy="name asc"
+        bsRowPerPage={20}
+        bsShowDescColumn={false}
+        bsBulkAdd={true}
+        bsComboBox={[
+          {
+            Column: "app_id",
+            Display: "application_name",
+            Value: "app_id",
+            Default: "--- Select Application ---",
+            PreObj: "sec",
+            Obj: "t_com_application",
+            ObjWh: "is_active='YES'",
+            ObjBy: "application_name asc",
+          },
+        ]}
+        onCheckBoxSelected={(rows) => {
+          console.log("Selected rows:", rows);
+          setSelectedRows(rows);
+        }}
+        //   onEdit={(row) => console.log("Edit:", row)}
+        //   onDelete={(id) => console.log("Delete:", id)}
+        //   onAdd={() => console.log("Add new record")}
+        height={500}
+      />
     </Paper>
   );
 
@@ -26,12 +58,12 @@ const BSDataGridExamples = () => {
       </Typography>
       <BSDataGrid
         bsLocale="th"
-        bsPreObj="default"
-        bsObj="t_wms_customer"
-        bsCols="id,name,email,phone,status,created_date"
-        bsObjBy="name asc, created_date desc"
-        bsObjWh="status='active'"
-        bsPinColsLeft="id,name"
+        bsPreObj="tmt"
+        bsObj="t_tmt_customer"
+        bsCols="customer_id,customer_name,email,phone,create_date"
+        bsObjBy="customer_name asc, create_date desc"
+        bsObjWh="is_active='YES'"
+        bsPinColsLeft="customer_id,customer_name"
         bsPinColsRight="actions"
         bsRowPerPage={20}
         bsBulkEdit={true}
@@ -73,7 +105,7 @@ const BSDataGridExamples = () => {
         3. ใช้กับ Legacy API (เก่า)
       </Typography>
       <BSDataGrid
-        tableName="dbo.Users"
+        tableName="t_tmt_customer"
         onEdit={(row) => console.log("Legacy Edit:", row)}
         onDelete={(id) => console.log("Legacy Delete:", id)}
         onAdd={() => console.log("Legacy Add")}
@@ -89,10 +121,10 @@ const BSDataGridExamples = () => {
         4. Read-only Mode
       </Typography>
       <BSDataGrid
-        bsObj="t_wms_customer"
+        bsObj="t_tmt_customer"
         readOnly={true}
         showAdd={false}
-        bsCols="name,email,phone"
+        bsCols="customer_name,email,phone"
         height={350}
       />
     </Paper>
@@ -108,7 +140,7 @@ const BSDataGridExamples = () => {
         Selected rows: {selectedRows.length}
       </Typography>
       <BSDataGrid
-        bsObj="t_wms_customer"
+        bsObj="t_tmt_customer"
         bsBulkEdit={true}
         bsBulkAdd={true}
         onCheckBoxSelected={setSelectedRows}

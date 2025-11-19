@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick JWT Test</title>
+</head>
+<body>
+    <h1>🔧 Quick JWT Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test direct JWT call to backend
+        async function testDirectBackend() {
+            console.log('🧪 Testing direct backend connection...');
+            
+            // Get token from localStorage (if any)
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                console.log('❌ No token found in localStorage');
+                return;
+            }
+            
+            try {
+                // Test direct call to Gateway
+                const response = await fetch('http://10.60.10.104:8080/gateway/v1/api/autocomplete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        table: 'test_table',
+                        query: 'test'
+                    })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+                
+                const data = await response.text();
+                console.log('📄 Response body:', data);
+                
+                if (response.status === 401) {
+                    console.log('🔍 Token details:');
+                    console.log('  - Token exists:', !!token);
+                    console.log('  - Token length:', token.length);
+                    console.log('  - Token preview:', token.substring(0, 50) + '...');
+                    
+                    // Try to decode JWT
+                    try {
+                        const [header, payload, signature] = token.split('.');
+                        const decodedPayload = JSON.parse(atob(payload));
+                        console.log('🔑 JWT Payload:', decodedPayload);
+                        console.log('⏰ Expiration:', new Date(decodedPayload.exp * 1000));
+                        console.log('⏰ Current time:', new Date());
+                        console.log('⏰ Is expired:', decodedPayload.exp * 1000 < Date.now());
+                    } catch (e) {
+                        console.log('❌ Failed to decode JWT:', e);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Network error:', error);
+            }
+        }
+        
+        // Auto-run test
+        testDirectBackend();
+    </script>
+</body>
+</html>

@@ -4,32 +4,116 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
+import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
+import BSDataGridExamples from "./examples/BSDataGridExamples";
+import BSDataGridClientExample from "./pages/Examples/BSDataGridClientExample";
+import TestBSDataGrid from "./test/TestBSDataGrid";
+import UserPage from "./pages/Authentication/User";
+import UserGroupPage from "./pages/Authentication/UserGroup";
+import UserLogOnPage from "./pages/Authentication/UserLogOn";
+import MenuPage from "./pages/Authentication/Menu";
+import SchemaTestPage from "./test/SchemaTestPage";
+import SchemaMappingDemo from "./test/SchemaMappingDemo";
+import EnhancedSPTestPage from "./pages/Test/EnhancedSPTestPage";
+import ImportExcel from "./pages/Import/ImportExcel";
+import ImportMaster from "./pages/Import/ImportMaster";
+import CountTag from "./pages/Count/CountTagPage";
+import CountReconcile from "./pages/Count/CountReconcile";
+import MethodPage from "./pages/Master/MethodPage";
+import PartPage from "./pages/Master/PartPage";
+import SubPage from "./pages/Master/SubPage";
+import TagPage from "./pages/Master/TagPage";
+import Resource from "./pages/Authentication/Resource";
+import { useState } from "react";
+import { useAuth } from "./contexts/AuthContext";
+import secureStorage from "./utils/SecureStorage";
+import BSTextFieldExamples from "./examples/BSTextFieldExamples";
+import BSFilterCustomExamples from "./examples/BSFilterCustomExamples";
+import BSDatepickerExamples from "./examples/BSDatepickerExamples";
+import BSDataGridWithCustomFilterExample from "./examples/BSDataGridWithCustomFilterExample";
+import Home from "./pages/Home";
 
 export default function AppRoutes() {
+  const [lang, setLang] = useState(secureStorage.get("lang") || "en");
+  const { switchLang } = useAuth();
+  const onChangeLang = async (lang) => {
+    if (secureStorage.get("token")) {
+      if (await switchLang(lang)) {
+        setLang(lang);
+        secureStorage.set("lang", lang);
+      }
+    }
+  };
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/login"
+        element={<LoginPage setLang={(v) => onChangeLang(v)} />}
+      />
       <Route
         path="/"
         element={
           <ProtectedRoute>
-            <MainLayout />
+            <MainLayout lang={lang} onChangeLang={onChangeLang} />
           </ProtectedRoute>
         }
       >
-        <Route index element={<div />} />
+        <Route index element={<Home />} />
+        <Route path="test/autocomplete" element={<BSAutoCompleteExamples />} />
+        {/* route สำหรับ BSDataGrid Examples */}
+        <Route path="examples/bsdatagrid" element={<BSDataGridExamples />} />
+        {/* route สำหรับ BSDataGridClient Examples */}
         <Route
-          path="timesheet"
-          element={<div>Timesheet Page - Coming Soon</div>}
+          path="examples/bsdatagridclient"
+          element={<BSDataGridClientExample />}
         />
-        <Route path="tasks" element={<div>Tasks Page - Coming Soon</div>} />
+        {/* route สำหรับ Testing BSDataGrid */}
+        <Route path="test/bsdatagrid" element={<TestBSDataGrid />} />
+        {/* route สำหรับ Schema Mapping Test */}
+        <Route path="test/schema" element={<SchemaTestPage />} />
+        {/* route สำหรับ Schema Mapping Demo */}
+        <Route path="test/schema-demo" element={<SchemaMappingDemo />} />
+        {/* route สำหรับ Enhanced SP Test with Metadata */}
+        <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
+        <Route path="import">
+          <Route path="importExcel" element={<ImportExcel />} />
+          <Route path="importMaster" element={<ImportMaster lang={lang} />} />
+        </Route>
+        <Route path="test/textfield" element={<BSTextFieldExamples />} />
+        <Route path="test/datepicker" element={<BSDatepickerExamples />} />
+        <Route path="test/filtercustom" element={<BSFilterCustomExamples />} />
+        {/* route สำหรับ BSDataGrid with Custom Filter Example */}
         <Route
-          path="calendar"
-          element={<div>Calendar Page - Coming Soon</div>}
+          path="examples/datagrid-custom-filter"
+          element={<BSDataGridWithCustomFilterExample />}
         />
-        <Route path="reports" element={<div>Reports Page - Coming Soon</div>} />
-        <Route path="team" element={<div>Team Page - Coming Soon</div>} />
         <Route path="assign_menu" element={<AssignMenu />} />
+        <Route path="importExcel" element={<ImportExcel />} />
+        <Route path="importMaster" element={<ImportMaster lang={lang} />} />
+        <Route path="user" element={<UserPage lang={lang} />} />
+        <Route path="user_group" element={<UserGroupPage lang={lang} />} />
+        <Route path="menu" element={<MenuPage lang={lang} />} />
+        <Route path="user_logon" element={<UserLogOnPage />} />
+        <Route path="count">
+          <Route path="count_tag" element={<CountTag lang={lang} />} />
+          <Route
+            path="count_reconcile"
+            element={<CountReconcile lang={lang} />}
+          />
+        </Route>
+        <Route path="master">
+          <Route path="part_master" element={<PartPage lang={lang} />} />
+          <Route path="sub_master" element={<SubPage lang={lang} />} />
+          <Route path="tag_master" element={<TagPage lang={lang} />} />
+          <Route path="method_master" element={<MethodPage lang={lang} />} />
+        </Route>
+        <Route path="authentication">
+          <Route path="user_group" element={<UserGroupPage lang={lang} />} />
+          <Route path="user" element={<UserPage lang={lang} />} />
+          <Route path="assign_menu" element={<AssignMenu />} />
+          <Route path="resource" element={<Resource lang={lang} />} />
+          <Route path="menu" element={<MenuPage lang={lang} />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -24,9 +24,17 @@ namespace TokenManagement.Extensions
                 .ToList();
             if (jwtSettings.ValidAudiences == null || !jwtSettings.ValidAudiences.Any())
                 throw new Exception("No ValidAudiences defined. Cannot generate token.");
-            configuration.GetSection("JwtSettings").Bind(jwtSettings);
 
-            services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+            // ✅ DON'T override with appsettings.json - use Environment Variables only
+            // configuration.GetSection("JwtSettings").Bind(jwtSettings);
+
+            services.Configure<JwtSettings>(options =>
+            {
+                options.SecretKey = jwtSettings.SecretKey;
+                options.Issuer = jwtSettings.Issuer;
+                options.ValidAudiences = jwtSettings.ValidAudiences;
+                options.ExpiresInMinutes = jwtSettings.ExpiresInMinutes;
+            });
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>

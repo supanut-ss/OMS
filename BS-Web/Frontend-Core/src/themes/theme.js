@@ -125,7 +125,7 @@ export const getTheme = (mode) =>
           }),
     },
     typography: {
-      fontFamily: "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+      fontFamily: "'Roboto', 'Inter', 'Helvetica', 'Arial', sans-serif",
       h1: {
         fontSize: "2.5rem",
         fontWeight: 700,
@@ -215,7 +215,7 @@ export const getTheme = (mode) =>
       MuiPaper: {
         styleOverrides: {
           root: {
-            borderRadius: 12,
+            borderRadius: "unset",
           },
         },
       },

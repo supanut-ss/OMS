@@ -20,19 +20,38 @@ namespace ApiCore.Services.Implementation
         private readonly ApplicationDbContext _context;
         private readonly ISqlConnectionFactory _connectionFactory;
         private readonly ILogger<DynamicCrudService> _logger;
+        private readonly IConfiguration _configuration;
 
-        // Security: Allowed schemas and forbidden tables
-        private readonly HashSet<string> _allowedSchemas = new() { "dbo", "app", "data" };
-        private readonly HashSet<string> _forbiddenTables = new() { "sysdiagrams", "__efmigrationshistory", "aspnetusers", "aspnetuserroles" };
+        // Security: Allowed schemas and forbidden tables (loaded from configuration)
+        private readonly HashSet<string> _allowedSchemas;
+        private readonly HashSet<string> _forbiddenTables;
 
         public DynamicCrudService(
             ApplicationDbContext context,
             ISqlConnectionFactory connectionFactory,
-            ILogger<DynamicCrudService> logger)
+            ILogger<DynamicCrudService> logger,
+            IConfiguration configuration)
         {
             _context = context;
             _connectionFactory = connectionFactory;
             _logger = logger;
+            _configuration = configuration;
+
+            // Load allowed schemas from configuration, with fallback defaults
+            var configSchemas = _configuration.GetSection("DynamicCrud:AllowedSchemas").Get<string[]>();
+            _allowedSchemas = configSchemas != null && configSchemas.Length > 0
+                ? new HashSet<string>(configSchemas, StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(new[] { "dbo", "sec", "tmt", "imp", "ams" }, StringComparer.OrdinalIgnoreCase);
+
+            // Load forbidden tables from configuration, with fallback defaults
+            var configForbidden = _configuration.GetSection("DynamicCrud:ForbiddenTables").Get<string[]>();
+            _forbiddenTables = configForbidden != null && configForbidden.Length > 0
+                ? new HashSet<string>(configForbidden, StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(new[] { "sysdiagrams", "__efmigrationshistory", "aspnetusers", "aspnetuserroles" }, StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogInformation("🔒 DynamicCrud Security Configuration:");
+            _logger.LogInformation("   ✅ Allowed Schemas: {AllowedSchemas}", string.Join(", ", _allowedSchemas));
+            _logger.LogInformation("   ❌ Forbidden Tables: {ForbiddenTables}", string.Join(", ", _forbiddenTables));
         }
 
         public async Task<DynamicTableMetadata> GetTableMetadataAsync(string tableName, string schemaName = "dbo")
@@ -244,6 +263,13 @@ namespace ApiCore.Services.Implementation
             {
                 ValidateSecurityConstraints(request.TableName, request.SchemaName ?? "dbo");
 
+                // Debug logging for Quick Filter
+                _logger.LogInformation("🔍 Processing DataGrid request: {TableName}, Request.QuickFilter: {QuickFilter}, FilterModel.QuickFilterValues: {QuickFilterValues}, FilterModel.QuickFilter: {FilterModelQuickFilter}",
+                    request.TableName,
+                    request.QuickFilter,
+                    request.FilterModel?.QuickFilterValues,
+                    request.FilterModel?.QuickFilter);
+
                 var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
                 var pageSize = request.End - request.Start;
@@ -257,8 +283,12 @@ namespace ApiCore.Services.Implementation
                 // Build WHERE clause
                 var whereClause = BuildDynamicWhereClause(request, metadata);
 
+                // Debug logging for WHERE clause
+                _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
+
                 // Build ORDER BY clause
                 var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
+                _logger.LogInformation("🏗️ Generated ORDER BY clause: {OrderByClause}", orderByClause);
 
                 // Build final query
                 var query = $@"
@@ -296,6 +326,12 @@ namespace ApiCore.Services.Implementation
                 if (await reader.ReadAsync())
                 {
                     response.RowCount = reader.GetInt32("TotalCount");
+                    _logger.LogInformation("✅ Total count retrieved: {TotalCount}", response.RowCount);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ No TotalCount result set returned from query - using 0 as default");
+                    response.RowCount = 0;
                 }
 
                 // Read data
@@ -416,16 +452,34 @@ namespace ApiCore.Services.Implementation
 
             var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
-            // Filter out identity columns and add audit fields
+            // Filter out identity columns and timestamp columns from insert data
             var insertData = request.Data
-                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key && c.IsIdentity))
+                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key &&
+                    (c.IsIdentity ||
+                     c.DataType.ToLower() == "timestamp" ||
+                     c.DataType.ToLower() == "rowversion")))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Add audit fields if they exist
-            if (metadata.Columns.Any(c => c.ColumnName == "CreateDate"))
-                insertData["CreateDate"] = DateTime.Now;
-            if (metadata.Columns.Any(c => c.ColumnName == "UpdateDate"))
-                insertData["UpdateDate"] = DateTime.Now;
+            if (metadata.Columns.Any(c => c.ColumnName == "create_date"))
+                insertData["create_date"] = DateTime.Now;
+            if (metadata.Columns.Any(c => c.ColumnName == "update_date"))
+                insertData["update_date"] = DateTime.Now;
+
+            // Add create_by field if it exists and not already provided
+            if (metadata.Columns.Any(c => c.ColumnName == "create_by") && !insertData.ContainsKey("create_by"))
+            {
+                // Get user_id from request context or use default value
+                var userId = request.UserId ?? request.Data.GetValueOrDefault("user_id")?.ToString() ?? "system";
+                insertData["create_by"] = userId;
+            }
+
+            // Add update_by field if it exists and not already provided
+            if (metadata.Columns.Any(c => c.ColumnName == "update_by") && !insertData.ContainsKey("update_by"))
+            {
+                var userId = request.UserId ?? request.Data.GetValueOrDefault("user_id")?.ToString() ?? "system";
+                insertData["update_by"] = userId;
+            }
 
             var columns = string.Join(", ", insertData.Keys.Select(k => $"[{k}]"));
             var values = string.Join(", ", insertData.Keys.Select(k => $"@{k}"));
@@ -474,14 +528,24 @@ namespace ApiCore.Services.Implementation
 
             var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
-            // Filter out identity columns and primary keys from update data
+            // Filter out identity columns, primary keys, and timestamp columns from update data
             var updateData = request.Data
-                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key && (c.IsIdentity || c.IsPrimaryKey)))
+                .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key &&
+                    (c.IsIdentity || c.IsPrimaryKey ||
+                     c.DataType.ToLower() == "timestamp" ||
+                     c.DataType.ToLower() == "rowversion")))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             // Add audit fields if they exist
-            if (metadata.Columns.Any(c => c.ColumnName == "UpdateDate"))
-                updateData["UpdateDate"] = DateTime.Now;
+            if (metadata.Columns.Any(c => c.ColumnName == "update_date"))
+                updateData["update_date"] = DateTime.Now;
+
+            // Add update_by field if it exists and not already provided
+            if (metadata.Columns.Any(c => c.ColumnName == "update_by") && !updateData.ContainsKey("update_by"))
+            {
+                var userId = request.UserId ?? request.Data.GetValueOrDefault("user_id")?.ToString() ?? "system";
+                updateData["update_by"] = userId;
+            }
 
             var setClause = string.Join(", ", updateData.Keys.Select(k => $"[{k}] = @{k}"));
             var whereClause = string.Join(" AND ", request.WhereConditions.Keys.Select(k => $"[{k}] = @Where_{k}"));
@@ -582,37 +646,88 @@ namespace ApiCore.Services.Implementation
                 await connection.OpenAsync();
                 using var reader = await command.ExecuteReaderAsync();
 
+                // Enhanced SP returns multiple result sets: metadata, count, data
+                var metadata = new List<DynamicColumnInfo>();
                 var rows = new List<DynamicResponse>();
-                var columns = new List<DynamicColumnInfo>();
+                var totalCount = 0;
+                var tableMetadata = new DynamicTableMetadata();
 
-                // Get column information from the first result set
-                if (reader.FieldCount > 0)
+                // First result set: Column metadata (from usf_get_column_metadata)
+                if (reader.HasRows)
                 {
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    while (await reader.ReadAsync())
                     {
-                        columns.Add(new DynamicColumnInfo
+                        var columnInfo = new DynamicColumnInfo
                         {
-                            ColumnName = reader.GetName(i),
-                            DataType = reader.GetFieldType(i).Name
-                        });
+                            ColumnName = reader["COLUMN_NAME"]?.ToString() ?? "",
+                            DataType = reader["DATA_TYPE"]?.ToString() ?? "",
+                            IsNullable = reader["IS_NULLABLE"]?.ToString() == "YES",
+                            MaxLength = reader["CHARACTER_MAXIMUM_LENGTH"] as int?,
+                            Precision = reader["NUMERIC_PRECISION"] as byte?,
+                            Scale = reader["NUMERIC_SCALE"] as int?,
+                            DefaultValue = reader["COLUMN_DEFAULT"]?.ToString(),
+                            IsPrimaryKey = Convert.ToBoolean(reader["IS_PRIMARY_KEY"] ?? false),
+                            IsIdentity = Convert.ToBoolean(reader["IS_IDENTITY"] ?? false),
+                            OrdinalPosition = Convert.ToInt32(reader["ORDINAL_POSITION"] ?? 0)
+                        };
+                        metadata.Add(columnInfo);
+
+                        // Build table metadata for primary keys
+                        if (columnInfo.IsPrimaryKey)
+                        {
+                            tableMetadata.PrimaryKeys.Add(columnInfo.ColumnName);
+                        }
                     }
                 }
 
-                while (await reader.ReadAsync())
+                // Second result set: Total count
+                if (await reader.NextResultAsync() && reader.HasRows)
                 {
-                    var data = new Dictionary<string, object>();
-
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    if (await reader.ReadAsync())
                     {
-                        var fieldName = reader.GetName(i);
-                        var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        data[fieldName] = value;
+                        totalCount = Convert.ToInt32(reader["TotalCount"] ?? 0);
+                    }
+                }
+
+                // Third result set: Actual data
+                if (await reader.NextResultAsync() && reader.HasRows)
+                {
+                    // Get column information from data result set for fallback
+                    var dataColumns = new List<DynamicColumnInfo>();
+                    if (reader.FieldCount > 0)
+                    {
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            dataColumns.Add(new DynamicColumnInfo
+                            {
+                                ColumnName = reader.GetName(i),
+                                DataType = reader.GetFieldType(i).Name
+                            });
+                        }
                     }
 
-                    rows.Add(new DynamicResponse
+                    while (await reader.ReadAsync())
                     {
-                        Data = data
-                    });
+                        var data = new Dictionary<string, object>();
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var fieldName = reader.GetName(i);
+                            var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                            data[fieldName] = value;
+                        }
+
+                        rows.Add(new DynamicResponse
+                        {
+                            Data = data
+                        });
+                    }
+
+                    // Use data columns as fallback if no metadata
+                    if (!metadata.Any())
+                    {
+                        metadata = dataColumns;
+                    }
                 }
 
                 stopwatch.Stop();
@@ -620,8 +735,9 @@ namespace ApiCore.Services.Implementation
                 return new DynamicDataGridResponse
                 {
                     Rows = rows,
-                    RowCount = rows.Count,
-                    ColumnDefinitions = columns,
+                    RowCount = totalCount,
+                    ColumnDefinitions = metadata,
+                    TableMetadata = tableMetadata,
                     Metadata = new DataGridMetadata
                     {
                         QueryExecutionTimeMs = stopwatch.ElapsedMilliseconds,
@@ -783,7 +899,7 @@ namespace ApiCore.Services.Implementation
                     {
                         var fieldName = reader.GetName(i);
                         var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        data[fieldName] = value;
+                        data[fieldName] = value ?? DBNull.Value;
                     }
 
                     rows.Add(new DynamicResponse
@@ -840,32 +956,54 @@ namespace ApiCore.Services.Implementation
         {
             var conditions = new List<string>();
 
-            // Column filters
-            foreach (var filter in request.FilterModel.Items)
+            // Custom WHERE clause (from BSDataGrid ObjWh or ComboBox ObjWh)
+            if (!string.IsNullOrEmpty(request.CustomWhere))
             {
-                var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(filter.Field, StringComparison.OrdinalIgnoreCase));
-                if (column == null) continue;
-
-                var condition = filter.Operator.ToLower() switch
-                {
-                    "contains" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                    "equals" => $"[{filter.Field}] = @{filter.Field}_Filter",
-                    "startswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                    "endswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                    "isempty" => $"([{filter.Field}] IS NULL OR [{filter.Field}] = '')",
-                    "isnotempty" => $"([{filter.Field}] IS NOT NULL AND [{filter.Field}] != '')",
-                    ">" => $"[{filter.Field}] > @{filter.Field}_Filter",
-                    ">=" => $"[{filter.Field}] >= @{filter.Field}_Filter",
-                    "<" => $"[{filter.Field}] < @{filter.Field}_Filter",
-                    "<=" => $"[{filter.Field}] <= @{filter.Field}_Filter",
-                    "!=" => $"[{filter.Field}] != @{filter.Field}_Filter",
-                    _ => $"[{filter.Field}] LIKE @{filter.Field}_Filter"
-                };
-                conditions.Add(condition);
+                conditions.Add($"({request.CustomWhere})");
+                _logger.LogInformation("🎯 Added CustomWhere condition: {CustomWhere}", request.CustomWhere);
             }
 
-            // Quick filter
-            if (!string.IsNullOrEmpty(request.FilterModel.QuickFilterValues))
+            // Column filters (null-safe check)
+            if (request.FilterModel?.Items != null)
+            {
+                foreach (var filter in request.FilterModel.Items)
+                {
+                    var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(filter.Field, StringComparison.OrdinalIgnoreCase));
+                    if (column == null) continue;
+
+                    var condition = filter.Operator.ToLower() switch
+                    {
+                        "contains" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "equals" => $"[{filter.Field}] = @{filter.Field}_Filter",
+                        "startswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "endswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "isempty" => $"([{filter.Field}] IS NULL OR [{filter.Field}] = '')",
+                        "isnotempty" => $"([{filter.Field}] IS NOT NULL AND [{filter.Field}] != '')",
+                        ">" => $"[{filter.Field}] > @{filter.Field}_Filter",
+                        ">=" => $"[{filter.Field}] >= @{filter.Field}_Filter",
+                        "<" => $"[{filter.Field}] < @{filter.Field}_Filter",
+                        "<=" => $"[{filter.Field}] <= @{filter.Field}_Filter",
+                        "!=" => $"[{filter.Field}] != @{filter.Field}_Filter",
+                        _ => $"[{filter.Field}] LIKE @{filter.Field}_Filter"
+                    };
+                    conditions.Add(condition);
+                }
+            }
+
+            // Quick filter - รองรับทั้ง QuickFilterValues (standard), QuickFilter ใน FilterModel และ QuickFilter ใน Request
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel?.QuickFilter)
+                ? request.FilterModel.QuickFilter
+                : !string.IsNullOrEmpty(request.FilterModel?.QuickFilterValues)
+                ? request.FilterModel.QuickFilterValues
+                : request.QuickFilter;
+
+            _logger.LogInformation("🔍 Quick Filter Debug: FilterModel.QuickFilter='{FilterModelQuickFilter}', FilterModel.QuickFilterValues='{QuickFilterValues}', Request.QuickFilter='{RequestQuickFilter}', Final='{FinalValue}'",
+                request.FilterModel?.QuickFilter,
+                request.FilterModel?.QuickFilterValues,
+                request.QuickFilter,
+                quickFilterValue);
+
+            if (!string.IsNullOrEmpty(quickFilterValue))
             {
                 var quickFilterConditions = new List<string>();
                 foreach (var column in metadata.Columns.Where(c => IsSearchableColumn(c)))
@@ -876,6 +1014,8 @@ namespace ApiCore.Services.Implementation
                 if (quickFilterConditions.Any())
                 {
                     conditions.Add($"({string.Join(" OR ", quickFilterConditions)})");
+                    _logger.LogInformation("🔍 Quick Filter SQL: {QuickFilterSQL} with value '{QuickFilterValue}'",
+                        string.Join(" OR ", quickFilterConditions), quickFilterValue);
                 }
             }
 
@@ -885,6 +1025,12 @@ namespace ApiCore.Services.Implementation
 
         private void AddFilterParameters(SqlCommand command, DynamicDataGridRequest request, DynamicTableMetadata metadata)
         {
+            if (request.FilterModel?.Items == null)
+            {
+                _logger.LogDebug("⚠️ FilterModel.Items is null, skipping filter parameters");
+                return;
+            }
+
             // Column filter parameters
             foreach (var filter in request.FilterModel.Items)
             {
@@ -903,34 +1049,61 @@ namespace ApiCore.Services.Implementation
                 command.Parameters.Add(new SqlParameter($"@{filter.Field}_Filter", convertedValue));
             }
 
-            // Quick filter parameter
-            if (!string.IsNullOrEmpty(request.FilterModel.QuickFilterValues))
+            // Quick filter parameter - รองรับทั้ง QuickFilterValues และ QuickFilter
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel?.QuickFilter)
+                ? request.FilterModel.QuickFilter
+                : !string.IsNullOrEmpty(request.FilterModel?.QuickFilterValues)
+                ? request.FilterModel.QuickFilterValues
+                : request.QuickFilter;
+
+            if (!string.IsNullOrEmpty(quickFilterValue))
             {
-                command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{request.FilterModel.QuickFilterValues}%"));
+                command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{quickFilterValue}%"));
+                _logger.LogInformation("🔍 Quick Filter Parameter Added: @QuickFilter = '%{QuickFilterParam}'", $"%{quickFilterValue}%");
             }
         }
 
-        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata)
+        private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata, string customOrderBy = null)
         {
-            if (sortModel == null || !sortModel.Any())
+            // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
+            if (!string.IsNullOrEmpty(customOrderBy))
             {
+                _logger.LogInformation("🏗️ No sorting specified, using default.");
                 // Default sort by first primary key or first column
                 var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
                 return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
             }
 
-            var orderItems = sortModel
-                .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
-                .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
+            // var orderItems = sortModel
+            //     .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
+            //     .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
 
-            return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
+            // return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
+
+            var orderByClauses = new List<string>();
+            foreach (var sort in sortModel)
+            {
+                _logger.LogInformation("🏗️ Processing sort: {SortField} {SortDirection}", sort.Field, sort.Sort);
+                // Validate field name against metadata
+                var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase));
+                if (column != null)
+                {
+                    var direction = sort.Sort?.ToUpper() == "DESC" ? "DESC" : "ASC";
+                    orderByClauses.Add($"[{sort.Field}] {direction}");
+                    _logger.LogInformation("✅ Added ORDER BY clause: [{SortField}] {SortDirection}", sort.Field, direction);
+                }
+            }
+            //return string.Join(", ", orderByClauses);
+            return orderByClauses.Any() ? $"ORDER BY {string.Join(", ", orderByClauses)}" : "ORDER BY 1 ASC";
         }
+
 
         private bool IsSearchableColumn(DynamicColumnInfo column)
         {
             var searchableTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext" };
             return searchableTypes.Contains(column.DataType.ToLower());
         }
+
 
         /// <summary>
         /// Converts JsonElement values to proper .NET types for SQL parameters
@@ -957,6 +1130,412 @@ namespace ApiCore.Services.Implementation
             }
 
             return value ?? DBNull.Value;
+        }
+
+        /// <summary>
+        /// Execute Enhanced Stored Procedure with full CRUD operations
+        /// </summary>
+        public async Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Executing Enhanced Stored Procedure: {ProcedureName}.{SchemaName} with operation: {Operation}",
+                    request.ProcedureName, request.SchemaName, request.Operation);
+
+                _logger.LogInformation("📊 SERVICE: Request details - Page: {Page}, PageSize: {PageSize}, HasParameters: {HasParams}, HasData: {HasData}",
+                    request.Page, request.PageSize, request.Parameters?.Count ?? 0, request.Data != null);
+
+                using var connection = _connectionFactory.CreateConnection();
+                await connection.OpenAsync();
+                using var command = connection.CreateCommand();
+
+                // Build stored procedure call
+                var fullProcedureName = $"[{request.SchemaName}].[{request.ProcedureName}]";
+                command.CommandText = fullProcedureName;
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandTimeout = 120; // 2 minutes timeout
+
+                // Add standard parameters
+                command.Parameters.Add(new SqlParameter("@Operation", request.Operation ?? "SELECT"));
+                command.Parameters.Add(new SqlParameter("@Page", request.Page ?? 1));
+                command.Parameters.Add(new SqlParameter("@PageSize", request.PageSize ?? 25));
+                command.Parameters.Add(new SqlParameter("@UserId", request.UserId ?? "system"));
+
+                // Add sort model as JSON
+                if (request.SortModel != null && request.SortModel.Any())
+                {
+                    var sortJson = JsonSerializer.Serialize(request.SortModel);
+                    command.Parameters.Add(new SqlParameter("@SortModel", sortJson));
+                }
+
+                // Add filter model as JSON
+                if (request.FilterModel != null)
+                {
+                    var filterJson = JsonSerializer.Serialize(request.FilterModel);
+                    command.Parameters.Add(new SqlParameter("@FilterModel", filterJson));
+                }
+
+                // Add custom parameters
+                if (request.Parameters != null)
+                {
+                    foreach (var param in request.Parameters)
+                    {
+                        command.Parameters.Add(new SqlParameter($"@{param.Key}", ConvertJsonElementValue(param.Value)));
+                    }
+                }
+
+                // Add data as JSON for INSERT/UPDATE operations
+                if (request.Data != null)
+                {
+                    var dataJson = JsonSerializer.Serialize(request.Data);
+                    command.Parameters.Add(new SqlParameter("@Data", dataJson));
+                }
+
+                // Add OUTPUT parameters that most Enhanced Stored Procedures expect
+                var outputRowCountParam = new SqlParameter("@OutputRowCount", SqlDbType.Int)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputRowCountParam);
+
+                var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 4000)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputMessageParam);
+
+                // Execute stored procedure
+                var stopwatch = Stopwatch.StartNew();
+                var results = new List<Dictionary<string, object>>();
+                var totalCount = 0;
+                var message = "";
+                var operation = request.Operation ?? "SELECT";
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                // Read all result sets to find the one with actual data
+                var resultSets = new List<List<Dictionary<string, object>>>();
+
+                do
+                {
+                    var currentResultSet = new List<Dictionary<string, object>>();
+
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            var fieldName = reader.GetName(i);
+                            var value = reader.GetValue(i);
+                            row[fieldName] = value == DBNull.Value ? null : value;
+                        }
+                        currentResultSet.Add(row);
+                    }
+
+                    resultSets.Add(currentResultSet);
+
+                } while (await reader.NextResultAsync());
+
+                _logger.LogInformation("📦 SERVICE: Read {ResultSetCount} result sets from SP", resultSets.Count);
+
+                for (int i = 0; i < resultSets.Count; i++)
+                {
+                    var rs = resultSets[i];
+                    if (rs.Any())
+                    {
+                        _logger.LogInformation("   - Result Set {Index}: {RowCount} rows, {ColumnCount} columns, Columns: [{Columns}]",
+                            i, rs.Count, rs.First().Keys.Count, string.Join(", ", rs.First().Keys));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("   - Result Set {Index}: EMPTY", i);
+                    }
+                }
+
+                // Find the result set with actual data (not metadata, not single-column count)
+                var dataResultSet = resultSets
+                    .Where(rs => rs.Any()) // Must have data
+                    .Where(rs => rs.First().Keys.Count > 1) // Must have more than 1 column (not just count)
+                    .Where(rs => !rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase) &&
+                                !rs.First().Keys.Contains("DATA_TYPE", StringComparer.OrdinalIgnoreCase)) // Not metadata
+                    .FirstOrDefault(); // Take the FIRST result set that matches criteria
+
+                if (dataResultSet != null)
+                {
+                    results = dataResultSet;
+                    _logger.LogInformation("✅ SERVICE: Selected DATA result set with {ColumnCount} columns and {RowCount} rows (not metadata, not count)",
+                        results.First().Keys.Count, results.Count);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ SERVICE: NO DATA RESULT SET found from SP! Available result sets: {ResultSetInfo}",
+                        string.Join(", ", resultSets.Select((rs, i) => $"Set{i}:{rs.Count}rows,{(rs.Any() ? rs.First().Keys.Count : 0)}cols")));
+                }
+
+                // Try to find total count from any single-value result set
+                foreach (var rs in resultSets.Where(rs => rs.Any() && rs.First().Keys.Count == 1))
+                {
+                    var firstRow = rs.First();
+                    var key = firstRow.Keys.First();
+                    if (key.ToLower().Contains("count") || key.ToLower().Contains("total"))
+                    {
+                        totalCount = Convert.ToInt32(firstRow[key]);
+                        break;
+                    }
+                }
+
+                // Close reader to access output parameters
+                reader.Close();
+
+                // Get output parameters
+                if (outputRowCountParam.Value != DBNull.Value)
+                {
+                    totalCount = (int)outputRowCountParam.Value;
+                }
+
+                if (outputMessageParam.Value != DBNull.Value)
+                {
+                    message = outputMessageParam.Value.ToString() ?? "Success";
+                }
+
+                // If no explicit total count, use result count
+                if (totalCount == 0)
+                {
+                    totalCount = results.Count;
+                }
+
+                stopwatch.Stop();
+
+                _logger.LogInformation("Enhanced Stored Procedure executed successfully in {ElapsedMs}ms. Returned {RowCount} rows",
+                    stopwatch.ElapsedMilliseconds, results.Count);
+
+                // 🔍 DEBUG: Enhanced metadata detection from SP result sets
+                DynamicTableMetadata? metadata = null;
+
+                _logger.LogInformation("🔍 ENHANCED METADATA DETECTION - Starting for Enhanced SP: {ProcedureName}", request.ProcedureName);
+
+                // Look for metadata in Result Set 0 (columns with COLUMN_NAME, DATA_TYPE, etc.)
+                var metadataResultSet = resultSets.FirstOrDefault(rs =>
+                    rs.Any() && rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase));
+
+                if (metadataResultSet != null)
+                {
+                    _logger.LogInformation("� METADATA RESULT SET FOUND: {RowCount} columns defined", metadataResultSet.Count);
+                    var columns = new List<DynamicColumnInfo>();
+                    var detectedPrimaryKeys = new List<string>();
+
+                    foreach (var metaRow in metadataResultSet)
+                    {
+                        var columnName = metaRow.GetValueOrDefault("COLUMN_NAME")?.ToString() ?? "";
+                        var dataType = metaRow.GetValueOrDefault("DATA_TYPE")?.ToString() ?? "nvarchar";
+                        var isNullableStr = metaRow.GetValueOrDefault("IS_NULLABLE")?.ToString() ?? "YES";
+                        var isPrimaryKeyObj = metaRow.GetValueOrDefault("IS_PRIMARY_KEY");
+                        var isIdentityObj = metaRow.GetValueOrDefault("IS_IDENTITY");
+                        var maxLengthObj = metaRow.GetValueOrDefault("CHARACTER_MAXIMUM_LENGTH");
+                        var columnDefaultObj = metaRow.GetValueOrDefault("COLUMN_DEFAULT");
+                        var ordinalPositionObj = metaRow.GetValueOrDefault("ORDINAL_POSITION");
+
+                        // Parse nullable
+                        bool isNullable = isNullableStr.Equals("YES", StringComparison.OrdinalIgnoreCase);
+
+                        // Parse primary key
+                        bool isPrimaryKey = false;
+                        if (isPrimaryKeyObj != null)
+                        {
+                            if (isPrimaryKeyObj is bool boolVal)
+                                isPrimaryKey = boolVal;
+                            else if (int.TryParse(isPrimaryKeyObj.ToString(), out int intVal))
+                                isPrimaryKey = intVal == 1;
+                            else if (isPrimaryKeyObj.ToString().Equals("1", StringComparison.OrdinalIgnoreCase) ||
+                                     isPrimaryKeyObj.ToString().Equals("true", StringComparison.OrdinalIgnoreCase))
+                                isPrimaryKey = true;
+                        }
+
+                        // Parse identity
+                        bool isIdentity = false;
+                        if (isIdentityObj != null)
+                        {
+                            if (isIdentityObj is bool boolVal)
+                                isIdentity = boolVal;
+                            else if (int.TryParse(isIdentityObj.ToString(), out int intVal))
+                                isIdentity = intVal == 1;
+                            else if (isIdentityObj.ToString().Equals("1", StringComparison.OrdinalIgnoreCase) ||
+                                     isIdentityObj.ToString().Equals("true", StringComparison.OrdinalIgnoreCase))
+                                isIdentity = true;
+                        }
+
+                        // Parse max length
+                        int? maxLength = null;
+                        if (maxLengthObj != null && int.TryParse(maxLengthObj.ToString(), out int maxLenVal))
+                            maxLength = maxLenVal;
+
+                        // Parse ordinal position
+                        int ordinalPosition = 0;
+                        if (ordinalPositionObj != null && int.TryParse(ordinalPositionObj.ToString(), out int ordVal))
+                            ordinalPosition = ordVal;
+
+                        var columnInfo = new DynamicColumnInfo
+                        {
+                            ColumnName = columnName,
+                            DataType = dataType,
+                            IsNullable = isNullable,
+                            IsPrimaryKey = isPrimaryKey,
+                            IsIdentity = isIdentity,
+                            MaxLength = maxLength,
+                            DefaultValue = columnDefaultObj?.ToString(),
+                            OrdinalPosition = ordinalPosition
+                        };
+
+                        columns.Add(columnInfo);
+
+                        if (isPrimaryKey)
+                        {
+                            detectedPrimaryKeys.Add(columnName);
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED FROM METADATA: {ColumnName}", columnName);
+                        }
+
+                        _logger.LogDebug("📋 Column from metadata: {ColumnName} ({DataType}) - PK: {IsPK}, Identity: {IsIdentity}, Nullable: {IsNullable}",
+                            columnName, dataType, isPrimaryKey, isIdentity, isNullable);
+                    }
+
+                    metadata = new DynamicTableMetadata
+                    {
+                        TableName = request.ProcedureName,
+                        SchemaName = request.SchemaName,
+                        TableType = DynamicTableType.StoredProcedure,
+                        Columns = columns.OrderBy(c => c.OrdinalPosition).ToList(),
+                        PrimaryKeys = detectedPrimaryKeys,
+                        TotalRows = results.Count,
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    _logger.LogInformation("✅ ENHANCED METADATA CREATED from SP metadata: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                        metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
+                }
+                else if (results.Any())
+                {
+                    // Fallback: Detect metadata from data result set (old method)
+                    _logger.LogInformation("⚠️ No metadata result set found, falling back to data-based detection");
+
+                    var firstRow = results.First();
+                    var columns = new List<DynamicColumnInfo>();
+                    var detectedPrimaryKeys = new List<string>();
+
+                    // Build column metadata from result set
+                    foreach (var kvp in firstRow)
+                    {
+                        var columnName = kvp.Key;
+                        var value = kvp.Value;
+
+                        // Detect data type from value
+                        string dataType = "nvarchar";
+                        if (value != null)
+                        {
+                            var type = value.GetType();
+                            dataType = type.Name switch
+                            {
+                                "Int32" => "int",
+                                "Int64" => "bigint",
+                                "Decimal" => "decimal",
+                                "Double" => "float",
+                                "Boolean" => "bit",
+                                "DateTime" => "datetime",
+                                "String" => "nvarchar",
+                                _ => "nvarchar"
+                            };
+                        }
+
+                        var columnInfo = new DynamicColumnInfo
+                        {
+                            ColumnName = columnName,
+                            DataType = dataType,
+                            IsNullable = true,
+                            IsPrimaryKey = false,
+                            IsIdentity = false
+                        };
+
+                        columns.Add(columnInfo);
+                        _logger.LogDebug("📋 Column detected from data: {ColumnName} ({DataType})", columnName, dataType);
+                    }
+
+                    // 🔑 Detect primary key from column names (fallback method)
+                    var primaryKeyPatterns = new[]
+                    {
+                        "id", "ID", "Id",
+                        "_id", "_ID", "_Id",
+                        "part_id", "PartId", "PartID",
+                        "customer_id", "CustomerId", "CustomerID"
+                    };
+
+                    foreach (var pattern in primaryKeyPatterns)
+                    {
+                        var matchedColumn = columns.FirstOrDefault(c =>
+                            c.ColumnName.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
+                            c.ColumnName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchedColumn != null)
+                        {
+                            matchedColumn.IsPrimaryKey = true;
+                            detectedPrimaryKeys.Add(matchedColumn.ColumnName);
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED from pattern: {ColumnName} (pattern: {Pattern})",
+                                matchedColumn.ColumnName, pattern);
+                            break; // Use first match
+                        }
+                    }
+
+                    if (!detectedPrimaryKeys.Any())
+                    {
+                        _logger.LogWarning("⚠️ NO PRIMARY KEY DETECTED in Enhanced SP result. Available columns: {Columns}",
+                            string.Join(", ", columns.Select(c => c.ColumnName)));
+                    }
+
+                    metadata = new DynamicTableMetadata
+                    {
+                        TableName = request.ProcedureName,
+                        SchemaName = request.SchemaName,
+                        TableType = DynamicTableType.StoredProcedure,
+                        Columns = columns,
+                        PrimaryKeys = detectedPrimaryKeys,
+                        TotalRows = results.Count,
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    _logger.LogInformation("✅ FALLBACK METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                        metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ NO DATA returned from Enhanced SP - cannot detect metadata");
+                }
+
+                _logger.LogInformation("🎁 RESPONSE SUMMARY: Success={Success}, RowCount={RowCount}, HasMetadata={HasMetadata}, MetadataColumns={MetadataColumnCount}",
+                    true, totalCount > 0 ? totalCount : results.Count, metadata != null, metadata?.Columns.Count ?? 0);
+
+                return new EnhancedStoredProcedureResponse
+                {
+                    Success = true,
+                    Data = results,
+                    RowCount = totalCount > 0 ? totalCount : results.Count,
+                    Message = message,
+                    Operation = operation,
+                    ExecutionTime = stopwatch.ElapsedMilliseconds,
+                    Metadata = metadata // 🎯 ส่ง metadata กลับไปให้ frontend
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing enhanced stored procedure: {ProcedureName}", request.ProcedureName);
+
+                return new EnhancedStoredProcedureResponse
+                {
+                    Success = false,
+                    Data = new List<Dictionary<string, object>>(),
+                    RowCount = 0,
+                    Message = ex.Message,
+                    Operation = request.Operation ?? "SELECT",
+                    ExecutionTime = 0
+                };
+            }
         }
 
         #endregion

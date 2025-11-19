@@ -32,7 +32,7 @@ namespace Authentication.Controllers.Auth
                     ? ResponseUnauthorized("Authentication service is not available.")
                     : string.IsNullOrEmpty(request.usersname) || string.IsNullOrEmpty(request.password)
                         ? ResponseError("Username and password are required.", 2)
-                        : await _iauth.GetTokenAsync(request.application_license, request.usersname, request.password) is AuthResponse token
+                        : await _iauth.GetTokenAsync(request.application_license, request.usersname, request.password,request.fcm_token) is AuthResponse token
                             ? AccessResponseSuccess("success", token)
                             : ResponseUnauthorized("Invalid username or password.");
             }

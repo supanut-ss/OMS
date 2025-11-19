@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import BSFullScreenLoader from "../../contexts/BSFullScreenLoader";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import { useMenuContext } from "../../contexts/MenuContext";
+import BsAutoComplete from "../../components/BSAutoComplete";
 import {
   FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Box,
   Button,
   Tabs,
@@ -15,15 +13,9 @@ import {
   CircularProgress,
 } from "@mui/material";
 import CustomTreeView from "../../components/CustomTreeView";
-import BsAutoComplete from "../../components/BsAutoComplete";
 
 const MenuTreeView = () => {
-  const {
-    getMenuAssign,
-    saveMenuAssign,
-    getComboboxPlatform,
-    getGroupCombobox,
-  } = useMenuContext();
+  const { getMenuAssign, saveMenuAssign } = useMenuContext();
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");
   const [menuData, setMenuData] = useState([]);
@@ -34,34 +26,6 @@ const MenuTreeView = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const userGroups = [
-    { user_group_id: 20, user_group_name: "Admin" },
-    { user_group_id: 21, user_group_name: "User" },
-  ];
-
-  const platforms = [
-    { app_id: "WEB", app_name: "WEB" },
-    { app_id: "PDA", app_name: "PDA" },
-  ];
-
-  //   const [userGroups, setUserGroups] = useState([]);
-  //   const [platforms, setPlatforms] = useState([]);
-
-  //   // โหลด combobox data ตอน mount
-  //   useEffect(() => {
-  //     const fetchComboboxData = async () => {
-  //       try {
-  //         const groupRes = await getGroupCombobox();
-  //         setUserGroups(groupRes?.data || []);
-  //         const platformRes = await getComboboxPlatform();
-  //         setPlatforms(platformRes?.data || []);
-  //       } catch (err) {
-  //         BSAlertSwal2.show("error", "โหลดข้อมูล combobox ไม่สำเร็จ");
-  //       }
-  //     };
-  //     fetchComboboxData();
-  //   }, []);
 
   const toBool = (v) =>
     v === true || v === 1 || String(v).toUpperCase() === "YES";
@@ -156,7 +120,10 @@ const MenuTreeView = () => {
       if (selectedGroup && selectedPlatform) {
         setLoading(true);
         try {
-          const result = await getMenuAssign(selectedGroup, selectedPlatform);
+          const result = await getMenuAssign(
+            selectedGroup.code ?? "",
+            selectedPlatform.code ?? ""
+          );
           const tree = buildMenuTree(result?.data || []);
           setMenuData(tree);
           setTabIndex(0);
@@ -190,18 +157,22 @@ const MenuTreeView = () => {
     userGroupId,
     result = []
   ) => {
+    // ดึงค่า id ที่ backend ต้องการ
+    const userGroupIdValue = userGroupId?.user_group_id
+      ? parseInt(userGroupId.user_group_id, 10)
+      : parseInt(userGroupId, 10);
+    const platformValue =
+      platform?.code || platform?.display_member || platform || "";
+
     items.forEach((item) => {
-      // เฉพาะ permission leaf เท่านั้น (id รูปแบบ add-xxx, edit-xxx, ...)
       if (/^(add|edit|delete|view)-/.test(item.id)) {
-        // แยก menuId จาก id
         const [type, menuId] = item.id.split("-");
-        // หา record ใน result ที่ตรง menuId อยู่แล้วหรือยัง
         let rec = result.find((r) => r.menu_id === menuId);
         if (!rec) {
           rec = {
-            userGroupId,
+            userGroupId: userGroupIdValue,
             menu_id: menuId,
-            platform,
+            platform: platformValue,
             isAddView: "NO",
             isEditView: "NO",
             isDeleteView: "NO",
@@ -209,13 +180,11 @@ const MenuTreeView = () => {
           };
           result.push(rec);
         }
-        // เซ็ต flag ตาม type
         if (type === "add") rec.isAddView = item.isCheck ? "YES" : "NO";
         if (type === "edit") rec.isEditView = item.isCheck ? "YES" : "NO";
         if (type === "delete") rec.isDeleteView = item.isCheck ? "YES" : "NO";
         if (type === "view") rec.isView = item.isCheck ? "YES" : "NO";
       }
-      // recursive children
       if (Array.isArray(item.children) && item.children.length) {
         collectCheckedMenus(item.children, platform, userGroupId, result);
       }
@@ -224,6 +193,7 @@ const MenuTreeView = () => {
   };
 
   const handleSave = async () => {
+    Logger.log(selectedGroup);
     setSaving(true);
     setLoading(true);
     try {
@@ -233,7 +203,6 @@ const MenuTreeView = () => {
         selectedGroup
       );
       const result = await saveMenuAssign(checkedMenus);
-      console.log("saveMenuAssign result", result);
       if (result && result.message_code === "0") {
         BSAlertSwal2.show("success", result.message_text, {
           timer: 2000,
@@ -256,38 +225,34 @@ const MenuTreeView = () => {
       <Paper sx={{ p: 3 }}>
         <Box display="flex" gap={3} alignItems="center">
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
-            <BsAutoComplete
-              bsModel="select"
-              bsTitle="เลือก Group"
-              bsPreObj="user_group_id"
-              bsObj="sec.t_com_user_group"
-              bsColumes={[
-                { field: "user_group_id", display: false },
-                { field: "name", display: true, order_by: "ASC" },
-              ]}
-              bsFilters={[]}
-              bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
-              cacheKey="group"
-              loadOnOpen={true}
-              bsOnChange={(val) => setSelectedGroup(val)}
-            />
+            <InputLabel id="user-group-label">User Group</InputLabel>
+            <Select
+              labelId="user-group-label"
+              label="User Group"
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
+            >
+              {userGroups.map((ug) => (
+                <MenuItem key={ug.user_group_id} value={ug.user_group_id}>
+                  {ug.user_group_name}
+                </MenuItem>
+              ))}
+            </Select>
           </FormControl>
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
-            <BsAutoComplete
-              bsModel="select"
-              bsTitle="เลือก Platform"
-              bsPreObj="value_member"
-              bsObj="sec.t_com_combobox_item"
-              bsColumes={[
-                { field: "display_member", display: true },
-                { field: "group_name", display: false },
-              ]}
-              bsFilters={[{ field: "group_name", op: "=", value: "platform" }]}
-              bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-              cacheKey="platform"
-              loadOnOpen={true}
-              bsOnChange={(val) => setSelectedPlatform(val)}
-            />
+            <InputLabel id="platform-label">Platform</InputLabel>
+            <Select
+              labelId="platform-label"
+              label="Platform"
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value)}
+            >
+              {platforms.map((pf) => (
+                <MenuItem key={pf.app_id} value={pf.app_id}>
+                  {pf.app_name}
+                </MenuItem>
+              ))}
+            </Select>
           </FormControl>
 
           <Box sx={{ mb: 3 }}>

@@ -46,6 +46,135 @@ namespace Authentication.Controllers.Users
                 return ResponseError(ex.Message, 1);
             }
         }
-       
+
+        [HttpPost("register")]
+        public async Task<IActionResult> RegisterUser(UserRequest userReq)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.RegisterUser(userReq, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+
+        [HttpPost("update")]
+        public async Task<IActionResult> UpdateUser(UserRequest userReq)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.UpdateUser(userReq, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+        [HttpGet("role")]
+        public async Task<IActionResult> GetRole()
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _iusers.GetRole(userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Role.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+        [HttpPost("switch/lang")]
+        public async Task<IActionResult> SwitchLang(UserLangRequest request)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+                var response = await _iusers.UpdateLangAsync(request, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found Lang.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+
+        }
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteUser(string userIdDel)
+        {
+            try
+            {
+                string userId = User.FindFirst("UserId")?.Value ?? "";
+
+                if (string.IsNullOrEmpty(userId))
+                    ResponseNotFound("No found User Id.");
+
+                var response = await _iusers.DeleteUser(userIdDel, userId);
+                return response != null ? AccessResponseSuccess("success", response) : ResponseNotFound("No found User.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
+
+        [HttpPost("reset")] 
+        public async Task<IActionResult> ResetPasswordByUser(ResetPasswordRequest request)
+        {
+            try
+            {
+                var userIdAct = User.FindFirst("UserId")?.Value;
+
+                if (string.IsNullOrEmpty(userIdAct))
+                    ResponseNotFound("No found User Id.");
+
+                //Check Row Admin Only
+                var role =  _iusers.GetRole(userIdAct).Result.role;
+                if (role != "Administrator")
+                    ResponseNotFound("User not found or access denied.");
+
+
+                if (string.IsNullOrEmpty(request?.UserId))
+                    return BadRequest(new { message = "UserId is required." });
+
+                // ตรวจสอบว่า service พร้อมใช้งาน
+                if (_iusers == null)
+                    return StatusCode(503, new { message = "User service unavailable." });
+
+                var newPassword = PasswordHelper.GenerateTemporaryPassword(12);
+
+                var token = await _iusers.ResetPassword(request?.UserId, newPassword) ;
+
+                //กรณีที่สามารถส่งเมลได้ ให้ส่งรหัสผ่านใหม่ทางอีเมลแทน
+                token.message_text = $"{newPassword}";
+                token.message_code = "0";
+
+                return token != null
+                        ? AccessResponseSuccess("success", token)
+                        : ResponseUnauthorized("Invalid username or password.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
     }
 }

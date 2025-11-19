@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Import-Export-Manager", "Import-Export-Manager.csproj", "{83180F34-F536-57A3-FF64-89DF0E7A4AB4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TokenManagement", "..\..\BS-API-Secure\TokenManagement\TokenManagement.csproj", "{E6D90E74-B120-2DCE-3622-6E97CC2A1070}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{83180F34-F536-57A3-FF64-89DF0E7A4AB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83180F34-F536-57A3-FF64-89DF0E7A4AB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83180F34-F536-57A3-FF64-89DF0E7A4AB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83180F34-F536-57A3-FF64-89DF0E7A4AB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6D90E74-B120-2DCE-3622-6E97CC2A1070}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6D90E74-B120-2DCE-3622-6E97CC2A1070}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6D90E74-B120-2DCE-3622-6E97CC2A1070}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6D90E74-B120-2DCE-3622-6E97CC2A1070}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9D227223-9411-4FA4-A8A2-DD01C3C09258}
+	EndGlobalSection
+EndGlobal

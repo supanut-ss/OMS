@@ -1,0 +1,951 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ApiCore</name>
+    </assembly>
+    <members>
+        <member name="T:ApiCore.Controllers.Base.BaseController`6">
+            <summary>
+            Base controller providing common CRUD operations
+            </summary>
+            <typeparam name="TEntity">Entity type</typeparam>
+            <typeparam name="TResponse">Response model type</typeparam>
+            <typeparam name="TCreateRequest">Create request type</typeparam>
+            <typeparam name="TUpdateRequest">Update request type</typeparam>
+            <typeparam name="TSummaryResponse">Summary response type</typeparam>
+            <typeparam name="TDataGridRequest">DataGrid request type</typeparam>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.GetAll">
+            <summary>
+            Get all entities
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.GetSummary">
+            <summary>
+            Get entity summary for dropdowns
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.GetById(System.String)">
+            <summary>
+            Get entity by ID
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.Create(`2)">
+            <summary>
+            Create new entity
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.Update(System.String,`3)">
+            <summary>
+            Update entity
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.Delete(System.String)">
+            <summary>
+            Delete entity
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.GetDataGrid(`5)">
+            <summary>
+            Get DataGrid data with server-side processing
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.Base.BaseController`6.GetDataGridTest(`5)">
+            <summary>
+            Test DataGrid endpoint without authentication
+            </summary>
+        </member>
+        <member name="T:ApiCore.Controllers.DatabaseExampleController">
+            <summary>
+            Example controller demonstrating SqlConnectionFactory usage with different ORMs
+            Shows how to use ADO.NET, Dapper, and EF Core with the same connection factory
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.HealthCheck">
+            <summary>
+            Test database health using Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.GetDatabaseVersion">
+            <summary>
+            Get database version using Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.GetSystemInfo">
+            <summary>
+            Get system information using multiple approaches
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.TestStoredProcedure">
+            <summary>
+            Test stored procedure execution using Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.TestTransaction">
+            <summary>
+            Test transaction using Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.ParameterizedQuery(System.String)">
+            <summary>
+            Demonstrate query with parameters using Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DatabaseExampleController.ConnectionFactoryDemo">
+            <summary>
+            Show connection factory capabilities
+            </summary>
+        </member>
+        <member name="T:ApiCore.Controllers.DynamicController">
+            <summary>
+            Dynamic CRUD Controller for auto-generated database operations
+            Supports tables, views, and stored procedures with MUI X DataGrid integration
+            Enhanced for BSDataGrid component support
+            </summary>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetSchemaAsync(ApiCore.Models.Dynamic.DynamicSchemaRequest)">
+            <summary>
+            Get database schema information (tables, views, stored procedures)
+            </summary>
+            <param name="request">Schema exploration request</param>
+            <returns>List of available database objects</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetTableMetadataAsync(System.String,System.String)">
+            <summary>
+            Get table/view metadata and structure information
+            </summary>
+            <param name="tableName">Name of the table or view</param>
+            <param name="schemaName">Schema name (default: dbo)</param>
+            <returns>Table metadata including columns, data types, and constraints</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetDataGridAsync(ApiCore.Models.Dynamic.DynamicDataGridRequest)">
+            <summary>
+            Get data from table/view with DataGrid support for MUI X DataGrid
+            Supports pagination, sorting, filtering, and searching
+            </summary>
+            <param name="request">DataGrid request with table name and grid parameters</param>
+            <returns>Paginated data with metadata for DataGrid</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetBSDataGridAsync(ApiCore.Models.Dynamic.DynamicDataGridRequest)">
+            <summary>
+            Get data from table/view with BSDataGrid support
+            Enhanced for BS Platform with preObj, custom WHERE/ORDER BY, and column selection
+            </summary>
+            <param name="request">BSDataGrid request with BS Platform properties</param>
+            <returns>Paginated data with metadata for BSDataGrid</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetByIdAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.String)">
+            <summary>
+            Get single record by primary key values
+            </summary>
+            <param name="tableName">Name of the table</param>
+            <param name="primaryKeyValues">Primary key values as JSON object</param>
+            <param name="schemaName">Schema name (default: dbo)</param>
+            <returns>Single record data</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.CreateAsync(ApiCore.Models.Dynamic.DynamicCreateRequest)">
+            <summary>
+            Create new record in table
+            </summary>
+            <param name="request">Create request with table name and data</param>
+            <returns>Created record data</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.UpdateAsync(ApiCore.Models.Dynamic.DynamicUpdateRequest)">
+            <summary>
+            Update existing record in table
+            </summary>
+            <param name="request">Update request with table name, data, and where conditions</param>
+            <returns>Updated record data</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.DeleteAsync(ApiCore.Models.Dynamic.DynamicDeleteRequest)">
+            <summary>
+            Delete record from table
+            </summary>
+            <param name="request">Delete request with table name and where conditions</param>
+            <returns>Success status</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.BulkCreateAsync(ApiCore.Models.Dynamic.DynamicBulkCreateRequest)">
+            <summary>
+            Bulk create multiple records in table (for BSDataGrid bulk add)
+            </summary>
+            <param name="request">Bulk create request with array of data</param>
+            <returns>Created records count and details</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.BulkUpdateAsync(ApiCore.Models.Dynamic.DynamicBulkUpdateRequest)">
+            <summary>
+            Bulk update multiple records in table (for BSDataGrid bulk edit)
+            </summary>
+            <param name="request">Bulk update request with array of data and conditions</param>
+            <returns>Updated records count and details</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.BulkDeleteAsync(ApiCore.Models.Dynamic.DynamicBulkDeleteRequest)">
+            <summary>
+            Bulk delete multiple records from table (for BSDataGrid bulk delete)
+            </summary>
+            <param name="request">Bulk delete request with array of conditions</param>
+            <returns>Deleted records count and details</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.ExecuteStoredProcedureAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.String)">
+            <summary>
+            Execute stored procedure with parameters
+            </summary>
+            <param name="procedureName">Name of the stored procedure</param>
+            <param name="parameters">Parameters for the stored procedure</param>
+            <param name="schemaName">Schema name (default: dbo)</param>
+            <returns>Stored procedure result data</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetStoredProcedureMetadataAsync(System.String,System.String)">
+            <summary>
+            Get stored procedure metadata and parameter information
+            </summary>
+            <param name="procedureName">Name of the stored procedure</param>
+            <param name="schemaName">Schema name (default: dbo)</param>
+            <returns>Stored procedure metadata</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.GetComboBoxDataAsync(ApiCore.Models.Dynamic.DynamicComboBoxRequest)">
+            <summary>
+            Get ComboBox data for BSDataGrid columns
+            Supports BS Platform preObj, custom WHERE/ORDER BY for dropdown options
+            </summary>
+            <param name="request">ComboBox data request</param>
+            <returns>ComboBox options with value and display fields</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.ExecuteQueryAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            Execute custom SQL query (SELECT only for security)
+            </summary>
+            <param name="sqlQuery">SQL SELECT query</param>
+            <param name="parameters">Query parameters</param>
+            <returns>Query result data</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.TableExistsAsync(System.String,System.String)">
+            <summary>
+            Check if table/view exists
+            </summary>
+            <param name="tableName">Name of the table or view</param>
+            <param name="schemaName">Schema name (default: dbo)</param>
+            <returns>Existence status</returns>
+        </member>
+        <member name="M:ApiCore.Controllers.DynamicController.ExecuteEnhancedStoredProcedureAsync(ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest)">
+            <summary>
+            Execute Enhanced Stored Procedure with full CRUD operations
+            Supports SELECT, INSERT, UPDATE, DELETE operations in a single stored procedure
+            </summary>
+            <param name="request">Enhanced stored procedure request with operation type and parameters</param>
+            <returns>Enhanced stored procedure result with data and metadata</returns>
+        </member>
+        <member name="T:ApiCore.Models.Base.DataGridRequest">
+            <summary>
+            MUI X Data Grid server-side data request parameters
+            Based on GridGetRowsParams interface
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridRequest.Start">
+            <summary>
+            Starting index for data fetching (0-based)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridRequest.End">
+            <summary>
+            Ending index for data fetching (exclusive)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridRequest.SortModel">
+            <summary>
+            Sorting configuration
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridRequest.FilterModel">
+            <summary>
+            Filtering configuration
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridRequest.GroupKeys">
+            <summary>
+            Group keys for hierarchical data (optional)
+            </summary>
+        </member>
+        <member name="M:ApiCore.Models.Base.DataGridRequest.GetSortField">
+            <summary>
+            Get sort field for SQL query (defaults to first sort field or Id)
+            </summary>
+        </member>
+        <member name="M:ApiCore.Models.Base.DataGridRequest.GetSortOrder">
+            <summary>
+            Get sort order for SQL query (defaults to ASC)
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Base.DataGridSortModel">
+            <summary>
+            Sort model for MUI X Data Grid
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridSortModel.Field">
+            <summary>
+            Field name to sort by
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridSortModel.Sort">
+            <summary>
+            Sort direction: "asc" or "desc"
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Base.DataGridFilterModel">
+            <summary>
+            Filter model for MUI X Data Grid
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterModel.Items">
+            <summary>
+            List of filter items
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterModel.LogicOperator">
+            <summary>
+            Logic operator: "and" or "or"
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterModel.QuickFilterValues">
+            <summary>
+            Quick filter value for global search (standard MUI format)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterModel.QuickFilter">
+            <summary>
+            Quick filter value for BSDataGrid compatibility
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Base.DataGridFilterItem">
+            <summary>
+            Individual filter item
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterItem.Field">
+            <summary>
+            Field name to filter
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterItem.Operator">
+            <summary>
+            Filter operator (contains, equals, startsWith, endsWith, etc.)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterItem.Value">
+            <summary>
+            Filter value
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridFilterItem.Id">
+            <summary>
+            Unique identifier for the filter
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Base.DataGridResponse`1">
+            <summary>
+            MUI X Data Grid server-side data response
+            Based on GridGetRowsResponse interface
+            </summary>
+            <typeparam name="T">Type of data rows</typeparam>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridResponse`1.Rows">
+            <summary>
+            Array of data rows
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridResponse`1.RowCount">
+            <summary>
+            Total number of rows available on the server (for pagination)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridResponse`1.Success">
+            <summary>
+            Success status
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridResponse`1.Message">
+            <summary>
+            Response message
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridResponse`1.Metadata">
+            <summary>
+            Additional metadata for debugging
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Base.DataGridMetadata">
+            <summary>
+            Additional metadata for Data Grid response
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridMetadata.Start">
+            <summary>
+            Current page information
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridMetadata.AppliedSort">
+            <summary>
+            Applied filters and sorting
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Base.DataGridMetadata.QueryExecutionTimeMs">
+            <summary>
+            Performance metrics
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Base.CustomerDataGridRequest">
+            <summary>
+            Customer-specific DataGrid request - uses standard MUI X DataGrid properties
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicTableRequest">
+            <summary>
+            Dynamic table/view request for auto-generated CRUD operations
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest">
+            <summary>
+            Enhanced Stored Procedure request supporting SELECT, UPDATE, DELETE operations
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest.Page">
+            <summary>
+            Pagination support for SELECT operations
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest.SortModel">
+            <summary>
+            Sorting support for SELECT operations
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest.FilterModel">
+            <summary>
+            Filtering support for SELECT operations
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest.UserId">
+            <summary>
+            User ID for audit operations
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest.Data">
+            <summary>
+            Data for INSERT/UPDATE operations
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.EnhancedStoredProcedureResponse">
+            <summary>
+            Enhanced Stored Procedure response
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureResponse.Metadata">
+            <summary>
+            Table metadata detected from result set (columns, primary keys, etc.)
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicCreateRequest">
+            <summary>
+            Dynamic create request with flexible data
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicCreateRequest.UserId">
+            <summary>
+            User ID for audit fields (create_by, update_by)
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicUpdateRequest">
+            <summary>
+            Dynamic update request with flexible data
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicUpdateRequest.UserId">
+            <summary>
+            User ID for audit fields (update_by)
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicDataGridRequest">
+            <summary>
+            Dynamic DataGrid request for MUI X DataGrid with BSDataGrid support
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.PreObj">
+            <summary>
+            BS Platform prefix object (e.g., "default", "staging")
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.Page">
+            <summary>
+            Page number for pagination (1-based)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.PageSize">
+            <summary>
+            Page size for pagination
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.Columns">
+            <summary>
+            Comma-separated column list to select
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.CustomWhere">
+            <summary>
+            Custom WHERE clause for filtering
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.CustomOrderBy">
+            <summary>
+            Custom ORDER BY clause for sorting
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.QuickFilter">
+            <summary>
+            Quick filter value from Frontend (for BSDataGrid compatibility)
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicResponse">
+            <summary>
+            Dynamic response with flexible data structure
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicTableMetadata">
+            <summary>
+            Dynamic table metadata information
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicColumnInfo">
+            <summary>
+            Dynamic column information
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicBulkCreateRequest">
+            <summary>
+            Bulk create request for multiple records
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicBulkUpdateRequest">
+            <summary>
+            Bulk update request for multiple records
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicBulkUpdateItem">
+            <summary>
+            Single update item for bulk update
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicBulkDeleteRequest">
+            <summary>
+            Bulk delete request for multiple records
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicComboBoxRequest">
+            <summary>
+            ComboBox data request for BSDataGrid dropdown columns
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.PreObj">
+            <summary>
+            BS Platform prefix object (e.g., "default", "staging")
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.ValueField">
+            <summary>
+            Field name to use as value
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.DisplayField">
+            <summary>
+            Field name to use as display text
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.CustomWhere">
+            <summary>
+            Custom WHERE clause for filtering options
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.CustomOrderBy">
+            <summary>
+            Custom ORDER BY clause for sorting options
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.DefaultOption">
+            <summary>
+            Default option text (e.g., "--- Select Status ---")
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.MaxItems">
+            <summary>
+            Maximum number of items to return
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicTableType">
+            <summary>
+            Table type enumeration
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicDataGridResponse">
+            <summary>
+            Dynamic DataGrid response for MUI X DataGrid
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicDeleteRequest">
+            <summary>
+            Dynamic delete request
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicSchemaRequest">
+            <summary>
+            Dynamic schema exploration request
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicSchemaResponse">
+            <summary>
+            Dynamic schema exploration response
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicTableInfo">
+            <summary>
+            Dynamic table information for schema exploration
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicStoredProcedureInfo">
+            <summary>
+            Dynamic stored procedure information
+            </summary>
+        </member>
+        <member name="T:ApiCore.Models.Dynamic.DynamicParameterInfo">
+            <summary>
+            Dynamic parameter information for stored procedures
+            </summary>
+        </member>
+        <member name="T:ApiCore.Services.Implementation.Base.BaseService`6">
+            <summary>
+            Base service providing common CRUD operations with optimized performance
+            </summary>
+        </member>
+        <member name="T:ApiCore.Services.Implementation.DatabaseExampleService">
+            <summary>
+            Example service demonstrating SqlConnectionFactory usage with different ORMs
+            Supports ADO.NET, Entity Framework Core, and Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.QueryAsync``1(System.String,System.Object)">
+            <summary>
+            Example: Query with Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.ExecuteAsync(System.String,System.Object)">
+            <summary>
+            Example: Execute command with Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.QueryFirstOrDefaultAsync``1(System.String,System.Object)">
+            <summary>
+            Example: Query single record with Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.QueryMultipleAsync``2(System.String,System.Object)">
+            <summary>
+            Example: Query multiple result sets with Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.ExecuteStoredProcedureAsync``1(System.String,System.Object)">
+            <summary>
+            Example: Execute stored procedure with Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.ExecuteAdoNetQueryAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            Example: Raw ADO.NET usage
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.ExecuteReaderAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            Example: Using SqlDataReader with ADO.NET
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.ExecuteTransactionAsync(System.Collections.Generic.List{System.ValueTuple{System.String,System.Object}})">
+            <summary>
+            Example: Transaction with Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.ExecuteAdoNetTransactionAsync(System.Collections.Generic.List{System.ValueTuple{System.String,System.Collections.Generic.Dictionary{System.String,System.Object}}})">
+            <summary>
+            Example: Transaction with ADO.NET
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.BulkInsertAsync(System.Data.DataTable,System.String)">
+            <summary>
+            Example: Bulk insert with SqlBulkCopy (ADO.NET)
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DatabaseExampleService.HealthCheckAsync">
+            <summary>
+            Example: Database health check
+            </summary>
+        </member>
+        <member name="T:ApiCore.Services.Implementation.DynamicCrudService">
+            <summary>
+            Dynamic CRUD service for auto-generated database operations
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DynamicCrudService.ConvertJsonElementValue(System.Object)">
+            <summary>
+            Converts JsonElement values to proper .NET types for SQL parameters
+            </summary>
+            <param name="value">The value to convert</param>
+            <returns>Converted value suitable for SQL parameters</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DynamicCrudService.ExecuteEnhancedStoredProcedureAsync(ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest)">
+            <summary>
+            Execute Enhanced Stored Procedure with full CRUD operations
+            </summary>
+        </member>
+        <member name="T:ApiCore.Services.Implementation.SqlConnectionFactory">
+            <summary>
+            Factory implementation for creating SQL connections
+            Supports multi-database architecture with ADO.NET, Entity Framework Core, and Dapper
+            </summary>
+        </member>
+        <member name="P:ApiCore.Services.Implementation.SqlConnectionFactory.ConnectionString">
+            <summary>
+            Gets the main database connection string (for backward compatibility)
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.GetConnectionString(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Gets the connection string for the specified database type
+            </summary>
+            <param name="databaseType">The database type</param>
+            <returns>The connection string</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateConnection">
+            <summary>
+            Creates a new SQL connection for the main database (not opened)
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <returns>A new SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateConnection(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates a new SQL connection for the specified database type (not opened)
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>A new SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateAndOpenConnectionAsync">
+            <summary>
+            Creates and opens a new SQL connection for the main database
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <returns>An opened SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateAndOpenConnectionAsync(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates and opens a new SQL connection for the specified database type
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>An opened SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateDbConnection">
+            <summary>
+            Creates a new connection as IDbConnection interface for the main database
+            Useful for generic database operations and testing
+            </summary>
+            <returns>A new connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateDbConnection(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates a new connection as IDbConnection interface for the specified database type
+            Useful for generic database operations and testing
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>A new connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateAndOpenDbConnectionAsync">
+            <summary>
+            Creates and opens a new connection as IDbConnection interface for the main database
+            Useful for Dapper operations
+            </summary>
+            <returns>An opened connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.SqlConnectionFactory.CreateAndOpenDbConnectionAsync(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates and opens a new connection as IDbConnection interface for the specified database type
+            Useful for Dapper operations
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>An opened connection as IDbConnection</returns>
+        </member>
+        <member name="T:ApiCore.Services.Interfaces.IBaseService`6">
+            <summary>
+            Base service interface providing common CRUD operations
+            </summary>
+            <typeparam name="TEntity">Entity type</typeparam>
+            <typeparam name="TResponse">Response model type</typeparam>
+            <typeparam name="TCreateRequest">Create request type</typeparam>
+            <typeparam name="TUpdateRequest">Update request type</typeparam>
+            <typeparam name="TSummaryResponse">Summary response type</typeparam>
+            <typeparam name="TDataGridRequest">DataGrid request type</typeparam>
+        </member>
+        <member name="T:ApiCore.Services.Interfaces.IDynamicCrudService">
+            <summary>
+            Dynamic CRUD service interface for auto-generated operations
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.GetTableMetadataAsync(System.String,System.String)">
+            <summary>
+            Get table/view schema information
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.GetSchemaAsync(ApiCore.Models.Dynamic.DynamicSchemaRequest)">
+            <summary>
+            Get all available tables, views, and stored procedures
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.GetDataGridAsync(ApiCore.Models.Dynamic.DynamicDataGridRequest)">
+            <summary>
+            Get data from table/view with DataGrid support
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.GetByIdAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.String)">
+            <summary>
+            Get single record by primary key
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.CreateAsync(ApiCore.Models.Dynamic.DynamicCreateRequest)">
+            <summary>
+            Create new record in table
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.UpdateAsync(ApiCore.Models.Dynamic.DynamicUpdateRequest)">
+            <summary>
+            Update existing record in table
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.DeleteAsync(ApiCore.Models.Dynamic.DynamicDeleteRequest)">
+            <summary>
+            Delete record from table
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.ExecuteStoredProcedureAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.String)">
+            <summary>
+            Execute stored procedure with parameters
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.GetStoredProcedureMetadataAsync(System.String,System.String)">
+            <summary>
+            Get stored procedure metadata
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.TableExistsAsync(System.String,System.String)">
+            <summary>
+            Validate table/view exists
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.ExecuteQueryAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            Execute custom SQL query (with security restrictions)
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.IDynamicCrudService.ExecuteEnhancedStoredProcedureAsync(ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest)">
+            <summary>
+            Execute Enhanced Stored Procedure with full CRUD operations
+            </summary>
+        </member>
+        <member name="T:ApiCore.Services.Interfaces.DatabaseType">
+            <summary>
+            Database type enumeration for multi-database architecture
+            </summary>
+        </member>
+        <member name="F:ApiCore.Services.Interfaces.DatabaseType.Main">
+            <summary>
+            Main application database (WMS operations, inventory, etc.)
+            </summary>
+        </member>
+        <member name="F:ApiCore.Services.Interfaces.DatabaseType.Security">
+            <summary>
+            Security database (users, authentication, authorization, menus)
+            </summary>
+        </member>
+        <member name="T:ApiCore.Services.Interfaces.ISqlConnectionFactory">
+            <summary>
+            Factory interface for creating SQL connections
+            Supports multi-database architecture with ADO.NET, Entity Framework Core, and Dapper
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateConnection">
+            <summary>
+            Creates a new SQL connection for the main database
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <returns>A new SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateConnection(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates a new SQL connection for the specified database type
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>A new SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateAndOpenConnectionAsync">
+            <summary>
+            Creates and opens a new SQL connection for the main database
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <returns>An opened SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateAndOpenConnectionAsync(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates and opens a new SQL connection for the specified database type
+            Compatible with ADO.NET, EF Core, and Dapper
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>An opened SQL connection instance</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateDbConnection">
+            <summary>
+            Creates a new connection as IDbConnection interface for the main database
+            Useful for generic database operations and testing
+            </summary>
+            <returns>A new connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateDbConnection(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates a new connection as IDbConnection interface for the specified database type
+            Useful for generic database operations and testing
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>A new connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateAndOpenDbConnectionAsync">
+            <summary>
+            Creates and opens a new connection as IDbConnection interface for the main database
+            Useful for Dapper operations
+            </summary>
+            <returns>An opened connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.CreateAndOpenDbConnectionAsync(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Creates and opens a new connection as IDbConnection interface for the specified database type
+            Useful for Dapper operations
+            </summary>
+            <param name="databaseType">The database type to connect to</param>
+            <returns>An opened connection as IDbConnection</returns>
+        </member>
+        <member name="M:ApiCore.Services.Interfaces.ISqlConnectionFactory.GetConnectionString(ApiCore.Services.Interfaces.DatabaseType)">
+            <summary>
+            Gets the connection string for the specified database type
+            </summary>
+            <param name="databaseType">The database type</param>
+            <returns>The connection string</returns>
+        </member>
+        <member name="P:ApiCore.Services.Interfaces.ISqlConnectionFactory.ConnectionString">
+            <summary>
+            Gets the main database connection string (for backward compatibility)
+            </summary>
+        </member>
+    </members>
+</doc>
