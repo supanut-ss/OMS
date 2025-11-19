@@ -11,6 +11,7 @@ import {
   TextField,
   MenuItem,
   IconButton,
+  InputAdornment,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BsAutoComplete from "../../components/BSAutoComplete";
@@ -192,6 +193,50 @@ const UserPage = () => {
         "error",
         result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
       );
+    }
+  };
+
+  const handleCopy = async (text) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      // HTTPS / secure context
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          alert("Copied to clipboard!");
+        })
+        .catch(() => fallbackCopy(text));
+    } else {
+      // HTTP / insecure context
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = async (text) => {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+
+      // ต้องกำหนด style แบบนี้เพื่อให้ Chrome/Edge ยอม copy
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "0";
+      textarea.style.opacity = "0";
+
+      document.body.appendChild(textarea);
+
+      // ปล่อยให้ DOM attach ก่อน
+      await new Promise((r) => setTimeout(r, 0));
+
+      textarea.focus();
+      textarea.select();
+
+      const success = document.execCommand("copy");
+
+      document.body.removeChild(textarea);
+
+      alert(success ? "Copied OK!" : "Copy failed");
+    } catch (err) {
+      alert("Copy error: " + err);
     }
   };
 
@@ -481,18 +526,24 @@ const UserPage = () => {
           New Password
         </DialogTitle>
         <DialogContent>
-          <TextField fullWidth value={newPassword} disabled />
+          <TextField
+            fullWidth
+            value={newPassword}
+            InputProps={{
+              readOnly: true,
+            }}
+          />
         </DialogContent>
 
         <DialogActions sx={{ justifyContent: "center", paddingBottom: 2 }}>
           <Button
             variant="contained"
             color="primary"
-            onClick={() => navigator.clipboard.writeText(newPassword)}
+            onClick={() => handleCopy(newPassword)}
+            style={{ visibility: "hidden" }}
           >
             Copy
           </Button>
-
           <Button variant="outlined" onClick={() => setOpenPwDialog(false)}>
             Close
           </Button>
