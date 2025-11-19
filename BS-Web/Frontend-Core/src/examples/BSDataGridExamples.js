@@ -25,6 +25,7 @@ const BSDataGridExamples = () => {
         bsObjBy="name asc"
         bsRowPerPage={20}
         bsShowDescColumn={false}
+        bsBulkAdd={true}
         bsComboBox={[
           {
             Column: "app_id",

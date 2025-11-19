@@ -27,19 +27,19 @@ const ImportExcel = () => {
     {
       field: "code",
       headerName: "Code",
-      width: 150,
+      width: 120,
       type: "string",
     },
     {
       field: "message",
       headerName: "Message",
-      width: 600,
+      width: 700,
       type: "string",
     },
     {
       field: "records",
       headerName: "Records",
-      width: 90,
+      width: 350,
       type: "string",
     },
   ];
@@ -196,7 +196,7 @@ const ImportExcel = () => {
                 key: false,
               },
             ]}
-            bsObjBy="import_name"
+            bsObjBy="seq"
             bsObjWh=""
             bsValue={select}
             bsOnChange={(val) => {

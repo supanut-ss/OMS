@@ -326,6 +326,12 @@ namespace ApiCore.Services.Implementation
                 if (await reader.ReadAsync())
                 {
                     response.RowCount = reader.GetInt32("TotalCount");
+                    _logger.LogInformation("✅ Total count retrieved: {TotalCount}", response.RowCount);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ No TotalCount result set returned from query - using 0 as default");
+                    response.RowCount = 0;
                 }
 
                 // Read data
@@ -957,40 +963,43 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🎯 Added CustomWhere condition: {CustomWhere}", request.CustomWhere);
             }
 
-            // Column filters
-            foreach (var filter in request.FilterModel.Items)
+            // Column filters (null-safe check)
+            if (request.FilterModel?.Items != null)
             {
-                var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(filter.Field, StringComparison.OrdinalIgnoreCase));
-                if (column == null) continue;
-
-                var condition = filter.Operator.ToLower() switch
+                foreach (var filter in request.FilterModel.Items)
                 {
-                    "contains" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                    "equals" => $"[{filter.Field}] = @{filter.Field}_Filter",
-                    "startswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                    "endswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                    "isempty" => $"([{filter.Field}] IS NULL OR [{filter.Field}] = '')",
-                    "isnotempty" => $"([{filter.Field}] IS NOT NULL AND [{filter.Field}] != '')",
-                    ">" => $"[{filter.Field}] > @{filter.Field}_Filter",
-                    ">=" => $"[{filter.Field}] >= @{filter.Field}_Filter",
-                    "<" => $"[{filter.Field}] < @{filter.Field}_Filter",
-                    "<=" => $"[{filter.Field}] <= @{filter.Field}_Filter",
-                    "!=" => $"[{filter.Field}] != @{filter.Field}_Filter",
-                    _ => $"[{filter.Field}] LIKE @{filter.Field}_Filter"
-                };
-                conditions.Add(condition);
+                    var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(filter.Field, StringComparison.OrdinalIgnoreCase));
+                    if (column == null) continue;
+
+                    var condition = filter.Operator.ToLower() switch
+                    {
+                        "contains" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "equals" => $"[{filter.Field}] = @{filter.Field}_Filter",
+                        "startswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "endswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "isempty" => $"([{filter.Field}] IS NULL OR [{filter.Field}] = '')",
+                        "isnotempty" => $"([{filter.Field}] IS NOT NULL AND [{filter.Field}] != '')",
+                        ">" => $"[{filter.Field}] > @{filter.Field}_Filter",
+                        ">=" => $"[{filter.Field}] >= @{filter.Field}_Filter",
+                        "<" => $"[{filter.Field}] < @{filter.Field}_Filter",
+                        "<=" => $"[{filter.Field}] <= @{filter.Field}_Filter",
+                        "!=" => $"[{filter.Field}] != @{filter.Field}_Filter",
+                        _ => $"[{filter.Field}] LIKE @{filter.Field}_Filter"
+                    };
+                    conditions.Add(condition);
+                }
             }
 
             // Quick filter - รองรับทั้ง QuickFilterValues (standard), QuickFilter ใน FilterModel และ QuickFilter ใน Request
-            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilter)
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel?.QuickFilter)
                 ? request.FilterModel.QuickFilter
-                : !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+                : !string.IsNullOrEmpty(request.FilterModel?.QuickFilterValues)
                 ? request.FilterModel.QuickFilterValues
                 : request.QuickFilter;
 
             _logger.LogInformation("🔍 Quick Filter Debug: FilterModel.QuickFilter='{FilterModelQuickFilter}', FilterModel.QuickFilterValues='{QuickFilterValues}', Request.QuickFilter='{RequestQuickFilter}', Final='{FinalValue}'",
-                request.FilterModel.QuickFilter,
-                request.FilterModel.QuickFilterValues,
+                request.FilterModel?.QuickFilter,
+                request.FilterModel?.QuickFilterValues,
                 request.QuickFilter,
                 quickFilterValue);
 
@@ -1016,6 +1025,12 @@ namespace ApiCore.Services.Implementation
 
         private void AddFilterParameters(SqlCommand command, DynamicDataGridRequest request, DynamicTableMetadata metadata)
         {
+            if (request.FilterModel?.Items == null)
+            {
+                _logger.LogDebug("⚠️ FilterModel.Items is null, skipping filter parameters");
+                return;
+            }
+
             // Column filter parameters
             foreach (var filter in request.FilterModel.Items)
             {
@@ -1035,9 +1050,9 @@ namespace ApiCore.Services.Implementation
             }
 
             // Quick filter parameter - รองรับทั้ง QuickFilterValues และ QuickFilter
-            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel.QuickFilter)
+            var quickFilterValue = !string.IsNullOrEmpty(request.FilterModel?.QuickFilter)
                 ? request.FilterModel.QuickFilter
-                : !string.IsNullOrEmpty(request.FilterModel.QuickFilterValues)
+                : !string.IsNullOrEmpty(request.FilterModel?.QuickFilterValues)
                 ? request.FilterModel.QuickFilterValues
                 : request.QuickFilter;
 
@@ -1493,6 +1508,9 @@ namespace ApiCore.Services.Implementation
                     _logger.LogWarning("⚠️ NO DATA returned from Enhanced SP - cannot detect metadata");
                 }
 
+                _logger.LogInformation("🎁 RESPONSE SUMMARY: Success={Success}, RowCount={RowCount}, HasMetadata={HasMetadata}, MetadataColumns={MetadataColumnCount}",
+                    true, totalCount > 0 ? totalCount : results.Count, metadata != null, metadata?.Columns.Count ?? 0);
+
                 return new EnhancedStoredProcedureResponse
                 {
                     Success = true,
@@ -1500,7 +1518,8 @@ namespace ApiCore.Services.Implementation
                     RowCount = totalCount > 0 ? totalCount : results.Count,
                     Message = message,
                     Operation = operation,
-                    ExecutionTime = stopwatch.ElapsedMilliseconds
+                    ExecutionTime = stopwatch.ElapsedMilliseconds,
+                    Metadata = metadata // 🎯 ส่ง metadata กลับไปให้ frontend
                 };
             }
             catch (Exception ex)
