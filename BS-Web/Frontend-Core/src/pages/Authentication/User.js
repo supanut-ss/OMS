@@ -60,9 +60,8 @@ const UserPage = (props) => {
   // โหลด resource ของ group "User"
   const getLang = async () => {
     try {
-      const res = await getResources("User");
+      const res = await getResources("t_com_user"); // ตั้งชื่อ group ตามที่ backend กำหนด
       setResourceData(res);
-      console.log("Loaded User resources:", res);
     } catch (error) {
       console.error("getResources(User) error:", error);
     }
@@ -292,7 +291,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 sx={{ flex: 1 }}
-                label={getResource(resourceData, "UserID")}
+                label={getResource(resourceData, "user_id")}
                 name="user_id"
                 value={form.user_id}
                 onChange={handleChange}
@@ -300,7 +299,7 @@ const UserPage = (props) => {
                 disabled={editMode}
               />
               <TextField
-                label={getResource(resourceData, "Password")}
+                label={getResource(resourceData, "password")}
                 name="password"
                 value={form.password}
                 onChange={handleChange}
@@ -325,7 +324,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label={getResource(resourceData, "FirstName")}
+                label={getResource(resourceData, "first_name")}
                 name="first_name"
                 value={form.first_name}
                 onChange={handleChange}
@@ -333,7 +332,7 @@ const UserPage = (props) => {
               />
               <TextField
                 fullWidth
-                label="Last Name"
+                label={getResource(resourceData, "last_name")}
                 name="last_name"
                 value={form.last_name}
                 onChange={handleChange}
@@ -345,7 +344,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="select"
-                  bsTitle={getResource(resourceData, "SelectUserGroup")}
+                  bsTitle={getResource(resourceData, "user_group_id")}
                   bsPreObj="sec.t_com_"
                   bsObj="user_group"
                   bsColumes={[
@@ -373,7 +372,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="select"
-                  bsTitle={getResource(resourceData, "SelectLanguage")}
+                  bsTitle={getResource(resourceData, "locale_id")}
                   bsPreObj="sec.t_com_"
                   bsObj="combobox_item"
                   bsColumes={[
@@ -403,14 +402,14 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label={getResource(resourceData, "Department")}
+                label={getResource(resourceData, "department")}
                 name="department"
                 value={form.department}
                 onChange={handleChange}
               />
               <TextField
                 fullWidth
-                label={getResource(resourceData, "Supervisor")}
+                label={getResource(resourceData, "supervisor")}
                 name="supervisor"
                 value={form.supervisor}
                 onChange={handleChange}
@@ -420,7 +419,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label={getResource(resourceData, "EmailAddress")}
+                label={getResource(resourceData, "email_address")}
                 name="email_address"
                 value={form.email_address}
                 onChange={handleChange}
@@ -430,7 +429,7 @@ const UserPage = (props) => {
               />
               <TextField
                 fullWidth
-                label={getResource(resourceData, "Domain")}
+                label={getResource(resourceData, "domain")}
                 name="domain"
                 value={form.domain}
                 onChange={handleChange}
@@ -440,7 +439,7 @@ const UserPage = (props) => {
               <TextField
                 fullWidth
                 select
-                label={getResource(resourceData, "IsActive")}
+                label={getResource(resourceData, "is_active")}
                 name="is_active"
                 value={form.is_active}
                 onChange={handleChange}
