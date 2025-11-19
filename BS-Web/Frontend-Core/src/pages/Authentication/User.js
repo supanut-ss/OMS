@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,11 +11,9 @@ import {
   TextField,
   MenuItem,
   IconButton,
-  InputAdornment,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BsAutoComplete from "../../components/BSAutoComplete";
-import Logger from "../../utils/logger";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
@@ -64,6 +62,7 @@ const UserPage = (props) => {
     try {
       const res = await getResources("User");
       setResourceData(res);
+      console.log("Loaded User resources:", res);
     } catch (error) {
       console.error("getResources(User) error:", error);
     }
@@ -102,8 +101,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-        getResource(resourceData, "SaveFailed") ||
-        "Save failed"
+          getResource(resourceData, "SaveFailed") ||
+          "Save failed"
       );
     }
   };
@@ -161,7 +160,7 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "warning",
         getResource(resourceData, "FillRequiredFields") ||
-        "Please fill all required fields."
+          "Please fill all required fields."
       );
       return;
     }
@@ -181,8 +180,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-        getResource(resourceData, "SaveFailed") ||
-        "Save failed"
+          getResource(resourceData, "SaveFailed") ||
+          "Save failed"
       );
     }
   };
@@ -198,8 +197,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-        getResource(resourceData, "SaveFailed") ||
-        "Save failed"
+          getResource(resourceData, "SaveFailed") ||
+          "Save failed"
       );
     }
   };
@@ -293,7 +292,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 sx={{ flex: 1 }}
-                label="User ID"
+                label={getResource(resourceData, "UserID")}
                 name="user_id"
                 value={form.user_id}
                 onChange={handleChange}
@@ -301,7 +300,7 @@ const UserPage = (props) => {
                 disabled={editMode}
               />
               <TextField
-                label="Password"
+                label={getResource(resourceData, "Password")}
                 name="password"
                 value={form.password}
                 onChange={handleChange}
@@ -326,7 +325,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label="First Name"
+                label={getResource(resourceData, "FirstName")}
                 name="first_name"
                 value={form.first_name}
                 onChange={handleChange}
@@ -346,7 +345,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="select"
-                  bsTitle="Select Group *"
+                  bsTitle={getResource(resourceData, "SelectUserGroup")}
                   bsPreObj="sec.t_com_"
                   bsObj="user_group"
                   bsColumes={[
@@ -374,7 +373,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="select"
-                  bsTitle="Select Language *"
+                  bsTitle={getResource(resourceData, "SelectLanguage")}
                   bsPreObj="sec.t_com_"
                   bsObj="combobox_item"
                   bsColumes={[
@@ -404,14 +403,14 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label="Department"
+                label={getResource(resourceData, "Department")}
                 name="department"
                 value={form.department}
                 onChange={handleChange}
               />
               <TextField
                 fullWidth
-                label="Supervisor"
+                label={getResource(resourceData, "Supervisor")}
                 name="supervisor"
                 value={form.supervisor}
                 onChange={handleChange}
@@ -421,7 +420,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label="Email Address"
+                label={getResource(resourceData, "EmailAddress")}
                 name="email_address"
                 value={form.email_address}
                 onChange={handleChange}
@@ -431,7 +430,7 @@ const UserPage = (props) => {
               />
               <TextField
                 fullWidth
-                label="Domain"
+                label={getResource(resourceData, "Domain")}
                 name="domain"
                 value={form.domain}
                 onChange={handleChange}
@@ -441,7 +440,7 @@ const UserPage = (props) => {
               <TextField
                 fullWidth
                 select
-                label="Is Active"
+                label={getResource(resourceData, "IsActive")}
                 name="is_active"
                 value={form.is_active}
                 onChange={handleChange}
@@ -529,14 +528,14 @@ const UserPage = (props) => {
           />
         </DialogContent>
         <DialogActions sx={{ justifyContent: "center", paddingBottom: 2 }}>
-          <Button
+          {/* <Button
             variant="contained"
             color="primary"
             onClick={() => handleCopy(newPassword)}
             style={{ visibility: "hidden" }}
           >
             Copy
-          </Button>
+          </Button> */}
           <Button variant="outlined" onClick={() => setOpenPwDialog(false)}>
             {getResource(resourceData, "Close") || "Close"}
           </Button>
