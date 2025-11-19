@@ -1,13 +1,38 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Typography, Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
+import { useResource } from "../../hooks/useResource";
 
-const UserGroupPage = () => {
-  const [locale_id, setLocale_id] = useState("en");
+const UserGroupPage = (props) => {
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState([]);
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
+
+  // ฟังก์ชันโหลด resource ของ group "UserGroup"
+  const getLang = async () => {
+    try {
+      const res = await getResources("UserGroup"); // ตั้งชื่อ group ตามที่ backend กำหนด
+      setResourceData(res);
+      console.log("Loaded User resources:", res);
+    } catch (error) {
+      console.error("getResources(UserGroup) error:", error);
+    }
+  };
+
+  // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน
+  useEffect(() => {
+    setLocale_id(props.lang || "en");
+    getLang();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.lang]);
 
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {getResource(resourceData, "User Group") || "User Group"}
+        </Typography>
+
         <BSDataGrid
           bsLocale={locale_id}
           bsPreObj="sec"
