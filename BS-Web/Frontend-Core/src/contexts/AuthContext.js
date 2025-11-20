@@ -129,6 +129,8 @@ export const AuthProvider = ({ children }) => {
                 };
               }
               acc[key].submenu.push({
+                menu_id: item.menu_id,
+                favorite:item.menu_favorite_id !== 0,
                 parent_menu_id: item.parent_menu_id,
                 menu_sequence: item.menu_sequence,
                 menu_name: item.menu_name,

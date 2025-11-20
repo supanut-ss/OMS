@@ -5,7 +5,7 @@
 # ========================================
 
 # API Configuration
-$apiBaseUrl = "http://10.10.60.103/api_gateway_ams_kpmt/gateway/v1/api"
+$apiBaseUrl = "http://10.10.60.66/api_gateway_ams_kpmt/gateway/v1/api"
 $username = "admin"
 $password = "your_password_here"
 

@@ -24,5 +24,6 @@
         public string menu_path { get; set; } = string.Empty;
         public int menu_sequence { get; set; }
         public int menu_group_sequence { get; set; }
+        public int menu_favorite_id { get; set; }
     }
 }

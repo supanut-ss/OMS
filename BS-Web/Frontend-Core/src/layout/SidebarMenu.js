@@ -16,24 +16,26 @@ import { useNavigate } from "react-router-dom";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
-import useMenuItems from "../contexts/useMenuItems";
 import { useResource } from "../hooks/useResource";
+import { useMenuItems } from "../hooks/useMenuItems";
 import SidebarSubmenu from "./SidebarSubmenu";
 import HouseIcon from '@mui/icons-material/House';
 import SettingsIcon from '@mui/icons-material/Settings';
 import StorageIcon from '@mui/icons-material/Storage';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import StarIcon from '@mui/icons-material/Star';
+import { useAuth } from "../contexts/AuthContext";
 
 const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState({});
   const [search, setSearch] = useState("");
-  const { getResource, getResources } = useResource();
+  const { getResource, getResourceDescription, getResources } = useResource();
   const [resourceData, setResourceData] = useState(null);
   const [filteredMenu, setFilteredMenu] = useState([]);
-  const menuItems = useMenuItems();
-
+  const { menuItems } = useMenuItems();
+  const { menu } = useAuth();
   // Toggle expand/collapse
   const handleExpand = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -48,6 +50,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         const newItem = {
           ...item,
           text: getResource(resourceData, item.text),
+          description: getResourceDescription(resourceData, item.text),
           submenu: item.submenu
             ? filterMenuItems(item.submenu, keyword)
             : [],
@@ -74,8 +77,18 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
 
   // ✅ อัปเดตเมนูเมื่อมี resource หรือ search เปลี่ยน
   const getMenu = () => {
+    let menu = menuItems();
     if (!resourceData) return;
-    const data = filterMenuItems(menuItems, search);
+    let data = filterMenuItems(menu, search);
+    const favoriteMenu = (data || [])
+      .map(m => (m.submenu || []).filter(x => x.favorite))
+      .flat();
+    data = [{
+      text: "Favorite",
+      description: "",
+      path: "/",
+      submenu: favoriteMenu
+    }, ...data]
     setFilteredMenu(data);
   };
 
@@ -93,33 +106,40 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const showIcon = (index) => {
     switch (index) {
       case 0:
-        return <HouseIcon />;
+        return <StarIcon />;
       case 1:
-        return <SettingsIcon />
+        return <HouseIcon />;
       case 2:
-        return <StorageIcon />
+        return <SettingsIcon />
       case 3:
-        return <ImportExportIcon />
+        return <StorageIcon />
       case 4:
+        return <ImportExportIcon />
+      case 5:
         return <LocalOfferIcon />
       default:
         return <MenuOpenIcon />
     }
   }
+  const RefreshMenu = async () => {
+    const status = await menu();
+    if (status) {
+      getMenu();
+    }
+  }
   // ✅ สร้างเมนู UI
-  const menuDiv = filteredMenu?.map(({ text, path, icon, submenu },index) => {
-    const key = `${index}-${path}`;
-    const hasSubmenu = submenu?.length > 0;
-
+  const menuDiv = filteredMenu?.map((menu, index) => {
+    const key = `${index}-${menu.path}`;
+    const hasSubmenu = menu?.submenu?.length > 0;
     return (
       <div key={key}>
-        <Tooltip title={!open ? text : ""} placement="right" arrow>
+        <Tooltip title={menu.description ?? ""} placement="right" arrow>
           <ListItemButton
             onClick={() => {
               if (hasSubmenu) handleExpand(key);
               else {
                 setLoading(true);
-                navigate(path);
+                navigate(menu.path);
                 if (isMobile) setOpen(false);
               }
             }}
@@ -146,11 +166,11 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
                 color: "inherit",
               }}
             >
-              {icon || showIcon(index)}
+              {menu.icon || showIcon(index)}
             </ListItemIcon>
             {open && (
               <ListItemText
-                primary={text}
+                primary={menu.text}
                 sx={{
                   color: "inherit",
                   "& .MuiTypography-root": { fontWeight: 500 },
@@ -165,11 +185,13 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         {hasSubmenu && (
           <Collapse in={expanded[key]} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              {submenu.map((sub) => (
+              {menu.submenu.map((sub) => (
                 <SidebarSubmenu
                   key={`${key}-${sub.text}`}
-                  text={sub.text}
-                  path={sub.path}
+                  submenu={sub}
+                  setIsFav={() => {
+                    RefreshMenu();
+                  }}
                   isMobile={isMobile}
                   open={open}
                   setOpen={setOpen}
@@ -211,7 +233,9 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
       </Paper>
 
       {/* รายการเมนู */}
-      <List sx={{ px: 2, py: 1 }}>{menuDiv}</List>
+      <List sx={{ px: 2, py: 1 }}>
+        {menuDiv}
+      </List>
     </Box>
   );
 };

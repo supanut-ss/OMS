@@ -9,6 +9,13 @@ export const useResource = () => {
         }
         return response;
     }
+    const getResourceDescription = (resourceData, resource_name) => {
+        let response = null;
+        if (resourceData) {
+            response = resourceData?.find(r => r.resource_name === resource_name)?.resource_description ?? resource_name;
+        }
+        return response;
+    }
     const getResources = async (resource_group) => {
         let response = [];
         const resourceData = secureStorage.get("resource") || null;
@@ -19,11 +26,12 @@ export const useResource = () => {
             data.map(item =>
                 response.push({
                     resource_name: item.resource_name,
-                    resource_value: lang === "en" ? item.resource_en : lang === "th" ? item.resource_th : item.resource_other
+                    resource_value: lang === "en" ? item.resource_en : lang === "th" ? item.resource_th : item.resource_other,
+                    resource_description: lang === "en" ? item.description_en : lang === "th" ? item.description_th : item.description_other
                 })
             );
         }
         return response;
     }
-    return { getResource, getResources };
+    return { getResource, getResourceDescription, getResources };
 }

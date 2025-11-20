@@ -8,8 +8,8 @@ export function useMenuContext() {
       let response = null;
       await AxiosMaster.get(
         `/menu/menuAssign?user_group_id=${selectedGroup}&platform=${selectedPlatform}`
-      ).then((res)=>{
-          response = res?.data ?? null;
+      ).then((res) => {
+        response = res?.data ?? null;
       })
       return response;
     } catch (err) {
@@ -47,11 +47,21 @@ export function useMenuContext() {
       return null;
     }
   }, []);
-
+  const favorite = useCallback(async (menuId) => {
+    try {
+      const res = await AxiosMaster.post(`/menu/favorite`, {
+        menu_id: menuId
+      });
+      return res.data;
+    } catch (err) {
+      return null;
+    }
+  })
   return {
     getMenuAssign,
     saveMenuAssign,
     getComboboxPlatform,
     getGroupCombobox,
+    favorite
   };
 }

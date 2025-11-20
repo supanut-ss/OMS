@@ -1124,13 +1124,27 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/version",
+      "UpstreamPathTemplate": "/gateway/v1/api/version",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/menu/favorite",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/menu/favorite",
       "UpstreamHttpMethod": [
         "post"
       ]
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://192.168.254.155:8080"
+    "BaseUrl": "http://10.60.10.144:8080"
   }
 }

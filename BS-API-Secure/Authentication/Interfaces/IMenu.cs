@@ -6,8 +6,10 @@ namespace Authentication.Interfaces
 {
     public interface IMenu
     {
-        Task<MenuResponse> GetAuthenMenu(int groupId, string platform);
+        Task<MenuResponse> GetAuthenMenu(int groupId, string platform,string userId);
 
         Task<MasterResponse> SaveAssignMenu(List<MenuAssignRequest> listMenu, string userId);
+
+        Task<MasterResponse> Favorite(MenuFavoriteRequest request, string userId);
     }
 }

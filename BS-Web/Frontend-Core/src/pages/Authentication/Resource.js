@@ -181,8 +181,11 @@ const Resource = ({ lang }) => {
                     ]}
                     bsRowPerPage={20}
                     bsShowDescColumn={false}
-                    onEdit={handleOpenEdit}
-                    onAdd={handleOpenAdd}
+                    // onEdit={handleOpenEdit}
+                    // onAdd={handleOpenAdd}
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
                 />
             </Paper>
             <Dialog open={openForm} maxWidth="lg" onClose={() => setOpenForm(false)}>
