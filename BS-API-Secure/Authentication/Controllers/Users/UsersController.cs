@@ -176,5 +176,32 @@ namespace Authentication.Controllers.Users
                 return ResponseError(ex.Message, 1);
             }
         }
+
+        [HttpPost("clear_logon")]
+        public async Task<IActionResult> ClearLogOn(ResetPasswordRequest request)
+        {
+            try
+            {
+
+                if (string.IsNullOrEmpty(request?.UserId))
+                    return BadRequest(new { message = "UserId is required." });
+
+                // ตรวจสอบว่า service พร้อมใช้งาน
+                if (_iusers == null)
+                    return StatusCode(503, new { message = "User service unavailable." });
+
+                var newPassword = PasswordHelper.GenerateTemporaryPassword(12);
+
+                var token = await _iusers.ClearLogOn(request?.UserId);
+
+                return token != null
+                        ? AccessResponseSuccess("success", token)
+                        : ResponseUnauthorized("Invalid username or password.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message, 1);
+            }
+        }
     }
 }

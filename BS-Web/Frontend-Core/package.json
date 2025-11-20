@@ -20,7 +20,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
-    "dayjs": "^1.11.18",
+    "dayjs": "^1.11.19",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
     "jwt-decode": "^4.0.0",

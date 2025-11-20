@@ -93,7 +93,6 @@ export default function AppRoutes() {
         <Route path="user" element={<UserPage lang={lang} />} />
         <Route path="user_group" element={<UserGroupPage lang={lang} />} />
         <Route path="menu" element={<MenuPage lang={lang} />} />
-        <Route path="user_logon" element={<UserLogOnPage />} />
         <Route path="count">
           <Route path="count_tag" element={<CountTag lang={lang} />} />
           <Route
@@ -113,6 +112,7 @@ export default function AppRoutes() {
           <Route path="assign_menu" element={<AssignMenu />} />
           <Route path="resource" element={<Resource lang={lang} />} />
           <Route path="menu" element={<MenuPage lang={lang} />} />
+          <Route path="user_logon" element={<UserLogOnPage lang={lang} />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
