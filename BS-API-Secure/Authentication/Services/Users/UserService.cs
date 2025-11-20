@@ -327,5 +327,51 @@ namespace Authentication.Services.Users
             }
             return response;
         }
+
+        public async Task<MasterResponse> ClearLogOn(string userId)
+        {
+            var response = new MenuResponse
+            {
+                message_code = "0",
+                message_text = "Success",
+            };
+
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
+                    using var cmd = new SqlCommand("sec.usp_clear_user_logon_token", conn);
+
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50) { Direction = ParameterDirection.Output };
+                    var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500) { Direction = ParameterDirection.Output };
+
+                    // You need to provide groupId and platform variables or get them from item
+                    cmd.Parameters.AddWithValue("@in_vchUserId", userId);
+
+                    cmd.Parameters.Add(errorCodeParam);
+                    cmd.Parameters.Add(errorMsgParam);
+
+                    await conn.OpenAsync();
+                    await cmd.ExecuteNonQueryAsync();
+
+                    if (errorCodeParam.Value.ToString() != "0")
+                    {
+                        response.message_code = errorCodeParam.Value.ToString() ?? "1";
+                        response.message_text = errorMsgParam.Value.ToString() ?? "1";
+                    }
+
+                    return response;
+                }
+            }
+            catch (Exception ex)
+            {
+                response.message_code = "-1";
+                response.message_text = "Exception : " + ex.Message;
+                throw;
+            }
+        }
     }
 }
