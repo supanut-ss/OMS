@@ -37,8 +37,7 @@ const MenuPage = (props) => {
           bsPreObj="sec"
           bsObj="t_com_menu"
           bsCols="menu_id,menu_group,menu_name,platform,process,menu_group_sequence,parent_menu_id,menu_sequence,is_active,create_by,create_date,update_by,update_date"
-          bsObjBy="platform desc,menu_group_sequence asc, menu_sequence asc"
-          bsRowPerPage={20}
+          bsObjBy="platform desc,menu_group_sequence asc, menu_sequence asc" 
           bsShowDescColumn={false}
           bsComboBox={[
             {

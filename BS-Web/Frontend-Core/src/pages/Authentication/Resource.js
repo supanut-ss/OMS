@@ -178,8 +178,7 @@ const Resource = ({ lang }) => {
                             ObjWh: "group_name = 'platform' AND is_active='YES'",
                             ObjBy: "display_member asc",
                         },
-                    ]}
-                    bsRowPerPage={20}
+                    ]} 
                     bsShowDescColumn={false}
                     // onEdit={handleOpenEdit}
                     // onAdd={handleOpenAdd}

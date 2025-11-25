@@ -71,7 +71,6 @@ const UserLogOnPage = (props) => {
           bsObj="v_com_user_alive"
           bsCols="user_id,status,first_name,last_name,ip_address,refresh_token_expiry,device_info"
           bsObjBy="status DESC, user_id ASC"
-          bsRowPerPage={20}
           bsBulkEdit={false}
           bsBulkAdd={false}
           bsBulkDelete={false}
