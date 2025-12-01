@@ -25,6 +25,7 @@ import BSDatepickerExamples from "./examples/BSDatepickerExamples";
 import BSDataGridWithCustomFilterExample from "./examples/BSDataGridWithCustomFilterExample";
 import Home from "./pages/Home";
 import ImportMaster from "./pages/Import/ImportMaster";
+import UserLogOnPage from "./pages/Authentication/UserLogOn";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -77,7 +78,10 @@ export default function AppRoutes() {
           <Route path="textfield" element={<BSTextFieldExamples />} />
           <Route path="datepicker" element={<BSDatepickerExamples />} />
           <Route path="filtercustom" element={<BSFilterCustomExamples />} />
-          <Route path="datagrid-custom-filter" element={<BSDataGridWithCustomFilterExample />} />
+          <Route
+            path="datagrid-custom-filter"
+            element={<BSDataGridWithCustomFilterExample />}
+          />
         </Route>
         <Route path="authentication">
           <Route path="user_group" element={<UserGroupPage lang={lang} />} />
