@@ -32,7 +32,7 @@ const CustomerPage = (props) => {
           bsPreObj="tmt"
           bsObj="t_tmt_customer"
           bsObjBy="create_date desc"
-          bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+          // bsPageSizeOptions={[20, 100, 200, 500, 1000]}
         />
       </Paper>
     </Box>
