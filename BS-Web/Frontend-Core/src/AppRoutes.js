@@ -31,6 +31,7 @@ import Projects from "./pages/Projects/Projects";
 import CustomerPage from "./pages/Master/Customer";
 import HolidayPage from "./pages/Master/Holiday";
 import SalePage from "./pages/Master/Sale";
+import IsoPage from "./pages/Master/Iso";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -104,8 +105,9 @@ export default function AppRoutes() {
         </Route>
         <Route path="master">
           <Route path="sale" element={<SalePage lang={lang} />} />
-          <Route path="holiday" element={<HolidayPage lang={lang} />} />\
+          <Route path="holiday" element={<HolidayPage lang={lang} />} />
           <Route path="customer" element={<CustomerPage lang={lang} />} />
+          <Route path="iso" element={<IsoPage lang={lang} />} />
         </Route>
         <Route path="projects" element={<Projects lang={lang} />} />
       </Route>

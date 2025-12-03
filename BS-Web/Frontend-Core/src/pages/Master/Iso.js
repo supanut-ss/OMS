@@ -1,0 +1,102 @@
+import { Box, Paper, Typography } from "@mui/material";
+import BSDataGrid from "../../components/BSDataGrid";
+import { useEffect, useState, useRef } from "react";
+import { useResource } from "../../hooks/useResource";
+
+/**
+ * IsoPage - Example of Hierarchical Data with BSDataGrid
+ *
+ * This page demonstrates the hierarchical data feature where:
+ * - t_tmt_iso_type is the parent table (PK: iso_type_id)
+ * - t_tmt_iso_type_doc is a child table (FK: iso_type_id)
+ * - t_tmt_iso_type_phase is a child table (FK: iso_type_id)
+ *
+ * When editing a parent record, child grids appear in tabs within the dialog.
+ * When adding a new parent record, child grids are hidden until the parent is saved.
+ */
+const IsoPage = (props) => {
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState([]);
+  const dataGridRef = useRef(null);
+
+  const getLang = async () => {
+    const res = await getResources("Iso");
+    setResourceData(res);
+  };
+
+  useEffect(() => {
+    getLang();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.lang]);
+
+  // Child grid configurations for hierarchical data
+  const childGridConfigs = [
+    {
+      // Tab 1: Documents
+      name: "Documents",
+      bsPreObj: "tmt",
+      bsObj: "t_tmt_iso_type_doc",
+      foreignKeys: ["iso_type_id"], // FK linking to parent
+      bsObjBy: "sequence asc",
+      bsVisibleEdit: true,
+      bsVisibleDelete: true,
+      bsShowRowNumber: true,
+      bsRowPerPage: 10,
+      bsPageSizeOptions: [10, 25, 50],
+      height: 350,
+      // Optional: specify columns to show
+      // bsCols: "doc_name,doc_type,doc_path,create_date",
+      // Optional: ComboBox configurations for child grid
+      // bsComboBox: [
+      //     {
+      //         Column: "doc_type_id",
+      //         Display: "doc_type_name",
+      //         Value: "doc_type_id",
+      //         Default: "--- Select Type ---",
+      //         PreObj: "tmt",
+      //         Obj: "t_tmt_doc_type",
+      //     }
+      // ],
+    },
+    {
+      // Tab 2: Phases
+      name: "Phases",
+      bsPreObj: "tmt",
+      bsObj: "t_tmt_iso_type_phase",
+      foreignKeys: ["iso_type_id"], // FK linking to parent
+      bsObjBy: "sequence asc",
+      bsVisibleEdit: true,
+      bsVisibleDelete: true,
+      bsShowRowNumber: true,
+      bsRowPerPage: 10,
+      bsPageSizeOptions: [10, 25, 50],
+      height: 350,
+    },
+  ];
+
+  return (
+    <Box>
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {getResource(resourceData, "Iso")}
+        </Typography>
+
+        <BSDataGrid
+          ref={dataGridRef}
+          bsLocale={props.lang}
+          bsPreObj="tmt"
+          bsObj="t_tmt_iso_type"
+          bsObjBy="create_date desc"
+          //   bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+          // Hierarchical Data Configuration
+          bsPrimaryKeys={["iso_type_id"]} // Parent table primary key(s)
+          bsChildGrids={childGridConfigs} // Child grid configurations
+          // Optional: Dialog size for hierarchical mode (recommended: Large or FullScreen)
+          bsDialogSize="Large"
+        />
+      </Paper>
+    </Box>
+  );
+};
+
+export default IsoPage;

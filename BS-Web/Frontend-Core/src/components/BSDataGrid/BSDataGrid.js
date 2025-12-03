@@ -39,6 +39,9 @@ import {
   InputAdornment,
   Tabs,
   Tab,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -68,6 +71,7 @@ import {
   FileDownload as FileDownloadIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  ExpandMore as ExpandMoreIcon,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
@@ -78,6 +82,7 @@ import { getLocaleText } from "./locales";
 import Logger from "../../utils/logger";
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
+import BSChildDataGrid from "./BSChildDataGrid";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
@@ -1246,6 +1251,73 @@ const ComboBoxField = ({
  *   * 6 = One-sixth width (6 fields per row)
  *   * 12 = Smallest width (12 fields per row)
  *   * Example: <BSDataGrid bsDialogColumns={2} /> - Shows 2 fields per row
+ *
+ * @bsChildGrids Configuration (Hierarchical Data):
+ * - bsChildGrids: Array of child grid configurations for master-detail relationships
+ *   * Enables hierarchical data editing within a single dialog
+ *   * Parent form appears in an Accordion, child grids appear in Tabs below
+ *   * Child grids are hidden during Add mode until parent record is saved
+ *   * Each child grid configuration supports all BSDataGrid props plus:
+ *     - name: Tab display name (required)
+ *     - foreignKeys: Array of FK column names linking to parent (required)
+ *   * Example:
+ *     ```jsx
+ *     bsChildGrids={[
+ *       {
+ *         name: "Documents",
+ *         bsPreObj: "tmt",
+ *         bsObj: "t_tmt_iso_type_doc",
+ *         foreignKeys: ["iso_type_id"],
+ *         bsObjBy: "create_date desc",
+ *         bsVisibleEdit: true,
+ *         bsVisibleDelete: true,
+ *         height: 350,
+ *       },
+ *       {
+ *         name: "Phases",
+ *         bsPreObj: "tmt",
+ *         bsObj: "t_tmt_iso_type_phase",
+ *         foreignKeys: ["iso_type_id"],
+ *         bsObjBy: "phase_order asc",
+ *       }
+ *     ]}
+ *     ```
+ *
+ * @bsPrimaryKeys Configuration (Hierarchical Data):
+ * - bsPrimaryKeys: Array of primary key column names for the parent table
+ *   * Required when using bsChildGrids
+ *   * Used to pass parent PK values to child grids for FK filtering
+ *   * Example: bsPrimaryKeys={["iso_type_id"]}
+ *
+ * @bsDefaultFormValues Configuration:
+ * - bsDefaultFormValues: Object with default values for new records
+ *   * Used internally by child grids to pre-populate FK values
+ *   * Can also be used to set default values for any field
+ *   * Example: bsDefaultFormValues={{ status: "active", priority: 1 }}
+ *
+ * Hierarchical Data Usage Example:
+ * ```jsx
+ * <BSDataGrid
+ *   bsPreObj="tmt"
+ *   bsObj="t_tmt_iso_type"
+ *   bsPrimaryKeys={["iso_type_id"]}
+ *   bsChildGrids={[
+ *     {
+ *       name: "Documents",
+ *       bsPreObj: "tmt",
+ *       bsObj: "t_tmt_iso_type_doc",
+ *       foreignKeys: ["iso_type_id"],
+ *     },
+ *     {
+ *       name: "Phases",
+ *       bsPreObj: "tmt",
+ *       bsObj: "t_tmt_iso_type_phase",
+ *       foreignKeys: ["iso_type_id"],
+ *     }
+ *   ]}
+ *   bsDialogSize="Large"
+ * />
+ * ```
  */
 const BSDataGrid = forwardRef(
   (
@@ -1307,6 +1379,11 @@ const BSDataGrid = forwardRef(
       bsDialogSize = "Default", // Dialog size: "Small" | "Default" | "Large" | "FullScreen"
       bsDialogTab, // Tab configuration for form fields: [{ Tabs: [{ Tab: { Column: "col1,col2", name: "Tab Name" } }] }]
       bsDialogColumns = 4, // Number of columns per row in dialog form: 1, 2, 3, 4, 6, or 12
+
+      // Hierarchical Data configuration
+      bsChildGrids = [], // Child grid configurations: [{ name: "Tab Name", bsPreObj, bsObj, foreignKeys: ["fk_col"], ...gridProps }]
+      bsPrimaryKeys = [], // Primary key column names for parent record (used for child grid FK linking)
+      bsDefaultFormValues = {}, // Default values for new records (used by child grids for FK values)
 
       onCheckBoxSelected,
 
@@ -1727,6 +1804,13 @@ const BSDataGrid = forwardRef(
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModel] = useState({});
     const newRowIdCounter = useRef(0);
+
+    // Hierarchical Data states
+    const [isParentSaved, setIsParentSaved] = useState(false); // Track if parent record is saved (for child grids)
+    const [activeChildTab, setActiveChildTab] = useState(0); // Active child grid tab index
+    const [parentAccordionExpanded, setParentAccordionExpanded] = useState(true); // Parent form accordion state
+    const [savedParentKeyValues, setSavedParentKeyValues] = useState({}); // Saved parent PK values for child grids
+    const childGridRefs = useRef({}); // Refs for child grid components
 
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
@@ -3384,6 +3468,16 @@ const BSDataGrid = forwardRef(
             }
           });
 
+        // Apply default form values (used for FK values in child grids)
+        if (bsDefaultFormValues && Object.keys(bsDefaultFormValues).length > 0) {
+          Object.keys(bsDefaultFormValues).forEach((key) => {
+            init[key] = bsDefaultFormValues[key];
+            Logger.log(`🔧 Setting ${key} from bsDefaultFormValues:`, {
+              value: bsDefaultFormValues[key],
+            });
+          });
+        }
+
         Logger.log("🔧 Final initialized form data:", init);
         return init;
       },
@@ -3395,6 +3489,7 @@ const BSDataGrid = forwardRef(
         dialogMode,
         bsStoredProcedure,
         detectPrimaryKeyFromData,
+        bsDefaultFormValues,
       ]
     );
 
@@ -3479,9 +3574,31 @@ const BSDataGrid = forwardRef(
         });
 
         setFormData(initialFormData);
+        
+        // For hierarchical data: set parent as saved and extract PK values for child grids
+        if (bsChildGrids && bsChildGrids.length > 0) {
+          setIsParentSaved(true);
+          setParentAccordionExpanded(false); // Collapse parent form when editing
+          
+          // Extract parent primary key values for child grids
+          const pkValues = {};
+          const effectivePrimaryKeys = bsPrimaryKeys.length > 0 
+            ? bsPrimaryKeys 
+            : (metadata?.primaryKeys || []);
+          
+          effectivePrimaryKeys.forEach((pk) => {
+            if (row[pk] !== undefined) {
+              pkValues[pk] = row[pk];
+            }
+          });
+          
+          setSavedParentKeyValues(pkValues);
+          Logger.log("🔗 Hierarchical Edit - Parent PK values:", pkValues);
+        }
+        
         setDialogOpen(true);
       },
-      [onEdit, initializeFormData]
+      [onEdit, initializeFormData, bsChildGrids, bsPrimaryKeys, metadata?.primaryKeys]
     );
 
     // Handle Delete (external or built-in)
@@ -3909,6 +4026,50 @@ const BSDataGrid = forwardRef(
           }
         }
 
+        // For hierarchical data in add mode: don't close dialog, enable child grids
+        if (dialogMode === "add" && bsChildGrids && bsChildGrids.length > 0) {
+          // Reload data to get the newly created record with its PK
+          let newRecord = null;
+          if (bsStoredProcedure) {
+            await loadStoredProcedureData();
+          } else {
+            await loadData();
+          }
+          
+          // Try to find the newly created record by matching form data
+          // This is a best-effort approach - ideally the API should return the created record
+          const effectivePrimaryKeys = bsPrimaryKeys.length > 0 
+            ? bsPrimaryKeys 
+            : (metadata?.primaryKeys || []);
+          
+          // For now, we'll need to get the PK from the response or reload
+          // Mark parent as saved and collapse accordion
+          setIsParentSaved(true);
+          setParentAccordionExpanded(false);
+          
+          // Extract PK values from formData if available (for identity columns, this won't work)
+          // The API should ideally return the created record with its PK
+          const pkValues = {};
+          effectivePrimaryKeys.forEach((pk) => {
+            if (formData[pk] !== undefined) {
+              pkValues[pk] = formData[pk];
+            }
+          });
+          
+          // If we don't have PK values, we need to get them from the last created record
+          // This is a limitation - ideally the createRecord should return the new record
+          if (Object.keys(pkValues).length === 0) {
+            Logger.warn("⚠️ Could not extract PK values from formData. Child grids may not work correctly.");
+            Logger.log("💡 Tip: Ensure your API returns the created record with its primary key.");
+          }
+          
+          setSavedParentKeyValues(pkValues);
+          Logger.log("🔗 Hierarchical Add - Parent saved, PK values:", pkValues);
+          
+          // Don't close dialog - show child grids
+          return;
+        }
+
         setDialogOpen(false);
         setFormData({});
         setSelectedRow(null);
@@ -3941,6 +4102,8 @@ const BSDataGrid = forwardRef(
       loadStoredProcedureData,
       getEffectivePrimaryKey,
       getUserId,
+      bsChildGrids,
+      bsPrimaryKeys,
     ]);
 
     const handleDialogClose = useCallback(() => {
@@ -3948,6 +4111,11 @@ const BSDataGrid = forwardRef(
       setFormData({});
       setSelectedRow(null);
       setActiveDialogTab(0); // Reset to first tab when closing
+      // Reset hierarchical data states
+      setIsParentSaved(false);
+      setActiveChildTab(0);
+      setParentAccordionExpanded(true);
+      setSavedParentKeyValues({});
     }, []);
 
     // Helper: Render combobox for columns with ComboBox configuration
@@ -7330,7 +7498,7 @@ const BSDataGrid = forwardRef(
         <Dialog
           open={dialogOpen}
           onClose={handleDialogClose}
-          maxWidth={dialogMaxWidth}
+          maxWidth={bsChildGrids && bsChildGrids.length > 0 ? "lg" : dialogMaxWidth}
           fullWidth
           fullScreen={isDialogFullScreen}
         >
@@ -7339,29 +7507,142 @@ const BSDataGrid = forwardRef(
               ? localeText.bsAddNewRecord
               : localeText.bsEditRecord}
           </DialogTitle>
-          <DialogContent dividers={parsedDialogTabs ? true : false}>
-            {metadata?.columns || bsStoredProcedure ? (
-              renderFormFields()
-            ) : (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <CircularProgress />
-                <Typography variant="body2" sx={{ mt: 2 }}>
-                  {localeText.bsLoadingMetadata}
-                </Typography>
+          <DialogContent dividers={parsedDialogTabs || (bsChildGrids && bsChildGrids.length > 0) ? true : false}>
+            {/* Hierarchical Data Mode - with child grids */}
+            {bsChildGrids && bsChildGrids.length > 0 ? (
+              <Box sx={{ width: "100%" }}>
+                {/* Parent Form in Accordion */}
+                <Accordion 
+                  expanded={parentAccordionExpanded} 
+                  onChange={(e, expanded) => setParentAccordionExpanded(expanded)}
+                  sx={{ mb: 2 }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    aria-controls="parent-form-content"
+                    id="parent-form-header"
+                  >
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {localeText.bsParentRecord || "Parent Record"}
+                      {isParentSaved && (
+                        <Chip 
+                          label={localeText.bsSaved || "Saved"} 
+                          size="small" 
+                          color="success" 
+                          sx={{ ml: 2 }} 
+                        />
+                      )}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {metadata?.columns || bsStoredProcedure ? (
+                      renderFormFields()
+                    ) : (
+                      <Box sx={{ textAlign: "center", py: 4 }}>
+                        <CircularProgress />
+                        <Typography variant="body2" sx={{ mt: 2 }}>
+                          {localeText.bsLoadingMetadata}
+                        </Typography>
+                      </Box>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Child Grids in Tabs */}
+                {bsChildGrids.length > 0 && (
+                  <Box sx={{ width: "100%", mt: 2 }}>
+                    <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+                      <Tabs
+                        value={activeChildTab}
+                        onChange={(e, newValue) => setActiveChildTab(newValue)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        aria-label="child grid tabs"
+                      >
+                        {bsChildGrids.map((childConfig, index) => (
+                          <Tab 
+                            key={index} 
+                            label={childConfig.name || `Child ${index + 1}`}
+                            disabled={!isParentSaved}
+                          />
+                        ))}
+                      </Tabs>
+                    </Box>
+
+                    {/* Child Grid Tab Panels */}
+                    {bsChildGrids.map((childConfig, index) => (
+                      <Box
+                        key={index}
+                        role="tabpanel"
+                        hidden={activeChildTab !== index}
+                        sx={{ pt: 2, minHeight: 400 }}
+                      >
+                        {activeChildTab === index && (
+                          <BSChildDataGrid
+                            ref={(el) => { childGridRefs.current[index] = el; }}
+                            name={childConfig.name}
+                            foreignKeys={childConfig.foreignKeys || []}
+                            parentKeyValues={savedParentKeyValues}
+                            isParentSaved={isParentSaved}
+                            bsLocale={bsLocale}
+                            localeText={localeText}
+                            // Pass all other BSDataGrid props
+                            bsPreObj={childConfig.bsPreObj || bsPreObj}
+                            bsObj={childConfig.bsObj}
+                            bsCols={childConfig.bsCols}
+                            bsObjBy={childConfig.bsObjBy}
+                            bsObjWh={childConfig.bsObjWh}
+                            bsComboBox={childConfig.bsComboBox}
+                            bsColumnDefs={childConfig.bsColumnDefs}
+                            bsDialogSize={childConfig.bsDialogSize}
+                            bsDialogColumns={childConfig.bsDialogColumns}
+                            bsVisibleEdit={childConfig.bsVisibleEdit !== false}
+                            bsVisibleDelete={childConfig.bsVisibleDelete !== false}
+                            bsShowRowNumber={childConfig.bsShowRowNumber !== false}
+                            bsRowPerPage={childConfig.bsRowPerPage || 10}
+                            bsPageSizeOptions={childConfig.bsPageSizeOptions || [10, 25, 50]}
+                            height={childConfig.height || 350}
+                          />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
               </Box>
+            ) : (
+              // Standard Mode - no child grids
+              metadata?.columns || bsStoredProcedure ? (
+                renderFormFields()
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2 }}>
+                    {localeText.bsLoadingMetadata}
+                  </Typography>
+                </Box>
+              )
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDialogClose} disabled={formLoading}>
-              {localeText.bsCancel}
+              {isParentSaved && bsChildGrids && bsChildGrids.length > 0 
+                ? (localeText.bsClose || "Close") 
+                : localeText.bsCancel}
             </Button>
-            <Button
-              onClick={handleSave}
-              variant="contained"
-              disabled={formLoading}
-            >
-              {formLoading ? localeText.bsSaving : localeText.bsSave}
-            </Button>
+            {/* Show Save button only when parent is not yet saved (for hierarchical) or always (for standard) */}
+            {(!bsChildGrids || bsChildGrids.length === 0 || !isParentSaved) && (
+              <Button
+                onClick={handleSave}
+                variant="contained"
+                disabled={formLoading}
+              >
+                {formLoading 
+                  ? localeText.bsSaving 
+                  : (bsChildGrids && bsChildGrids.length > 0 && dialogMode === "add"
+                      ? (localeText.bsSaveAndContinue || "Save & Continue")
+                      : localeText.bsSave)}
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
 
