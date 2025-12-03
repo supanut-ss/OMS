@@ -238,6 +238,9 @@ export const englishLocaleText = {
   bsSaving: "Saving...",
   bsCancel: "Cancel",
   bsClose: "Close",
+  bsRefresh: "Refresh",
+  bsExportExcel: "Export Excel",
+  bsExportExcelError: "Failed to export Excel",
   bsDiscardAllChanges: "Discard All Changes",
   bsHideFilters: "Hide Filters",
   bsShowFilters: "Show Filters",
@@ -249,4 +252,44 @@ export const englishLocaleText = {
   bsUnsavedChanges: "unsaved changes",
   bsRowNumber: "#",
   bsActions: "Actions",
+
+  // BSDataGrid Dialog & Form Labels
+  bsAddNewRecord: "Add New Record",
+  bsEditRecord: "Edit Record",
+  bsLoadingMetadata: "Loading metadata...",
+  bsLoadingData: "Loading data...",
+  bsLoadingColumns: "Loading columns...",
+  bsLoadingOptions: "Loading options...",
+  bsNoData: "No data available",
+  bsNoDataInDatabase: "The database returned no data",
+  bsNoRecordsInTable: "No records found in the table",
+  bsBulkAddRecords: "Bulk Add Records",
+  bsBulkAddDescription:
+    "Add multiple records at once. Empty rows will be ignored.",
+  bsNumberOfRows: "Number of rows",
+  bsAddMoreRows: "Add 3 More Rows",
+  bsRow: "Row",
+  bsRemove: "Remove",
+  bsSaveRecords: (count) => `Save ${count} Records`,
+  bsRetry: "Retry",
+  bsClose: "Close",
+
+  // BSDataGrid Confirm Messages
+  bsConfirmDeleteRecord: "Are you sure you want to delete this record?",
+  bsConfirmDeleteRecords: (count) =>
+    `Are you sure you want to delete ${count} records?`,
+
+  // BSDataGrid Error Messages
+  bsTableNotFound: "Table or View not found",
+  bsTableNotFoundMessage: "Please check if the Table or View name is correct",
+  bsFailedToLoadMetadata: "Failed to load table metadata",
+  bsBackendNotAvailable: "Backend API is not available",
+  bsCheckBackendConnection: "Please check the backend server connection",
+  bsCannotLoadMetadata: "Cannot load metadata",
+  bsOfflineMode: "Offline Mode",
+  bsCannotDisplayData:
+    "Cannot display data because backend API is not available",
+  bsTryAgain: "Try Again",
+  bsDataGridError: "DataGrid Error",
+  bsFailedToRenderGrid: "Failed to render data grid:",
 };

@@ -58,6 +58,12 @@ const ClientGridToolbar = ({ headerFiltersEnabled, onToggleHeaderFilters }) => {
  *   bsShowCheckbox={false}
  *   bsShowRowNumber={true}
  *   bsShowCharacterCount={false}
+ *   bsUserLookup={{
+ *     table: "sec.t_com_user",
+ *     idField: "user_id",
+ *     displayFields: ["first_name", "last_name"],
+ *     separator: " "
+ *   }}
  *   height="600px"
  *   onRowClick={(row) => console.log('Row clicked:', row)}
  *   onView={(row) => console.log('View:', row)}
@@ -99,6 +105,9 @@ const BSDataGridClient = ({
   bsShowCheckbox = false,
   bsShowRowNumber = true,
   bsShowCharacterCount = false,
+
+  // User lookup configuration for audit fields
+  bsUserLookup, // { table: "sec.t_com_user", idField: "user_id", displayFields: ["first_name", "last_name"], separator: " " }
 
   // UI props
   height = "auto",
@@ -178,11 +187,27 @@ const BSDataGridClient = ({
     }
 
     // Add row IDs if not present
-    return data.map((row, index) => ({
-      ...row,
-      id: row.id || row.Id || `row-${index}`,
-    }));
-  }, [data]);
+    return data.map((row, index) => {
+      const processedRow = {
+        ...row,
+        id: row.id || row.Id || `row-${index}`,
+      };
+
+      // If bsUserLookup is configured, check for display fields
+      if (bsUserLookup) {
+        // Check for create_by_display field (from backend user lookup)
+        if (row.create_by_display) {
+          processedRow.create_by = row.create_by_display;
+        }
+        // Check for update_by_display field (from backend user lookup)
+        if (row.update_by_display) {
+          processedRow.update_by = row.update_by_display;
+        }
+      }
+
+      return processedRow;
+    });
+  }, [data, bsUserLookup]);
 
   // Helper: Format column name for display
   const formatColumnName = useCallback((columnName) => {

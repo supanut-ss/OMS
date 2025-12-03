@@ -15,6 +15,7 @@ import {
   Chip,
   CircularProgress,
   Button,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -35,19 +36,20 @@ import {
   Popper,
   MenuList,
   MenuItem as MenuListItem,
+  InputAdornment,
 } from "@mui/material";
 import {
   DataGridPro,
   gridClasses,
   GridActionsCellItem,
   GridToolbarContainer,
-  GridToolbarQuickFilter,
   GridToolbarColumnsButton,
   GridToolbarFilterButton,
   GridToolbarDensitySelector,
-  GridToolbarExport,
   GridRowModes,
   GridRowEditStopReasons,
+  useGridApiRef,
+  gridFilteredSortedRowIdsSelector,
 } from "@mui/x-data-grid-pro";
 import {
   Edit,
@@ -60,14 +62,20 @@ import {
   ArrowDropDown,
   Save as SaveIcon,
   Close as CancelIcon,
+  Refresh as RefreshIcon,
+  FileDownload as FileDownloadIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../utils/SchemaMapping";
 import { useAuth } from "../contexts/AuthContext";
+import * as XLSX from "xlsx";
 import { useResource } from "../hooks/useResource";
 import { getLocaleText } from "./BSDataGrid/locales";
 import Logger from "../utils/logger";
 import muiLicenseManager from "../utils/muiLicenseManager";
+import BSAlertSwal2 from "./BSAlertSwal2";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
@@ -219,6 +227,7 @@ const FallbackToolbar = ({
   showAdd = true,
   headerFiltersEnabled,
   onToggleHeaderFilters,
+  onRefresh,
   localeText,
 }) => {
   return (
@@ -273,6 +282,28 @@ const FallbackToolbar = ({
           {localeText.bsAddRecord}
         </Button>
       )}
+
+      {/* Refresh button */}
+      <Button
+        size="small"
+        startIcon={<RefreshIcon />}
+        onClick={
+          onRefresh || (() => Logger.warn("No onRefresh handler provided"))
+        }
+        sx={{
+          textTransform: "none",
+          fontWeight: 500,
+          fontSize: "0.8125rem",
+          padding: "4px 8px",
+          minHeight: "32px",
+          color: "text.primary",
+          "&:hover": {
+            backgroundColor: "rgba(0, 0, 0, 0.04)",
+          },
+        }}
+      >
+        {localeText.bsRefresh || "Refresh"}
+      </Button>
 
       {/* Header Filters Toggle */}
       <Button
@@ -376,6 +407,84 @@ const BulkEditToolbar = ({
   );
 };
 
+// Custom Quick Filter - ค้นหาเมื่อกด Enter เท่านั้น
+const CustomQuickFilter = ({ apiRef, localeText }) => {
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSearch = useCallback(() => {
+    if (apiRef?.current) {
+      apiRef.current.setQuickFilterValues(
+        searchValue ? searchValue.split(" ").filter((word) => word) : []
+      );
+    }
+  }, [apiRef, searchValue]);
+
+  const handleKeyDown = useCallback(
+    (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleSearch();
+      }
+    },
+    [handleSearch]
+  );
+
+  const handleClear = useCallback(() => {
+    setSearchValue("");
+    if (apiRef?.current) {
+      apiRef.current.setQuickFilterValues([]);
+    }
+  }, [apiRef]);
+
+  return (
+    <TextField
+      value={searchValue}
+      onChange={(e) => setSearchValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      placeholder={localeText?.toolbarQuickFilterPlaceholder || "Search..."}
+      variant="outlined"
+      size="small"
+      InputProps={{
+        startAdornment: (
+          <InputAdornment position="start">
+            <SearchIcon sx={{ color: "action.active", fontSize: "1.25rem" }} />
+          </InputAdornment>
+        ),
+        endAdornment: searchValue ? (
+          <InputAdornment position="end">
+            <IconButton
+              size="small"
+              onClick={handleClear}
+              sx={{ padding: "2px" }}
+            >
+              <ClearIcon sx={{ fontSize: "1rem" }} />
+            </IconButton>
+          </InputAdornment>
+        ) : null,
+      }}
+      sx={{
+        mr: 1,
+        minWidth: 200,
+        "& .MuiInputBase-root": {
+          fontSize: "0.875rem",
+          minHeight: "32px",
+          paddingTop: "2px",
+          paddingBottom: "2px",
+        },
+        "& .MuiInputBase-input": {
+          padding: "5px 8px",
+        },
+        "& .MuiOutlinedInput-notchedOutline": {
+          borderColor: "rgba(0, 0, 0, 0.23)",
+        },
+        "&:hover .MuiOutlinedInput-notchedOutline": {
+          borderColor: "primary.main",
+        },
+      }}
+    />
+  );
+};
+
 // Custom Toolbar - ใช้ GridToolbarContainer (วิธีที่ถูกต้อง)
 const DynamicGridToolbar = ({
   onAdd,
@@ -391,8 +500,45 @@ const DynamicGridToolbar = ({
   onBulkDelete,
   onBulkAdd,
   showBulkDelete = true,
+  onRefresh,
+  onExportExcel,
+  onExportCsv,
+  onPrint,
   localeText,
+  apiRef,
 }) => {
+  // Export menu state
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportAnchorRef = React.useRef(null);
+
+  const handleExportMenuToggle = () => {
+    setExportMenuOpen((prev) => !prev);
+  };
+
+  const handleExportMenuClose = (event) => {
+    if (
+      exportAnchorRef.current &&
+      exportAnchorRef.current.contains(event.target)
+    ) {
+      return;
+    }
+    setExportMenuOpen(false);
+  };
+
+  const handleExcelExport = () => {
+    setExportMenuOpen(false);
+    if (onExportExcel) onExportExcel();
+  };
+
+  const handleCsvExport = () => {
+    setExportMenuOpen(false);
+    if (onExportCsv) onExportCsv();
+  };
+
+  const handlePrint = () => {
+    setExportMenuOpen(false);
+    if (onPrint) onPrint();
+  };
   Logger.log("🔧 DynamicGridToolbar rendering:", {
     onAdd: typeof onAdd,
     onAddExists: !!onAdd,
@@ -477,31 +623,11 @@ const DynamicGridToolbar = ({
           />
         )}
 
-      {/* Quick Filter - Right aligned */}
+      {/* Quick Filter - Right aligned (ค้นหาเมื่อกด Enter) */}
       <Box sx={{ flexGrow: 1 }} />
 
-      <GridToolbarQuickFilter
-        debounceMs={500}
-        variant="outlined"
-        sx={{
-          mr: 1,
-          "& .MuiInputBase-root": {
-            fontSize: "0.875rem",
-            minHeight: "32px",
-            paddingTop: "2px",
-            paddingBottom: "2px",
-          },
-          "& .MuiInputBase-input": {
-            padding: "5px 14px",
-          },
-          "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(0, 0, 0, 0.23)",
-          },
-          "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: "primary.main",
-          },
-        }}
-      />
+      <CustomQuickFilter apiRef={apiRef} localeText={localeText} />
+
       {/* Header Filters Toggle */}
       <Button
         size="small"
@@ -532,9 +658,33 @@ const DynamicGridToolbar = ({
           : localeText.bsShowFilters}
       </Button>
 
+      {/* Refresh button */}
+      <Button
+        size="small"
+        startIcon={<RefreshIcon />}
+        onClick={
+          onRefresh || (() => Logger.warn("No onRefresh handler provided"))
+        }
+        sx={{
+          textTransform: "none",
+          fontWeight: 500,
+          fontSize: "0.8125rem",
+          padding: "4px 8px",
+          minHeight: "32px",
+          color: "text.primary",
+          "&:hover": {
+            backgroundColor: "rgba(0, 0, 0, 0.04)",
+          },
+        }}
+      >
+        {localeText.bsRefresh || "Refresh"}
+      </Button>
+
       {/* Default MUI DataGrid Toolbar Components - Icon only */}
       <Box
         sx={{
+          display: "flex",
+          alignItems: "center",
           "& .MuiButton-root": {
             minWidth: "auto",
             padding: "4px 8px",
@@ -552,7 +702,69 @@ const DynamicGridToolbar = ({
         <GridToolbarFilterButton />
         <GridToolbarDensitySelector />
 
-        <GridToolbarExport />
+        {/* Custom Export Dropdown Button */}
+        <React.Fragment>
+          <Button
+            ref={exportAnchorRef}
+            size="small"
+            onClick={handleExportMenuToggle}
+            startIcon={<FileDownloadIcon />}
+            endIcon={
+              <ArrowDropDown
+                sx={{
+                  color: "rgba(0, 0, 0, 0.54) !important",
+                  fontSize: "1.25rem !important",
+                }}
+              />
+            }
+            sx={{
+              minWidth: "auto",
+              padding: "4px 8px",
+              fontSize: 0,
+              color: "transparent",
+              "& .MuiButton-startIcon": {
+                margin: 0,
+                fontSize: "1.5rem",
+                color: "rgba(0, 0, 0, 0.54)",
+              },
+              "& .MuiButton-endIcon": {
+                margin: 0,
+                marginLeft: "-4px",
+              },
+            }}
+          >
+            Export
+          </Button>
+          <Popper
+            sx={{ zIndex: 1300 }}
+            open={exportMenuOpen}
+            anchorEl={exportAnchorRef.current}
+            role={undefined}
+            transition
+            disablePortal
+            placement="bottom-start"
+          >
+            {({ TransitionProps }) => (
+              <Grow {...TransitionProps}>
+                <MenuPaper elevation={8}>
+                  <ClickAwayListener onClickAway={handleExportMenuClose}>
+                    <MenuList autoFocusItem>
+                      <MenuListItem onClick={handleExcelExport}>
+                        {localeText.bsExportExcel || "Export Excel"}
+                      </MenuListItem>
+                      <MenuListItem onClick={handleCsvExport}>
+                        {localeText.toolbarExportCSV || "Download as CSV"}
+                      </MenuListItem>
+                      <MenuListItem onClick={handlePrint}>
+                        {localeText.toolbarExportPrint || "Print"}
+                      </MenuListItem>
+                    </MenuList>
+                  </ClickAwayListener>
+                </MenuPaper>
+              </Grow>
+            )}
+          </Popper>
+        </React.Fragment>
       </Box>
     </GridToolbarContainer>
   );
@@ -571,6 +783,7 @@ const ComboBoxField = ({
   dataType,
   isNullable,
   description,
+  localeText,
 }) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -725,7 +938,7 @@ const ComboBoxField = ({
       </Select>
       <FormHelperText>
         {loading
-          ? "Loading options..."
+          ? localeText?.bsLoadingOptions || "Loading options..."
           : description ||
             `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
       </FormHelperText>
@@ -1027,16 +1240,25 @@ const BSDataGrid = forwardRef(
       bsColumnDefs = [], // Custom column definitions (overrides metadata)
       bsKeyId, // Manual primary key specification (fallback if metadata unavailable)
       bsCustomFilters = [], // Custom filters from BSFilterCustom component
+      bsExportFileName, // Custom filename for export (default: table name)
+
+      // Row-level configuration function
+      // bsRowConfig={(row) => ({ showCheckbox: true, showEdit: true, showDelete: true, backgroundColor: null, textColor: null, disabled: false })}
+      bsRowConfig, // Function to configure each row dynamically
 
       // Enhanced Stored Procedure support
       bsStoredProcedure, // Enhanced stored procedure name
       bsStoredProcedureSchema = "dbo", // Schema for stored procedure
       bsStoredProcedureParams = {}, // Additional parameters for stored procedure
 
+      // User lookup configuration for audit fields
+      bsUserLookup, // User lookup configuration: { table: "sec.t_com_user", idField: "user_id", displayFields: ["first_name", "last_name"], separator: " " }
+
       onCheckBoxSelected,
 
       // Data binding callback
       onDataBind, // Callback to receive loaded data for external processing
+      onFilteredDataChange, // Callback to receive filtered/visible data for summary calculations
       bsPageSizeOptions = [10, 25, 50, 100],
       ...props
     },
@@ -1050,6 +1272,9 @@ const BSDataGrid = forwardRef(
       bsPreObjType: typeof bsPreObj,
       bsPreObjValue: bsPreObj,
       bsKeyId,
+      bsStoredProcedure,
+      hasBsRowConfig: !!bsRowConfig,
+      bsRowConfigType: typeof bsRowConfig,
     });
 
     // Determine effective table name (bsObj takes priority over tableName)
@@ -1162,6 +1387,40 @@ const BSDataGrid = forwardRef(
 
       return "en"; // Default fallback
     }, [bsLocale, user]);
+
+    // Helper: Get userId from user object (handles both string and object format)
+    const getUserId = useCallback(() => {
+      if (!user) {
+        Logger.warn("⚠️ No user object available, defaulting to 'system'");
+        return "system";
+      }
+
+      try {
+        // Parse user if it's a string
+        const userObj = typeof user === "string" ? JSON.parse(user) : user;
+
+        // Try different possible userId field names
+        const userId =
+          userObj?.UserId ||
+          userObj?.userid ||
+          userObj?.user_id ||
+          userObj?.id ||
+          userObj?.Id ||
+          "system";
+
+        Logger.log("👤 getUserId resolved:", {
+          userType: typeof user,
+          userObj: userObj,
+          resolvedUserId: userId,
+          availableFields: Object.keys(userObj || {}),
+        });
+
+        return userId;
+      } catch (e) {
+        Logger.error("❌ Failed to parse user object:", e);
+        return "system";
+      }
+    }, [user]);
 
     // Helper: Custom date formatter for consistent dd/MM/yyyy format
     const formatDateCustom = useCallback(
@@ -1299,6 +1558,9 @@ const BSDataGrid = forwardRef(
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModel] = useState({});
     const newRowIdCounter = useRef(0);
+
+    // API ref for accessing DataGrid internal state (filtered rows, etc.)
+    const apiRef = useGridApiRef();
 
     // Load resources for multi-language support when table or locale changes
     useEffect(() => {
@@ -1573,6 +1835,18 @@ const BSDataGrid = forwardRef(
               bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
+            // User lookup configuration for audit fields (optional until backend is ready)
+            userLookup: bsUserLookup
+              ? {
+                  table: bsUserLookup.table || "sec.t_com_user",
+                  idField: bsUserLookup.idField || "user_id",
+                  displayFields: bsUserLookup.displayFields || [
+                    "first_name",
+                    "last_name",
+                  ],
+                  separator: bsUserLookup.separator || " ",
+                }
+              : undefined,
           };
 
           // Add cache buster for force refresh (like after bulk edit)
@@ -1697,6 +1971,19 @@ const BSDataGrid = forwardRef(
             forceRefresh,
             timestamp: new Date().toISOString(),
             sampleData: processedRows.slice(0, 2), // Show first 2 rows for debugging
+            // User lookup debug info
+            hasUserLookup: !!bsUserLookup,
+            sampleRowKeys: processedRows[0]
+              ? Object.keys(processedRows[0])
+              : [],
+            hasCreateByDisplay:
+              processedRows[0]?.create_by_display !== undefined,
+            hasUpdateByDisplay:
+              processedRows[0]?.update_by_display !== undefined,
+            createByValue: processedRows[0]?.create_by,
+            createByDisplayValue: processedRows[0]?.create_by_display,
+            updateByValue: processedRows[0]?.update_by,
+            updateByDisplayValue: processedRows[0]?.update_by_display,
             // Pagination debug info
             currentPage: currentPaginationModel.page,
             pageSize: currentPaginationModel.pageSize,
@@ -1749,6 +2036,7 @@ const BSDataGrid = forwardRef(
         onDataBind,
         applyCustomFilters,
         bsCustomFilters,
+        bsUserLookup,
       ]
     );
 
@@ -1811,13 +2099,19 @@ const BSDataGrid = forwardRef(
               bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
-            userId:
-              user?.UserId ||
-              user?.UserId ||
-              user?.id ||
-              user?.userId ||
-              user?.user_id ||
-              "system",
+            // User lookup configuration for audit fields
+            userLookup: bsUserLookup
+              ? {
+                  table: bsUserLookup.table || "sec.t_com_user",
+                  idField: bsUserLookup.idField || "user_id",
+                  displayFields: bsUserLookup.displayFields || [
+                    "first_name",
+                    "last_name",
+                  ],
+                  separator: bsUserLookup.separator || " ",
+                }
+              : undefined,
+            userId: getUserId(),
           };
 
           const result = await executeEnhancedStoredProcedure(request);
@@ -2064,13 +2358,14 @@ const BSDataGrid = forwardRef(
         paginationModel,
         sortModel,
         filterModel,
-        user,
+        getUserId,
         setEnhancedMetadata,
         bsFilterMode,
         onDataBind,
         bsKeyId,
         applyCustomFilters,
         bsCustomFilters,
+        bsUserLookup,
       ]
     );
 
@@ -2162,6 +2457,53 @@ const BSDataGrid = forwardRef(
       loadDataRef.current();
     }, [paginationModel, sortModel, filterModel, bsFilterMode]);
 
+    // Track filtered/visible rows and notify parent component
+    const notifyFilteredDataChange = useCallback(() => {
+      if (!onFilteredDataChange || typeof onFilteredDataChange !== "function")
+        return;
+      if (!apiRef.current) return;
+      if (rows.length === 0) return;
+
+      try {
+        // Use gridFilteredSortedRowIdsSelector to get only filtered row IDs
+        const filteredRowIds = gridFilteredSortedRowIdsSelector(apiRef);
+
+        // Get the actual row data for filtered rows
+        const filteredRows = filteredRowIds
+          .map((id) => apiRef.current.getRow(id))
+          .filter((row) => row != null);
+
+        Logger.log("📊 Filtered data changed:", {
+          totalRows: rows.length,
+          filteredRows: filteredRows.length,
+          filterMode: bsFilterMode,
+          hasFilters:
+            filterModel?.items?.length > 0 ||
+            filterModel?.quickFilterValues?.length > 0,
+          sampleFiltered: filteredRows
+            .slice(0, 2)
+            .map((r) => r.part_no || r.id),
+        });
+
+        onFilteredDataChange(filteredRows);
+      } catch (error) {
+        Logger.error("❌ Error getting filtered rows:", error);
+        // Fallback to all rows if filtering fails
+        onFilteredDataChange(rows);
+      }
+    }, [onFilteredDataChange, apiRef, rows, bsFilterMode, filterModel]);
+
+    // Notify on initial load and data changes
+    useEffect(() => {
+      if (rows.length === 0) return;
+
+      const timer = setTimeout(() => {
+        notifyFilteredDataChange();
+      }, 150);
+
+      return () => clearTimeout(timer);
+    }, [rows, notifyFilteredDataChange]);
+
     // Handler for sort model changes with debugging
     const handleSortModelChange = useCallback(
       (newSortModel) => {
@@ -2193,8 +2535,13 @@ const BSDataGrid = forwardRef(
         });
 
         setFilterModel(newFilterModel);
+
+        // Notify parent about filtered data after a short delay
+        setTimeout(() => {
+          notifyFilteredDataChange();
+        }, 150);
       },
-      [filterModel, bsFilterMode]
+      [filterModel, bsFilterMode, notifyFilteredDataChange]
     );
 
     // Helper: Format column name for display with multi-language support
@@ -2891,16 +3238,20 @@ const BSDataGrid = forwardRef(
 
       // For offline mode without metadata AND no Enhanced SP data, show alert
       if (!metadata && !bsStoredProcedure) {
-        alert(
-          `Add Record for ${tableName}\n\nOffline mode: Cannot create form without metadata.\nPlease connect to backend server.`
+        BSAlertSwal2.show(
+          "warning",
+          `Offline mode: Cannot create form without metadata.\nPlease connect to backend server.`,
+          { title: `Add Record for ${tableName}` }
         );
         return;
       }
 
       // For Enhanced SP without metadata but with data, allow form creation
       if (!metadata && bsStoredProcedure && rows.length === 0) {
-        alert(
-          `Add Record\n\nNo data available to generate form fields.\nPlease load data first or define bsColumnDefs.`
+        BSAlertSwal2.show(
+          "warning",
+          "No data available to generate form fields.\nPlease load data first or define bsColumnDefs.",
+          { title: "Add Record" }
         );
         return;
       }
@@ -2990,7 +3341,9 @@ const BSDataGrid = forwardRef(
           return;
         }
 
-        if (window.confirm("Are you sure you want to delete this record?")) {
+        // Get locale text for confirm message
+        const currentLocaleText = getLocaleText(getEffectiveLocale());
+        if (window.confirm(currentLocaleText.bsConfirmDeleteRecord)) {
           try {
             if (bsStoredProcedure) {
               // Helper function to convert snake_case to PascalCase for SP parameters
@@ -3054,12 +3407,7 @@ const BSDataGrid = forwardRef(
                   ...deviceCompatParams, // Add device compatibility parameters
                   ...bsStoredProcedureParams,
                 },
-                userId:
-                  user?.UserId ||
-                  user?.id ||
-                  user?.userId ||
-                  user?.user_id ||
-                  "system",
+                userId: getUserId(),
               };
 
               const result = await executeEnhancedStoredProcedure(
@@ -3067,13 +3415,21 @@ const BSDataGrid = forwardRef(
               );
 
               if (result.success) {
+                // Show success notification if message is not empty
+                if (result.message && result.message.trim() !== "") {
+                  BSAlertSwal2.show("success", result.message, {
+                    title: "Success",
+                  });
+                }
                 await loadStoredProcedureData();
                 Logger.log(
                   "✅ Record deleted via Enhanced Stored Procedure:",
                   result.message
                 );
               } else {
-                throw new Error(result.message || "Delete operation failed");
+                const errorMsg = result.message || "Delete operation failed";
+                BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+                throw new Error(errorMsg);
               }
             } else {
               // Use standard delete record
@@ -3097,8 +3453,9 @@ const BSDataGrid = forwardRef(
         bsStoredProcedureParams,
         executeEnhancedStoredProcedure,
         loadStoredProcedureData,
-        user,
         getEffectivePrimaryKey,
+        getUserId,
+        getEffectiveLocale,
       ]
     );
 
@@ -3164,7 +3521,10 @@ const BSDataGrid = forwardRef(
         // Validate form data before saving
         const validation = validateFormData(formData);
         if (!validation.isValid) {
-          alert(`Validation Errors:\n${validation.errors.join("\n")}`);
+          BSAlertSwal2.show("error", "", {
+            title: "Validation Errors",
+            html: validation.errors.join("<br>"),
+          });
           return;
         }
 
@@ -3232,10 +3592,7 @@ const BSDataGrid = forwardRef(
             Logger.log("🔄 Converting parameters for Enhanced SP INSERT:", {
               originalSaveData: saveData,
               convertedSaveData: spSaveData,
-            });
-
-            Logger.log("🔄 USER INSERT:", {
-              user: user,
+              resolvedUserId: getUserId(),
             });
 
             // Use Enhanced Stored Procedure for INSERT operation
@@ -3247,22 +3604,22 @@ const BSDataGrid = forwardRef(
                 ...spSaveData,
                 ...bsStoredProcedureParams,
               },
-              userId:
-                user?.UserId ||
-                user?.id ||
-                user?.userId ||
-                user?.user_id ||
-                "system",
+              userId: getUserId(),
             };
-
-            Logger.log("🔄Data  USER INSERT:", {
-              userId: user?.userId,
-            });
 
             const result = await executeEnhancedStoredProcedure(insertRequest);
 
             if (!result.success) {
-              throw new Error(result.message || "Insert operation failed");
+              const errorMsg = result.message || "Insert operation failed";
+              BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+              throw new Error(errorMsg);
+            }
+
+            // Show success notification if message is not empty
+            if (result.message && result.message.trim() !== "") {
+              BSAlertSwal2.show("success", result.message, {
+                title: "Success",
+              });
             }
 
             Logger.log(
@@ -3356,18 +3713,22 @@ const BSDataGrid = forwardRef(
                 ...spFormData,
                 ...bsStoredProcedureParams,
               },
-              userId:
-                user?.UserId ||
-                user?.id ||
-                user?.userId ||
-                user?.user_id ||
-                "system",
+              userId: getUserId(),
             };
 
             const result = await executeEnhancedStoredProcedure(updateRequest);
 
             if (!result.success) {
-              throw new Error(result.message || "Update operation failed");
+              const errorMsg = result.message || "Update operation failed";
+              BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+              throw new Error(errorMsg);
+            }
+
+            // Show success notification if message is not empty
+            if (result.message && result.message.trim() !== "") {
+              BSAlertSwal2.show("success", result.message, {
+                title: "Success",
+              });
             }
 
             Logger.log(
@@ -3409,8 +3770,8 @@ const BSDataGrid = forwardRef(
       bsStoredProcedureParams,
       executeEnhancedStoredProcedure,
       loadStoredProcedureData,
-      user,
       getEffectivePrimaryKey,
+      getUserId,
     ]);
 
     const handleDialogClose = useCallback(() => {
@@ -3632,8 +3993,10 @@ const BSDataGrid = forwardRef(
             // Get custom column definition if exists
             const customDef = columnDefsConfig[fieldName];
 
-            // Determine if field is read-only
-            const isReadOnly = customDef?.readOnly === true || readOnly;
+            // Determine if field is read-only (only apply readOnly in edit mode, not add mode)
+            const isReadOnly =
+              (dialogMode === "edit" && customDef?.readOnly === true) ||
+              readOnly;
 
             // Determine if field is required
             const isRequired = customDef?.required === true;
@@ -3733,8 +4096,9 @@ const BSDataGrid = forwardRef(
         // Get custom column definition if exists
         const customDef = columnDefsConfig[columnName];
 
-        // Determine if field is read-only (from customDef or component-level readOnly)
-        const isReadOnly = customDef?.readOnly === true || readOnly;
+        // Determine if field is read-only (only apply customDef.readOnly in edit mode, not add mode)
+        const isReadOnly =
+          (dialogMode === "edit" && customDef?.readOnly === true) || readOnly;
 
         // Determine if field is required (customDef overrides metadata)
         const isRequired =
@@ -3765,6 +4129,7 @@ const BSDataGrid = forwardRef(
                 isNullable={isNullable}
                 description={customDef?.description || description}
                 disabled={isReadOnly}
+                localeText={getLocaleText(getEffectiveLocale())}
               />
             </Grid>
           );
@@ -3935,6 +4300,7 @@ const BSDataGrid = forwardRef(
       readOnly,
       bsKeyId,
       rows,
+      getEffectiveLocale,
     ]);
 
     // Function to restore a single row to its original state
@@ -4038,7 +4404,10 @@ const BSDataGrid = forwardRef(
           // Validate the row data
           const validation = validateFormData(newRow);
           if (!validation.isValid) {
-            alert(`Validation errors:\n${validation.errors.join("\n")}`);
+            BSAlertSwal2.show("error", "", {
+              title: "Validation Errors",
+              html: validation.errors.join("<br>"),
+            });
             return newRow; // Return unchanged to keep edit mode
           }
 
@@ -4094,7 +4463,9 @@ const BSDataGrid = forwardRef(
           return updatedRow;
         } catch (error) {
           Logger.error("❌ Failed to save record:", error);
-          alert(`Failed to save record: ${error.message}`);
+          BSAlertSwal2.show("error", error.message, {
+            title: "Failed to Save Record",
+          });
           return newRow; // Return unchanged to keep edit mode
         }
       },
@@ -4278,6 +4649,12 @@ const BSDataGrid = forwardRef(
           mergedColumn.valueFormatter = customDef.valueFormatter;
         if (customDef.valueSetter)
           mergedColumn.valueSetter = customDef.valueSetter;
+
+        Logger.log(`✅ Applied bsColumnDefs for: ${fieldName}`, {
+          width: mergedColumn.width,
+          type: mergedColumn.type,
+          headerName: mergedColumn.headerName,
+        });
 
         return mergedColumn;
       },
@@ -4569,33 +4946,60 @@ const BSDataGrid = forwardRef(
             const actions = [];
 
             if (onView) {
-              actions.push((params) => (
-                <GridActionsCellItem
-                  icon={<Visibility />}
-                  label="View"
-                  onClick={() => onView(params.row)}
-                />
-              ));
+              actions.push((params) => {
+                // Get row-specific config
+                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+                const showView = rowConfig.showView !== false;
+
+                if (!showView) return null;
+
+                return (
+                  <GridActionsCellItem
+                    icon={<Visibility />}
+                    label="View"
+                    onClick={() => onView(params.row)}
+                    disabled={rowConfig.disabled}
+                  />
+                );
+              });
             }
 
             if (bsVisibleEdit) {
-              actions.push((params) => (
-                <GridActionsCellItem
-                  icon={<Edit />}
-                  label="Edit"
-                  onClick={() => handleEditClick(params.row)}
-                />
-              ));
+              actions.push((params) => {
+                // Get row-specific config
+                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+                const showEdit = rowConfig.showEdit !== false;
+
+                if (!showEdit) return null;
+
+                return (
+                  <GridActionsCellItem
+                    icon={<Edit />}
+                    label="Edit"
+                    onClick={() => handleEditClick(params.row)}
+                    disabled={rowConfig.disabled}
+                  />
+                );
+              });
             }
 
             if (bsVisibleDelete) {
-              actions.push((params) => (
-                <GridActionsCellItem
-                  icon={<Delete />}
-                  label={localeText.bsDelete}
-                  onClick={() => handleDeleteClick(params.row)}
-                />
-              ));
+              actions.push((params) => {
+                // Get row-specific config
+                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+                const showDelete = rowConfig.showDelete !== false;
+
+                if (!showDelete) return null;
+
+                return (
+                  <GridActionsCellItem
+                    icon={<Delete />}
+                    label={localeText.bsDelete}
+                    onClick={() => handleDeleteClick(params.row)}
+                    disabled={rowConfig.disabled}
+                  />
+                );
+              });
             }
 
             // Only insert actions column if there are actual actions
@@ -4790,7 +5194,18 @@ const BSDataGrid = forwardRef(
               };
             }
 
-            baseColumn.valueGetter = (value) => {
+            baseColumn.valueGetter = (value, row) => {
+              // Handle user lookup display fields for create_by and update_by
+              // Always check for _display fields (backend now always provides them)
+              // Fallback to user_id if _display is null/empty
+              if (columnName === "create_by") {
+                return row.create_by_display || value || "";
+              }
+              if (columnName === "update_by") {
+                return row.update_by_display || value || "";
+              }
+
+              // Handle datetime fields
               if (
                 col.dataType?.toLowerCase() === "datetime" ||
                 col.dataType?.toLowerCase() === "datetime2" ||
@@ -4810,13 +5225,22 @@ const BSDataGrid = forwardRef(
           const actions = [];
 
           if (onView) {
-            actions.push((params) => (
-              <GridActionsCellItem
-                icon={<Visibility />}
-                label="View"
-                onClick={() => onView(params.row)}
-              />
-            ));
+            actions.push((params) => {
+              // Get row-specific config
+              const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+              const showView = rowConfig.showView !== false;
+
+              if (!showView) return null;
+
+              return (
+                <GridActionsCellItem
+                  icon={<Visibility />}
+                  label="View"
+                  onClick={() => onView(params.row)}
+                  disabled={rowConfig.disabled}
+                />
+              );
+            });
           }
 
           // In bulk edit mode, show restore button for changed rows
@@ -4855,13 +5279,13 @@ const BSDataGrid = forwardRef(
                   <>
                     <GridActionsCellItem
                       icon={<SaveIcon />}
-                      label="Save"
+                      label={localeText.bsSave}
                       onClick={handleInlineSaveClick(params.id)}
                       sx={{ color: "primary.main" }}
                     />
                     <GridActionsCellItem
                       icon={<CancelIcon />}
-                      label="Cancel"
+                      label={localeText.bsCancel}
                       onClick={handleInlineCancelClick(params.id)}
                       color="inherit"
                     />
@@ -4872,13 +5296,13 @@ const BSDataGrid = forwardRef(
                   <>
                     <GridActionsCellItem
                       icon={<Edit />}
-                      label="Edit"
+                      label={localeText.bsEdit}
                       onClick={handleInlineEditClick(params.id)}
                       color="inherit"
                     />
                     <GridActionsCellItem
                       icon={<Delete />}
-                      label="Delete"
+                      label={localeText.bsDelete}
                       onClick={handleInlineDeleteClick(params.id)}
                       color="inherit"
                     />
@@ -4889,23 +5313,41 @@ const BSDataGrid = forwardRef(
           } else {
             // Regular edit/delete actions (only in normal mode)
             if (bsVisibleEdit) {
-              actions.push((params) => (
-                <GridActionsCellItem
-                  icon={<Edit />}
-                  label="Edit"
-                  onClick={() => handleEditClick(params.row)}
-                />
-              ));
+              actions.push((params) => {
+                // Get row-specific config
+                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+                const showEdit = rowConfig.showEdit !== false;
+
+                if (!showEdit) return null;
+
+                return (
+                  <GridActionsCellItem
+                    icon={<Edit />}
+                    label="Edit"
+                    onClick={() => handleEditClick(params.row)}
+                    disabled={rowConfig.disabled}
+                  />
+                );
+              });
             }
 
             if (bsVisibleDelete) {
-              actions.push((params) => (
-                <GridActionsCellItem
-                  icon={<Delete />}
-                  label={localeText.bsDelete}
-                  onClick={() => handleDeleteClick(params.row)}
-                />
-              ));
+              actions.push((params) => {
+                // Get row-specific config
+                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+                const showDelete = rowConfig.showDelete !== false;
+
+                if (!showDelete) return null;
+
+                return (
+                  <GridActionsCellItem
+                    icon={<Delete />}
+                    label={localeText.bsDelete}
+                    onClick={() => handleDeleteClick(params.row)}
+                    disabled={rowConfig.disabled}
+                  />
+                );
+              });
             }
           }
 
@@ -5064,6 +5506,7 @@ const BSDataGrid = forwardRef(
         // Create a deep clone to avoid any reference issues
         finalColumns = finalColumns.map((col) => ({
           field: col.field,
+          // description: col.description || col.headerName,
           headerName: col.headerName,
           type: col.type || "string",
           // Removed default width - let DataGrid auto-calculate
@@ -5131,7 +5574,60 @@ const BSDataGrid = forwardRef(
       detectPrimaryKeyFromData,
       applyColumnDefs,
       localeText,
+      bsRowConfig,
     ]);
+
+    // Generate custom row styles from bsRowConfig
+    const customRowStyles = useMemo(() => {
+      Logger.log("🎨 customRowStyles computing:", {
+        hasBsRowConfig: !!bsRowConfig,
+        rowsLength: rows?.length || 0,
+      });
+
+      if (!bsRowConfig || !rows || rows.length === 0) return {};
+
+      const styles = {};
+      rows.forEach((row) => {
+        const rowConfig = bsRowConfig(row);
+        const primaryKey = getEffectivePrimaryKey(row);
+        const rowId = row[primaryKey] || row.id || row.Id;
+
+        // Build row selector for styling
+        const rowSelector = `& .MuiDataGrid-row[data-id="${rowId}"]`;
+
+        // Hide checkbox when showCheckbox is false
+        if (rowConfig.showCheckbox === false) {
+          Logger.log("🚫 Hiding checkbox for row:", rowId);
+          styles[`${rowSelector} .MuiDataGrid-cellCheckbox .MuiCheckbox-root`] =
+            {
+              visibility: "hidden",
+            };
+        }
+
+        // Apply background and text colors
+        if (rowConfig.backgroundColor || rowConfig.textColor) {
+          styles[rowSelector] = {
+            ...(styles[rowSelector] || {}),
+            backgroundColor: rowConfig.backgroundColor || "inherit",
+            color: rowConfig.textColor || "inherit",
+            "&:hover": {
+              backgroundColor: rowConfig.backgroundColor
+                ? `${rowConfig.backgroundColor}dd` // Slightly darker on hover
+                : "#f9f9f9",
+            },
+            "& .MuiDataGrid-cell": {
+              color: rowConfig.textColor || "inherit",
+            },
+          };
+        }
+      });
+
+      Logger.log("🎨 customRowStyles result:", {
+        stylesCount: Object.keys(styles).length,
+        styles,
+      });
+      return styles;
+    }, [bsRowConfig, rows, getEffectivePrimaryKey]);
 
     // Handle row selection changes for checkbox selection
     const handleRowSelectionChange = useCallback(
@@ -5296,9 +5792,11 @@ const BSDataGrid = forwardRef(
 
       if (selectedRows.length === 0) return;
 
+      // Get locale text for confirm message
+      const currentLocaleText = getLocaleText(getEffectiveLocale());
       if (
         window.confirm(
-          `Are you sure you want to delete ${selectedRows.length} records?`
+          currentLocaleText.bsConfirmDeleteRecords(selectedRows.length)
         )
       ) {
         try {
@@ -5327,7 +5825,156 @@ const BSDataGrid = forwardRef(
       loadData,
       bsPreObj,
       getEffectivePrimaryKey,
+      getEffectiveLocale,
     ]);
+
+    // Custom Excel Export Handler
+    const handleExportExcel = useCallback(() => {
+      try {
+        // Get visible column definitions (excluding actions and checkbox columns)
+        const visibleColumns = columns.filter(
+          (col) => col.field !== "actions" && col.field !== "__check__"
+        );
+
+        // Get filtered and sorted row IDs from grid using apiRef
+        const filteredRowIds = gridFilteredSortedRowIdsSelector(apiRef);
+
+        Logger.log("📊 Export - filteredRowIds:", {
+          count: filteredRowIds.length,
+          sample: filteredRowIds.slice(0, 5),
+        });
+
+        // Get rows data using apiRef.current.getRow() for accurate filtered data
+        const filteredRows = filteredRowIds
+          .map((id) => {
+            // Use apiRef.current.getRow() to get the actual row from DataGrid state
+            if (apiRef.current) {
+              return apiRef.current.getRow(id);
+            }
+            // Fallback to finding in rows array
+            const primaryKey = getEffectivePrimaryKey(rows[0]);
+            return rows.find((r) => r[primaryKey] === id);
+          })
+          .filter(Boolean);
+
+        Logger.log("📊 Export - filteredRows:", {
+          count: filteredRows.length,
+          totalRows: rows.length,
+        });
+
+        // Use filtered rows (if any filters are applied, filteredRowIds will be subset of all rows)
+        const dataToExport = filteredRows.length > 0 ? filteredRows : rows;
+
+        // Transform data to include only visible columns with proper headers
+        // Include row number column with calculated values
+        const exportData = dataToExport.map((row, index) => {
+          const exportRow = {};
+          visibleColumns.forEach((col) => {
+            const header = col.headerName || col.field;
+
+            // Handle row number column specially - calculate the value
+            // Note: field is "__rowNumber" (not "__rowNumber__")
+            if (col.field === "__rowNumber") {
+              // For export, always start from 1 (not based on current page)
+              exportRow[header] = index + 1;
+            } else {
+              exportRow[header] = row[col.field] ?? "";
+            }
+          });
+          return exportRow;
+        });
+
+        // Create worksheet and workbook
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+        // Auto-fit column widths
+        const columnWidths = visibleColumns.map((col) => {
+          const header = col.headerName || col.field;
+          const maxLength = Math.max(
+            header.length,
+            ...exportData.map((row) => String(row[header] || "").length)
+          );
+          return { wch: Math.min(maxLength + 2, 50) };
+        });
+        worksheet["!cols"] = columnWidths;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+
+        // Generate filename - use bsExportFileName prop if provided, otherwise use table name
+        const exportFileName =
+          bsExportFileName || effectiveTableName || "export";
+        const filename = `${exportFileName}_${
+          new Date().toISOString().split("T")[0]
+        }.xlsx`;
+
+        // Trigger download
+        XLSX.writeFile(workbook, filename);
+
+        Logger.log(
+          "✅ Excel export completed:",
+          filename,
+          "rows:",
+          exportData.length
+        );
+      } catch (err) {
+        Logger.error("❌ Excel export failed:", err);
+        BSAlertSwal2.show(
+          "error",
+          localeText.bsExportExcelError || "Failed to export Excel",
+          {
+            title: localeText.bsError || "Error",
+          }
+        );
+      }
+    }, [
+      apiRef,
+      columns,
+      rows,
+      effectiveTableName,
+      bsExportFileName,
+      getEffectivePrimaryKey,
+      localeText,
+      paginationModel.page,
+      paginationModel.pageSize,
+    ]);
+
+    // Custom CSV Export Handler (uses DataGrid's built-in CSV export)
+    const handleExportCsv = useCallback(() => {
+      try {
+        if (apiRef.current) {
+          // Use bsExportFileName prop if provided, otherwise use table name
+          const exportFileName =
+            bsExportFileName || effectiveTableName || "export";
+          apiRef.current.exportDataAsCsv({
+            delimiter: ";",
+            utf8WithBom: true,
+            escapeFormulas: false,
+            fileName: `${exportFileName}_${
+              new Date().toISOString().split("T")[0]
+            }`,
+          });
+          Logger.log("✅ CSV export triggered");
+        }
+      } catch (err) {
+        Logger.error("❌ CSV export failed:", err);
+      }
+    }, [apiRef, bsExportFileName, effectiveTableName]);
+
+    // Custom Print Handler (uses DataGrid's built-in print)
+    const handlePrint = useCallback(() => {
+      try {
+        if (apiRef.current) {
+          apiRef.current.exportDataAsPrint({
+            hideFooter: false,
+            hideToolbar: true,
+          });
+          Logger.log("✅ Print triggered");
+        }
+      } catch (err) {
+        Logger.error("❌ Print failed:", err);
+      }
+    }, [apiRef]);
 
     // Bulk Add specific functions
     const handleBulkSave = useCallback(async () => {
@@ -5360,7 +6007,10 @@ const BSDataGrid = forwardRef(
         });
 
         if (validationErrors.length > 0) {
-          alert(`Validation Errors:\n${validationErrors.join("\n")}`);
+          BSAlertSwal2.show("error", "", {
+            title: "Validation Errors",
+            html: validationErrors.join("<br>"),
+          });
           return;
         }
 
@@ -5557,7 +6207,10 @@ const BSDataGrid = forwardRef(
         });
 
         if (validationErrors.length > 0) {
-          alert(`Validation Errors:\n${validationErrors.join("\n")}`);
+          BSAlertSwal2.show("error", "", {
+            title: "Validation Errors",
+            html: validationErrors.join("<br>"),
+          });
           return;
         }
 
@@ -5721,7 +6374,7 @@ const BSDataGrid = forwardRef(
         >
           <Box sx={{ textAlign: "center" }}>
             <CircularProgress sx={{ mb: 2 }} />
-            <Typography variant="body1">Loading data...</Typography>
+            <Typography variant="body1">{localeText.bsLoadingData}</Typography>
             {/* <Typography variant="body2" color="text.secondary">
               {effectiveTableName}
             </Typography> */}
@@ -5747,19 +6400,19 @@ const BSDataGrid = forwardRef(
             severity={isNotFound ? "warning" : "error"}
             action={
               <Button onClick={() => loadMetadata(bsPreObj)} size="small">
-                Retry
+                {localeText.bsRetry}
               </Button>
             }
           >
             <Typography variant="h6">
               {isNotFound
-                ? "ไม่พบ Table หรือ View ที่ระบุ"
-                : "Failed to load table metadata"}
+                ? localeText.bsTableNotFound
+                : localeText.bsFailedToLoadMetadata}
             </Typography>
             <Typography variant="body2">Table: {effectiveTableName}</Typography>
             <Typography variant="body2">
               {isNotFound
-                ? "กรุณาตรวจสอบชื่อ Table หรือ View ว่าถูกต้องหรือไม่"
+                ? localeText.bsTableNotFoundMessage
                 : `Error: ${metadataError?.message || metadataError}`}
             </Typography>
           </Alert>
@@ -5780,10 +6433,12 @@ const BSDataGrid = forwardRef(
       return (
         <Paper sx={{ height, width: "100%" }}>
           <Alert severity="warning" sx={{ m: 2 }}>
-            <Typography variant="h6">Backend API ไม่พร้อมใช้งาน</Typography>
+            <Typography variant="h6">
+              {localeText.bsBackendNotAvailable}
+            </Typography>
             <Typography variant="body2">Table: {effectiveTableName}</Typography>
             <Typography variant="body2">
-              กรุณาตรวจสอบการเชื่อมต่อ backend server
+              {localeText.bsCheckBackendConnection}
             </Typography>
           </Alert>
 
@@ -5791,10 +6446,10 @@ const BSDataGrid = forwardRef(
           {showToolbar && (
             <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
               <Typography variant="h6" component="div">
-                {effectiveTableName} (Offline Mode)
+                {effectiveTableName} ({localeText.bsOfflineMode})
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                ไม่สามารถโหลด metadata ได้
+                {localeText.bsCannotLoadMetadata}
               </Typography>
             </Box>
           )}
@@ -5812,14 +6467,14 @@ const BSDataGrid = forwardRef(
 
           <Box sx={{ p: 3, textAlign: "center" }}>
             <Typography variant="body1" color="text.secondary">
-              ไม่สามารถแสดงข้อมูลได้เนื่องจาก backend API ไม่พร้อมใช้งาน
+              {localeText.bsCannotDisplayData}
             </Typography>
             <Button
               onClick={() => loadMetadata(bsPreObj)}
               variant="outlined"
               sx={{ mt: 2 }}
             >
-              ลองใหม่
+              {localeText.bsTryAgain}
             </Button>
           </Box>
         </Paper>
@@ -5850,9 +6505,14 @@ const BSDataGrid = forwardRef(
             severity="error"
             sx={{ m: 1 }}
             action={
-              <Button onClick={() => loadData()} size="small">
-                Retry
-              </Button>
+              <IconButton
+                aria-label={localeText.bsClose}
+                color="inherit"
+                size="small"
+                onClick={() => setError(null)}
+              >
+                <CancelIcon fontSize="inherit" />
+              </IconButton>
             }
           >
             {error}
@@ -5962,8 +6622,8 @@ const BSDataGrid = forwardRef(
                         <CircularProgress sx={{ mb: 2 }} />
                         <Typography variant="body1">
                           {metadataLoading
-                            ? "Loading columns..."
-                            : "Loading data..."}
+                            ? localeText.bsLoadingColumns
+                            : localeText.bsLoadingData}
                         </Typography>
                       </>
                     ) : (
@@ -5973,18 +6633,12 @@ const BSDataGrid = forwardRef(
                           color="text.secondary"
                           sx={{ mb: 1 }}
                         >
-                          {bsLocale === "th"
-                            ? "ไม่มีข้อมูล"
-                            : "No data available"}
+                          {localeText.bsNoData}
                         </Typography>
                         <Typography variant="body2" color="text.disabled">
                           {bsStoredProcedure
-                            ? bsLocale === "th"
-                              ? "ไม่พบข้อมูลในฐานข้อมูล"
-                              : "The database returned no data"
-                            : bsLocale === "th"
-                            ? "ไม่พบข้อมูลในตาราง"
-                            : "No records found in the table"}
+                            ? localeText.bsNoDataInDatabase
+                            : localeText.bsNoRecordsInTable}
                         </Typography>
                       </>
                     )}
@@ -6002,6 +6656,7 @@ const BSDataGrid = forwardRef(
                 }}
               >
                 <DataGridPro
+                  apiRef={apiRef}
                   rows={rows.filter(
                     (row) =>
                       row &&
@@ -6081,10 +6736,16 @@ const BSDataGrid = forwardRef(
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
                   headerFilterHeight={48}
-                  // Auto-sizing columns
+                  // Auto-sizing columns (exclude columns with custom width in bsColumnDefs)
                   autosizeOnMount
                   autosizeOptions={{
-                    columns: columns.map((col) => col.field),
+                    columns: columns
+                      .filter((col) => {
+                        // Skip columns that have custom width defined in bsColumnDefs
+                        const customDef = columnDefsConfig[col.field];
+                        return !customDef?.width;
+                      })
+                      .map((col) => col.field),
                     includeHeaders: true,
                     includeOutliers: false,
                     expand: true,
@@ -6136,11 +6797,11 @@ const BSDataGrid = forwardRef(
                     const idFields = ["id", "Id", "ID", "_id"];
                     for (const field of idFields) {
                       if (row[field] != null) {
-                        Logger.log("🆔 Using fallback ID field:", {
-                          field,
-                          value: row[field],
-                          stringValue: String(row[field]),
-                        });
+                        // Logger.log("🆔 Using fallback ID field:", {
+                        //   field,
+                        //   value: row[field],
+                        //   stringValue: String(row[field]),
+                        // });
                         return String(row[field]);
                       }
                     }
@@ -6163,7 +6824,7 @@ const BSDataGrid = forwardRef(
                   }}
                   // Localization
                   localeText={getLocalization()}
-                  // Row styling for unsaved changes and striped rows
+                  // Row styling for unsaved changes, striped rows, and custom row config
                   getRowClassName={(params) => {
                     const primaryKey =
                       metadata?.primaryKeys?.[0] || "Id" || "id";
@@ -6182,7 +6843,30 @@ const BSDataGrid = forwardRef(
                       classes.push("unsaved-changes");
                     }
 
+                    // Add custom row class from bsRowConfig
+                    if (bsRowConfig) {
+                      const rowConfig = bsRowConfig(params.row);
+                      if (rowConfig.className) {
+                        classes.push(rowConfig.className);
+                      }
+                      // Add custom-styled class if backgroundColor or textColor is set
+                      if (rowConfig.backgroundColor || rowConfig.textColor) {
+                        classes.push(`custom-row-${params.id}`);
+                      }
+                    }
+
                     return classes.join(" ");
+                  }}
+                  // Control row selectability (checkbox) based on bsRowConfig
+                  isRowSelectable={(params) => {
+                    if (bsRowConfig) {
+                      const rowConfig = bsRowConfig(params.row);
+                      // If showCheckbox is explicitly false, row is not selectable
+                      if (rowConfig.showCheckbox === false) {
+                        return false;
+                      }
+                    }
+                    return true;
                   }}
                   // Custom Toolbar (use slots + slotProps for better compatibility)
                   slots={
@@ -6207,7 +6891,12 @@ const BSDataGrid = forwardRef(
                             onBulkDelete: handleBulkDelete,
                             onBulkAdd: handleBulkAdd,
                             showBulkDelete: bsBulkDelete,
+                            onRefresh: () => refreshData(true),
+                            onExportExcel: handleExportExcel,
+                            onExportCsv: handleExportCsv,
+                            onPrint: handlePrint,
                             localeText,
+                            apiRef,
                           },
                           // Header filter cell props to show inline clear button
                           headerFilterCell: {
@@ -6239,15 +6928,18 @@ const BSDataGrid = forwardRef(
                           },
                         }
                   }
-                  // Styling with required field indicator
+                  // Styling with required field indicator and custom row styles
                   sx={{
                     height:
                       height === "auto"
                         ? "100%" // Use full height of flex container
                         : height - (showToolbar && !bulkEditMode ? 60 : 0), // Fixed height: account for toolbar height
+                    //",
                     flex: height === "auto" ? 1 : "none", // Flex grow when auto height
                     minHeight: height === "auto" ? 300 : undefined, // Minimum height for auto mode
                     border: 0,
+                    // Apply custom row styles from bsRowConfig
+                    ...customRowStyles,
                     [`& .${gridClasses.cell}`]: {
                       borderBottom: "1px solid #f0f0f0",
                       fontSize: "0.875rem",
@@ -6362,9 +7054,11 @@ const BSDataGrid = forwardRef(
             Logger.error("❌ DataGridPro render error:", error);
             return (
               <Alert severity="error" sx={{ m: 2 }}>
-                <Typography variant="h6">DataGrid Error</Typography>
+                <Typography variant="h6">
+                  {localeText.bsDataGridError}
+                </Typography>
                 <Typography variant="body2">
-                  Failed to render data grid: {error.message}
+                  {localeText.bsFailedToRenderGrid} {error.message}
                 </Typography>
               </Alert>
             );
@@ -6379,7 +7073,9 @@ const BSDataGrid = forwardRef(
           fullWidth
         >
           <DialogTitle>
-            {dialogMode === "add" ? "Add New Record" : "Edit Record"}
+            {dialogMode === "add"
+              ? localeText.bsAddNewRecord
+              : localeText.bsEditRecord}
           </DialogTitle>
           <DialogContent>
             {metadata?.columns || bsStoredProcedure ? (
@@ -6388,21 +7084,21 @@ const BSDataGrid = forwardRef(
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <CircularProgress />
                 <Typography variant="body2" sx={{ mt: 2 }}>
-                  Loading metadata...
+                  {localeText.bsLoadingMetadata}
                 </Typography>
               </Box>
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDialogClose} disabled={formLoading}>
-              Cancel
+              {localeText.bsCancel}
             </Button>
             <Button
               onClick={handleSave}
               variant="contained"
               disabled={formLoading}
             >
-              {formLoading ? "Saving..." : "Save"}
+              {formLoading ? localeText.bsSaving : localeText.bsSave}
             </Button>
           </DialogActions>
         </Dialog>
@@ -6415,9 +7111,9 @@ const BSDataGrid = forwardRef(
           fullWidth
         >
           <DialogTitle>
-            Bulk Add Records
+            {localeText.bsBulkAddRecords}
             <Typography variant="body2" color="text.secondary">
-              Add multiple records at once. Empty rows will be ignored.
+              {localeText.bsBulkAddDescription}
             </Typography>
           </DialogTitle>
           <DialogContent>
@@ -6430,7 +7126,7 @@ const BSDataGrid = forwardRef(
                   <TextField
                     size="small"
                     type="number"
-                    label="Number of rows"
+                    label={localeText.bsNumberOfRows}
                     value={bulkRowCount}
                     onChange={(e) =>
                       setBulkRowCount(
@@ -6445,7 +7141,7 @@ const BSDataGrid = forwardRef(
                     variant="outlined"
                     size="small"
                   >
-                    Add 3 More Rows
+                    {localeText.bsAddMoreRows}
                   </Button>
                 </Box>
 
@@ -6457,14 +7153,14 @@ const BSDataGrid = forwardRef(
                       sx={{ p: 2, mb: 2, position: "relative" }}
                     >
                       <Typography variant="subtitle2" sx={{ mb: 2 }}>
-                        Row #{rowIndex + 1}
+                        {localeText.bsRow} #{rowIndex + 1}
                         <Button
                           size="small"
                           onClick={() => removeBulkRow(rowIndex)}
                           sx={{ ml: 2 }}
                           color="error"
                         >
-                          Remove
+                          {localeText.bsRemove}
                         </Button>
                       </Typography>
                       <Grid container spacing={2}>
@@ -6669,21 +7365,23 @@ const BSDataGrid = forwardRef(
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <CircularProgress />
                 <Typography variant="body2" sx={{ mt: 2 }}>
-                  Loading metadata...
+                  {localeText.bsLoadingMetadata}
                 </Typography>
               </Box>
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleBulkDialogClose} disabled={formLoading}>
-              Cancel
+              {localeText.bsCancel}
             </Button>
             <Button
               onClick={handleBulkSave}
               variant="contained"
               disabled={formLoading}
             >
-              {formLoading ? "Saving..." : `Save ${bulkAddRows.length} Records`}
+              {formLoading
+                ? localeText.bsSaving
+                : localeText.bsSaveRecords(bulkAddRows.length)}
             </Button>
           </DialogActions>
         </Dialog>

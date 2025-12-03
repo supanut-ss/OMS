@@ -238,6 +238,9 @@ export const thaiLocaleText = {
   bsSaving: "กำลังบันทึก...",
   bsCancel: "ยกเลิก",
   bsClose: "ปิด",
+  bsRefresh: "รีเฟรช",
+  bsExportExcel: "ส่งออก Excel",
+  bsExportExcelError: "ไม่สามารถส่งออกเป็น Excel ได้",
   bsDiscardAllChanges: "ยกเลิกการเปลี่ยนแปลงทั้งหมด",
   bsHideFilters: "ซ่อนตัวกรอง",
   bsShowFilters: "แสดงตัวกรอง",
@@ -249,4 +252,43 @@ export const thaiLocaleText = {
   bsUnsavedChanges: "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
   bsRowNumber: "#",
   bsActions: "การดำเนินการ",
+
+  // BSDataGrid Dialog & Form Labels
+  bsAddNewRecord: "เพิ่มข้อมูลใหม่",
+  bsEditRecord: "แก้ไขข้อมูล",
+  bsLoadingMetadata: "กำลังโหลดข้อมูล...",
+  bsLoadingData: "กำลังโหลดข้อมูล...",
+  bsLoadingColumns: "กำลังโหลดคอลัมน์...",
+  bsLoadingOptions: "กำลังโหลดตัวเลือก...",
+  bsNoData: "ไม่มีข้อมูล",
+  bsNoDataInDatabase: "ไม่พบข้อมูลในฐานข้อมูล",
+  bsNoRecordsInTable: "ไม่พบข้อมูลในตาราง",
+  bsBulkAddRecords: "เพิ่มข้อมูลหลายรายการ",
+  bsBulkAddDescription: "เพิ่มหลายรายการพร้อมกัน แถวที่ว่างจะถูกข้ามไป",
+  bsNumberOfRows: "จำนวนแถว",
+  bsAddMoreRows: "เพิ่มอีก 3 แถว",
+  bsRow: "แถว",
+  bsRemove: "ลบ",
+  bsSaveRecords: (count) => `บันทึก ${count} รายการ`,
+  bsRetry: "ลองใหม่",
+  bsClose: "ปิด",
+
+  // BSDataGrid Confirm Messages
+  bsConfirmDeleteRecord: "คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?",
+  bsConfirmDeleteRecords: (count) =>
+    `คุณแน่ใจหรือไม่ว่าต้องการลบ ${count} รายการ?`,
+
+  // BSDataGrid Error Messages
+  bsTableNotFound: "ไม่พบ Table หรือ View ที่ระบุ",
+  bsTableNotFoundMessage: "กรุณาตรวจสอบชื่อ Table หรือ View ว่าถูกต้องหรือไม่",
+  bsFailedToLoadMetadata: "ไม่สามารถโหลดข้อมูล metadata ได้",
+  bsBackendNotAvailable: "Backend API ไม่พร้อมใช้งาน",
+  bsCheckBackendConnection: "กรุณาตรวจสอบการเชื่อมต่อ backend server",
+  bsCannotLoadMetadata: "ไม่สามารถโหลด metadata ได้",
+  bsOfflineMode: "โหมดออฟไลน์",
+  bsCannotDisplayData:
+    "ไม่สามารถแสดงข้อมูลได้เนื่องจาก backend API ไม่พร้อมใช้งาน",
+  bsTryAgain: "ลองใหม่",
+  bsDataGridError: "เกิดข้อผิดพลาด DataGrid",
+  bsFailedToRenderGrid: "ไม่สามารถแสดงตารางข้อมูลได้:",
 };
