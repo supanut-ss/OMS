@@ -30,6 +30,7 @@ import Combobox from "./pages/Configs/Combobox";
 import Projects from "./pages/Projects/Projects";
 import MasterHoliday from "./pages/Master/MasterHoliday";
 import MasterSale from "./pages/Master/MasterSale";
+import CustomerPage from "./pages/Master/Customer";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -100,7 +101,8 @@ export default function AppRoutes() {
         </Route>
         <Route path="master">
           <Route path="sale" element={<MasterSale lang={lang} />} />
-          <Route path="holiday" element={<MasterHoliday lang={lang} />} />
+          <Route path="holiday" element={<MasterHoliday lang={lang} />} />\
+          <Route path="customer" element={<CustomerPage lang={lang} />} />
         </Route>
         <Route path="projects" element={<Projects lang={lang} />} />
       </Route>

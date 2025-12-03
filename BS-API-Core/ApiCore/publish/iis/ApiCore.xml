@@ -432,6 +432,11 @@
             Data for INSERT/UPDATE operations
             </summary>
         </member>
+        <member name="P:ApiCore.Models.Dynamic.EnhancedStoredProcedureRequest.UserLookup">
+            <summary>
+            User lookup configuration for audit fields (create_by, update_by)
+            </summary>
+        </member>
         <member name="T:ApiCore.Models.Dynamic.EnhancedStoredProcedureResponse">
             <summary>
             Enhanced Stored Procedure response
@@ -500,6 +505,11 @@
         <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.QuickFilter">
             <summary>
             Quick filter value from Frontend (for BSDataGrid compatibility)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.UserLookup">
+            <summary>
+            User lookup configuration for audit fields (create_by, update_by)
             </summary>
         </member>
         <member name="T:ApiCore.Models.Dynamic.DynamicResponse">
@@ -617,6 +627,31 @@
             Dynamic parameter information for stored procedures
             </summary>
         </member>
+        <member name="T:ApiCore.Models.Dynamic.UserLookupConfig">
+            <summary>
+            Configuration for looking up user details in audit fields (create_by, update_by)
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.UserLookupConfig.Table">
+            <summary>
+            User table name with schema (e.g., "sec.t_com_user")
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.UserLookupConfig.IdField">
+            <summary>
+            User ID field name (e.g., "user_id")
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.UserLookupConfig.DisplayFields">
+            <summary>
+            Display fields to show (e.g., ["first_name", "last_name"])
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.UserLookupConfig.Separator">
+            <summary>
+            Separator between display fields (default: " ")
+            </summary>
+        </member>
         <member name="T:ApiCore.Services.Implementation.Base.BaseService`6">
             <summary>
             Base service providing common CRUD operations with optimized performance
@@ -686,6 +721,22 @@
         <member name="T:ApiCore.Services.Implementation.DynamicCrudService">
             <summary>
             Dynamic CRUD service for auto-generated database operations
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DynamicCrudService.AddTableAliasToWhereClause(System.String,ApiCore.Models.Dynamic.DynamicTableMetadata,System.String)">
+            <summary>
+            Add table alias to column names in WHERE clause to prevent ambiguous column errors
+            Handles patterns like: column_name='value', column_name = 'value', column_name IN (...), etc.
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DynamicCrudService.BuildUserLookupJoin(ApiCore.Models.Dynamic.UserLookupConfig,System.String,ApiCore.Models.Dynamic.DynamicTableMetadata)">
+            <summary>
+            Build User Lookup JOIN clause for audit fields (create_by, update_by)
+            </summary>
+        </member>
+        <member name="M:ApiCore.Services.Implementation.DynamicCrudService.BuildUserLookupSelect(ApiCore.Models.Dynamic.UserLookupConfig,ApiCore.Models.Dynamic.DynamicTableMetadata,System.String)">
+            <summary>
+            Build User Lookup SELECT clause for display fields
             </summary>
         </member>
         <member name="M:ApiCore.Services.Implementation.DynamicCrudService.ConvertJsonElementValue(System.Object)">
