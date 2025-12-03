@@ -29,8 +29,8 @@ import UserLogOnPage from "./pages/Authentication/UserLogOn";
 import Combobox from "./pages/Configs/Combobox";
 import Projects from "./pages/Projects/Projects";
 import CustomerPage from "./pages/Master/Customer";
-import MasterHoliday from "./pages/Master/Holiday";
-import MasterSale from "./pages/Master/Sale";
+import HolidayPage from "./pages/Master/Holiday";
+import SalePage from "./pages/Master/Sale";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -59,10 +59,6 @@ export default function AppRoutes() {
       >
         <Route index element={<Home />} />
 
-        <Route path="import">
-          <Route path="importExcel" element={<ImportExcel />} />
-          <Route path="importMaster" element={<ImportMaster lang={lang} />} />
-        </Route>
         <Route path="test">
           {/* route สำหรับ BSDataGrid Examples */}
           <Route path="bsdatagrid" element={<BSDataGridExamples />} />
@@ -88,6 +84,12 @@ export default function AppRoutes() {
             element={<BSDataGridWithCustomFilterExample />}
           />
         </Route>
+
+        <Route path="import">
+          <Route path="importExcel" element={<ImportExcel />} />
+          <Route path="importMaster" element={<ImportMaster lang={lang} />} />
+        </Route>
+
         <Route path="authentication">
           <Route path="user_group" element={<UserGroupPage lang={lang} />} />
           <Route path="user" element={<UserPage lang={lang} />} />
@@ -95,13 +97,14 @@ export default function AppRoutes() {
           <Route path="menu" element={<MenuPage lang={lang} />} />
           <Route path="user_logon" element={<UserLogOnPage lang={lang} />} />
         </Route>
+
         <Route path="configs">
           <Route path="resource" element={<Resource lang={lang} />} />
           <Route path="combobox" element={<Combobox lang={lang} />} />
         </Route>
         <Route path="master">
-          <Route path="sale" element={<MasterSale lang={lang} />} />
-          <Route path="holiday" element={<MasterHoliday lang={lang} />} />\
+          <Route path="sale" element={<SalePage lang={lang} />} />
+          <Route path="holiday" element={<HolidayPage lang={lang} />} />\
           <Route path="customer" element={<CustomerPage lang={lang} />} />
         </Route>
         <Route path="projects" element={<Projects lang={lang} />} />
