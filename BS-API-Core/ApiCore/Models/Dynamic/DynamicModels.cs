@@ -60,6 +60,11 @@ namespace ApiCore.Models.Dynamic
         /// Data for INSERT/UPDATE operations
         /// </summary>
         public Dictionary<string, object>? Data { get; set; }
+
+        /// <summary>
+        /// User lookup configuration for audit fields (create_by, update_by)
+        /// </summary>
+        public UserLookupConfig? UserLookup { get; set; }
     }
 
     /// <summary>
@@ -176,6 +181,11 @@ namespace ApiCore.Models.Dynamic
         /// Quick filter value from Frontend (for BSDataGrid compatibility)
         /// </summary>
         public string? QuickFilter { get; set; }
+
+        /// <summary>
+        /// User lookup configuration for audit fields (create_by, update_by)
+        /// </summary>
+        public UserLookupConfig? UserLookup { get; set; }
     }
 
     /// <summary>

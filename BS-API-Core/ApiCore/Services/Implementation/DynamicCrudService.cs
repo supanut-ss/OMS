@@ -277,7 +277,7 @@ namespace ApiCore.Services.Implementation
 
                 // Build SELECT clause
                 var selectColumns = request.SelectColumns?.Any() == true
-                    ? string.Join(", ", request.SelectColumns.Select(c => $"[{c}]"))
+                    ? string.Join(", ", request.SelectColumns.Select(c => $"t.[{c}]"))  // Add table alias to prevent ambiguous columns
                     : "*";
 
                 // Build WHERE clause
@@ -290,22 +290,60 @@ namespace ApiCore.Services.Implementation
                 var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
                 _logger.LogInformation("🏗️ Generated ORDER BY clause: {OrderByClause}", orderByClause);
 
+                // Build User Lookup JOIN and SELECT (pass metadata for column existence check)
+                // If not configured, use default configuration to always show user names
+                var userLookup = request.UserLookup ?? new UserLookupConfig
+                {
+                    Table = "sec.t_com_user",
+                    IdField = "user_id",
+                    DisplayFields = new List<string> { "first_name", "last_name" },
+                    Separator = " "
+                };
+
+                var userLookupJoin = BuildUserLookupJoin(userLookup, "t", metadata);
+                var userLookupSelect = BuildUserLookupSelect(userLookup, metadata, "t");
+
+                // Build SELECT clause with user lookup fields
+                // Always use explicit column list with table alias to avoid ambiguous column names when joining
+                string fullSelectColumns;
+                if (selectColumns == "*")
+                {
+                    // Generate explicit column list with table alias to prevent ambiguous columns
+                    var explicitColumns = metadata.Columns
+                        .Select(c => $"t.[{c.ColumnName}]")
+                        .ToList();
+                    fullSelectColumns = string.Join(", ", explicitColumns);
+                }
+                else
+                {
+                    // selectColumns already has table alias from above
+                    fullSelectColumns = selectColumns;
+                }
+
+                if (!string.IsNullOrEmpty(userLookupSelect))
+                {
+                    fullSelectColumns += userLookupSelect;
+                }
+
                 // Build final query
                 var query = $@"
                     DECLARE @TotalCount INT;
                     
                     SELECT @TotalCount = COUNT(*)
-                    FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}]
+                    FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
                     {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")};
                     
                     SELECT @TotalCount as TotalCount;
                     
-                    SELECT {selectColumns}
-                    FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}]
+                    SELECT {fullSelectColumns}
+                    FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
+                    {userLookupJoin}
                     {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
                     {orderByClause}
                     OFFSET @Offset ROWS
                     FETCH NEXT @PageSize ROWS ONLY;";
+
+                _logger.LogInformation("🔍 Generated SQL Query: {Query}", query);
 
                 using var connection = _connectionFactory.CreateConnection();
                 using var command = new SqlCommand(query, connection);
@@ -971,20 +1009,21 @@ namespace ApiCore.Services.Implementation
                     var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(filter.Field, StringComparison.OrdinalIgnoreCase));
                     if (column == null) continue;
 
+                    // Use table alias 't.' to avoid ambiguous column name when using JOINs
                     var condition = filter.Operator.ToLower() switch
                     {
-                        "contains" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                        "equals" => $"[{filter.Field}] = @{filter.Field}_Filter",
-                        "startswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                        "endswith" => $"[{filter.Field}] LIKE @{filter.Field}_Filter",
-                        "isempty" => $"([{filter.Field}] IS NULL OR [{filter.Field}] = '')",
-                        "isnotempty" => $"([{filter.Field}] IS NOT NULL AND [{filter.Field}] != '')",
-                        ">" => $"[{filter.Field}] > @{filter.Field}_Filter",
-                        ">=" => $"[{filter.Field}] >= @{filter.Field}_Filter",
-                        "<" => $"[{filter.Field}] < @{filter.Field}_Filter",
-                        "<=" => $"[{filter.Field}] <= @{filter.Field}_Filter",
-                        "!=" => $"[{filter.Field}] != @{filter.Field}_Filter",
-                        _ => $"[{filter.Field}] LIKE @{filter.Field}_Filter"
+                        "contains" => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "equals" => $"t.[{filter.Field}] = @{filter.Field}_Filter",
+                        "startswith" => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "endswith" => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter",
+                        "isempty" => $"(t.[{filter.Field}] IS NULL OR t.[{filter.Field}] = '')",
+                        "isnotempty" => $"(t.[{filter.Field}] IS NOT NULL AND t.[{filter.Field}] != '')",
+                        ">" => $"t.[{filter.Field}] > @{filter.Field}_Filter",
+                        ">=" => $"t.[{filter.Field}] >= @{filter.Field}_Filter",
+                        "<" => $"t.[{filter.Field}] < @{filter.Field}_Filter",
+                        "<=" => $"t.[{filter.Field}] <= @{filter.Field}_Filter",
+                        "!=" => $"t.[{filter.Field}] != @{filter.Field}_Filter",
+                        _ => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter"
                     };
                     conditions.Add(condition);
                 }
@@ -1008,7 +1047,8 @@ namespace ApiCore.Services.Implementation
                 var quickFilterConditions = new List<string>();
                 foreach (var column in metadata.Columns.Where(c => IsSearchableColumn(c)))
                 {
-                    quickFilterConditions.Add($"CAST([{column.ColumnName}] AS NVARCHAR(MAX)) LIKE @QuickFilter");
+                    // Use table alias 't.' to avoid ambiguous column name when using JOINs (e.g., User Lookup)
+                    quickFilterConditions.Add($"CAST(t.[{column.ColumnName}] AS NVARCHAR(MAX)) LIKE @QuickFilter");
                 }
 
                 if (quickFilterConditions.Any())
@@ -1102,6 +1142,93 @@ namespace ApiCore.Services.Implementation
         {
             var searchableTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext" };
             return searchableTypes.Contains(column.DataType.ToLower());
+        }
+
+        /// <summary>
+        /// Build User Lookup JOIN clause for audit fields (create_by, update_by)
+        /// </summary>
+        private string BuildUserLookupJoin(UserLookupConfig? userLookup, string tableAlias = "t", DynamicTableMetadata? metadata = null)
+        {
+            if (userLookup == null || string.IsNullOrEmpty(userLookup.Table))
+                return string.Empty;
+
+            var parts = userLookup.Table.Split('.');
+            var userSchema = parts.Length > 1 ? parts[0] : "dbo";
+            var userTable = parts.Length > 1 ? parts[1] : parts[0];
+            var userIdField = userLookup.IdField ?? "user_id";
+
+            var joins = new StringBuilder();
+
+            // Check if create_by column exists in metadata
+            var hasCreateBy = metadata?.Columns?.Any(c =>
+                c.ColumnName.Equals("create_by", StringComparison.OrdinalIgnoreCase)) ?? true;
+
+            // Check if update_by column exists in metadata
+            var hasUpdateBy = metadata?.Columns?.Any(c =>
+                c.ColumnName.Equals("update_by", StringComparison.OrdinalIgnoreCase)) ?? true;
+
+            // JOIN for create_by (only if column exists)
+            if (hasCreateBy)
+            {
+                joins.AppendLine($@"
+                LEFT JOIN [{userSchema}].[{userTable}] AS creator 
+                    ON {tableAlias}.[create_by] = creator.[{userIdField}]");
+            }
+
+            // JOIN for update_by (only if column exists)
+            if (hasUpdateBy)
+            {
+                joins.AppendLine($@"
+                LEFT JOIN [{userSchema}].[{userTable}] AS updater 
+                    ON {tableAlias}.[update_by] = updater.[{userIdField}]");
+            }
+
+            _logger.LogInformation("🔗 User Lookup JOIN: hasCreateBy={HasCreateBy}, hasUpdateBy={HasUpdateBy}", hasCreateBy, hasUpdateBy);
+
+            return joins.ToString();
+        }
+
+        /// <summary>
+        /// Build User Lookup SELECT clause for display fields
+        /// </summary>
+        private string BuildUserLookupSelect(UserLookupConfig? userLookup, DynamicTableMetadata? metadata = null, string tableAlias = "t")
+        {
+            if (userLookup == null || userLookup.DisplayFields == null || !userLookup.DisplayFields.Any())
+                return string.Empty;
+
+            var separator = userLookup.Separator ?? " ";
+
+            var selects = new StringBuilder();
+
+            // Check if create_by column exists in metadata
+            var hasCreateBy = metadata?.Columns?.Any(c =>
+                c.ColumnName.Equals("create_by", StringComparison.OrdinalIgnoreCase)) ?? true;
+
+            // Check if update_by column exists in metadata
+            var hasUpdateBy = metadata?.Columns?.Any(c =>
+                c.ColumnName.Equals("update_by", StringComparison.OrdinalIgnoreCase)) ?? true;
+
+            // Concatenate display fields for create_by (only if column exists)
+            // Use COALESCE to fallback to user_id if JOIN returns NULL
+            if (hasCreateBy)
+            {
+                var displayFields = userLookup.DisplayFields.Select(f => $"creator.[{f}]");
+                var concatFields = string.Join($", '{separator}', ", displayFields);
+                selects.Append($",\n    COALESCE(CONCAT({concatFields}), CAST({tableAlias}.[create_by] AS NVARCHAR(50))) AS create_by_display");
+            }
+
+            // Concatenate display fields for update_by (only if column exists)
+            // Use COALESCE to fallback to user_id if JOIN returns NULL
+            if (hasUpdateBy)
+            {
+                var updateFields = userLookup.DisplayFields.Select(f => $"updater.[{f}]");
+                var concatFields = string.Join($", '{separator}', ", updateFields);
+                selects.Append($",\n    COALESCE(CONCAT({concatFields}), CAST({tableAlias}.[update_by] AS NVARCHAR(50))) AS update_by_display");
+            }
+
+            _logger.LogInformation("📝 User Lookup SELECT: hasCreateBy={HasCreateBy}, hasUpdateBy={HasUpdateBy}", hasCreateBy, hasUpdateBy);
+
+            return selects.ToString();
         }
 
 
@@ -1204,6 +1331,12 @@ namespace ApiCore.Services.Implementation
                 };
                 command.Parameters.Add(outputMessageParam);
 
+                var outputErrorCodeParam = new SqlParameter("@OutputErrorCode", SqlDbType.Int)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                command.Parameters.Add(outputErrorCodeParam);
+
                 // Execute stored procedure
                 var stopwatch = Stopwatch.StartNew();
                 var results = new List<Dictionary<string, object>>();
@@ -1288,6 +1421,7 @@ namespace ApiCore.Services.Implementation
                 reader.Close();
 
                 // Get output parameters
+                var outputErrorCode = 0;
                 if (outputRowCountParam.Value != DBNull.Value)
                 {
                     totalCount = (int)outputRowCountParam.Value;
@@ -1297,6 +1431,15 @@ namespace ApiCore.Services.Implementation
                 {
                     message = outputMessageParam.Value.ToString() ?? "Success";
                 }
+
+                if (outputErrorCodeParam.Value != DBNull.Value)
+                {
+                    outputErrorCode = (int)outputErrorCodeParam.Value;
+                    _logger.LogInformation("📤 OUTPUT PARAMETER: @OutputErrorCode = {ErrorCode}", outputErrorCode);
+                }
+
+                // Determine success based on ErrorCode
+                var isSuccess = outputErrorCode == 0;
 
                 // If no explicit total count, use result count
                 if (totalCount == 0)
@@ -1508,12 +1651,12 @@ namespace ApiCore.Services.Implementation
                     _logger.LogWarning("⚠️ NO DATA returned from Enhanced SP - cannot detect metadata");
                 }
 
-                _logger.LogInformation("🎁 RESPONSE SUMMARY: Success={Success}, RowCount={RowCount}, HasMetadata={HasMetadata}, MetadataColumns={MetadataColumnCount}",
-                    true, totalCount > 0 ? totalCount : results.Count, metadata != null, metadata?.Columns.Count ?? 0);
+                _logger.LogInformation("🎁 RESPONSE SUMMARY: Success={Success}, ErrorCode={ErrorCode}, RowCount={RowCount}, HasMetadata={HasMetadata}, MetadataColumns={MetadataColumnCount}",
+                    isSuccess, outputErrorCode, totalCount > 0 ? totalCount : results.Count, metadata != null, metadata?.Columns.Count ?? 0);
 
                 return new EnhancedStoredProcedureResponse
                 {
-                    Success = true,
+                    Success = isSuccess,
                     Data = results,
                     RowCount = totalCount > 0 ? totalCount : results.Count,
                     Message = message,
