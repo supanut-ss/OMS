@@ -269,8 +269,7 @@ const UserPage = (props) => {
               ObjWh: "is_active='YES'",
               ObjBy: "name asc",
             },
-          ]}
-          bsRowPerPage={20}
+          ]} 
           bsShowDescColumn={false}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}

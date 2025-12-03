@@ -38,8 +38,7 @@ const UserGroupPage = (props) => {
           bsPreObj="sec"
           bsObj="t_com_user_group"
           bsCols="user_group_id,name,description,is_active,create_by,create_date,update_by,update_date"
-          bsObjBy="name asc"
-          bsRowPerPage={20}
+          bsObjBy="name asc" 
           bsShowDescColumn={false}
           bsComboBox={[
             {
