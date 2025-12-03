@@ -1142,6 +1142,20 @@
       "UpstreamHttpMethod": [
         "post"
       ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/{projectId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/{projectId}",
+      "UpstreamHttpMethod": [
+        "get"
+      ]
     }
   ],
   "GlobalConfiguration": {

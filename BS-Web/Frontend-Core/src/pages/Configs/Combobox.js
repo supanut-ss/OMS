@@ -1,12 +1,7 @@
 import { Paper } from "@mui/material";
-import { useResource } from "../../hooks/useResource";
-import { useState } from "react";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const Combobox = (props) => {
-    const { getResource, getResources } = useResource();
-    const [resourceData, setResourceData] = useState();
-    const [resourceForm, setResourceForm] = useState();
     return <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
             bsLocale={props.lang}
