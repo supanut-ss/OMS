@@ -28,8 +28,8 @@ import ImportMaster from "./pages/Import/ImportMaster";
 import UserLogOnPage from "./pages/Authentication/UserLogOn";
 import Combobox from "./pages/Configs/Combobox";
 import Projects from "./pages/Projects/Projects";
-import MasterHoliday from "./pages/Master/MasterHoliday";
-import MasterSale from "./pages/Master/MasterSale";
+import MasterHoliday from "./pages/Master/Holiday";
+import MasterSale from "./pages/Master/Sale";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
