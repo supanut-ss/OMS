@@ -1,6 +1,6 @@
 import React from "react";
 import { Container, Typography, Box, Paper } from "@mui/material";
-import BSDataGridClient from "../../components/BSDataGridClient";
+import { BSDataGridClient } from "../../components/BSDataGrid";
 
 const BSDataGridClientExample = () => {
   // Sample data

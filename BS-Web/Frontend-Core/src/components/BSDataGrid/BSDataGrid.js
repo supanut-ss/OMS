@@ -67,15 +67,15 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
 } from "@mui/icons-material";
-import { useDynamicCrud } from "../hooks/useDynamicCrud";
-import { getSchemaFromPreObj } from "../utils/SchemaMapping";
-import { useAuth } from "../contexts/AuthContext";
+import { useDynamicCrud } from "../../hooks/useDynamicCrud";
+import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
+import { useAuth } from "../../contexts/AuthContext";
 import * as XLSX from "xlsx";
-import { useResource } from "../hooks/useResource";
-import { getLocaleText } from "./BSDataGrid/locales";
-import Logger from "../utils/logger";
-import muiLicenseManager from "../utils/muiLicenseManager";
-import BSAlertSwal2 from "./BSAlertSwal2";
+import { useResource } from "../../hooks/useResource";
+import { getLocaleText } from "./locales";
+import Logger from "../../utils/logger";
+import muiLicenseManager from "../../utils/muiLicenseManager";
+import BSAlertSwal2 from "../BSAlertSwal2";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();

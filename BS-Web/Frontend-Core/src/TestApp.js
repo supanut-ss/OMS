@@ -1,5 +1,5 @@
 import React from "react";
-import BSDataGrid from "./BSDataGrid";
+import BSDataGrid from "./components/BSDataGrid";
 
 // ตัวอย่างการใช้งาน BSDataGrid พร้อม bsCols
 const App = () => {
