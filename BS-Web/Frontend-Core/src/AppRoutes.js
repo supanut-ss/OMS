@@ -15,7 +15,7 @@ import SchemaTestPage from "./test/SchemaTestPage";
 import SchemaMappingDemo from "./test/SchemaMappingDemo";
 import EnhancedSPTestPage from "./pages/Test/EnhancedSPTestPage";
 import ImportExcel from "./pages/Import/ImportExcel";
-import Resource from "./pages/Authentication/Resource";
+import Resource from "./pages/Configs/Resource";
 import { useState } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import secureStorage from "./utils/SecureStorage";
@@ -26,6 +26,7 @@ import BSDataGridWithCustomFilterExample from "./examples/BSDataGridWithCustomFi
 import Home from "./pages/Home";
 import ImportMaster from "./pages/Import/ImportMaster";
 import UserLogOnPage from "./pages/Authentication/UserLogOn";
+import Combobox from "./pages/Configs/Combobox";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -87,9 +88,12 @@ export default function AppRoutes() {
           <Route path="user_group" element={<UserGroupPage lang={lang} />} />
           <Route path="user" element={<UserPage lang={lang} />} />
           <Route path="assign_menu" element={<AssignMenu />} />
-          <Route path="resource" element={<Resource lang={lang} />} />
           <Route path="menu" element={<MenuPage lang={lang} />} />
           <Route path="user_logon" element={<UserLogOnPage lang={lang} />} />
+        </Route>
+        <Route path="configs">
+          <Route path="resource" element={<Resource lang={lang} />} />
+          <Route path="combobox" element={<Combobox lang={lang} />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

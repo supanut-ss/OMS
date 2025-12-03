@@ -136,17 +136,13 @@ const Resource = ({ lang }) => {
         <Box>
             <BSFullScreenLoader open={loading} />
             <Paper sx={{ p: 2, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                    {getResource(resourceData, "Header")}
-                </Typography>
                 <BSDataGrid
                     ref={dataGridRef}
                     bsLocale={lang}
                     bsPreObj="sec"
                     bsObj="t_com_resource"
-                    bsCols="resource_id
-                    ,app_id
-                    ,platform
+                    bsCols="
+                    platform
                     ,resource_group
                     ,resource_name
                     ,resource_en

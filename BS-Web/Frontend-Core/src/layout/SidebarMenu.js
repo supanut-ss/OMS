@@ -24,6 +24,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import StorageIcon from '@mui/icons-material/Storage';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import GroupIcon from '@mui/icons-material/Group';
 import StarIcon from '@mui/icons-material/Star';
 import { useAuth } from "../contexts/AuthContext";
 
@@ -110,9 +111,9 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
       case 1:
         return <HouseIcon />;
       case 2:
-        return <SettingsIcon />
+        return <GroupIcon />
       case 3:
-        return <StorageIcon />
+        return <SettingsIcon />
       case 4:
         return <ImportExportIcon />
       case 5:
