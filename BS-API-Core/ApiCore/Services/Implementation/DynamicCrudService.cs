@@ -997,8 +997,10 @@ namespace ApiCore.Services.Implementation
             // Custom WHERE clause (from BSDataGrid ObjWh or ComboBox ObjWh)
             if (!string.IsNullOrEmpty(request.CustomWhere))
             {
-                conditions.Add($"({request.CustomWhere})");
-                _logger.LogInformation("🎯 Added CustomWhere condition: {CustomWhere}", request.CustomWhere);
+                // Add table alias to column names in CustomWhere to prevent ambiguous column errors when using JOINs
+                var aliasedCustomWhere = AddTableAliasToWhereClause(request.CustomWhere, metadata, "t");
+                conditions.Add($"({aliasedCustomWhere})");
+                _logger.LogInformation("🎯 Added CustomWhere condition: Original='{CustomWhere}', Aliased='{AliasedCustomWhere}'", request.CustomWhere, aliasedCustomWhere);
             }
 
             // Column filters (null-safe check)
@@ -1142,6 +1144,47 @@ namespace ApiCore.Services.Implementation
         {
             var searchableTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext" };
             return searchableTypes.Contains(column.DataType.ToLower());
+        }
+
+        /// <summary>
+        /// Add table alias to column names in WHERE clause to prevent ambiguous column errors
+        /// Handles patterns like: column_name='value', column_name = 'value', column_name IN (...), etc.
+        /// </summary>
+        private string AddTableAliasToWhereClause(string whereClause, DynamicTableMetadata metadata, string tableAlias = "t")
+        {
+            if (string.IsNullOrEmpty(whereClause))
+                return whereClause;
+
+            var result = whereClause;
+
+            // Get all column names from metadata
+            foreach (var column in metadata.Columns)
+            {
+                var columnName = column.ColumnName;
+
+                // Skip if column already has alias (contains '.')
+                // Use regex patterns to match column names that are not already aliased
+                // Pattern matches: column_name followed by operator or space
+                var patterns = new[]
+                {
+                    // Match column_name at start or after space/( followed by operator
+                    $@"(?<![\w.])({System.Text.RegularExpressions.Regex.Escape(columnName)})(?=\s*[=<>!]|\s+(?:LIKE|IN|IS|BETWEEN|NOT)\b)",
+                    // Match column_name at start or after space/( - general case
+                    $@"(?<![\w.])({System.Text.RegularExpressions.Regex.Escape(columnName)})(?=\s*[=<>!('""\[])"
+                };
+
+                foreach (var pattern in patterns)
+                {
+                    result = System.Text.RegularExpressions.Regex.Replace(
+                        result,
+                        pattern,
+                        $"{tableAlias}.[$1]",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                    );
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
