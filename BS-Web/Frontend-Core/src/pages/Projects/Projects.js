@@ -6,41 +6,21 @@ const Projects = (props) => {
         <BSDataGrid
             bsStoredProcedure="usp_tmt_project_header"
             bsStoredProcedureSchema="tmt"
-            bsCols="
-                project_no,
-                project_name,
-                project_status,
-                application_type,
-                project_type,
-                po_number,
-                manday,
-                management_cost,
-                travel_cost,
-                plan_project_start,
-                plan_project_end,
-                revise_project_start,
-                revise_project_end,
-                actual_project_start,
-                actual_project_end,
-                remark,
-                is_active,
-                create_by,
-                create_date,
-                update_by,
-                update_date"
+            bsCols="project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date"
             bsShowRowNumber={true}
             showAdd={true}
             bsVisibleDelete={false}
             bsLocale={props.lang}
             bsAllowAdd={false}
-            bsAllowEdit={false}
+            bsAllowEdit={true}
             bsAllowDelete={false}
             bsRowPerPage={20}
             onAdd={() => { console.log("Add new project") }}
+            onEdit={() => { console.log("Edit project") }}
             bsFilterMode="client"
-            bsVisibleEdit={false}
+            bsVisibleEdit={true}
             bsShowCheckbox={false}
-            
+
         />
     </Paper>);
 }
