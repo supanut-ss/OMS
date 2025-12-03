@@ -27,6 +27,7 @@ import Home from "./pages/Home";
 import ImportMaster from "./pages/Import/ImportMaster";
 import UserLogOnPage from "./pages/Authentication/UserLogOn";
 import Combobox from "./pages/Configs/Combobox";
+import Projects from "./pages/Projects/Projects";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -95,6 +96,7 @@ export default function AppRoutes() {
           <Route path="resource" element={<Resource lang={lang} />} />
           <Route path="combobox" element={<Combobox lang={lang} />} />
         </Route>
+        <Route path="projects" element={<Projects lang={lang} />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
