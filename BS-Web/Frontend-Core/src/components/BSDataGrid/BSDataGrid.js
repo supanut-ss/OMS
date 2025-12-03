@@ -1306,14 +1306,14 @@ const BSDataGrid = forwardRef(
       // Dialog configuration
       bsDialogSize = "Default", // Dialog size: "Small" | "Default" | "Large" | "FullScreen"
       bsDialogTab, // Tab configuration for form fields: [{ Tabs: [{ Tab: { Column: "col1,col2", name: "Tab Name" } }] }]
-      bsDialogColumns = 2, // Number of columns per row in dialog form: 1, 2, 3, 4, 6, or 12
+      bsDialogColumns = 4, // Number of columns per row in dialog form: 1, 2, 3, 4, 6, or 12
 
       onCheckBoxSelected,
 
       // Data binding callback
       onDataBind, // Callback to receive loaded data for external processing
       onFilteredDataChange, // Callback to receive filtered/visible data for summary calculations
-      bsPageSizeOptions = [10, 25, 50, 100],
+      bsPageSizeOptions = [20, 100, 200, 500, 1000],
       ...props
     },
     ref
