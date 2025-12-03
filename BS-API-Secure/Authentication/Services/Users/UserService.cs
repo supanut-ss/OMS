@@ -3,23 +3,26 @@ using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Authentication.Models.Responses.Auth;
 using Authentication.Prototype;
+using Azure;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Net.Mail;
+using System.Transactions;
 
 namespace Authentication.Services.Users
 {
-    public class UserService: IUsers
+    public class UserService : IUsers
     {
         private readonly IAuth _auth;
         private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") ?? throw new ArgumentNullException(nameof(_connectionString));
         private readonly string schema = Environment.GetEnvironmentVariable("DB_SCHEMA") ?? "sec";
-        public UserService(IAuth auth) {
+        public UserService(IAuth auth)
+        {
             _auth = auth;
         }
-     
+
 
         public async Task<AuthResponse> ResetPassword(string userId, string newPassword)
         {
@@ -89,7 +92,7 @@ namespace Authentication.Services.Users
                       ", [supervisor]" +
                       ", [email_address]" +
                       ", [domain]" +
-                      ", [is_active]"+
+                      ", [is_active]" +
                       ", [create_by]" +
                       ", [create_date])" +
                       "   VALUES  " +
@@ -103,9 +106,9 @@ namespace Authentication.Services.Users
                       ",@supervisor" +
                       ",@email_address" +
                       ",@domain" +
-                      ",@is_active" + 
+                      ",@is_active" +
                       ",@create_by" +
-                      ",@create_date) ";  
+                      ",@create_date) ";
 
                 using var cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@user_id", userReq.UserId);
@@ -136,7 +139,7 @@ namespace Authentication.Services.Users
             {
                 return _auth.CreateErrorResponse("1", $"An error occurred: {ex.Message}");
             }
-         
+
         }
 
         public async Task<AuthResponse> UpdateUser(UserRequest userReq, string userId)
@@ -233,12 +236,12 @@ namespace Authentication.Services.Users
                 }
 
                 // Build update statement; include password only if provided
-                var sql = $"DELETE FROM [{schema}].t_com_user"; 
+                var sql = $"DELETE FROM [{schema}].t_com_user";
 
                 sql += " WHERE user_id = @userId";
 
                 using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userIdDel); 
+                cmd.Parameters.AddWithValue("@userId", userIdDel);
 
                 //if (includePassword)
                 //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
@@ -292,12 +295,12 @@ namespace Authentication.Services.Users
                 }
             }
             catch (Exception ex)
-            { 
+            {
                 response.message_code = "1";
                 response.message_text = $"An error occurred: {ex.Message}";
             }
             return response;
-         }
+        }
 
         public async Task<UserLangResponse> UpdateLangAsync(UserLangRequest userReq, string userId)
         {
@@ -320,13 +323,14 @@ namespace Authentication.Services.Users
                 response.message_code = "0";
                 response.message_text = "Success";
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 response.message_code = "1";
                 response.message_text = $"An error occurred: {ex.Message}";
             }
             return response;
         }
+
 
         public async Task<MasterResponse> ClearLogOn(string userId)
         {
@@ -342,7 +346,7 @@ namespace Authentication.Services.Users
                 {
                     //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
                     using var cmd = new SqlCommand("sec.usp_clear_user_logon_token", conn);
-
+                     
                     cmd.CommandType = CommandType.StoredProcedure;
 
                     var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50) { Direction = ParameterDirection.Output };
@@ -360,7 +364,7 @@ namespace Authentication.Services.Users
                     if (errorCodeParam.Value.ToString() != "0")
                     {
                         response.message_code = errorCodeParam.Value.ToString() ?? "1";
-                        response.message_text = errorMsgParam.Value.ToString() ?? "1";
+                        response.message_text = errorMsgParam.Value.ToString() ?? "1"; 
                     }
 
                     return response;
