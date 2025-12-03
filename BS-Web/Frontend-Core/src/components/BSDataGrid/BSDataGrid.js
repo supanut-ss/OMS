@@ -37,6 +37,8 @@ import {
   MenuList,
   MenuItem as MenuListItem,
   InputAdornment,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -1197,6 +1199,53 @@ const ComboBoxField = ({
  *     - Use client-side mode for small datasets (<1000 rows) for instant filtering
  *     - Use server-side mode for large datasets to reduce data transfer
  *     - Combine with bsObjWh for static WHERE conditions
+ *
+ * @bsDialogSize Configuration:
+ * - bsDialogSize="Default": Controls the size of the add/edit dialog
+ *   * Available values:
+ *     - "Small": Small dialog (sm - 600px max width)
+ *     - "Default": Default medium size (md - 900px max width)
+ *     - "Large": Large dialog (lg - 1200px max width)
+ *     - "FullScreen": Full screen dialog
+ *   * Example: <BSDataGrid bsDialogSize="Large" />
+ *
+ * @bsDialogTab Configuration:
+ * - bsDialogTab: Organize form fields into tabs within the dialog
+ *   * Structure: Array of tab configurations
+ *   * Each tab contains:
+ *     - Column: Comma-separated list of column names to include in this tab
+ *     - name: Display name for the tab
+ *   * Fields not assigned to any tab will appear in an "Other" tab
+ *   * Example:
+ *     ```jsx
+ *     bsDialogTab={[
+ *       {
+ *         Tabs: [
+ *           { Tab: { Column: "name,email,phone", name: "General Info" } },
+ *           { Tab: { Column: "address,city,country", name: "Address" } },
+ *           { Tab: { Column: "notes,description", name: "Additional" } }
+ *         ]
+ *       }
+ *     ]}
+ *     ```
+ *   * Alternative simple format:
+ *     ```jsx
+ *     bsDialogTab={[
+ *       { Column: "name,email,phone", name: "General Info" },
+ *       { Column: "address,city,country", name: "Address" }
+ *     ]}
+ *     ```
+ *
+ * @bsDialogColumns Configuration:
+ * - bsDialogColumns: Number of columns per row in the dialog form (default: 3)
+ *   * Valid values: 1, 2, 3, 4, 6, or 12 (must be a divisor of 12 for MUI Grid)
+ *   * 1 = Full width (1 field per row)
+ *   * 2 = Half width (2 fields per row)
+ *   * 3 = One-third width (3 fields per row) - Default
+ *   * 4 = Quarter width (4 fields per row)
+ *   * 6 = One-sixth width (6 fields per row)
+ *   * 12 = Smallest width (12 fields per row)
+ *   * Example: <BSDataGrid bsDialogColumns={2} /> - Shows 2 fields per row
  */
 const BSDataGrid = forwardRef(
   (
@@ -1253,6 +1302,11 @@ const BSDataGrid = forwardRef(
 
       // User lookup configuration for audit fields
       bsUserLookup, // User lookup configuration: { table: "sec.t_com_user", idField: "user_id", displayFields: ["first_name", "last_name"], separator: " " }
+
+      // Dialog configuration
+      bsDialogSize = "Default", // Dialog size: "Small" | "Default" | "Large" | "FullScreen"
+      bsDialogTab, // Tab configuration for form fields: [{ Tabs: [{ Tab: { Column: "col1,col2", name: "Tab Name" } }] }]
+      bsDialogColumns = 2, // Number of columns per row in dialog form: 1, 2, 3, 4, 6, or 12
 
       onCheckBoxSelected,
 
@@ -1357,6 +1411,121 @@ const BSDataGrid = forwardRef(
       }
       return config;
     }, [bsColumnDefs]);
+
+    // Parse bsDialogSize to MUI Dialog maxWidth
+    const dialogMaxWidth = useMemo(() => {
+      switch (bsDialogSize?.toLowerCase()) {
+        case "small":
+          return "sm";
+        case "large":
+          return "lg";
+        case "fullscreen":
+          return "xl"; // Will also use fullScreen prop
+        case "default":
+        default:
+          return "md";
+      }
+    }, [bsDialogSize]);
+
+    // Check if dialog should be fullscreen
+    const isDialogFullScreen = useMemo(() => {
+      return bsDialogSize?.toLowerCase() === "fullscreen";
+    }, [bsDialogSize]);
+
+    // Calculate Grid sizes based on bsDialogColumns
+    // MUI v7 Grid uses "size" prop instead of xs/sm/md
+    const dialogGridSize = useMemo(() => {
+      // Ensure columns is a valid divisor of 12
+      const validColumns = [1, 2, 3, 4, 6, 12];
+      const cols = validColumns.includes(bsDialogColumns) ? bsDialogColumns : 3;
+      const size = 12 / cols;
+
+      console.log("📐 Dialog Grid Size:", {
+        bsDialogColumns,
+        effectiveColumns: cols,
+        gridSize: size,
+      });
+
+      return size;
+    }, [bsDialogColumns]);
+
+    // Parse bsDialogTab configuration
+    const parsedDialogTabs = useMemo(() => {
+      if (
+        !bsDialogTab ||
+        !Array.isArray(bsDialogTab) ||
+        bsDialogTab.length === 0
+      ) {
+        return null;
+      }
+
+      try {
+        // Handle different tab configuration formats
+        const tabs = [];
+
+        bsDialogTab.forEach((tabConfig) => {
+          if (tabConfig.Tabs && Array.isArray(tabConfig.Tabs)) {
+            // Format: [{ Tabs: [{ Tab: { Column: "...", name: "..." } }] }]
+            tabConfig.Tabs.forEach((tabItem) => {
+              if (tabItem.Tab) {
+                const columns = tabItem.Tab.Column
+                  ? tabItem.Tab.Column.split(",")
+                      .map((c) => c.trim())
+                      .filter(Boolean)
+                  : [];
+                tabs.push({
+                  name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
+                  columns: columns,
+                });
+              } else if (tabItem.Column && tabItem.name) {
+                // Alternate format: [{ Tabs: [{ Column: "...", name: "..." }] }]
+                const columns = tabItem.Column.split(",")
+                  .map((c) => c.trim())
+                  .filter(Boolean);
+                tabs.push({
+                  name: tabItem.name,
+                  columns: columns,
+                });
+              }
+            });
+          } else if (tabConfig.Column && tabConfig.name) {
+            // Simple format: [{ Column: "...", name: "..." }]
+            const columns = tabConfig.Column.split(",")
+              .map((c) => c.trim())
+              .filter(Boolean);
+            tabs.push({
+              name: tabConfig.name,
+              columns: columns,
+            });
+          }
+        });
+
+        if (tabs.length === 0) {
+          return null;
+        }
+
+        Logger.log("📑 Parsed bsDialogTab:", {
+          tabCount: tabs.length,
+          tabs: tabs.map((t) => ({
+            name: t.name,
+            columnCount: t.columns.length,
+          })),
+        });
+
+        return tabs;
+      } catch (error) {
+        Logger.error("❌ Error parsing bsDialogTab:", error);
+        return null;
+      }
+    }, [bsDialogTab]);
+
+    // State for active tab in dialog
+    const [activeDialogTab, setActiveDialogTab] = useState(0);
+
+    // Reset active tab when dialog opens
+    const handleDialogTabChange = useCallback((event, newValue) => {
+      setActiveDialogTab(newValue);
+    }, []);
 
     // Get current user for locale information
     const { user } = useAuth();
@@ -3778,6 +3947,7 @@ const BSDataGrid = forwardRef(
       setDialogOpen(false);
       setFormData({});
       setSelectedRow(null);
+      setActiveDialogTab(0); // Reset to first tab when closing
     }, []);
 
     // Helper: Render combobox for columns with ComboBox configuration
@@ -4002,7 +4172,7 @@ const BSDataGrid = forwardRef(
             const isRequired = customDef?.required === true;
 
             return (
-              <Grid item xs={12} sm={6} key={fieldName}>
+              <Grid item size={dialogGridSize} key={fieldName}>
                 <TextField
                   fullWidth
                   size="small"
@@ -4107,6 +4277,12 @@ const BSDataGrid = forwardRef(
         // Check if this column has a combobox configuration
         const comboConfig = comboBoxConfig[columnName];
         if (comboConfig) {
+          console.log(
+            "🎨 ComboBox Grid size:",
+            dialogGridSize,
+            "for",
+            columnName
+          );
           Logger.log("🎨 Rendering ComboBox for column:", {
             columnName,
             value: val,
@@ -4116,7 +4292,7 @@ const BSDataGrid = forwardRef(
             dialogMode,
           });
           return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <Grid item size={dialogGridSize} key={columnName}>
               <ComboBoxField
                 columnName={columnName}
                 config={comboConfig}
@@ -4138,7 +4314,7 @@ const BSDataGrid = forwardRef(
         // Special handling for is_active field
         if (isActiveField(columnName)) {
           return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <Grid item size={dialogGridSize} key={columnName}>
               <FormControl
                 fullWidth
                 size="small"
@@ -4212,7 +4388,7 @@ const BSDataGrid = forwardRef(
 
         if (inputType === "checkbox") {
           return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <Grid item size={dialogGridSize} key={columnName}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -4233,8 +4409,14 @@ const BSDataGrid = forwardRef(
           );
         }
 
-        // For text/ntext fields, use full width
-        const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
+        // For text/ntext fields, use full width; otherwise use bsDialogColumns setting
+        const gridSizeValue = multiline ? 12 : dialogGridSize;
+        console.log(
+          "📝 TextField Grid size:",
+          gridSizeValue,
+          "for",
+          columnName
+        );
 
         // Build helper text with length information
         let helperText = customDef?.description || description || "";
@@ -4251,7 +4433,7 @@ const BSDataGrid = forwardRef(
         }
 
         return (
-          <Grid item {...gridSize} key={columnName}>
+          <Grid item size={gridSizeValue} key={columnName} sx={{ minWidth: 0 }}>
             <TextField
               fullWidth
               size="small"
@@ -4278,6 +4460,81 @@ const BSDataGrid = forwardRef(
         );
       });
 
+      // If tabs are configured, organize fields by tabs
+      if (parsedDialogTabs && parsedDialogTabs.length > 0) {
+        // Create a map of column names to form field elements
+        const fieldMap = {};
+        formFields.forEach((field) => {
+          if (field && field.key) {
+            fieldMap[field.key] = field;
+          }
+        });
+
+        // Get columns assigned to any tab
+        const assignedColumns = new Set();
+        parsedDialogTabs.forEach((tab) => {
+          tab.columns.forEach((col) => assignedColumns.add(col));
+        });
+
+        // Find unassigned fields
+        const unassignedFields = formFields.filter(
+          (field) => field && field.key && !assignedColumns.has(field.key)
+        );
+
+        return (
+          <Box sx={{ width: "100%" }}>
+            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+              <Tabs
+                value={activeDialogTab}
+                onChange={handleDialogTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                aria-label="form tabs"
+              >
+                {parsedDialogTabs.map((tab, index) => (
+                  <Tab key={index} label={tab.name} />
+                ))}
+                {unassignedFields.length > 0 && <Tab label="Other" />}
+              </Tabs>
+            </Box>
+
+            {/* Render tab panels */}
+            {parsedDialogTabs.map((tab, index) => (
+              <Box
+                key={index}
+                role="tabpanel"
+                hidden={activeDialogTab !== index}
+                sx={{ pt: 2 }}
+              >
+                {activeDialogTab === index && (
+                  <Grid container spacing={2}>
+                    {tab.columns.map((colName) => {
+                      const field = fieldMap[colName];
+                      return field || null;
+                    })}
+                  </Grid>
+                )}
+              </Box>
+            ))}
+
+            {/* Other tab for unassigned fields */}
+            {unassignedFields.length > 0 && (
+              <Box
+                role="tabpanel"
+                hidden={activeDialogTab !== parsedDialogTabs.length}
+                sx={{ pt: 2 }}
+              >
+                {activeDialogTab === parsedDialogTabs.length && (
+                  <Grid container spacing={2}>
+                    {unassignedFields}
+                  </Grid>
+                )}
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
       return (
         <Grid container spacing={2} sx={{ mt: 1 }}>
           {formFields}
@@ -4301,6 +4558,10 @@ const BSDataGrid = forwardRef(
       bsKeyId,
       rows,
       getEffectiveLocale,
+      parsedDialogTabs,
+      activeDialogTab,
+      handleDialogTabChange,
+      dialogGridSize,
     ]);
 
     // Function to restore a single row to its original state
@@ -7069,15 +7330,16 @@ const BSDataGrid = forwardRef(
         <Dialog
           open={dialogOpen}
           onClose={handleDialogClose}
-          maxWidth="md"
+          maxWidth={dialogMaxWidth}
           fullWidth
+          fullScreen={isDialogFullScreen}
         >
           <DialogTitle>
             {dialogMode === "add"
               ? localeText.bsAddNewRecord
               : localeText.bsEditRecord}
           </DialogTitle>
-          <DialogContent>
+          <DialogContent dividers={parsedDialogTabs ? true : false}>
             {metadata?.columns || bsStoredProcedure ? (
               renderFormFields()
             ) : (

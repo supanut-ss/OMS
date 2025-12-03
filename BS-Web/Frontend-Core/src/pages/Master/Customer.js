@@ -33,6 +33,21 @@ const CustomerPage = (props) => {
           bsObj="t_tmt_customer"
           bsObjBy="create_date desc"
           // bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+          //bsBulkAction={true}
+          bsDialogSize="Large"
+          bsDialogColumns={2}
+          bsDialogTab={[
+            {
+              Column:
+                "customer_code,customer_name,description,addr_line_1,addr_line_2,addr_line_3,province,postal_code,country_name,phone,email,is_active",
+              name: "Profile",
+            },
+            {
+              Column:
+                "user_def1,user_def2,user_def3,user_def4,user_def5,user_def6,user_def7,user_def8,user_def9,user_def10",
+              name: "User Define Data",
+            },
+          ]}
         />
       </Paper>
     </Box>
