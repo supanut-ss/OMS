@@ -13,7 +13,8 @@ const BSTextField = ({
   scale = 2, // จำนวนหลักทศนิยม เช่น decimal(18,2)
   borderLeftRadius = null,
   disblsed = false,
-  variant = "",
+  variant = "standard",
+  readOnly = false,
   ...props
 }) => {
   const handleChange = (e) => {
@@ -45,6 +46,7 @@ const BSTextField = ({
   return (
     <FormControl fullWidth error={error} >
       <TextField
+        error={error}
         variant={variant}
         disabled={disblsed}
         fullWidth
@@ -52,6 +54,7 @@ const BSTextField = ({
         required={required}
         value={value || ""}
         onChange={handleChange}
+        size={props.size || "Normal"}
         sx={{
           ...(borderLeftRadius && {
             "& .MuiInputBase-root": {
@@ -60,6 +63,15 @@ const BSTextField = ({
             },
           }),
         }}
+        slotProps={{
+          input: {
+            readOnly: readOnly,
+          },
+        }}
+        multiline={props.multiline || false}
+        minRows={props.minRows || 1}
+        maxRows={props.maxRows || 4}
+        {...props}
       />
       {error && <FormHelperText>{helperText}</FormHelperText>}
     </FormControl>

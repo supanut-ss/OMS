@@ -7,7 +7,7 @@ export const getTheme = (mode) =>
       ...(mode === "light"
         ? {
             primary: {
-              main: "#6366F1", // Modern Indigo
+              main: "#0B9ED0", // Modern Indigo
               light: "#8B85FF",
               dark: "#4F46E5",
               contrastText: "#fff",
@@ -66,7 +66,7 @@ export const getTheme = (mode) =>
           }
         : {
             primary: {
-              main: "#8B85FF", // Lighter Indigo for dark mode
+              main: "#0B9ED0", // Lighter Indigo for dark mode
               light: "#A5A0FF",
               dark: "#6366F1",
               contrastText: "#000000",

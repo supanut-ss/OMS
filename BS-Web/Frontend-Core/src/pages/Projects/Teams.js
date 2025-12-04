@@ -28,10 +28,18 @@ const ProjectsTeams = (props) => {
                 <BSDataGrid
                     ref={dataGridRef}
                     bsLocale={props.lang}
-                    bsPreObj="tmt"
-                    bsObj="usp_project_teams"   // ✔ ชื่อ stored ถูกต้อง
-                    bsObjBy="create_date desc"
+                    bsCols="Assignee,role,description"
+                    bsStoredProcedureSchema="tmt"
+                    bsStoredProcedure="usp_project_teams"   // ✔ ชื่อ stored ถูกต้อง
                     bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+                    showAdd={true}
+                    bsShowRowNumber={true}
+                    bsRowPerPage={20}
+                    bsAllowAdd={true}
+                    bsAllowEdit={true}
+                    bsAllowDelete={true}
+                    bsFilterMode="client"
+                    bsQueryParams={{ project_id: props.projectID }}
                 />
             </Paper>
         </Box>

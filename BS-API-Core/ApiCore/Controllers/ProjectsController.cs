@@ -23,14 +23,35 @@ namespace ApiCore.Controllers
         {
             try
             {
-                var project =await projectsService.GetProjectsByIdAsync(projectId);
+                var project = await projectsService.GetProjectsByIdAsync(projectId);
                 if (project != null && project?.project_header_id > 0)
                 {
-                    return AccessResponseSuccess("success", project);
+                    return AccessResponseDataSuccess("success", project,0);
                 }
                 else
                 {
-                    return ResponseNotFound("Project not found"+ projectId);
+                    return ResponseSuccess("failed", "Project  not found " + projectId, 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpGet("task/phases/{projectId}")]
+        public async Task<IActionResult> GetProjectTaskPhasesById(int projectId)
+        {
+            try
+            {
+                var phases = await projectsService.GetProjectTaskPhasesByIdAsync(projectId);
+
+                if (phases != null)
+                {
+                    return AccessResponseDataSuccess("success", phases, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Project phases not found " + projectId,1);
                 }
             }
             catch (Exception ex)
