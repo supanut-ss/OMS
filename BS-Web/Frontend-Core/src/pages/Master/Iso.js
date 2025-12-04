@@ -96,6 +96,7 @@ const IsoPage = (props) => {
           // Optional: Dialog size for hierarchical mode (recommended: Large or FullScreen)
           bsDialogSize="Large"
           bsDialogColumns={3}
+          bsParentRecordLabel="resource:iso_type_label_name"
         />
       </Paper>
     </Box>

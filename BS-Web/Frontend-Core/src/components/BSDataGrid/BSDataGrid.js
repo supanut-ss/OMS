@@ -824,28 +824,6 @@ const ComboBoxField = ({
         const result = await getComboBoxData(comboConfig);
         setOptions(result || []);
 
-        // Auto-select if only one option available and current value is empty
-        if (
-          result &&
-          result.length === 1 &&
-          (!value || value === "" || value === 0)
-        ) {
-          const singleOption = result[0];
-          const valueData = singleOption.data || singleOption;
-          const autoSelectValue = valueData[config.Value] || singleOption.value;
-
-          Logger.log("🎯 Auto-selecting single ComboBox option:", {
-            columnName,
-            currentValue: value,
-            autoSelectValue,
-            optionDisplay: valueData[config.Display] || singleOption.display,
-            reason: "only_one_option_available_and_value_empty",
-          });
-
-          // Call onChange to update the form
-          onChange(autoSelectValue);
-        }
-
         Logger.log("✅ Combobox options loaded:", {
           count: result?.length || 0,
           data: result,
@@ -853,9 +831,6 @@ const ComboBoxField = ({
           displayField: config.Display,
           sampleOption: result?.[0],
           sampleKeys: result?.[0] ? Object.keys(result[0]) : [],
-          fullFirstOption: JSON.stringify(result?.[0], null, 2),
-          autoSelectedSingle:
-            result?.length === 1 && (!value || value === "" || value === 0),
         });
       } catch (error) {
         Logger.error("❌ Failed to load combobox options:", error);
@@ -866,7 +841,35 @@ const ComboBoxField = ({
     };
 
     loadOptions();
-  }, [config, getComboBoxData, columnName, value, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    config.Obj,
+    config.PreObj,
+    config.Value,
+    config.Display,
+    config.ObjWh,
+    config.ObjBy,
+    config.ObjGrp,
+  ]);
+
+  // Auto-select if only one option available and current value is empty
+  useEffect(() => {
+    if (options.length === 1 && (!value || value === "" || value === 0)) {
+      const singleOption = options[0];
+      const valueData = singleOption.data || singleOption;
+      const autoSelectValue = valueData[config.Value] || singleOption.value;
+
+      Logger.log("🎯 Auto-selecting single ComboBox option:", {
+        columnName,
+        currentValue: value,
+        autoSelectValue,
+        reason: "only_one_option_available_and_value_empty",
+      });
+
+      onChange(autoSelectValue);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options.length]);
 
   // Debug logging
   Logger.log("🎯 ComboBoxField render:", {
@@ -1292,6 +1295,15 @@ const ComboBoxField = ({
  *     ]}
  *     ```
  *
+ * @bsParentRecordLabel Configuration (Hierarchical Data):
+ * - bsParentRecordLabel: Custom label for the parent record accordion header
+ *   * Overrides the default "Parent Record" text
+ *   * Supports resource key lookup (prefix with "resource:" for resource-based text)
+ *   * Examples:
+ *     - Direct text: bsParentRecordLabel="ข้อมูลหลัก"
+ *     - Resource key: bsParentRecordLabel="resource:bsParentRecordLabel"
+ *   * Default: localeText.bsParentRecord or "Parent Record"
+ *
  * @bsPrimaryKeys Configuration (Hierarchical Data):
  * - bsPrimaryKeys: Array of primary key column names for the parent table
  *   * Required when using bsChildGrids
@@ -1400,6 +1412,7 @@ const BSDataGrid = forwardRef(
       bsPrimaryKeys = [], // Primary key column names for parent record (used for child grid FK linking)
       bsDefaultFormValues = {}, // Default values for new records (used by child grids for FK values)
       bsHiddenColumns = [], // Columns to hide from both grid and form (used by child grids to hide FK columns)
+      bsParentRecordLabel, // Custom label for parent record accordion (supports "resource:key" format)
 
       onCheckBoxSelected,
 
@@ -3951,52 +3964,72 @@ const BSDataGrid = forwardRef(
           } else {
             // createRecord returns the created record with its PK (for identity columns)
             const createdRecord = await createRecord(saveData, bsPreObj);
-            
+
             // Store created record for hierarchical data PK extraction
             if (bsChildGrids && bsChildGrids.length > 0) {
-              Logger.log("📦 Created record FULL response:", JSON.stringify(createdRecord, null, 2));
-              Logger.log("📦 Created record response keys:", createdRecord ? Object.keys(createdRecord) : 'null');
+              Logger.log(
+                "📦 Created record FULL response:",
+                JSON.stringify(createdRecord, null, 2)
+              );
+              Logger.log(
+                "📦 Created record response keys:",
+                createdRecord ? Object.keys(createdRecord) : "null"
+              );
               // Update formData with the returned PK values
               const effectivePrimaryKeys =
                 bsPrimaryKeys.length > 0
                   ? bsPrimaryKeys
                   : metadata?.primaryKeys || [];
-              
+
               // Try to get PK from createdRecord response
               if (createdRecord) {
                 // Check if response has the PK directly
                 effectivePrimaryKeys.forEach((pk) => {
                   if (createdRecord[pk] !== undefined) {
                     formData[pk] = createdRecord[pk];
-                    Logger.log(`📦 Got PK from createRecord response: ${pk} = ${createdRecord[pk]}`);
+                    Logger.log(
+                      `📦 Got PK from createRecord response: ${pk} = ${createdRecord[pk]}`
+                    );
                   }
                 });
-                
+
                 // Also check if PK is in a nested 'data' property
                 if (createdRecord.data) {
                   effectivePrimaryKeys.forEach((pk) => {
                     if (createdRecord.data[pk] !== undefined && !formData[pk]) {
                       formData[pk] = createdRecord.data[pk];
-                      Logger.log(`📦 Got PK from createRecord.data: ${pk} = ${createdRecord.data[pk]}`);
+                      Logger.log(
+                        `📦 Got PK from createRecord.data: ${pk} = ${createdRecord.data[pk]}`
+                      );
                     }
                   });
                 }
-                
+
                 // Check if response has 'insertedId' or similar
-                if (createdRecord.insertedId !== undefined && effectivePrimaryKeys.length > 0) {
+                if (
+                  createdRecord.insertedId !== undefined &&
+                  effectivePrimaryKeys.length > 0
+                ) {
                   const pk = effectivePrimaryKeys[0];
                   if (!formData[pk]) {
                     formData[pk] = createdRecord.insertedId;
-                    Logger.log(`📦 Got PK from insertedId: ${pk} = ${createdRecord.insertedId}`);
+                    Logger.log(
+                      `📦 Got PK from insertedId: ${pk} = ${createdRecord.insertedId}`
+                    );
                   }
                 }
-                
+
                 // Check if response has 'id' field
-                if (createdRecord.id !== undefined && effectivePrimaryKeys.length > 0) {
+                if (
+                  createdRecord.id !== undefined &&
+                  effectivePrimaryKeys.length > 0
+                ) {
                   const pk = effectivePrimaryKeys[0];
                   if (!formData[pk]) {
                     formData[pk] = createdRecord.id;
-                    Logger.log(`📦 Got PK from response.id: ${pk} = ${createdRecord.id}`);
+                    Logger.log(
+                      `📦 Got PK from response.id: ${pk} = ${createdRecord.id}`
+                    );
                   }
                 }
               }
@@ -4120,7 +4153,7 @@ const BSDataGrid = forwardRef(
           if (bsStoredProcedure) {
             await loadStoredProcedureData();
           } else {
-            loadedRows = await loadData() || [];
+            loadedRows = (await loadData()) || [];
           }
 
           // Try to find the newly created record by matching form data
@@ -4138,19 +4171,27 @@ const BSDataGrid = forwardRef(
           // Extract PK values from formData (now updated with created record's PK)
           const pkValues = {};
           effectivePrimaryKeys.forEach((pk) => {
-            if (formData[pk] !== undefined && formData[pk] !== null && formData[pk] !== 0) {
+            if (
+              formData[pk] !== undefined &&
+              formData[pk] !== null &&
+              formData[pk] !== 0
+            ) {
               pkValues[pk] = formData[pk];
             }
           });
 
           // If we still don't have PK values, try to find the matching record from freshly loaded data
-          if (Object.keys(pkValues).length === 0 && loadedRows && loadedRows.length > 0) {
+          if (
+            Object.keys(pkValues).length === 0 &&
+            loadedRows &&
+            loadedRows.length > 0
+          ) {
             Logger.log("📦 Searching for new record in loaded data:", {
               loadedRowsCount: loadedRows.length,
               effectivePrimaryKeys,
               formDataKeys: Object.keys(formData),
             });
-            
+
             // For identity columns, find the row with the highest PK value (most recently created)
             const pk = effectivePrimaryKeys[0];
             if (pk) {
@@ -4160,11 +4201,13 @@ const BSDataGrid = forwardRef(
                 const bVal = Number(b[pk]) || 0;
                 return bVal - aVal;
               });
-              
+
               const newestRow = sortedRows[0];
               if (newestRow && newestRow[pk] !== undefined) {
                 pkValues[pk] = newestRow[pk];
-                Logger.log(`📦 Got PK from newest row (highest ${pk}): ${newestRow[pk]}`);
+                Logger.log(
+                  `📦 Got PK from newest row (highest ${pk}): ${newestRow[pk]}`
+                );
               }
             }
           }
@@ -4176,7 +4219,7 @@ const BSDataGrid = forwardRef(
           }
 
           setSavedParentKeyValues(pkValues);
-          
+
           // Switch to edit mode so subsequent saves will update instead of create
           setDialogMode("edit");
           // Set selectedRow with PK values so update knows which record to update
@@ -4184,7 +4227,7 @@ const BSDataGrid = forwardRef(
           const updatedFormData = { ...formData, ...pkValues };
           setFormData(updatedFormData);
           setSelectedRow(updatedFormData);
-          
+
           Logger.log(
             "🔗 Hierarchical Add - Parent saved, switched to edit mode, PK values:",
             pkValues
@@ -4195,11 +4238,7 @@ const BSDataGrid = forwardRef(
         }
 
         // For hierarchical edit mode, don't close dialog - allow user to continue editing child grids
-        if (
-          dialogMode === "edit" &&
-          bsChildGrids &&
-          bsChildGrids.length > 0
-        ) {
+        if (dialogMode === "edit" && bsChildGrids && bsChildGrids.length > 0) {
           // Reload data in background but keep dialog open
           if (bsStoredProcedure) {
             await loadStoredProcedureData();
@@ -7742,7 +7781,23 @@ const BSDataGrid = forwardRef(
                     id="parent-form-header"
                   >
                     <Typography variant="subtitle1" fontWeight="bold">
-                      {localeText.bsParentRecord || "Parent Record"}
+                      {(() => {
+                        // Priority: bsParentRecordLabel (with resource support) > localeText > default
+                        if (bsParentRecordLabel) {
+                          // Check if it's a resource key (format: "resource:keyName")
+                          if (bsParentRecordLabel.startsWith("resource:")) {
+                            const resourceKey =
+                              bsParentRecordLabel.substring(9);
+                            return (
+                              getResource(resourceData, resourceKey) ||
+                              localeText.bsParentRecord ||
+                              "Parent Record"
+                            );
+                          }
+                          return bsParentRecordLabel;
+                        }
+                        return localeText.bsParentRecord || "Parent Record";
+                      })()}
                       {isParentSaved && (
                         <Chip
                           label={localeText.bsSaved || "Saved"}
