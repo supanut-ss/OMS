@@ -25,7 +25,6 @@ import {
   FormControlLabel,
   Checkbox,
   FormControl,
-  FormHelperText,
   InputLabel,
   MenuItem,
   Select,
@@ -42,6 +41,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Tooltip,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -901,7 +901,12 @@ const ComboBoxField = ({
     }),
   });
 
-  return (
+  // Build tooltip text
+  const tooltipText = loading
+    ? localeText?.bsLoadingOptions || "Loading options..."
+    : description || "";
+
+  const comboBoxContent = (
     <FormControl fullWidth size="small" required={required}>
       <InputLabel>{formatColumnName(columnName)}</InputLabel>
       <Select
@@ -943,13 +948,16 @@ const ComboBoxField = ({
           );
         })}
       </Select>
-      <FormHelperText>
-        {loading
-          ? localeText?.bsLoadingOptions || "Loading options..."
-          : description ||
-            `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
-      </FormHelperText>
     </FormControl>
+  );
+
+  // Wrap with Tooltip if there's tooltip text
+  return tooltipText ? (
+    <Tooltip title={tooltipText} arrow placement="top">
+      {comboBoxContent}
+    </Tooltip>
+  ) : (
+    comboBoxContent
   );
 };
 
@@ -1064,7 +1072,8 @@ const ComboBoxField = ({
  * - editable: boolean - Allow inline editing (default: true)
  * - readOnly: boolean - Disable editing in forms (default: false)
  * - required: boolean - Force required validation (overrides metadata)
- * - description: string - Helper text in forms
+ * - description: string - Tooltip text shown on hover in forms (alias: tooltip)
+ * - tooltip: string - Tooltip text shown on hover in forms (alias: description)
  * - align: "left" | "center" | "right" - Cell content alignment
  * - headerAlign: "left" | "center" | "right" - Header alignment
  * - sortable: boolean - Allow sorting (default: true)
@@ -4495,7 +4504,9 @@ const BSDataGrid = forwardRef(
                 required={isRequired}
                 dataType={dataType}
                 isNullable={isNullable}
-                description={customDef?.description || description}
+                description={
+                  customDef?.tooltip || customDef?.description || description
+                }
                 disabled={isReadOnly}
                 localeText={getLocaleText(getEffectiveLocale())}
               />
@@ -4505,48 +4516,60 @@ const BSDataGrid = forwardRef(
 
         // Special handling for is_active field
         if (isActiveField(columnName)) {
-          return (
-            <Grid item size={dialogGridSize} key={columnName}>
-              <FormControl
-                fullWidth
-                size="small"
-                required={isRequired}
+          const isActiveContent = (
+            <FormControl
+              fullWidth
+              size="small"
+              required={isRequired}
+              disabled={isReadOnly}
+            >
+              <InputLabel>{formatColumnName(columnName)}</InputLabel>
+              <Select
+                value={rawVal || "YES"}
+                label={formatColumnName(columnName)}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+                }
                 disabled={isReadOnly}
               >
-                <InputLabel>{formatColumnName(columnName)}</InputLabel>
-                <Select
-                  value={rawVal || "YES"}
-                  label={formatColumnName(columnName)}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+                {getIsActiveOptions().map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        width: "100%",
+                      }}
+                    >
+                      <Chip
+                        label={option.label}
+                        size="small"
+                        color={option.value === "YES" ? "success" : "error"}
+                        variant="outlined"
+                      />
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          );
+
+          return (
+            <Grid item size={dialogGridSize} key={columnName}>
+              {customDef?.tooltip || customDef?.description || description ? (
+                <Tooltip
+                  title={
+                    customDef?.tooltip || customDef?.description || description
                   }
-                  disabled={isReadOnly}
+                  arrow
+                  placement="top"
                 >
-                  {getIsActiveOptions().map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-start",
-                          width: "100%",
-                        }}
-                      >
-                        <Chip
-                          label={option.label}
-                          size="small"
-                          color={option.value === "YES" ? "success" : "error"}
-                          variant="outlined"
-                        />
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  {description ||
-                    `${dataType} ${isNullable ? "(nullable)" : "(required)"}`}
-                </FormHelperText>
-              </FormControl>
+                  {isActiveContent}
+                </Tooltip>
+              ) : (
+                isActiveContent
+              )}
             </Grid>
           );
         }
@@ -4627,8 +4650,10 @@ const BSDataGrid = forwardRef(
           columnName
         );
 
-        // Build helper text with length information
-        let helperText = customDef?.description || description || "";
+        // Build tooltip text with length information
+        // Use customDef.tooltip first, then customDef.description, then metadata description
+        let tooltipText =
+          customDef?.tooltip || customDef?.description || description || "";
         if (
           bsShowCharacterCount &&
           maxLength > 0 &&
@@ -4636,35 +4661,51 @@ const BSDataGrid = forwardRef(
         ) {
           const currentLength = String(displayVal).length;
           const lengthInfo = `${currentLength}/${maxLength} characters`;
-          helperText = helperText
-            ? `${helperText} (${lengthInfo})`
+          tooltipText = tooltipText
+            ? `${tooltipText} (${lengthInfo})`
             : lengthInfo;
         }
 
+        const textFieldContent = (
+          <TextField
+            fullWidth
+            size="small"
+            label={formatColumnName(columnName)}
+            type={inputType}
+            value={displayVal}
+            onChange={(e) =>
+              setFormData((p) => ({ ...p, [columnName]: e.target.value }))
+            }
+            required={isRequired}
+            disabled={isReadOnly}
+            multiline={multiline}
+            rows={multiline ? 3 : 1}
+            // For datetime-local and number inputs, always shrink label to avoid overlap with browser placeholder
+            InputLabelProps={{
+              shrink:
+                inputType === "datetime-local" //|| inputType === "number"
+                  ? true
+                  : undefined,
+            }}
+            inputProps={{
+              ...(maxLength > 0 &&
+                (inputType === "text" || multiline) && {
+                  maxLength: maxLength,
+                }),
+            }}
+            error={maxLength > 0 && String(displayVal).length > maxLength}
+          />
+        );
+
         return (
           <Grid item size={gridSizeValue} key={columnName} sx={{ minWidth: 0 }}>
-            <TextField
-              fullWidth
-              size="small"
-              label={formatColumnName(columnName)}
-              type={inputType}
-              value={displayVal}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, [columnName]: e.target.value }))
-              }
-              required={isRequired}
-              disabled={isReadOnly}
-              multiline={multiline}
-              rows={multiline ? 3 : 1}
-              helperText={helperText}
-              inputProps={{
-                ...(maxLength > 0 &&
-                  (inputType === "text" || multiline) && {
-                    maxLength: maxLength,
-                  }),
-              }}
-              error={maxLength > 0 && String(displayVal).length > maxLength}
-            />
+            {tooltipText ? (
+              <Tooltip title={tooltipText} arrow placement="top">
+                {textFieldContent}
+              </Tooltip>
+            ) : (
+              textFieldContent
+            )}
           </Grid>
         );
       });
@@ -7912,49 +7953,62 @@ const BSDataGrid = forwardRef(
                               ? { xs: 12 }
                               : { xs: 12, sm: 6, md: 4 };
 
-                            // Build helper text with length information for bulk add
-                            let helperText = "";
+                            // Build tooltip text with length information for bulk add
+                            let tooltipText = "";
                             if (
                               bsShowCharacterCount &&
                               maxLength > 0 &&
                               (inputType === "text" || multiline)
                             ) {
                               const currentLength = String(val).length;
-                              helperText = `${currentLength}/${maxLength} characters`;
+                              tooltipText = `${currentLength}/${maxLength} characters`;
                             }
+
+                            const bulkTextField = (
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label={`${formatColumnName(columnName)} ${
+                                  !isNullable ? "*" : ""
+                                }`}
+                                type={inputType}
+                                value={val}
+                                onChange={(e) =>
+                                  updateBulkRow(
+                                    rowIndex,
+                                    columnName,
+                                    e.target.value
+                                  )
+                                }
+                                required={!isNullable}
+                                multiline={multiline}
+                                rows={multiline ? 2 : 1}
+                                inputProps={{
+                                  ...(maxLength > 0 &&
+                                    (inputType === "text" || multiline) && {
+                                      maxLength: maxLength,
+                                    }),
+                                }}
+                                error={
+                                  maxLength > 0 &&
+                                  String(val).length > maxLength
+                                }
+                              />
+                            );
 
                             return (
                               <Grid item {...gridSize} key={columnName}>
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  label={`${formatColumnName(columnName)} ${
-                                    !isNullable ? "*" : ""
-                                  }`}
-                                  type={inputType}
-                                  value={val}
-                                  onChange={(e) =>
-                                    updateBulkRow(
-                                      rowIndex,
-                                      columnName,
-                                      e.target.value
-                                    )
-                                  }
-                                  required={!isNullable}
-                                  multiline={multiline}
-                                  rows={multiline ? 2 : 1}
-                                  helperText={helperText}
-                                  inputProps={{
-                                    ...(maxLength > 0 &&
-                                      (inputType === "text" || multiline) && {
-                                        maxLength: maxLength,
-                                      }),
-                                  }}
-                                  error={
-                                    maxLength > 0 &&
-                                    String(val).length > maxLength
-                                  }
-                                />
+                                {tooltipText ? (
+                                  <Tooltip
+                                    title={tooltipText}
+                                    arrow
+                                    placement="top"
+                                  >
+                                    {bulkTextField}
+                                  </Tooltip>
+                                ) : (
+                                  bulkTextField
+                                )}
                               </Grid>
                             );
                           })}
