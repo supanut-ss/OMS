@@ -1808,7 +1808,8 @@ const BSDataGrid = forwardRef(
     // Hierarchical Data states
     const [isParentSaved, setIsParentSaved] = useState(false); // Track if parent record is saved (for child grids)
     const [activeChildTab, setActiveChildTab] = useState(0); // Active child grid tab index
-    const [parentAccordionExpanded, setParentAccordionExpanded] = useState(true); // Parent form accordion state
+    const [parentAccordionExpanded, setParentAccordionExpanded] =
+      useState(true); // Parent form accordion state
     const [savedParentKeyValues, setSavedParentKeyValues] = useState({}); // Saved parent PK values for child grids
     const childGridRefs = useRef({}); // Refs for child grid components
 
@@ -3446,7 +3447,9 @@ const BSDataGrid = forwardRef(
                   case "float":
                   case "real":
                   case "money":
-                    init[c.columnName] = 0;
+                    // Don't set default value for numeric fields - leave empty/null
+                    // Setting 0 as default can cause incorrect data to be saved
+                    init[c.columnName] = null;
                     break;
                   case "bit":
                     init[c.columnName] = false;
@@ -3454,7 +3457,10 @@ const BSDataGrid = forwardRef(
                   case "datetime":
                   case "datetime2":
                   case "date":
-                    init[c.columnName] = new Date().toISOString().slice(0, 19);
+                  case "time":
+                    // Don't set default value for date/time fields - leave empty/null
+                    // User should explicitly select a date if needed
+                    init[c.columnName] = null;
                     break;
                   default:
                     init[c.columnName] = "";
@@ -3469,7 +3475,10 @@ const BSDataGrid = forwardRef(
           });
 
         // Apply default form values (used for FK values in child grids)
-        if (bsDefaultFormValues && Object.keys(bsDefaultFormValues).length > 0) {
+        if (
+          bsDefaultFormValues &&
+          Object.keys(bsDefaultFormValues).length > 0
+        ) {
           Object.keys(bsDefaultFormValues).forEach((key) => {
             init[key] = bsDefaultFormValues[key];
             Logger.log(`🔧 Setting ${key} from bsDefaultFormValues:`, {
@@ -3574,31 +3583,38 @@ const BSDataGrid = forwardRef(
         });
 
         setFormData(initialFormData);
-        
+
         // For hierarchical data: set parent as saved and extract PK values for child grids
         if (bsChildGrids && bsChildGrids.length > 0) {
           setIsParentSaved(true);
           setParentAccordionExpanded(true); // Keep parent form expanded when editing
-          
+
           // Extract parent primary key values for child grids
           const pkValues = {};
-          const effectivePrimaryKeys = bsPrimaryKeys.length > 0 
-            ? bsPrimaryKeys 
-            : (metadata?.primaryKeys || []);
-          
+          const effectivePrimaryKeys =
+            bsPrimaryKeys.length > 0
+              ? bsPrimaryKeys
+              : metadata?.primaryKeys || [];
+
           effectivePrimaryKeys.forEach((pk) => {
             if (row[pk] !== undefined) {
               pkValues[pk] = row[pk];
             }
           });
-          
+
           setSavedParentKeyValues(pkValues);
           Logger.log("🔗 Hierarchical Edit - Parent PK values:", pkValues);
         }
-        
+
         setDialogOpen(true);
       },
-      [onEdit, initializeFormData, bsChildGrids, bsPrimaryKeys, metadata?.primaryKeys]
+      [
+        onEdit,
+        initializeFormData,
+        bsChildGrids,
+        bsPrimaryKeys,
+        metadata?.primaryKeys,
+      ]
     );
 
     // Handle Delete (external or built-in)
@@ -4035,18 +4051,19 @@ const BSDataGrid = forwardRef(
           } else {
             await loadData();
           }
-          
+
           // Try to find the newly created record by matching form data
           // This is a best-effort approach - ideally the API should return the created record
-          const effectivePrimaryKeys = bsPrimaryKeys.length > 0 
-            ? bsPrimaryKeys 
-            : (metadata?.primaryKeys || []);
-          
+          const effectivePrimaryKeys =
+            bsPrimaryKeys.length > 0
+              ? bsPrimaryKeys
+              : metadata?.primaryKeys || [];
+
           // For now, we'll need to get the PK from the response or reload
           // Mark parent as saved and keep accordion expanded
           setIsParentSaved(true);
           setParentAccordionExpanded(true);
-          
+
           // Extract PK values from formData if available (for identity columns, this won't work)
           // The API should ideally return the created record with its PK
           const pkValues = {};
@@ -4055,17 +4072,24 @@ const BSDataGrid = forwardRef(
               pkValues[pk] = formData[pk];
             }
           });
-          
+
           // If we don't have PK values, we need to get them from the last created record
           // This is a limitation - ideally the createRecord should return the new record
           if (Object.keys(pkValues).length === 0) {
-            Logger.warn("⚠️ Could not extract PK values from formData. Child grids may not work correctly.");
-            Logger.log("💡 Tip: Ensure your API returns the created record with its primary key.");
+            Logger.warn(
+              "⚠️ Could not extract PK values from formData. Child grids may not work correctly."
+            );
+            Logger.log(
+              "💡 Tip: Ensure your API returns the created record with its primary key."
+            );
           }
-          
+
           setSavedParentKeyValues(pkValues);
-          Logger.log("🔗 Hierarchical Add - Parent saved, PK values:", pkValues);
-          
+          Logger.log(
+            "🔗 Hierarchical Add - Parent saved, PK values:",
+            pkValues
+          );
+
           // Don't close dialog - show child grids
           return;
         }
@@ -4427,7 +4451,7 @@ const BSDataGrid = forwardRef(
 
       const formFields = formColumns.map((c) => {
         const { columnName, dataType, isNullable, description, maxLength } = c;
-        const val = formData[columnName] ?? "";
+        const rawVal = formData[columnName];
         let inputType = "text";
         let multiline = false;
 
@@ -4453,7 +4477,7 @@ const BSDataGrid = forwardRef(
           );
           Logger.log("🎨 Rendering ComboBox for column:", {
             columnName,
-            value: val,
+            value: rawVal,
             config: comboConfig,
             formData: formData[columnName],
             originalRowData: dialogMode === "edit" ? selectedRow : null,
@@ -4464,7 +4488,7 @@ const BSDataGrid = forwardRef(
               <ComboBoxField
                 columnName={columnName}
                 config={comboConfig}
-                value={val}
+                value={rawVal ?? ""}
                 onChange={(value) =>
                   setFormData((p) => ({ ...p, [columnName]: value }))
                 }
@@ -4491,7 +4515,7 @@ const BSDataGrid = forwardRef(
               >
                 <InputLabel>{formatColumnName(columnName)}</InputLabel>
                 <Select
-                  value={val || "YES"}
+                  value={rawVal || "YES"}
                   label={formatColumnName(columnName)}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, [columnName]: e.target.value }))
@@ -4554,13 +4578,30 @@ const BSDataGrid = forwardRef(
             inputType = "text";
         }
 
+        // Determine the display value based on input type
+        // For number and datetime fields, null should show empty input
+        let displayVal;
+        if (inputType === "number") {
+          // For number inputs, null/undefined shows empty, 0 shows "0"
+          displayVal = rawVal === null || rawVal === undefined ? "" : rawVal;
+        } else if (inputType === "datetime-local") {
+          // For datetime inputs, null/undefined shows empty picker
+          displayVal = rawVal === null || rawVal === undefined ? "" : rawVal;
+        } else if (inputType === "checkbox") {
+          // For checkbox, use Boolean conversion
+          displayVal = Boolean(rawVal);
+        } else {
+          // For text fields, null/undefined becomes empty string
+          displayVal = rawVal ?? "";
+        }
+
         if (inputType === "checkbox") {
           return (
             <Grid item size={dialogGridSize} key={columnName}>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={Boolean(val)}
+                    checked={Boolean(rawVal)}
                     onChange={(e) =>
                       setFormData((p) => ({
                         ...p,
@@ -4593,7 +4634,7 @@ const BSDataGrid = forwardRef(
           maxLength > 0 &&
           (inputType === "text" || multiline)
         ) {
-          const currentLength = String(val).length;
+          const currentLength = String(displayVal).length;
           const lengthInfo = `${currentLength}/${maxLength} characters`;
           helperText = helperText
             ? `${helperText} (${lengthInfo})`
@@ -4607,7 +4648,7 @@ const BSDataGrid = forwardRef(
               size="small"
               label={formatColumnName(columnName)}
               type={inputType}
-              value={val}
+              value={displayVal}
               onChange={(e) =>
                 setFormData((p) => ({ ...p, [columnName]: e.target.value }))
               }
@@ -4622,7 +4663,7 @@ const BSDataGrid = forwardRef(
                     maxLength: maxLength,
                   }),
               }}
-              error={maxLength > 0 && String(val).length > maxLength}
+              error={maxLength > 0 && String(displayVal).length > maxLength}
             />
           </Grid>
         );
@@ -7498,7 +7539,9 @@ const BSDataGrid = forwardRef(
         <Dialog
           open={dialogOpen}
           onClose={handleDialogClose}
-          maxWidth={bsChildGrids && bsChildGrids.length > 0 ? "lg" : dialogMaxWidth}
+          maxWidth={
+            bsChildGrids && bsChildGrids.length > 0 ? "lg" : dialogMaxWidth
+          }
           fullWidth
           fullScreen={isDialogFullScreen}
         >
@@ -7507,14 +7550,22 @@ const BSDataGrid = forwardRef(
               ? localeText.bsAddNewRecord
               : localeText.bsEditRecord}
           </DialogTitle>
-          <DialogContent dividers={parsedDialogTabs || (bsChildGrids && bsChildGrids.length > 0) ? true : false}>
+          <DialogContent
+            dividers={
+              parsedDialogTabs || (bsChildGrids && bsChildGrids.length > 0)
+                ? true
+                : false
+            }
+          >
             {/* Hierarchical Data Mode - with child grids */}
             {bsChildGrids && bsChildGrids.length > 0 ? (
               <Box sx={{ width: "100%" }}>
                 {/* Parent Form in Accordion */}
-                <Accordion 
-                  expanded={parentAccordionExpanded} 
-                  onChange={(e, expanded) => setParentAccordionExpanded(expanded)}
+                <Accordion
+                  expanded={parentAccordionExpanded}
+                  onChange={(e, expanded) =>
+                    setParentAccordionExpanded(expanded)
+                  }
                   sx={{ mb: 2 }}
                 >
                   <AccordionSummary
@@ -7525,11 +7576,11 @@ const BSDataGrid = forwardRef(
                     <Typography variant="subtitle1" fontWeight="bold">
                       {localeText.bsParentRecord || "Parent Record"}
                       {isParentSaved && (
-                        <Chip 
-                          label={localeText.bsSaved || "Saved"} 
-                          size="small" 
-                          color="success" 
-                          sx={{ ml: 2 }} 
+                        <Chip
+                          label={localeText.bsSaved || "Saved"}
+                          size="small"
+                          color="success"
+                          sx={{ ml: 2 }}
                         />
                       )}
                     </Typography>
@@ -7560,8 +7611,8 @@ const BSDataGrid = forwardRef(
                         aria-label="child grid tabs"
                       >
                         {bsChildGrids.map((childConfig, index) => (
-                          <Tab 
-                            key={index} 
+                          <Tab
+                            key={index}
                             label={childConfig.name || `Child ${index + 1}`}
                             disabled={!isParentSaved}
                           />
@@ -7579,7 +7630,9 @@ const BSDataGrid = forwardRef(
                       >
                         {activeChildTab === index && (
                           <BSChildDataGrid
-                            ref={(el) => { childGridRefs.current[index] = el; }}
+                            ref={(el) => {
+                              childGridRefs.current[index] = el;
+                            }}
                             name={childConfig.name}
                             foreignKeys={childConfig.foreignKeys || []}
                             parentKeyValues={savedParentKeyValues}
@@ -7597,10 +7650,16 @@ const BSDataGrid = forwardRef(
                             bsDialogSize={childConfig.bsDialogSize}
                             bsDialogColumns={childConfig.bsDialogColumns}
                             bsVisibleEdit={childConfig.bsVisibleEdit !== false}
-                            bsVisibleDelete={childConfig.bsVisibleDelete !== false}
-                            bsShowRowNumber={childConfig.bsShowRowNumber !== false}
+                            bsVisibleDelete={
+                              childConfig.bsVisibleDelete !== false
+                            }
+                            bsShowRowNumber={
+                              childConfig.bsShowRowNumber !== false
+                            }
                             bsRowPerPage={childConfig.bsRowPerPage || 10}
-                            bsPageSizeOptions={childConfig.bsPageSizeOptions || [10, 25, 50]}
+                            bsPageSizeOptions={
+                              childConfig.bsPageSizeOptions || [10, 25, 50]
+                            }
                             height={childConfig.height || 350}
                           />
                         )}
@@ -7609,24 +7668,22 @@ const BSDataGrid = forwardRef(
                   </Box>
                 )}
               </Box>
+            ) : // Standard Mode - no child grids
+            metadata?.columns || bsStoredProcedure ? (
+              renderFormFields()
             ) : (
-              // Standard Mode - no child grids
-              metadata?.columns || bsStoredProcedure ? (
-                renderFormFields()
-              ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
-                  <CircularProgress />
-                  <Typography variant="body2" sx={{ mt: 2 }}>
-                    {localeText.bsLoadingMetadata}
-                  </Typography>
-                </Box>
-              )
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <CircularProgress />
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  {localeText.bsLoadingMetadata}
+                </Typography>
+              </Box>
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDialogClose} disabled={formLoading}>
-              {isParentSaved && bsChildGrids && bsChildGrids.length > 0 
-                ? (localeText.bsClose || "Close") 
+              {isParentSaved && bsChildGrids && bsChildGrids.length > 0
+                ? localeText.bsClose || "Close"
                 : localeText.bsCancel}
             </Button>
             {/* Show Save button only when parent is not yet saved (for hierarchical) or always (for standard) */}
@@ -7636,11 +7693,13 @@ const BSDataGrid = forwardRef(
                 variant="contained"
                 disabled={formLoading}
               >
-                {formLoading 
-                  ? localeText.bsSaving 
-                  : (bsChildGrids && bsChildGrids.length > 0 && dialogMode === "add"
-                      ? (localeText.bsSaveAndContinue || "Save & Continue")
-                      : localeText.bsSave)}
+                {formLoading
+                  ? localeText.bsSaving
+                  : bsChildGrids &&
+                    bsChildGrids.length > 0 &&
+                    dialogMode === "add"
+                  ? localeText.bsSaveAndContinue || "Save & Continue"
+                  : localeText.bsSave}
               </Button>
             )}
           </DialogActions>
