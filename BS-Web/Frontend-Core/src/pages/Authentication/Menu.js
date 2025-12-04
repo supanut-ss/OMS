@@ -69,6 +69,7 @@ const MenuPage = (props) => {
               Obj: "t_com_menu",
               ObjWh: "is_active='YES'",
               ObjBy: "menu_group asc",
+              ObjGrp: "menu_group",
             },
           ]}
         />

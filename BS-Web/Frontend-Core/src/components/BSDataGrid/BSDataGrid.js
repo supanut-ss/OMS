@@ -3578,7 +3578,7 @@ const BSDataGrid = forwardRef(
         // For hierarchical data: set parent as saved and extract PK values for child grids
         if (bsChildGrids && bsChildGrids.length > 0) {
           setIsParentSaved(true);
-          setParentAccordionExpanded(false); // Collapse parent form when editing
+          setParentAccordionExpanded(true); // Keep parent form expanded when editing
           
           // Extract parent primary key values for child grids
           const pkValues = {};
@@ -4043,9 +4043,9 @@ const BSDataGrid = forwardRef(
             : (metadata?.primaryKeys || []);
           
           // For now, we'll need to get the PK from the response or reload
-          // Mark parent as saved and collapse accordion
+          // Mark parent as saved and keep accordion expanded
           setIsParentSaved(true);
-          setParentAccordionExpanded(false);
+          setParentAccordionExpanded(true);
           
           // Extract PK values from formData if available (for identity columns, this won't work)
           // The API should ideally return the created record with its PK
