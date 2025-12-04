@@ -1304,6 +1304,12 @@ const ComboBoxField = ({
  *   * Can also be used to set default values for any field
  *   * Example: bsDefaultFormValues={{ status: "active", priority: 1 }}
  *
+ * @bsHiddenColumns Configuration:
+ * - bsHiddenColumns: Array of column names to hide from both grid and form
+ *   * Used internally by child grids to hide FK columns
+ *   * FK columns are auto-populated so users don't need to see/edit them
+ *   * Example: bsHiddenColumns={["iso_type_id", "parent_id"]}
+ *
  * Hierarchical Data Usage Example:
  * ```jsx
  * <BSDataGrid
@@ -1393,6 +1399,7 @@ const BSDataGrid = forwardRef(
       bsChildGrids = [], // Child grid configurations: [{ name: "Tab Name", bsPreObj, bsObj, foreignKeys: ["fk_col"], ...gridProps }]
       bsPrimaryKeys = [], // Primary key column names for parent record (used for child grid FK linking)
       bsDefaultFormValues = {}, // Default values for new records (used by child grids for FK values)
+      bsHiddenColumns = [], // Columns to hide from both grid and form (used by child grids to hide FK columns)
 
       onCheckBoxSelected,
 
@@ -2277,11 +2284,15 @@ const BSDataGrid = forwardRef(
               message: "Need more data than pageSize to show pagination",
             });
           }
+
+          // Return processed rows for callers that need them (e.g., hierarchical data)
+          return processedRows;
         } catch (err) {
           Logger.error("❌ Failed to load BS dynamic data:", err);
           setError(err.message || "Failed to load data");
           setRows([]);
           setRowCount(0);
+          return [];
         } finally {
           setLoading(false);
         }
@@ -3938,7 +3949,58 @@ const BSDataGrid = forwardRef(
               result.message
             );
           } else {
-            await createRecord(saveData, bsPreObj);
+            // createRecord returns the created record with its PK (for identity columns)
+            const createdRecord = await createRecord(saveData, bsPreObj);
+            
+            // Store created record for hierarchical data PK extraction
+            if (bsChildGrids && bsChildGrids.length > 0) {
+              Logger.log("📦 Created record FULL response:", JSON.stringify(createdRecord, null, 2));
+              Logger.log("📦 Created record response keys:", createdRecord ? Object.keys(createdRecord) : 'null');
+              // Update formData with the returned PK values
+              const effectivePrimaryKeys =
+                bsPrimaryKeys.length > 0
+                  ? bsPrimaryKeys
+                  : metadata?.primaryKeys || [];
+              
+              // Try to get PK from createdRecord response
+              if (createdRecord) {
+                // Check if response has the PK directly
+                effectivePrimaryKeys.forEach((pk) => {
+                  if (createdRecord[pk] !== undefined) {
+                    formData[pk] = createdRecord[pk];
+                    Logger.log(`📦 Got PK from createRecord response: ${pk} = ${createdRecord[pk]}`);
+                  }
+                });
+                
+                // Also check if PK is in a nested 'data' property
+                if (createdRecord.data) {
+                  effectivePrimaryKeys.forEach((pk) => {
+                    if (createdRecord.data[pk] !== undefined && !formData[pk]) {
+                      formData[pk] = createdRecord.data[pk];
+                      Logger.log(`📦 Got PK from createRecord.data: ${pk} = ${createdRecord.data[pk]}`);
+                    }
+                  });
+                }
+                
+                // Check if response has 'insertedId' or similar
+                if (createdRecord.insertedId !== undefined && effectivePrimaryKeys.length > 0) {
+                  const pk = effectivePrimaryKeys[0];
+                  if (!formData[pk]) {
+                    formData[pk] = createdRecord.insertedId;
+                    Logger.log(`📦 Got PK from insertedId: ${pk} = ${createdRecord.insertedId}`);
+                  }
+                }
+                
+                // Check if response has 'id' field
+                if (createdRecord.id !== undefined && effectivePrimaryKeys.length > 0) {
+                  const pk = effectivePrimaryKeys[0];
+                  if (!formData[pk]) {
+                    formData[pk] = createdRecord.id;
+                    Logger.log(`📦 Got PK from response.id: ${pk} = ${createdRecord.id}`);
+                  }
+                }
+              }
+            }
           }
         } else {
           // For edit mode, use formData as is
@@ -4054,11 +4116,11 @@ const BSDataGrid = forwardRef(
         // For hierarchical data in add mode: don't close dialog, enable child grids
         if (dialogMode === "add" && bsChildGrids && bsChildGrids.length > 0) {
           // Reload data to get the newly created record with its PK
-          let newRecord = null;
+          let loadedRows = [];
           if (bsStoredProcedure) {
             await loadStoredProcedureData();
           } else {
-            await loadData();
+            loadedRows = await loadData() || [];
           }
 
           // Try to find the newly created record by matching form data
@@ -4073,33 +4135,78 @@ const BSDataGrid = forwardRef(
           setIsParentSaved(true);
           setParentAccordionExpanded(true);
 
-          // Extract PK values from formData if available (for identity columns, this won't work)
-          // The API should ideally return the created record with its PK
+          // Extract PK values from formData (now updated with created record's PK)
           const pkValues = {};
           effectivePrimaryKeys.forEach((pk) => {
-            if (formData[pk] !== undefined) {
+            if (formData[pk] !== undefined && formData[pk] !== null && formData[pk] !== 0) {
               pkValues[pk] = formData[pk];
             }
           });
 
-          // If we don't have PK values, we need to get them from the last created record
-          // This is a limitation - ideally the createRecord should return the new record
+          // If we still don't have PK values, try to find the matching record from freshly loaded data
+          if (Object.keys(pkValues).length === 0 && loadedRows && loadedRows.length > 0) {
+            Logger.log("📦 Searching for new record in loaded data:", {
+              loadedRowsCount: loadedRows.length,
+              effectivePrimaryKeys,
+              formDataKeys: Object.keys(formData),
+            });
+            
+            // For identity columns, find the row with the highest PK value (most recently created)
+            const pk = effectivePrimaryKeys[0];
+            if (pk) {
+              // Sort by PK descending and get the highest
+              const sortedRows = [...loadedRows].sort((a, b) => {
+                const aVal = Number(a[pk]) || 0;
+                const bVal = Number(b[pk]) || 0;
+                return bVal - aVal;
+              });
+              
+              const newestRow = sortedRows[0];
+              if (newestRow && newestRow[pk] !== undefined) {
+                pkValues[pk] = newestRow[pk];
+                Logger.log(`📦 Got PK from newest row (highest ${pk}): ${newestRow[pk]}`);
+              }
+            }
+          }
+
           if (Object.keys(pkValues).length === 0) {
             Logger.warn(
-              "⚠️ Could not extract PK values from formData. Child grids may not work correctly."
-            );
-            Logger.log(
-              "💡 Tip: Ensure your API returns the created record with its primary key."
+              "⚠️ Could not extract PK values. Child grids may not work correctly."
             );
           }
 
           setSavedParentKeyValues(pkValues);
+          
+          // Switch to edit mode so subsequent saves will update instead of create
+          setDialogMode("edit");
+          // Set selectedRow with PK values so update knows which record to update
+          // Also update formData with PK values
+          const updatedFormData = { ...formData, ...pkValues };
+          setFormData(updatedFormData);
+          setSelectedRow(updatedFormData);
+          
           Logger.log(
-            "🔗 Hierarchical Add - Parent saved, PK values:",
+            "🔗 Hierarchical Add - Parent saved, switched to edit mode, PK values:",
             pkValues
           );
 
           // Don't close dialog - show child grids
+          return;
+        }
+
+        // For hierarchical edit mode, don't close dialog - allow user to continue editing child grids
+        if (
+          dialogMode === "edit" &&
+          bsChildGrids &&
+          bsChildGrids.length > 0
+        ) {
+          // Reload data in background but keep dialog open
+          if (bsStoredProcedure) {
+            await loadStoredProcedureData();
+          } else {
+            await loadData();
+          }
+          Logger.log("🔗 Hierarchical Edit - Parent saved, dialog stays open");
           return;
         }
 
@@ -4411,6 +4518,11 @@ const BSDataGrid = forwardRef(
       let formColumns = metadata.columns.filter((c) => {
         // Filter out is_active field in add mode
         if (dialogMode === "add" && isActiveField(c.columnName)) {
+          return false;
+        }
+        // Filter out hidden columns (used by child grids to hide FK columns)
+        if (bsHiddenColumns && bsHiddenColumns.includes(c.columnName)) {
+          Logger.log(`🙈 Hiding column from form: ${c.columnName}`);
           return false;
         }
         return isFieldInForm(
@@ -5997,6 +6109,20 @@ const BSDataGrid = forwardRef(
           Logger.log("⚠️ No column filtering - showing all columns");
         }
 
+        // Apply hidden columns filter (used by child grids to hide FK columns)
+        if (bsHiddenColumns && bsHiddenColumns.length > 0) {
+          filteredDataColumns = filteredDataColumns.filter(
+            (col) =>
+              col.field === "actions" ||
+              col.field === "__rowNumber" ||
+              !bsHiddenColumns.includes(col.field)
+          );
+          Logger.log("🙈 Hidden columns applied:", {
+            hiddenColumns: bsHiddenColumns,
+            remainingCount: filteredDataColumns.length,
+          });
+        }
+
         // Final safety check to ensure we always return an array
         let finalColumns = Array.isArray(filteredDataColumns)
           ? filteredDataColumns
@@ -6086,6 +6212,7 @@ const BSDataGrid = forwardRef(
       applyColumnDefs,
       localeText,
       bsRowConfig,
+      bsHiddenColumns,
     ]);
 
     // Generate custom row styles from bsRowConfig
@@ -7727,22 +7854,21 @@ const BSDataGrid = forwardRef(
                 ? localeText.bsClose || "Close"
                 : localeText.bsCancel}
             </Button>
-            {/* Show Save button only when parent is not yet saved (for hierarchical) or always (for standard) */}
-            {(!bsChildGrids || bsChildGrids.length === 0 || !isParentSaved) && (
-              <Button
-                onClick={handleSave}
-                variant="contained"
-                disabled={formLoading}
-              >
-                {formLoading
-                  ? localeText.bsSaving
-                  : bsChildGrids &&
-                    bsChildGrids.length > 0 &&
-                    dialogMode === "add"
-                  ? localeText.bsSaveAndContinue || "Save & Continue"
-                  : localeText.bsSave}
-              </Button>
-            )}
+            {/* Show Save button always - user can save/update parent record anytime */}
+            <Button
+              onClick={handleSave}
+              variant="contained"
+              disabled={formLoading}
+            >
+              {formLoading
+                ? localeText.bsSaving
+                : bsChildGrids &&
+                  bsChildGrids.length > 0 &&
+                  dialogMode === "add" &&
+                  !isParentSaved
+                ? localeText.bsSaveAndContinue || "Save & Continue"
+                : localeText.bsSave}
+            </Button>
           </DialogActions>
         </Dialog>
 

@@ -41,9 +41,10 @@ const IsoPage = (props) => {
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
-      bsRowPerPage: 10,
-      bsPageSizeOptions: [10, 25, 50],
-      height: 350,
+      bsDialogColumns: 2,
+      // bsRowPerPage: 10,
+      // bsPageSizeOptions: [10, 25, 50],
+      // height: 350,
       // Optional: specify columns to show
       // bsCols: "doc_name,doc_type,doc_path,create_date",
       // Optional: ComboBox configurations for child grid
@@ -68,9 +69,10 @@ const IsoPage = (props) => {
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
-      bsRowPerPage: 10,
-      bsPageSizeOptions: [10, 25, 50],
-      height: 350,
+      // bsRowPerPage: 10,
+      // bsPageSizeOptions: [10, 25, 50],
+      // height: 350,
+      bsDialogColumns: 2,
     },
   ];
 
@@ -93,6 +95,7 @@ const IsoPage = (props) => {
           bsChildGrids={childGridConfigs} // Child grid configurations
           // Optional: Dialog size for hierarchical mode (recommended: Large or FullScreen)
           bsDialogSize="Large"
+          bsDialogColumns={3}
         />
       </Paper>
     </Box>

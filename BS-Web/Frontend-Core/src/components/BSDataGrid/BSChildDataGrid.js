@@ -190,6 +190,7 @@ const BSChildDataGrid = forwardRef((props, ref) => {
     combinedWhere,
     parentKeyValues,
     foreignKeys,
+    hiddenColumns: foreignKeys, // FK columns will be hidden from grid and form
   });
 
   return (
@@ -201,6 +202,8 @@ const BSChildDataGrid = forwardRef((props, ref) => {
         bsObjWh={combinedWhere}
         // Pass FK values as hidden default values for new records
         bsDefaultFormValues={getDefaultFormValues()}
+        // Hide FK columns from both grid and form (they are auto-populated)
+        bsHiddenColumns={foreignKeys}
         // Ensure child grid has appropriate height
         height={gridProps.height || 400}
       />
