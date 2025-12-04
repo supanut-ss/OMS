@@ -502,6 +502,11 @@
             Custom ORDER BY clause for sorting
             </summary>
         </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.GroupBy">
+            <summary>
+            GROUP BY clause to remove duplicates (e.g., "menu_group")
+            </summary>
+        </member>
         <member name="P:ApiCore.Models.Dynamic.DynamicDataGridRequest.QuickFilter">
             <summary>
             Quick filter value from Frontend (for BSDataGrid compatibility)
@@ -575,6 +580,11 @@
         <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.CustomOrderBy">
             <summary>
             Custom ORDER BY clause for sorting options
+            </summary>
+        </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.GroupBy">
+            <summary>
+            GROUP BY clause to remove duplicates (e.g., "menu_group")
             </summary>
         </member>
         <member name="P:ApiCore.Models.Dynamic.DynamicComboBoxRequest.DefaultOption">

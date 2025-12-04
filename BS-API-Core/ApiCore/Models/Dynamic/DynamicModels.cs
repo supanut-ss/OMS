@@ -178,6 +178,11 @@ namespace ApiCore.Models.Dynamic
         public string? CustomOrderBy { get; set; }
 
         /// <summary>
+        /// GROUP BY clause to remove duplicates (e.g., "menu_group")
+        /// </summary>
+        public string? GroupBy { get; set; }
+
+        /// <summary>
         /// Quick filter value from Frontend (for BSDataGrid compatibility)
         /// </summary>
         public string? QuickFilter { get; set; }
@@ -321,6 +326,11 @@ namespace ApiCore.Models.Dynamic
         /// Custom ORDER BY clause for sorting options
         /// </summary>
         public string? CustomOrderBy { get; set; }
+
+        /// <summary>
+        /// GROUP BY clause to remove duplicates (e.g., "menu_group")
+        /// </summary>
+        public string? GroupBy { get; set; }
 
         /// <summary>
         /// Default option text (e.g., "--- Select Status ---")
