@@ -532,6 +532,11 @@
             Dynamic column information
             </summary>
         </member>
+        <member name="P:ApiCore.Models.Dynamic.DynamicColumnInfo.Description">
+            <summary>
+            Column description from MS_Description extended property
+            </summary>
+        </member>
         <member name="T:ApiCore.Models.Dynamic.DynamicBulkCreateRequest">
             <summary>
             Bulk create request for multiple records

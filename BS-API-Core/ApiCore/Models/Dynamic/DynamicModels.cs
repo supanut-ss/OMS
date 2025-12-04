@@ -232,6 +232,10 @@ namespace ApiCore.Models.Dynamic
         public int? Scale { get; set; }
         public object? DefaultValue { get; set; }
         public int OrdinalPosition { get; set; }
+        /// <summary>
+        /// Column description from MS_Description extended property
+        /// </summary>
+        public string? Description { get; set; }
     }
 
     /// <summary>

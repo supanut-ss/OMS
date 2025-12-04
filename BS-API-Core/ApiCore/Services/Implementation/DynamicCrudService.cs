@@ -68,7 +68,8 @@ namespace ApiCore.Services.Implementation
                     c.NUMERIC_SCALE,
                     c.COLUMN_DEFAULT,
                     CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END AS IS_PRIMARY_KEY,
-                    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY
+                    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY,
+                    ep.value AS COLUMN_DESCRIPTION
                 FROM INFORMATION_SCHEMA.COLUMNS c
                 LEFT JOIN (
                     SELECT ku.TABLE_NAME, ku.COLUMN_NAME, ku.TABLE_SCHEMA
@@ -80,6 +81,15 @@ namespace ApiCore.Services.Implementation
                 ) pk ON c.TABLE_NAME = pk.TABLE_NAME 
                     AND c.COLUMN_NAME = pk.COLUMN_NAME
                     AND c.TABLE_SCHEMA = pk.TABLE_SCHEMA
+                LEFT JOIN sys.extended_properties ep 
+                    ON ep.major_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME)
+                    AND ep.minor_id = (
+                        SELECT column_id 
+                        FROM sys.columns 
+                        WHERE object_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME) 
+                        AND name = c.COLUMN_NAME
+                    )
+                    AND ep.name = 'MS_Description'
                 WHERE c.TABLE_NAME = @TableName 
                     AND c.TABLE_SCHEMA = @SchemaName
                 ORDER BY c.ORDINAL_POSITION";
@@ -109,7 +119,8 @@ namespace ApiCore.Services.Implementation
                         MaxLength = reader.IsDBNull("CHARACTER_MAXIMUM_LENGTH") ? null : reader.GetInt32("CHARACTER_MAXIMUM_LENGTH"),
                         Precision = reader.IsDBNull("NUMERIC_PRECISION") ? null : Convert.ToInt32(reader.GetByte("NUMERIC_PRECISION")),
                         Scale = reader.IsDBNull("NUMERIC_SCALE") ? null : Convert.ToInt32(reader.GetInt32("NUMERIC_SCALE")),
-                        DefaultValue = reader.IsDBNull("COLUMN_DEFAULT") ? null : reader.GetString("COLUMN_DEFAULT")
+                        DefaultValue = reader.IsDBNull("COLUMN_DEFAULT") ? null : reader.GetString("COLUMN_DEFAULT"),
+                        Description = reader.IsDBNull("COLUMN_DESCRIPTION") ? null : reader.GetValue("COLUMN_DESCRIPTION")?.ToString()
                     };
 
                     columns.Add(columnInfo);
