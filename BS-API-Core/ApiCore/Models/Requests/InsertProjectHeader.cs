@@ -1,9 +1,9 @@
-﻿namespace ApiCore.Models.Responses
+﻿namespace ApiCore.Models.Requests
 {
-    public class ProjectsResponse
+    public class InsertProjectHeader
     {
         public int project_header_id { get; set; }
-        public int? master_project_id { get; set; }  
+        public int? master_project_id { get; set; }
         public string project_no { get; set; }
         public string project_name { get; set; }
         public string project_status { get; set; }
@@ -24,26 +24,5 @@
         public DateTime? actual_project_end { get; set; }
         public string remark { get; set; }
         public string is_active { get; set; }
-        public string create_by { get; set; }
-        public DateTime create_date { get; set; }
-        public string update_by { get; set; }
-        public DateTime? update_date { get; set; }
-
-    }
-    public class ProjectTaskPhaseResponse
-    {
-        public int project_task_phase_id { get; set; }
-        public int project_header_id { get; set; }
-        public string phase_name { get; set; }
-        public string description { get; set; }
-        public int? sequence { get; set; }
-        public string create_by { get; set; }
-        public DateTime create_date { get; set; }
-        public string update_by { get; set; }
-        public DateTime? update_date { get; set; }
-    }
-    public class ProjectTaskResponse
-    {
-        public int project_task_id { get; set; }
     }
 }

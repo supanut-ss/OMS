@@ -20,7 +20,10 @@ const data = {
     "sale_id": null,
     "customer_id": null,
     "plan_project_start": null,
-    "plan_project_end": null
+    "plan_project_end": null,
+    "is_active": "YES",
+    "project_no": "",
+    "remark": ""
 };
 const ProjectsDialog = (props) => {
     const requiredFields = [
@@ -38,9 +41,11 @@ const ProjectsDialog = (props) => {
     const [formData, setFormData] = useState({ ...data });
     const [tap, setTap] = useState(0);
     const [errors, setErrors] = useState({});
+    const [taskRefresh, setTaskRefresh] = useState(false);
     const handleClose = () => {
         setFormData({ ...data });
         props.onClose(false);
+
     };
     const validateForm = () => {
 
@@ -58,27 +63,27 @@ const ProjectsDialog = (props) => {
     const handleSave = async () => {
         if (!validateForm()) return;
 
-        // try {
-        //     let url = props.projectID
-        //         ? `/projects/${props.projectID}`
-        //         : `/projects`;
+        try {
+            await AxiosMaster.post("/projects", formData)
+                .then((response) => {
+                    console.log(response)
+                    if (response.data.message_code === 0) {
+                        BSAlertSwal2.show("success", "Project saved successfully");
+                        setFormData(response.data.data);
+                        setTaskRefresh(true);
+                    } else {
+                        BSAlertSwal2.show("error", response?.data?.message || "Save failed");
+                    }
+                }).finally(() => { })
 
-        //     const method = props.projectID ? AxiosMaster.put : AxiosMaster.post;
 
-        //     const response = await method(url, formData);
-
-        //     if (response.data.message_code === 0) {
-        //         BSAlertSwal2.success("Success", "Project saved successfully");
-        //         props.onClose(true);
-        //     } else {
-        //         BSAlertSwal2.error("Error", response?.data?.message || "Save failed");
-        //     }
-        // } catch (err) {
-        //     BSAlertSwal2.error("Error", err.toString());
-        // }
+        } catch (err) {
+            BSAlertSwal2.show("error", err.message, {
+                title: "Failed to Save Record",
+            });
+        }
     };
     const updateField = (field, value) => {
-        console.log(`Update Field: ${field} = ${value}`);
         setFormData(prev => ({
             ...prev,
             [field]: value
@@ -86,8 +91,8 @@ const ProjectsDialog = (props) => {
     };
 
     const fetchformData = useCallback(async () => {
-        if (props.projectID) {
-            await AxiosMaster.get(`/projects/${props.projectID}`)
+        if (formData.project_header_id || props.projectID) {
+            await AxiosMaster.get(`/projects/${formData.project_header_id || props.projectID}`)
                 .then((response) => {
                     if (response?.data?.message_code !== 0) {
                         setFormData({ ...data });
@@ -99,7 +104,6 @@ const ProjectsDialog = (props) => {
                     BSAlertSwal2.error("Error", "Failed to fetch project header data.</br>" + error);
                 });
         } else {
-            console.log("Preparing to add a new project");
             setFormData({ ...data });
         }
     }, [props.projectID]);
@@ -115,9 +119,9 @@ const ProjectsDialog = (props) => {
     return (<Dialog fullScreen
         open={props.open}
         onClose={handleClose}>
-        <DialogTitle>{props.projectID ? "Edit" : "Add"} {props.title}</DialogTitle>
+        <DialogTitle>{formData.project_header_id ? "Edit" : "Add"} {props.title}</DialogTitle>
         <DialogContent>
-            {formData === null && props.projectID ? (
+            {formData === null && formData.project_header_id ? (
                 <Box sx={{ p: 3 }}>Loading...</Box>
             ) :
                 <Box sx={{ pl: 3, pr: 3 }}>
@@ -174,7 +178,7 @@ const ProjectsDialog = (props) => {
                                 variant="standard"
                                 bsValue={formData?.master_project_id}
                                 bsOnChange={(val) => updateField("master_project_id", val?.code || null)}
-                                required={true}
+
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -302,6 +306,7 @@ const ProjectsDialog = (props) => {
                                 type="string"
                                 label="po_number"
                                 value={formData?.po_number}
+                                onChange={(e) => updateField("po_number", e)}
                                 variant="standard"
                                 required={true}
                             />
@@ -383,6 +388,7 @@ const ProjectsDialog = (props) => {
                                 type="decimal"
                                 label="manday"
                                 value={formData?.manday}
+                                onChange={(e) => updateField("manday", e)}
                                 variant="standard"
                             />
                         </Grid>
@@ -391,6 +397,7 @@ const ProjectsDialog = (props) => {
                                 type="string"
                                 label="management_cost"
                                 value={formData?.management_cost}
+                                onChange={(e) => updateField("management_cost", e)}
                                 variant="standard"
                             />
                         </Grid>
@@ -399,6 +406,7 @@ const ProjectsDialog = (props) => {
                                 type="string"
                                 label="travel_cost"
                                 value={formData?.travel_cost}
+                                onChange={(e) => updateField("travel_cost", e)}
                                 variant="standard"
                             />
                         </Grid>
@@ -458,6 +466,7 @@ const ProjectsDialog = (props) => {
                                 type="string"
                                 label="Remark"
                                 value={formData?.remark}
+                                onChange={(e) => updateField("remark", e)}
                                 variant="outlined"
                                 multiline={true}
                                 minRows={3}
@@ -473,7 +482,7 @@ const ProjectsDialog = (props) => {
                             <Tab label="Project Close" />
                         </Tabs>
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
-                            {tap === 0 && (<ProjectTask projectID={props.projectID} lang={props.lang} />)}
+                            {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} />)}
                             {tap === 1 && (<ProjectsTeams projectID={props.projectID} lang={props.lang} />)}
                             {tap === 2 && (<ProjectsHistory projectID={props.projectID} lang={props.lang} />)}
                             {tap === 2 && (<Box>Project Close</Box>)}

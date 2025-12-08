@@ -1,4 +1,5 @@
-﻿using ApiCore.Models.Responses;
+﻿using ApiCore.Models.Requests;
+using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -59,5 +60,48 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
+        [HttpPost("task")]
+        public async Task<IActionResult> InsertProjectTaskPhasesAsync([FromBody] InsertProjectTaskRequest projectTaskPhase)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                var result = await projectsService.InsertProjectTaskAsync(projectTaskPhase, userId);
+                if (result != null && result.project_task_id > 0)
+                {
+                    return AccessResponseDataSuccess("success", result, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Insert/Update project task phase failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> InsertProjecHeaderAsync([FromBody] InsertProjectHeader project)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                var result = await projectsService.InsertProjecHeaderAsync(project, userId);
+                if (result != null && result.project_header_id > 0)
+                {
+                    return AccessResponseDataSuccess("success", result, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Insert/Update project failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+
     }
 }

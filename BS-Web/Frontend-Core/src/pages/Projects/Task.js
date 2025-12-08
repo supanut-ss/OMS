@@ -6,7 +6,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 import TaskDialog from "./TaskDialog/TaskDialog";  // ← import Dialog
 
 const ProjectTask = (props) => {
-    const { projectID, lang } = props;
+    const { projectID, lang, refresh, setRefresh } = props;
 
     const [loading, setLoading] = useState(false);
     const [taskPhases, setTaskPhases] = useState([]);
@@ -16,13 +16,11 @@ const ProjectTask = (props) => {
     const [dialogData, setDialogData] = useState(null);
 
     const handleOpenEditTask = (rowData) => {
-        console.log("Edit Task:", rowData);
         setDialogData(rowData);
         setOpenDialog(true);
     };
 
     const handleOpenAddTask = () => {
-        console.log("Add Task");
         setDialogData({
             project_task_id: null,
             project_task_phase_id: null,
@@ -43,33 +41,36 @@ const ProjectTask = (props) => {
         setOpenDialog(false);
         setDialogData(null);
     };
-
+    useEffect(() => {
+        if (refresh) {
+            setTaskPhases([]);
+            callTaskPhase(projectID);
+            setRefresh(false);
+        }
+    }, [refresh, projectID]);
     const fetchTaskPhase = useCallback(async () => {
         try {
             if (!projectID && projectID <= 0) return;
             if (taskPhases.length > 0) return;
 
-            setLoading(true);
-
-            await AxiosMaster.get(`/projects/task/phases/${projectID}`)
-                .then((response) => {
-                    console.log("Task Phases:", response.data);
-
-                    if (response?.data?.message_code !== 0) {
-                        console.error("Failed to fetch task phases:", response?.data?.message_text);
-                        return;
-                    }
-
-                    setTaskPhases(response.data.data || []);
-                })
-                .finally(() => setLoading(false));
-
+            await callTaskPhase(projectID);
         } catch (err) {
-            console.error("Error fetching task phases:", err);
             setLoading(false);
         }
     }, [projectID]);
+    const callTaskPhase = async (id) => {
+        setLoading(true);
 
+        await AxiosMaster.get(`/projects/task/phases/${id}`)
+            .then((response) => {
+                if (response?.data?.message_code !== 0) {
+                    return;
+                }
+
+                setTaskPhases(response.data.data || []);
+            })
+            .finally(() => setLoading(false));
+    }
     useEffect(() => {
         fetchTaskPhase();
     }, [fetchTaskPhase]);
@@ -106,7 +107,10 @@ const ProjectTask = (props) => {
                 <TaskDialog
                     open={openDialog}
                     onClose={handleCloseDialog}
-                    {...dialogData}   // ส่งข้อมูลทั้งหมดเข้า Dialog
+                    project_task_id={taskPhases.project_task_id || ""}
+                    project_task_phase_id={taskPhases.project_task_phase_id || ""}
+                    project_header_id={taskPhases.project_header_id}
+                    {...dialogData}
                 />
             )}
         </Paper>

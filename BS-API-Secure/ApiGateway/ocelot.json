@@ -949,9 +949,37 @@
       "UpstreamHttpMethod": [
         "get"
       ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://10.60.10.144:8080"
+    "BaseUrl": "http://192.168.254.151:8080"
   }
 }
