@@ -32,6 +32,7 @@ builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<IDynamicCrudService, DynamicCrudService>();
 builder.Services.AddScoped<IAutoComplete, AutoCompleteServices>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
+builder.Services.AddScoped<IProjectsService, ProjectService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

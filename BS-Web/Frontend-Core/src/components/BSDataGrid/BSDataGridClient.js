@@ -11,7 +11,7 @@ import {
   FilterList as FilterListIcon,
   FilterListOff as FilterListOffIcon,
 } from "@mui/icons-material";
-import Logger from "../utils/logger";
+import Logger from "../../utils/logger";
 
 // Custom Toolbar for client-side DataGrid
 const ClientGridToolbar = ({ headerFiltersEnabled, onToggleHeaderFilters }) => {

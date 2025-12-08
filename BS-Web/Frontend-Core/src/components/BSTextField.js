@@ -12,6 +12,8 @@ const BSTextField = ({
   precision = 18, // จำนวนหลักทั้งหมด เช่น decimal(18,2)
   scale = 2, // จำนวนหลักทศนิยม เช่น decimal(18,2)
   borderLeftRadius = null,
+  disblsed = false,
+  variant = "",
   ...props
 }) => {
   const handleChange = (e) => {
@@ -41,8 +43,10 @@ const BSTextField = ({
   };
 
   return (
-    <FormControl fullWidth error={error}>
+    <FormControl fullWidth error={error} >
       <TextField
+        variant={variant}
+        disabled={disblsed}
         fullWidth
         label={label}
         required={required}

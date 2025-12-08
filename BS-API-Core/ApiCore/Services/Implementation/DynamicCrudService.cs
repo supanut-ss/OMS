@@ -68,7 +68,8 @@ namespace ApiCore.Services.Implementation
                     c.NUMERIC_SCALE,
                     c.COLUMN_DEFAULT,
                     CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END AS IS_PRIMARY_KEY,
-                    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY
+                    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY,
+                    ep.value AS COLUMN_DESCRIPTION
                 FROM INFORMATION_SCHEMA.COLUMNS c
                 LEFT JOIN (
                     SELECT ku.TABLE_NAME, ku.COLUMN_NAME, ku.TABLE_SCHEMA
@@ -80,6 +81,15 @@ namespace ApiCore.Services.Implementation
                 ) pk ON c.TABLE_NAME = pk.TABLE_NAME 
                     AND c.COLUMN_NAME = pk.COLUMN_NAME
                     AND c.TABLE_SCHEMA = pk.TABLE_SCHEMA
+                LEFT JOIN sys.extended_properties ep 
+                    ON ep.major_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME)
+                    AND ep.minor_id = (
+                        SELECT column_id 
+                        FROM sys.columns 
+                        WHERE object_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME) 
+                        AND name = c.COLUMN_NAME
+                    )
+                    AND ep.name = 'MS_Description'
                 WHERE c.TABLE_NAME = @TableName 
                     AND c.TABLE_SCHEMA = @SchemaName
                 ORDER BY c.ORDINAL_POSITION";
@@ -109,7 +119,8 @@ namespace ApiCore.Services.Implementation
                         MaxLength = reader.IsDBNull("CHARACTER_MAXIMUM_LENGTH") ? null : reader.GetInt32("CHARACTER_MAXIMUM_LENGTH"),
                         Precision = reader.IsDBNull("NUMERIC_PRECISION") ? null : Convert.ToInt32(reader.GetByte("NUMERIC_PRECISION")),
                         Scale = reader.IsDBNull("NUMERIC_SCALE") ? null : Convert.ToInt32(reader.GetInt32("NUMERIC_SCALE")),
-                        DefaultValue = reader.IsDBNull("COLUMN_DEFAULT") ? null : reader.GetString("COLUMN_DEFAULT")
+                        DefaultValue = reader.IsDBNull("COLUMN_DEFAULT") ? null : reader.GetString("COLUMN_DEFAULT"),
+                        Description = reader.IsDBNull("COLUMN_DESCRIPTION") ? null : reader.GetValue("COLUMN_DESCRIPTION")?.ToString()
                     };
 
                     columns.Add(columnInfo);
@@ -325,23 +336,64 @@ namespace ApiCore.Services.Implementation
                     fullSelectColumns += userLookupSelect;
                 }
 
+                // Build GROUP BY clause if specified
+                var groupByClause = "";
+                if (!string.IsNullOrEmpty(request.GroupBy))
+                {
+                    // Validate GROUP BY columns against metadata
+                    var groupByColumns = request.GroupBy.Split(',')
+                        .Select(c => c.Trim())
+                        .Where(c => metadata.Columns.Any(col => col.ColumnName.Equals(c, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    if (groupByColumns.Any())
+                    {
+                        groupByClause = $"GROUP BY {string.Join(", ", groupByColumns.Select(c => $"t.[{c}]"))}";
+                        // When GROUP BY is used, we need to adjust SELECT columns to only include grouped columns
+                        fullSelectColumns = string.Join(", ", groupByColumns.Select(c => $"t.[{c}]"));
+                    }
+                }
+
                 // Build final query
-                var query = $@"
-                    DECLARE @TotalCount INT;
-                    
-                    SELECT @TotalCount = COUNT(*)
-                    FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
-                    {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")};
-                    
-                    SELECT @TotalCount as TotalCount;
-                    
-                    SELECT {fullSelectColumns}
-                    FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
-                    {userLookupJoin}
-                    {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
-                    {orderByClause}
-                    OFFSET @Offset ROWS
-                    FETCH NEXT @PageSize ROWS ONLY;";
+                string query;
+                if (!string.IsNullOrEmpty(groupByClause))
+                {
+                    // For GROUP BY queries, use simpler query without pagination
+                    query = $@"
+                        SELECT {fullSelectColumns}
+                        FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
+                        {userLookupJoin}
+                        {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
+                        {groupByClause}
+                        {orderByClause};
+                        
+                        SELECT COUNT(*) as TotalCount FROM (
+                            SELECT 1 as dummy
+                            FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
+                            {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
+                            {groupByClause}
+                        ) as grouped;";
+                }
+                else
+                {
+                    // Standard query with pagination
+                    query = $@"
+                        DECLARE @TotalCount INT;
+                        
+                        SELECT @TotalCount = COUNT(*)
+                        FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
+                        {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")};
+                        
+                        SELECT @TotalCount as TotalCount;
+                        
+                        SELECT {fullSelectColumns}
+                        FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
+                        {userLookupJoin}
+                        {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
+                        {orderByClause}
+                        OFFSET @Offset ROWS
+                        FETCH NEXT @PageSize ROWS ONLY;";
+                }
 
                 _logger.LogInformation("🔍 Generated SQL Query: {Query}", query);
 
@@ -359,43 +411,77 @@ namespace ApiCore.Services.Implementation
                 using var reader = await command.ExecuteReaderAsync();
 
                 var response = new DynamicDataGridResponse();
+                var rows = new List<DynamicResponse>();
 
-                // Read total count
-                if (await reader.ReadAsync())
+                if (!string.IsNullOrEmpty(groupByClause))
                 {
-                    response.RowCount = reader.GetInt32("TotalCount");
-                    _logger.LogInformation("✅ Total count retrieved: {TotalCount}", response.RowCount);
-                }
-                else
-                {
-                    _logger.LogWarning("⚠️ No TotalCount result set returned from query - using 0 as default");
-                    response.RowCount = 0;
-                }
+                    // GROUP BY query: SELECT data first, then SELECT COUNT
+                    _logger.LogInformation("📊 Reading GROUP BY query results (data first, then count)");
 
-                // Read data
-                if (await reader.NextResultAsync())
-                {
-                    var rows = new List<DynamicResponse>();
-
+                    // Read data first
                     while (await reader.ReadAsync())
                     {
                         var data = new Dictionary<string, object>();
-
                         for (int i = 0; i < reader.FieldCount; i++)
                         {
                             var fieldName = reader.GetName(i);
                             var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
                             data[fieldName] = value;
                         }
-
                         rows.Add(new DynamicResponse
                         {
                             Data = data,
                             Metadata = metadata
                         });
                     }
-
                     response.Rows = rows;
+                    _logger.LogInformation("✅ Read {RowCount} grouped rows", rows.Count);
+
+                    // Read total count from second result set
+                    if (await reader.NextResultAsync() && await reader.ReadAsync())
+                    {
+                        response.RowCount = reader.GetInt32(0);
+                        _logger.LogInformation("✅ GROUP BY total count: {TotalCount}", response.RowCount);
+                    }
+                    else
+                    {
+                        response.RowCount = rows.Count;
+                    }
+                }
+                else
+                {
+                    // Standard query: SELECT COUNT first, then SELECT data
+                    if (await reader.ReadAsync())
+                    {
+                        response.RowCount = reader.GetInt32("TotalCount");
+                        _logger.LogInformation("✅ Total count retrieved: {TotalCount}", response.RowCount);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ No TotalCount result set returned from query - using 0 as default");
+                        response.RowCount = 0;
+                    }
+
+                    // Read data
+                    if (await reader.NextResultAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var data = new Dictionary<string, object>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                var fieldName = reader.GetName(i);
+                                var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                data[fieldName] = value;
+                            }
+                            rows.Add(new DynamicResponse
+                            {
+                                Data = data,
+                                Metadata = metadata
+                            });
+                        }
+                        response.Rows = rows;
+                    }
                 }
 
                 stopwatch.Stop();

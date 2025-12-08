@@ -6,7 +6,7 @@ import SecureStorage from "../../utils/SecureStorage";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import DownloadIcon from "@mui/icons-material/Download";
-import BSDataGridClient from "../../components/BSDataGridClient";
+import { BSDataGridClient } from "../../components/BSDataGrid";
 import Config from "../../utils/Config";
 const ImportExcel = () => {
   const [select, setSelect] = useState("");

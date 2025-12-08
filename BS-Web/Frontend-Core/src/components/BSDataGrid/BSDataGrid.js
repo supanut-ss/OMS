@@ -37,6 +37,11 @@ import {
   MenuList,
   MenuItem as MenuListItem,
   InputAdornment,
+  Tabs,
+  Tab,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -66,16 +71,18 @@ import {
   FileDownload as FileDownloadIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  ExpandMore as ExpandMoreIcon,
 } from "@mui/icons-material";
-import { useDynamicCrud } from "../hooks/useDynamicCrud";
-import { getSchemaFromPreObj } from "../utils/SchemaMapping";
-import { useAuth } from "../contexts/AuthContext";
+import { useDynamicCrud } from "../../hooks/useDynamicCrud";
+import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
+import { useAuth } from "../../contexts/AuthContext";
 import * as XLSX from "xlsx";
-import { useResource } from "../hooks/useResource";
-import { getLocaleText } from "./BSDataGrid/locales";
-import Logger from "../utils/logger";
-import muiLicenseManager from "../utils/muiLicenseManager";
-import BSAlertSwal2 from "./BSAlertSwal2";
+import { useResource } from "../../hooks/useResource";
+import { getLocaleText } from "./locales";
+import Logger from "../../utils/logger";
+import muiLicenseManager from "../../utils/muiLicenseManager";
+import BSAlertSwal2 from "../BSAlertSwal2";
+import BSChildDataGrid from "./BSChildDataGrid";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
@@ -1197,6 +1204,120 @@ const ComboBoxField = ({
  *     - Use client-side mode for small datasets (<1000 rows) for instant filtering
  *     - Use server-side mode for large datasets to reduce data transfer
  *     - Combine with bsObjWh for static WHERE conditions
+ *
+ * @bsDialogSize Configuration:
+ * - bsDialogSize="Default": Controls the size of the add/edit dialog
+ *   * Available values:
+ *     - "Small": Small dialog (sm - 600px max width)
+ *     - "Default": Default medium size (md - 900px max width)
+ *     - "Large": Large dialog (lg - 1200px max width)
+ *     - "FullScreen": Full screen dialog
+ *   * Example: <BSDataGrid bsDialogSize="Large" />
+ *
+ * @bsDialogTab Configuration:
+ * - bsDialogTab: Organize form fields into tabs within the dialog
+ *   * Structure: Array of tab configurations
+ *   * Each tab contains:
+ *     - Column: Comma-separated list of column names to include in this tab
+ *     - name: Display name for the tab
+ *   * Fields not assigned to any tab will appear in an "Other" tab
+ *   * Example:
+ *     ```jsx
+ *     bsDialogTab={[
+ *       {
+ *         Tabs: [
+ *           { Tab: { Column: "name,email,phone", name: "General Info" } },
+ *           { Tab: { Column: "address,city,country", name: "Address" } },
+ *           { Tab: { Column: "notes,description", name: "Additional" } }
+ *         ]
+ *       }
+ *     ]}
+ *     ```
+ *   * Alternative simple format:
+ *     ```jsx
+ *     bsDialogTab={[
+ *       { Column: "name,email,phone", name: "General Info" },
+ *       { Column: "address,city,country", name: "Address" }
+ *     ]}
+ *     ```
+ *
+ * @bsDialogColumns Configuration:
+ * - bsDialogColumns: Number of columns per row in the dialog form (default: 3)
+ *   * Valid values: 1, 2, 3, 4, 6, or 12 (must be a divisor of 12 for MUI Grid)
+ *   * 1 = Full width (1 field per row)
+ *   * 2 = Half width (2 fields per row)
+ *   * 3 = One-third width (3 fields per row) - Default
+ *   * 4 = Quarter width (4 fields per row)
+ *   * 6 = One-sixth width (6 fields per row)
+ *   * 12 = Smallest width (12 fields per row)
+ *   * Example: <BSDataGrid bsDialogColumns={2} /> - Shows 2 fields per row
+ *
+ * @bsChildGrids Configuration (Hierarchical Data):
+ * - bsChildGrids: Array of child grid configurations for master-detail relationships
+ *   * Enables hierarchical data editing within a single dialog
+ *   * Parent form appears in an Accordion, child grids appear in Tabs below
+ *   * Child grids are hidden during Add mode until parent record is saved
+ *   * Each child grid configuration supports all BSDataGrid props plus:
+ *     - name: Tab display name (required)
+ *     - foreignKeys: Array of FK column names linking to parent (required)
+ *   * Example:
+ *     ```jsx
+ *     bsChildGrids={[
+ *       {
+ *         name: "Documents",
+ *         bsPreObj: "tmt",
+ *         bsObj: "t_tmt_iso_type_doc",
+ *         foreignKeys: ["iso_type_id"],
+ *         bsObjBy: "create_date desc",
+ *         bsVisibleEdit: true,
+ *         bsVisibleDelete: true,
+ *         height: 350,
+ *       },
+ *       {
+ *         name: "Phases",
+ *         bsPreObj: "tmt",
+ *         bsObj: "t_tmt_iso_type_phase",
+ *         foreignKeys: ["iso_type_id"],
+ *         bsObjBy: "phase_order asc",
+ *       }
+ *     ]}
+ *     ```
+ *
+ * @bsPrimaryKeys Configuration (Hierarchical Data):
+ * - bsPrimaryKeys: Array of primary key column names for the parent table
+ *   * Required when using bsChildGrids
+ *   * Used to pass parent PK values to child grids for FK filtering
+ *   * Example: bsPrimaryKeys={["iso_type_id"]}
+ *
+ * @bsDefaultFormValues Configuration:
+ * - bsDefaultFormValues: Object with default values for new records
+ *   * Used internally by child grids to pre-populate FK values
+ *   * Can also be used to set default values for any field
+ *   * Example: bsDefaultFormValues={{ status: "active", priority: 1 }}
+ *
+ * Hierarchical Data Usage Example:
+ * ```jsx
+ * <BSDataGrid
+ *   bsPreObj="tmt"
+ *   bsObj="t_tmt_iso_type"
+ *   bsPrimaryKeys={["iso_type_id"]}
+ *   bsChildGrids={[
+ *     {
+ *       name: "Documents",
+ *       bsPreObj: "tmt",
+ *       bsObj: "t_tmt_iso_type_doc",
+ *       foreignKeys: ["iso_type_id"],
+ *     },
+ *     {
+ *       name: "Phases",
+ *       bsPreObj: "tmt",
+ *       bsObj: "t_tmt_iso_type_phase",
+ *       foreignKeys: ["iso_type_id"],
+ *     }
+ *   ]}
+ *   bsDialogSize="Large"
+ * />
+ * ```
  */
 const BSDataGrid = forwardRef(
   (
@@ -1254,12 +1375,22 @@ const BSDataGrid = forwardRef(
       // User lookup configuration for audit fields
       bsUserLookup, // User lookup configuration: { table: "sec.t_com_user", idField: "user_id", displayFields: ["first_name", "last_name"], separator: " " }
 
+      // Dialog configuration
+      bsDialogSize = "Default", // Dialog size: "Small" | "Default" | "Large" | "FullScreen"
+      bsDialogTab, // Tab configuration for form fields: [{ Tabs: [{ Tab: { Column: "col1,col2", name: "Tab Name" } }] }]
+      bsDialogColumns = 4, // Number of columns per row in dialog form: 1, 2, 3, 4, 6, or 12
+
+      // Hierarchical Data configuration
+      bsChildGrids = [], // Child grid configurations: [{ name: "Tab Name", bsPreObj, bsObj, foreignKeys: ["fk_col"], ...gridProps }]
+      bsPrimaryKeys = [], // Primary key column names for parent record (used for child grid FK linking)
+      bsDefaultFormValues = {}, // Default values for new records (used by child grids for FK values)
+
       onCheckBoxSelected,
 
       // Data binding callback
       onDataBind, // Callback to receive loaded data for external processing
       onFilteredDataChange, // Callback to receive filtered/visible data for summary calculations
-      bsPageSizeOptions = [10, 25, 50, 100],
+      bsPageSizeOptions = [20, 100, 200, 500, 1000],
       ...props
     },
     ref
@@ -1357,6 +1488,121 @@ const BSDataGrid = forwardRef(
       }
       return config;
     }, [bsColumnDefs]);
+
+    // Parse bsDialogSize to MUI Dialog maxWidth
+    const dialogMaxWidth = useMemo(() => {
+      switch (bsDialogSize?.toLowerCase()) {
+        case "small":
+          return "sm";
+        case "large":
+          return "lg";
+        case "fullscreen":
+          return "xl"; // Will also use fullScreen prop
+        case "default":
+        default:
+          return "md";
+      }
+    }, [bsDialogSize]);
+
+    // Check if dialog should be fullscreen
+    const isDialogFullScreen = useMemo(() => {
+      return bsDialogSize?.toLowerCase() === "fullscreen";
+    }, [bsDialogSize]);
+
+    // Calculate Grid sizes based on bsDialogColumns
+    // MUI v7 Grid uses "size" prop instead of xs/sm/md
+    const dialogGridSize = useMemo(() => {
+      // Ensure columns is a valid divisor of 12
+      const validColumns = [1, 2, 3, 4, 6, 12];
+      const cols = validColumns.includes(bsDialogColumns) ? bsDialogColumns : 3;
+      const size = 12 / cols;
+
+      console.log("📐 Dialog Grid Size:", {
+        bsDialogColumns,
+        effectiveColumns: cols,
+        gridSize: size,
+      });
+
+      return size;
+    }, [bsDialogColumns]);
+
+    // Parse bsDialogTab configuration
+    const parsedDialogTabs = useMemo(() => {
+      if (
+        !bsDialogTab ||
+        !Array.isArray(bsDialogTab) ||
+        bsDialogTab.length === 0
+      ) {
+        return null;
+      }
+
+      try {
+        // Handle different tab configuration formats
+        const tabs = [];
+
+        bsDialogTab.forEach((tabConfig) => {
+          if (tabConfig.Tabs && Array.isArray(tabConfig.Tabs)) {
+            // Format: [{ Tabs: [{ Tab: { Column: "...", name: "..." } }] }]
+            tabConfig.Tabs.forEach((tabItem) => {
+              if (tabItem.Tab) {
+                const columns = tabItem.Tab.Column
+                  ? tabItem.Tab.Column.split(",")
+                      .map((c) => c.trim())
+                      .filter(Boolean)
+                  : [];
+                tabs.push({
+                  name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
+                  columns: columns,
+                });
+              } else if (tabItem.Column && tabItem.name) {
+                // Alternate format: [{ Tabs: [{ Column: "...", name: "..." }] }]
+                const columns = tabItem.Column.split(",")
+                  .map((c) => c.trim())
+                  .filter(Boolean);
+                tabs.push({
+                  name: tabItem.name,
+                  columns: columns,
+                });
+              }
+            });
+          } else if (tabConfig.Column && tabConfig.name) {
+            // Simple format: [{ Column: "...", name: "..." }]
+            const columns = tabConfig.Column.split(",")
+              .map((c) => c.trim())
+              .filter(Boolean);
+            tabs.push({
+              name: tabConfig.name,
+              columns: columns,
+            });
+          }
+        });
+
+        if (tabs.length === 0) {
+          return null;
+        }
+
+        Logger.log("📑 Parsed bsDialogTab:", {
+          tabCount: tabs.length,
+          tabs: tabs.map((t) => ({
+            name: t.name,
+            columnCount: t.columns.length,
+          })),
+        });
+
+        return tabs;
+      } catch (error) {
+        Logger.error("❌ Error parsing bsDialogTab:", error);
+        return null;
+      }
+    }, [bsDialogTab]);
+
+    // State for active tab in dialog
+    const [activeDialogTab, setActiveDialogTab] = useState(0);
+
+    // Reset active tab when dialog opens
+    const handleDialogTabChange = useCallback((event, newValue) => {
+      setActiveDialogTab(newValue);
+    }, []);
 
     // Get current user for locale information
     const { user } = useAuth();
@@ -1558,6 +1804,14 @@ const BSDataGrid = forwardRef(
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModel] = useState({});
     const newRowIdCounter = useRef(0);
+
+    // Hierarchical Data states
+    const [isParentSaved, setIsParentSaved] = useState(false); // Track if parent record is saved (for child grids)
+    const [activeChildTab, setActiveChildTab] = useState(0); // Active child grid tab index
+    const [parentAccordionExpanded, setParentAccordionExpanded] =
+      useState(true); // Parent form accordion state
+    const [savedParentKeyValues, setSavedParentKeyValues] = useState({}); // Saved parent PK values for child grids
+    const childGridRefs = useRef({}); // Refs for child grid components
 
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
@@ -3193,7 +3447,9 @@ const BSDataGrid = forwardRef(
                   case "float":
                   case "real":
                   case "money":
-                    init[c.columnName] = 0;
+                    // Don't set default value for numeric fields - leave empty/null
+                    // Setting 0 as default can cause incorrect data to be saved
+                    init[c.columnName] = null;
                     break;
                   case "bit":
                     init[c.columnName] = false;
@@ -3201,7 +3457,10 @@ const BSDataGrid = forwardRef(
                   case "datetime":
                   case "datetime2":
                   case "date":
-                    init[c.columnName] = new Date().toISOString().slice(0, 19);
+                  case "time":
+                    // Don't set default value for date/time fields - leave empty/null
+                    // User should explicitly select a date if needed
+                    init[c.columnName] = null;
                     break;
                   default:
                     init[c.columnName] = "";
@@ -3215,6 +3474,19 @@ const BSDataGrid = forwardRef(
             }
           });
 
+        // Apply default form values (used for FK values in child grids)
+        if (
+          bsDefaultFormValues &&
+          Object.keys(bsDefaultFormValues).length > 0
+        ) {
+          Object.keys(bsDefaultFormValues).forEach((key) => {
+            init[key] = bsDefaultFormValues[key];
+            Logger.log(`🔧 Setting ${key} from bsDefaultFormValues:`, {
+              value: bsDefaultFormValues[key],
+            });
+          });
+        }
+
         Logger.log("🔧 Final initialized form data:", init);
         return init;
       },
@@ -3226,6 +3498,7 @@ const BSDataGrid = forwardRef(
         dialogMode,
         bsStoredProcedure,
         detectPrimaryKeyFromData,
+        bsDefaultFormValues,
       ]
     );
 
@@ -3310,9 +3583,38 @@ const BSDataGrid = forwardRef(
         });
 
         setFormData(initialFormData);
+
+        // For hierarchical data: set parent as saved and extract PK values for child grids
+        if (bsChildGrids && bsChildGrids.length > 0) {
+          setIsParentSaved(true);
+          setParentAccordionExpanded(true); // Keep parent form expanded when editing
+
+          // Extract parent primary key values for child grids
+          const pkValues = {};
+          const effectivePrimaryKeys =
+            bsPrimaryKeys.length > 0
+              ? bsPrimaryKeys
+              : metadata?.primaryKeys || [];
+
+          effectivePrimaryKeys.forEach((pk) => {
+            if (row[pk] !== undefined) {
+              pkValues[pk] = row[pk];
+            }
+          });
+
+          setSavedParentKeyValues(pkValues);
+          Logger.log("🔗 Hierarchical Edit - Parent PK values:", pkValues);
+        }
+
         setDialogOpen(true);
       },
-      [onEdit, initializeFormData]
+      [
+        onEdit,
+        initializeFormData,
+        bsChildGrids,
+        bsPrimaryKeys,
+        metadata?.primaryKeys,
+      ]
     );
 
     // Handle Delete (external or built-in)
@@ -3740,6 +4042,58 @@ const BSDataGrid = forwardRef(
           }
         }
 
+        // For hierarchical data in add mode: don't close dialog, enable child grids
+        if (dialogMode === "add" && bsChildGrids && bsChildGrids.length > 0) {
+          // Reload data to get the newly created record with its PK
+          let newRecord = null;
+          if (bsStoredProcedure) {
+            await loadStoredProcedureData();
+          } else {
+            await loadData();
+          }
+
+          // Try to find the newly created record by matching form data
+          // This is a best-effort approach - ideally the API should return the created record
+          const effectivePrimaryKeys =
+            bsPrimaryKeys.length > 0
+              ? bsPrimaryKeys
+              : metadata?.primaryKeys || [];
+
+          // For now, we'll need to get the PK from the response or reload
+          // Mark parent as saved and keep accordion expanded
+          setIsParentSaved(true);
+          setParentAccordionExpanded(true);
+
+          // Extract PK values from formData if available (for identity columns, this won't work)
+          // The API should ideally return the created record with its PK
+          const pkValues = {};
+          effectivePrimaryKeys.forEach((pk) => {
+            if (formData[pk] !== undefined) {
+              pkValues[pk] = formData[pk];
+            }
+          });
+
+          // If we don't have PK values, we need to get them from the last created record
+          // This is a limitation - ideally the createRecord should return the new record
+          if (Object.keys(pkValues).length === 0) {
+            Logger.warn(
+              "⚠️ Could not extract PK values from formData. Child grids may not work correctly."
+            );
+            Logger.log(
+              "💡 Tip: Ensure your API returns the created record with its primary key."
+            );
+          }
+
+          setSavedParentKeyValues(pkValues);
+          Logger.log(
+            "🔗 Hierarchical Add - Parent saved, PK values:",
+            pkValues
+          );
+
+          // Don't close dialog - show child grids
+          return;
+        }
+
         setDialogOpen(false);
         setFormData({});
         setSelectedRow(null);
@@ -3772,12 +4126,20 @@ const BSDataGrid = forwardRef(
       loadStoredProcedureData,
       getEffectivePrimaryKey,
       getUserId,
+      bsChildGrids,
+      bsPrimaryKeys,
     ]);
 
     const handleDialogClose = useCallback(() => {
       setDialogOpen(false);
       setFormData({});
       setSelectedRow(null);
+      setActiveDialogTab(0); // Reset to first tab when closing
+      // Reset hierarchical data states
+      setIsParentSaved(false);
+      setActiveChildTab(0);
+      setParentAccordionExpanded(true);
+      setSavedParentKeyValues({});
     }, []);
 
     // Helper: Render combobox for columns with ComboBox configuration
@@ -4002,7 +4364,7 @@ const BSDataGrid = forwardRef(
             const isRequired = customDef?.required === true;
 
             return (
-              <Grid item xs={12} sm={6} key={fieldName}>
+              <Grid item size={dialogGridSize} key={fieldName}>
                 <TextField
                   fullWidth
                   size="small"
@@ -4089,7 +4451,7 @@ const BSDataGrid = forwardRef(
 
       const formFields = formColumns.map((c) => {
         const { columnName, dataType, isNullable, description, maxLength } = c;
-        const val = formData[columnName] ?? "";
+        const rawVal = formData[columnName];
         let inputType = "text";
         let multiline = false;
 
@@ -4107,20 +4469,26 @@ const BSDataGrid = forwardRef(
         // Check if this column has a combobox configuration
         const comboConfig = comboBoxConfig[columnName];
         if (comboConfig) {
+          console.log(
+            "🎨 ComboBox Grid size:",
+            dialogGridSize,
+            "for",
+            columnName
+          );
           Logger.log("🎨 Rendering ComboBox for column:", {
             columnName,
-            value: val,
+            value: rawVal,
             config: comboConfig,
             formData: formData[columnName],
             originalRowData: dialogMode === "edit" ? selectedRow : null,
             dialogMode,
           });
           return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <Grid item size={dialogGridSize} key={columnName}>
               <ComboBoxField
                 columnName={columnName}
                 config={comboConfig}
-                value={val}
+                value={rawVal ?? ""}
                 onChange={(value) =>
                   setFormData((p) => ({ ...p, [columnName]: value }))
                 }
@@ -4138,7 +4506,7 @@ const BSDataGrid = forwardRef(
         // Special handling for is_active field
         if (isActiveField(columnName)) {
           return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <Grid item size={dialogGridSize} key={columnName}>
               <FormControl
                 fullWidth
                 size="small"
@@ -4147,7 +4515,7 @@ const BSDataGrid = forwardRef(
               >
                 <InputLabel>{formatColumnName(columnName)}</InputLabel>
                 <Select
-                  value={val || "YES"}
+                  value={rawVal || "YES"}
                   label={formatColumnName(columnName)}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, [columnName]: e.target.value }))
@@ -4210,13 +4578,30 @@ const BSDataGrid = forwardRef(
             inputType = "text";
         }
 
+        // Determine the display value based on input type
+        // For number and datetime fields, null should show empty input
+        let displayVal;
+        if (inputType === "number") {
+          // For number inputs, null/undefined shows empty, 0 shows "0"
+          displayVal = rawVal === null || rawVal === undefined ? "" : rawVal;
+        } else if (inputType === "datetime-local") {
+          // For datetime inputs, null/undefined shows empty picker
+          displayVal = rawVal === null || rawVal === undefined ? "" : rawVal;
+        } else if (inputType === "checkbox") {
+          // For checkbox, use Boolean conversion
+          displayVal = Boolean(rawVal);
+        } else {
+          // For text fields, null/undefined becomes empty string
+          displayVal = rawVal ?? "";
+        }
+
         if (inputType === "checkbox") {
           return (
-            <Grid item xs={12} sm={6} md={4} key={columnName}>
+            <Grid item size={dialogGridSize} key={columnName}>
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={Boolean(val)}
+                    checked={Boolean(rawVal)}
                     onChange={(e) =>
                       setFormData((p) => ({
                         ...p,
@@ -4233,8 +4618,14 @@ const BSDataGrid = forwardRef(
           );
         }
 
-        // For text/ntext fields, use full width
-        const gridSize = multiline ? { xs: 12 } : { xs: 12, sm: 6, md: 4 };
+        // For text/ntext fields, use full width; otherwise use bsDialogColumns setting
+        const gridSizeValue = multiline ? 12 : dialogGridSize;
+        console.log(
+          "📝 TextField Grid size:",
+          gridSizeValue,
+          "for",
+          columnName
+        );
 
         // Build helper text with length information
         let helperText = customDef?.description || description || "";
@@ -4243,7 +4634,7 @@ const BSDataGrid = forwardRef(
           maxLength > 0 &&
           (inputType === "text" || multiline)
         ) {
-          const currentLength = String(val).length;
+          const currentLength = String(displayVal).length;
           const lengthInfo = `${currentLength}/${maxLength} characters`;
           helperText = helperText
             ? `${helperText} (${lengthInfo})`
@@ -4251,13 +4642,13 @@ const BSDataGrid = forwardRef(
         }
 
         return (
-          <Grid item {...gridSize} key={columnName}>
+          <Grid item size={gridSizeValue} key={columnName} sx={{ minWidth: 0 }}>
             <TextField
               fullWidth
               size="small"
               label={formatColumnName(columnName)}
               type={inputType}
-              value={val}
+              value={displayVal}
               onChange={(e) =>
                 setFormData((p) => ({ ...p, [columnName]: e.target.value }))
               }
@@ -4272,11 +4663,86 @@ const BSDataGrid = forwardRef(
                     maxLength: maxLength,
                   }),
               }}
-              error={maxLength > 0 && String(val).length > maxLength}
+              error={maxLength > 0 && String(displayVal).length > maxLength}
             />
           </Grid>
         );
       });
+
+      // If tabs are configured, organize fields by tabs
+      if (parsedDialogTabs && parsedDialogTabs.length > 0) {
+        // Create a map of column names to form field elements
+        const fieldMap = {};
+        formFields.forEach((field) => {
+          if (field && field.key) {
+            fieldMap[field.key] = field;
+          }
+        });
+
+        // Get columns assigned to any tab
+        const assignedColumns = new Set();
+        parsedDialogTabs.forEach((tab) => {
+          tab.columns.forEach((col) => assignedColumns.add(col));
+        });
+
+        // Find unassigned fields
+        const unassignedFields = formFields.filter(
+          (field) => field && field.key && !assignedColumns.has(field.key)
+        );
+
+        return (
+          <Box sx={{ width: "100%" }}>
+            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+              <Tabs
+                value={activeDialogTab}
+                onChange={handleDialogTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                aria-label="form tabs"
+              >
+                {parsedDialogTabs.map((tab, index) => (
+                  <Tab key={index} label={tab.name} />
+                ))}
+                {unassignedFields.length > 0 && <Tab label="Other" />}
+              </Tabs>
+            </Box>
+
+            {/* Render tab panels */}
+            {parsedDialogTabs.map((tab, index) => (
+              <Box
+                key={index}
+                role="tabpanel"
+                hidden={activeDialogTab !== index}
+                sx={{ pt: 2 }}
+              >
+                {activeDialogTab === index && (
+                  <Grid container spacing={2}>
+                    {tab.columns.map((colName) => {
+                      const field = fieldMap[colName];
+                      return field || null;
+                    })}
+                  </Grid>
+                )}
+              </Box>
+            ))}
+
+            {/* Other tab for unassigned fields */}
+            {unassignedFields.length > 0 && (
+              <Box
+                role="tabpanel"
+                hidden={activeDialogTab !== parsedDialogTabs.length}
+                sx={{ pt: 2 }}
+              >
+                {activeDialogTab === parsedDialogTabs.length && (
+                  <Grid container spacing={2}>
+                    {unassignedFields}
+                  </Grid>
+                )}
+              </Box>
+            )}
+          </Box>
+        );
+      }
 
       return (
         <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -4301,6 +4767,10 @@ const BSDataGrid = forwardRef(
       bsKeyId,
       rows,
       getEffectiveLocale,
+      parsedDialogTabs,
+      activeDialogTab,
+      handleDialogTabChange,
+      dialogGridSize,
     ]);
 
     // Function to restore a single row to its original state
@@ -7069,16 +7539,137 @@ const BSDataGrid = forwardRef(
         <Dialog
           open={dialogOpen}
           onClose={handleDialogClose}
-          maxWidth="md"
+          maxWidth={
+            bsChildGrids && bsChildGrids.length > 0 ? "lg" : dialogMaxWidth
+          }
           fullWidth
+          fullScreen={isDialogFullScreen}
         >
           <DialogTitle>
             {dialogMode === "add"
               ? localeText.bsAddNewRecord
               : localeText.bsEditRecord}
           </DialogTitle>
-          <DialogContent>
-            {metadata?.columns || bsStoredProcedure ? (
+          <DialogContent
+            dividers={
+              parsedDialogTabs || (bsChildGrids && bsChildGrids.length > 0)
+                ? true
+                : false
+            }
+          >
+            {/* Hierarchical Data Mode - with child grids */}
+            {bsChildGrids && bsChildGrids.length > 0 ? (
+              <Box sx={{ width: "100%" }}>
+                {/* Parent Form in Accordion */}
+                <Accordion
+                  expanded={parentAccordionExpanded}
+                  onChange={(e, expanded) =>
+                    setParentAccordionExpanded(expanded)
+                  }
+                  sx={{ mb: 2 }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    aria-controls="parent-form-content"
+                    id="parent-form-header"
+                  >
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {localeText.bsParentRecord || "Parent Record"}
+                      {isParentSaved && (
+                        <Chip
+                          label={localeText.bsSaved || "Saved"}
+                          size="small"
+                          color="success"
+                          sx={{ ml: 2 }}
+                        />
+                      )}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {metadata?.columns || bsStoredProcedure ? (
+                      renderFormFields()
+                    ) : (
+                      <Box sx={{ textAlign: "center", py: 4 }}>
+                        <CircularProgress />
+                        <Typography variant="body2" sx={{ mt: 2 }}>
+                          {localeText.bsLoadingMetadata}
+                        </Typography>
+                      </Box>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Child Grids in Tabs */}
+                {bsChildGrids.length > 0 && (
+                  <Box sx={{ width: "100%", mt: 2 }}>
+                    <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+                      <Tabs
+                        value={activeChildTab}
+                        onChange={(e, newValue) => setActiveChildTab(newValue)}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        aria-label="child grid tabs"
+                      >
+                        {bsChildGrids.map((childConfig, index) => (
+                          <Tab
+                            key={index}
+                            label={childConfig.name || `Child ${index + 1}`}
+                            disabled={!isParentSaved}
+                          />
+                        ))}
+                      </Tabs>
+                    </Box>
+
+                    {/* Child Grid Tab Panels */}
+                    {bsChildGrids.map((childConfig, index) => (
+                      <Box
+                        key={index}
+                        role="tabpanel"
+                        hidden={activeChildTab !== index}
+                        sx={{ pt: 2, minHeight: 400 }}
+                      >
+                        {activeChildTab === index && (
+                          <BSChildDataGrid
+                            ref={(el) => {
+                              childGridRefs.current[index] = el;
+                            }}
+                            name={childConfig.name}
+                            foreignKeys={childConfig.foreignKeys || []}
+                            parentKeyValues={savedParentKeyValues}
+                            isParentSaved={isParentSaved}
+                            bsLocale={bsLocale}
+                            localeText={localeText}
+                            // Pass all other BSDataGrid props
+                            bsPreObj={childConfig.bsPreObj || bsPreObj}
+                            bsObj={childConfig.bsObj}
+                            bsCols={childConfig.bsCols}
+                            bsObjBy={childConfig.bsObjBy}
+                            bsObjWh={childConfig.bsObjWh}
+                            bsComboBox={childConfig.bsComboBox}
+                            bsColumnDefs={childConfig.bsColumnDefs}
+                            bsDialogSize={childConfig.bsDialogSize}
+                            bsDialogColumns={childConfig.bsDialogColumns}
+                            bsVisibleEdit={childConfig.bsVisibleEdit !== false}
+                            bsVisibleDelete={
+                              childConfig.bsVisibleDelete !== false
+                            }
+                            bsShowRowNumber={
+                              childConfig.bsShowRowNumber !== false
+                            }
+                            bsRowPerPage={childConfig.bsRowPerPage || 10}
+                            bsPageSizeOptions={
+                              childConfig.bsPageSizeOptions || [10, 25, 50]
+                            }
+                            height={childConfig.height || 350}
+                          />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            ) : // Standard Mode - no child grids
+            metadata?.columns || bsStoredProcedure ? (
               renderFormFields()
             ) : (
               <Box sx={{ textAlign: "center", py: 4 }}>
@@ -7091,15 +7682,26 @@ const BSDataGrid = forwardRef(
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDialogClose} disabled={formLoading}>
-              {localeText.bsCancel}
+              {isParentSaved && bsChildGrids && bsChildGrids.length > 0
+                ? localeText.bsClose || "Close"
+                : localeText.bsCancel}
             </Button>
-            <Button
-              onClick={handleSave}
-              variant="contained"
-              disabled={formLoading}
-            >
-              {formLoading ? localeText.bsSaving : localeText.bsSave}
-            </Button>
+            {/* Show Save button only when parent is not yet saved (for hierarchical) or always (for standard) */}
+            {(!bsChildGrids || bsChildGrids.length === 0 || !isParentSaved) && (
+              <Button
+                onClick={handleSave}
+                variant="contained"
+                disabled={formLoading}
+              >
+                {formLoading
+                  ? localeText.bsSaving
+                  : bsChildGrids &&
+                    bsChildGrids.length > 0 &&
+                    dialogMode === "add"
+                  ? localeText.bsSaveAndContinue || "Save & Continue"
+                  : localeText.bsSave}
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
 

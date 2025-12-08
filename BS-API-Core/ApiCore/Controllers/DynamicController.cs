@@ -604,6 +604,7 @@ namespace ApiCore.Controllers
                     Columns = string.Join(",", new[] { request.ValueField, request.DisplayField }.Distinct()),
                     CustomWhere = request.CustomWhere,
                     CustomOrderBy = request.CustomOrderBy ?? $"{request.DisplayField} asc",
+                    GroupBy = request.GroupBy, // Pass GROUP BY clause
                     Page = 1,
                     PageSize = request.MaxItems ?? 1000, // Default limit for dropdown
                     Start = 0,
