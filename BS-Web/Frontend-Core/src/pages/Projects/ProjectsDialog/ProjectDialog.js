@@ -1,4 +1,4 @@
-import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Tab, Tabs } from "@mui/material"
+import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Tab, Tabs } from "@mui/material"
 import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
 import { useCallback, useEffect, useState } from "react";
@@ -11,6 +11,7 @@ import ProjectsHistory from "../History";
 import ProjectsTeams from "../Teams";
 import ProjectTask from "../Task";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
+import CloseIcon from '@mui/icons-material/Close';
 const data = {
     "project_name": null,
     "project_status": null,
@@ -120,6 +121,18 @@ const ProjectsDialog = (props) => {
         open={props.open}
         onClose={handleClose}>
         <DialogTitle>{formData.project_header_id ? "Edit" : "Add"} {props.title}</DialogTitle>
+        <IconButton
+            aria-label="close"
+            onClick={handleClose}
+            sx={(theme) => ({
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: theme.palette.grey[500],
+            })}
+        >
+            <CloseIcon />
+        </IconButton>
         <DialogContent>
             {formData === null && formData.project_header_id ? (
                 <Box sx={{ p: 3 }}>Loading...</Box>
@@ -293,12 +306,13 @@ const ProjectsDialog = (props) => {
                                 ]}
                                 bsObjBy="iso_type_name asc"
                                 bsObjWh="is_active='YES'"
-                                variant="standard"
                                 bsValue={formData?.iso_type_id}
                                 bsOnChange={(val) => updateField("iso_type_id", val?.code || null)}
                                 error={!!errors.iso_type_id}
                                 helperText={errors.iso_type_id || ""}
                                 required={true}
+                                variant={formData.project_header_id ? 'filled' : 'standard'}
+                                disabled={formData.project_header_id ? true : false}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -482,7 +496,7 @@ const ProjectsDialog = (props) => {
                             <Tab label="Project Close" />
                         </Tabs>
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
-                            {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} />)}
+                            {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} projectHeader={formData} />)}
                             {tap === 1 && (<ProjectsTeams projectID={props.projectID} lang={props.lang} />)}
                             {tap === 2 && (<ProjectsHistory projectID={props.projectID} lang={props.lang} />)}
                             {tap === 2 && (<Box>Project Close</Box>)}

@@ -1,45 +1,51 @@
 import { Accordion, AccordionDetails, AccordionSummary, Paper, Typography } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import BSDataGrid from "../../components/BSDataGrid";
 import TaskDialog from "./TaskDialog/TaskDialog";  // ← import Dialog
+import BSAlertSwal2 from "../../components/BSAlertSwal2";
 
 const ProjectTask = (props) => {
-    const { projectID, lang, refresh, setRefresh } = props;
+    const { projectID, lang, refresh, setRefresh, projectHeader } = props;
 
     const [loading, setLoading] = useState(false);
     const [taskPhases, setTaskPhases] = useState([]);
-
+    const [phases, setPhases] = useState({});
+    const dataGridRef = useRef();
     // ------ Dialog States ------
     const [openDialog, setOpenDialog] = useState(false);
-    const [dialogData, setDialogData] = useState(null);
-
+    const handleDeleteTask = async (id) => {
+        BSAlertSwal2.fire({
+            title: "ลบข้อมูล?",
+            text: "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "ใช่, ลบเลย",
+        }).then(async (conf) => {
+            if (conf.isConfirmed) {
+                await AxiosMaster.post("/projects/task/delete/" + id).then((res) => {
+                    BSAlertSwal2.show(res.data.message_code === "0" ? "success" : "warning", res.data.message_text ?? "")
+                    dataGridRef.current?.refreshData();
+                })
+            }
+        });
+    }
     const handleOpenEditTask = (rowData) => {
-        setDialogData(rowData);
+        setPhases(rowData);
         setOpenDialog(true);
     };
 
-    const handleOpenAddTask = () => {
-        setDialogData({
-            project_task_id: null,
-            project_task_phase_id: null,
-            project_header_id: projectID,
-            task_name: "",
-            priority: "",
-            issue_type: "",
-            due_date: null,
-            manday: "",
-            sequence: "",
-            description: "",
-            remarks: ""
-        });
+    const handleOpenAddTask = (phase) => {
+        console.log(phase)
+        setPhases(phase);
         setOpenDialog(true);
     };
 
     const handleCloseDialog = () => {
+        dataGridRef.current?.refreshData();
         setOpenDialog(false);
-        setDialogData(null);
+        setPhases({});
     };
     useEffect(() => {
         if (refresh) {
@@ -88,14 +94,19 @@ const ProjectTask = (props) => {
 
                     <AccordionDetails>
                         <BSDataGrid
+                            ref={dataGridRef}
                             bsLocale={lang}
-                            bsPreObj="tmt"
-                            bsObj="v_tmt_project_task"
+                            bsStoredProcedure="usp_tmt_project_task"
+                            bsStoredProcedureSchema="tmt"
                             bsCols="task_name,assignee,due_date,priority,manday,task_status"
-                            bsObjBy="user_id asc"
-                            bsObjWh={`project_task_phase_id = ${phase.project_task_phase_id}`}
+                            bsStoredProcedureParams={{
+                                ProjectTaskPhaseId: phase.project_task_phase_id,
+                            }}
+                            bsShowRowNumber={true}
+                            showAdd={true}
                             onEdit={handleOpenEditTask}
-                            onAdd={() => handleOpenAddTask(phase)}   // ← ส่ง phase ถ้าต้องการ
+                            onAdd={() => handleOpenAddTask(phase)}
+                            onDelete={handleDeleteTask}
                             bsKeyId="project_task_id"
                         />
                     </AccordionDetails>
@@ -107,10 +118,8 @@ const ProjectTask = (props) => {
                 <TaskDialog
                     open={openDialog}
                     onClose={handleCloseDialog}
-                    project_task_id={taskPhases.project_task_id || ""}
-                    project_task_phase_id={taskPhases.project_task_phase_id || ""}
-                    project_header_id={taskPhases.project_header_id}
-                    {...dialogData}
+                    phases={phases}
+                    projectHeader={projectHeader}
                 />
             )}
         </Paper>

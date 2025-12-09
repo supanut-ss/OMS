@@ -6,9 +6,10 @@ import { useRef, useState } from "react";
 const Projects = (props) => {
     const [openDialog, setOpenDialog] = useState(false);
     const [projectHeaderID, setProjectHeaderID] = useState("");
-    const dataGridRef =useRef();
-    const handleCloseOpenDialog = (val)=>{
-         dataGridRef.current?.refreshData();
+    const dataGridRef = useRef();
+    const handleCloseOpenDialog = (val) => {
+        dataGridRef.current?.refreshData();
+        setProjectHeaderID("");
         setOpenDialog(val)
     }
     return (<Paper sx={{ p: 2, mb: 3 }}>
@@ -19,11 +20,11 @@ const Projects = (props) => {
             bsCols="project_header_id,project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date"
             bsShowRowNumber={true}
             showAdd={true}
-            bsVisibleDelete={false}
+            bsVisibleDelete={true}
             bsLocale={props.lang}
             bsAllowAdd={false}
             bsAllowEdit={true}
-            bsAllowDelete={false}
+            bsAllowDelete={true}
             bsRowPerPage={20}
             onAdd={(r) => {
                 setProjectHeaderID("");

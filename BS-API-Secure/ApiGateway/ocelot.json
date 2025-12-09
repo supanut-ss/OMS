@@ -977,9 +977,37 @@
       "UpstreamHttpMethod": [
         "post"
       ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/delete/{projectTaskId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/delete/{projectTaskId}",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/{projectTaskId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/{projectTaskId}",
+      "UpstreamHttpMethod": [
+        "get"
+      ]
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://192.168.254.151:8080"
+    "BaseUrl": "http://10.60.10.144:8080"
   }
 }

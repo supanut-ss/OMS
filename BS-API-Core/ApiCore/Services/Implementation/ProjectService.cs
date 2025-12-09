@@ -201,7 +201,7 @@ namespace ApiCore.Services.Implementation
             }
         }
 
-        public async Task<ProjectTaskResponse> InsertProjectTaskAsync(InsertProjectTaskRequest request, string userId)
+        public async Task<ProjectsTaskResponse> InsertProjectTaskAsync(InsertProjectTaskRequest request, string userId)
         {
             try
             {
@@ -255,18 +255,96 @@ namespace ApiCore.Services.Implementation
                 cmd.Parameters.Add(pOutMsg);
                 await cmd.ExecuteNonQueryAsync();
                 int newId = pOutId.Value is DBNull ? 0 : (int)pOutId.Value;
-
-
-
-                return new ProjectTaskResponse()
-                {
-                    project_task_id = newId
-                };
+                Console.WriteLine(pOutCode.Value);
+                Console.WriteLine(pOutMsg.Value);
+                return await GetProjectsTaskByIdAsync(newId);
+                
             }
             catch (Exception ex)
             {
                 return null;
             }
         }
+        public async Task<ProjectsTaskResponse> GetProjectsTaskByIdAsync(int projectTaskId)
+        {
+            ProjectsTaskResponse response = new ProjectsTaskResponse();
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var sql = @$"SELECT project_task_id, project_header_id, project_task_phase_id, task_no, task_name, task_description, task_status, 
+                                   issue_type, priority, manday, start_date, end_date, sequence, remark
+                            FROM tmt.t_tmt_project_task
+                            WHERE project_task_id = @ProjectTaskId";
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@ProjectTaskId", projectTaskId);
+                using var reader = await cmd.ExecuteReaderAsync();
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        response.project_task_id = reader.GetInt32(0);
+                        response.project_header_id = reader.GetInt32(1);
+                        response.project_task_phase_id = reader.GetInt32(2);
+                        response.task_no = reader.GetString(3);
+                        response.task_name = reader.GetString(4);
+                        response.task_description = reader.GetString(5);
+                        response.task_status = reader.GetString(6);
+                        response.issue_type = reader.GetString(7);
+                        response.priority = reader.GetString(8);
+                        response.manday = reader.IsDBNull(9) ? (decimal?)null : reader.GetDecimal(9);
+                        response.start_date = reader.GetDateTime(10);
+                        response.end_date = reader.GetDateTime(11);
+                        response.sequence = reader.GetInt32(12);
+                        response.remark = reader.GetString(13);
+                    }
+                }
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+        public async Task<ProjectTaskDeleteResponse> DeleteProjectsTaskByIdAsync(int projectTaskId)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var cmd = new SqlCommand("tmt.usp_tmt_project_task", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                // Parameters
+                cmd.Parameters.AddWithValue("@Operation", "DELETE");
+                cmd.Parameters.AddWithValue("@ProjectTaskId", projectTaskId);
+
+                // Output parameters (ต้องใส่ เพราะ procedure มี output)
+                cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@OutputErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+
+                await cmd.ExecuteNonQueryAsync();
+
+                int errorCode = (int)cmd.Parameters["@OutputErrorCode"].Value;
+
+                return new ProjectTaskDeleteResponse
+                {
+                    message_code = errorCode.ToString() ?? "",
+                    message_text = cmd.Parameters["@OutputMessage"].Value.ToString() ?? ""
+                };
+            }
+            catch
+            {
+                return new ProjectTaskDeleteResponse
+                {
+                    message_code = "-1",
+                    message_text = "An error occurred while deleting the project task."
+                };
+            }
+        }
+
     }
 }

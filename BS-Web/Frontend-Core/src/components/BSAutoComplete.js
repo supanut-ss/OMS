@@ -22,6 +22,7 @@ const BSAutoComplete = ({
   error = false,
   helperText = "",
   required = false,
+  disabled = false,
   ...props
 }) => {
   const multiple = bsMode === "multi";
@@ -144,6 +145,7 @@ const BSAutoComplete = ({
           loading={loading}
           onOpen={bsLoadOnOpen ? fetchData : undefined}
           isOptionEqualToValue={(option, val) => option.code === val.code}
+          disabled={disabled}
           sx={{
             ...(borderLeftRadius && {
               "& .MuiInputBase-root": {
@@ -161,7 +163,7 @@ const BSAutoComplete = ({
               variant={variant}
               inputProps={{
                 ...params.inputProps,
-                readOnly: true, // 👈 ห้ามกรอกเอง
+                readOnly: true,
               }}
 
               InputProps={{
@@ -194,6 +196,7 @@ const BSAutoComplete = ({
         loading={loading}
         onOpen={handleOpen}
         isOptionEqualToValue={(option, val) => option.code === val.code}
+        disabled={disabled}
         sx={{
           ...(borderLeftRadius && {
             "& .MuiInputBase-root": {

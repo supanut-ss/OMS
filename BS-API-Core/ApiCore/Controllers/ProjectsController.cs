@@ -60,6 +60,46 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
+        [HttpGet("task/{projectTaskId}")]
+        public async Task<IActionResult> GetProjectTaskById(int projectTaskId)
+        {
+            try
+            {
+                var result = await projectsService.GetProjectsTaskByIdAsync(projectTaskId);
+                if (result != null && result?.project_task_id > 0)
+                {
+                    return AccessResponseDataSuccess("success", result, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Project task not found " + projectTaskId, 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost("task/delete/{projectTaskId}")]
+        public async Task<IActionResult> DeleteProjectTaskByIdAsync(int projectTaskId)
+        {
+            try
+            {
+                var result = await projectsService.DeleteProjectsTaskByIdAsync(projectTaskId);
+                if (result.message_code == "0")
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Delete project task failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
         [HttpPost("task")]
         public async Task<IActionResult> InsertProjectTaskPhasesAsync([FromBody] InsertProjectTaskRequest projectTaskPhase)
         {
