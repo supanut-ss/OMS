@@ -3170,7 +3170,15 @@ const BSDataGrid = forwardRef(
         }
 
         // Skip fields that have default values (will be auto-generated) - check both hasDefault and defaultValue
-        if ((hasDefault || !!defaultValue) && dialogMode === "add") {
+        // Exception: is_* fields (except is_active) should always show even with default values
+        const isIsField =
+          columnName.toLowerCase().startsWith("is_") &&
+          columnName.toLowerCase() !== "is_active";
+        if (
+          (hasDefault || !!defaultValue) &&
+          dialogMode === "add" &&
+          !isIsField
+        ) {
           return false;
         }
 
@@ -5035,8 +5043,11 @@ const BSDataGrid = forwardRef(
 
       // Get all columns that should be in the form
       let formColumns = metadata.columns.filter((c) => {
-        // Filter out is_active field in add mode
-        if (dialogMode === "add" && isActiveField(c.columnName)) {
+        // Filter out is_active field in add mode (only is_active, not other is_* fields)
+        if (
+          dialogMode === "add" &&
+          c.columnName.toLowerCase() === "is_active"
+        ) {
           return false;
         }
         // Filter out hidden columns (used by child grids to hide FK columns)
