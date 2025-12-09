@@ -21,7 +21,6 @@ import { useMenuItems } from "../hooks/useMenuItems";
 import SidebarSubmenu from "./SidebarSubmenu";
 import HouseIcon from '@mui/icons-material/House';
 import SettingsIcon from '@mui/icons-material/Settings';
-import StorageIcon from '@mui/icons-material/Storage';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import GroupIcon from '@mui/icons-material/Group';

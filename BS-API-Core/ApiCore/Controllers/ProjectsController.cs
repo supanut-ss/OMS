@@ -1,4 +1,5 @@
-﻿using ApiCore.Models.Responses;
+﻿using ApiCore.Models.Requests;
+using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -23,14 +24,14 @@ namespace ApiCore.Controllers
         {
             try
             {
-                var project =await projectsService.GetProjectsByIdAsync(projectId);
+                var project = await projectsService.GetProjectsByIdAsync(projectId);
                 if (project != null && project?.project_header_id > 0)
                 {
-                    return AccessResponseSuccess("success", project);
+                    return AccessResponseDataSuccess("success", project,0);
                 }
                 else
                 {
-                    return ResponseNotFound("Project not found"+ projectId);
+                    return ResponseSuccess("failed", "Project  not found " + projectId, 1);
                 }
             }
             catch (Exception ex)
@@ -38,5 +39,109 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
+        [HttpGet("task/phases/{projectId}")]
+        public async Task<IActionResult> GetProjectTaskPhasesById(int projectId)
+        {
+            try
+            {
+                var phases = await projectsService.GetProjectTaskPhasesByIdAsync(projectId);
+
+                if (phases != null)
+                {
+                    return AccessResponseDataSuccess("success", phases, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Project phases not found " + projectId,1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpGet("task/{projectTaskId}")]
+        public async Task<IActionResult> GetProjectTaskById(int projectTaskId)
+        {
+            try
+            {
+                var result = await projectsService.GetProjectsTaskByIdAsync(projectTaskId);
+                if (result != null && result?.project_task_id > 0)
+                {
+                    return AccessResponseDataSuccess("success", result, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Project task not found " + projectTaskId, 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost("task/delete/{projectTaskId}")]
+        public async Task<IActionResult> DeleteProjectTaskByIdAsync(int projectTaskId)
+        {
+            try
+            {
+                var result = await projectsService.DeleteProjectsTaskByIdAsync(projectTaskId);
+                if (result.message_code == "0")
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Delete project task failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost("task")]
+        public async Task<IActionResult> InsertProjectTaskPhasesAsync([FromBody] InsertProjectTaskRequest projectTaskPhase)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                var result = await projectsService.InsertProjectTaskAsync(projectTaskPhase, userId);
+                if (result != null && result.project_task_id > 0)
+                {
+                    return AccessResponseDataSuccess("success", result, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Insert/Update project task phase failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> InsertProjecHeaderAsync([FromBody] InsertProjectHeader project)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                var result = await projectsService.InsertProjecHeaderAsync(project, userId);
+                if (result != null && result.project_header_id > 0)
+                {
+                    return AccessResponseDataSuccess("success", result, 0);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Insert/Update project failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+
     }
 }

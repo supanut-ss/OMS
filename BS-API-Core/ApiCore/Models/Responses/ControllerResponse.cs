@@ -8,6 +8,15 @@ namespace ApiCore.Models.Responses
         {
             return Ok(access);
         }
+        protected IActionResult AccessResponseDataSuccess<T>(string status, T access, int code = 0)
+        {
+            return Ok(new
+            {
+                message_code = code,
+                message_status = status,
+                data = access
+            });
+        }
         protected IActionResult ResponseSuccess(string status, string message, int code = 0)
         {
             return Ok(new

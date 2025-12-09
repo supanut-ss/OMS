@@ -828,269 +828,48 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/CountTag",
+      "DownstreamPathTemplate": "/users/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
+      {
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/CountTag",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/users/delete",
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/GetPartName",
+  {
+      "DownstreamPathTemplate": "/users/reset",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
+       {
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/GetPartName",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/users/reset",
+      "UpstreamHttpMethod": [ "post" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/GetReport",
+    },{
+      "DownstreamPathTemplate": "/users/clear_logon",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
+       {
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/GetReport",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/GetMethod",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/GetMethod",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Version/GetVersion",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Version/GetVersion",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Version/DownloadApp",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Version/DownloadApp",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/PushNotification/SendNotificationUsers",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/PushNotification/SendNotificationUsers",
+      "UpstreamPathTemplate": "/gateway/v1/api/users/clear_logon",
       "UpstreamHttpMethod": [
         "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/CheckCountTag",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/CheckCountTag",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/SaveCountTag",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/SaveCountTag",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/UpdateCountTag",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/UpdateCountTag",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/UpdateReCountTag",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/UpdateReCountTag",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/GetNotify",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/GetNotify",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/ReadNotify",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/ReadNotify",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/GetSubNo",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/GetSubNo",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_pda/api/Mobile/ReCountTag",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "10.10.60.103",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Mobile/ReCountTag",
-      "UpstreamHttpMethod": [
-        "get"
       ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
@@ -1153,6 +932,76 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/projects/{projectId}",
+      "UpstreamHttpMethod": [
+        "get"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/phases/{projectId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/phases/{projectId}",
+      "UpstreamHttpMethod": [
+        "get"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/delete/{projectTaskId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/delete/{projectTaskId}",
+      "UpstreamHttpMethod": [
+        "post"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/{projectTaskId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/{projectTaskId}",
       "UpstreamHttpMethod": [
         "get"
       ]

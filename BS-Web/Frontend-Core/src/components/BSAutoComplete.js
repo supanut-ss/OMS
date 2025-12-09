@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { TextField, CircularProgress } from "@mui/material";
+import { TextField, CircularProgress, FormControl, FormHelperText } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import SecureStorage from "../utils/SecureStorage";
 import AxiosMaster from "../utils/AxiosMaster";
@@ -18,6 +18,11 @@ const BSAutoComplete = ({
   bsLoadOnOpen = false, // true = fetch only on open
   bsCacheKey, // string, localStorage key for cache
   borderLeftRadius = null,
+  variant = "outlined",
+  error = false,
+  helperText = "",
+  required = false,
+  disabled = false,
   ...props
 }) => {
   const multiple = bsMode === "multi";
@@ -57,44 +62,33 @@ const BSAutoComplete = ({
         }
       }
 
-      const res = await AxiosMaster.post("/autocomplete", requestBody);
-      if (res.data?.data) {
-        list = res.data.data?.map((item) => ({
-          code: item.code,
-          label: item.value,
-          ...item,
-        }));
-        setOptions(list);
-        setLoaded(true);
+      await AxiosMaster.post("/autocomplete", requestBody)
+        .then((res) => {
+          if (res.data?.data) {
+            list = res.data.data?.map((item) => ({
+              code: item.code,
+              label: item.value,
+              ...item,
+            }));
+            setOptions(list);
+            setLoaded(true);
 
-        if (bsCacheKey) SecureStorage.set(bsCacheKey, JSON.stringify(list));
-      }
+            if (bsCacheKey) SecureStorage.set(bsCacheKey, JSON.stringify(list));
+          }
+        });
 
-      // preload value if provided
-      if (bsValue && list.length > 0) {
-        if (multiple) {
-          const preSelected = list.filter((l) => bsValue.includes(l.code));
-          setValue(preSelected);
-        } else if (isSelect) {
-          const preSelected =
-            list.find((l) => String(l.code) === String(bsValue)) || null;
-          console.log("Preselected (select):", preSelected, list, bsValue);
-          setValue(preSelected);
-        } else {
-          const preSelected = list.find((l) => l.code === bsValue) || null;
-          setValue(preSelected);
-        }
-      }
+
+
     } catch (error) {
       console.error("Autocomplete fetch error:", error);
     } finally {
       setLoading(false);
     }
   }, [loaded, bsCacheKey, requestBody, bsValue, multiple, isSelect]);
-  useEffect(() => {
-    setValue(bsValue || (multiple ? [] : ""));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bsValue])
+  // useEffect(() => {
+  //   setValue(bsValue || (multiple ? [] : ""));
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [bsValue])
   const handleChange = (event, newValue) => {
     setValue(newValue);
     if (bsOnChange) {
@@ -111,10 +105,25 @@ const BSAutoComplete = ({
   const handleOpen = async () => {
     if (bsLoadOnOpen) await fetchData();
   };
-
+  useEffect(() => {
+    // preload value if provided
+    if (options.length > 0) {
+      if (multiple) {
+        const preSelected = options.filter((l) => bsValue.includes(l.code));
+        setValue(preSelected);
+      } else if (isSelect) {
+        const preSelected =
+          options.find((l) => String(l.code) === String(bsValue)) || null;
+        setValue(preSelected);
+      } else {
+        const preSelected = options.find((l) => String(l.code) === String(bsValue)) || null;
+        setValue(preSelected);
+      }
+    }
+  }, [options]);
   // ✅ useEffect async แก้ไข
   useEffect(() => {
-    if (!bsLoadOnOpen) {
+    if (!bsLoadOnOpen && options.length === 0) {
       (async () => {
         await fetchData();
       })();
@@ -124,17 +133,70 @@ const BSAutoComplete = ({
   if (isSelect) {
     // แบบ MUI Select
     return (
+      <FormControl fullWidth error={error} >
+        <Autocomplete
+          disableClearable
+          options={options}
+          getOptionLabel={(option) => option.value || ""}
+          value={options.find((opt) => opt.code === value?.code) || null}
+          onChange={(event, newValue) => {
+            handleChange(event, newValue ? newValue : "");
+          }}
+          loading={loading}
+          onOpen={bsLoadOnOpen ? fetchData : undefined}
+          isOptionEqualToValue={(option, val) => option.code === val.code}
+          disabled={disabled}
+          sx={{
+            ...(borderLeftRadius && {
+              "& .MuiInputBase-root": {
+                borderTopLeftRadius: borderLeftRadius,
+                borderBottomLeftRadius: borderLeftRadius,
+              },
+            }),
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              error={error}
+              required={required}
+              label={bsTitle}
+              variant={variant}
+              inputProps={{
+                ...params.inputProps,
+                readOnly: true,
+              }}
+
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {loading ? <CircularProgress size={20} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+
+            />
+          )}
+        />
+        {error && <FormHelperText>{helperText}</FormHelperText>}
+      </FormControl>
+    );
+  }
+
+  // แบบ Autocomplete (single / multi)
+  return (
+    <FormControl fullWidth error={error} >
       <Autocomplete
-        disableClearable
+        multiple={multiple}
         options={options}
         getOptionLabel={(option) => option.value || ""}
-        value={options.find((opt) => opt.code === value.code) || null}
-        onChange={(event, newValue) => {
-          handleChange(event, newValue ? newValue : "");
-        }}
+        value={value}
+        onChange={handleChange}
         loading={loading}
-        onOpen={bsLoadOnOpen ? fetchData : undefined}
+        onOpen={handleOpen}
         isOptionEqualToValue={(option, val) => option.code === val.code}
+        disabled={disabled}
         sx={{
           ...(borderLeftRadius && {
             "& .MuiInputBase-root": {
@@ -146,67 +208,26 @@ const BSAutoComplete = ({
         renderInput={(params) => (
           <TextField
             {...params}
+            required={required}
+            error={error}
             label={bsTitle}
-            variant="outlined"
-            inputProps={{
-              ...params.inputProps,
-              readOnly: true, // 👈 ห้ามกรอกเอง
-            }}
-            
+            variant={variant}
             InputProps={{
               ...params.InputProps,
               endAdornment: (
                 <>
-                  {loading ? <CircularProgress size={20} /> : null}
+                  {loading ? (
+                    <CircularProgress color="inherit" size={20} />
+                  ) : null}
                   {params.InputProps.endAdornment}
                 </>
               ),
             }}
-
           />
         )}
       />
-    );
-  }
-
-  // แบบ Autocomplete (single / multi)
-  return (
-    <Autocomplete
-      multiple={multiple}
-      options={options}
-      getOptionLabel={(option) => option.value || ""}
-      value={value}
-      onChange={handleChange}
-      loading={loading}
-      onOpen={handleOpen}
-      isOptionEqualToValue={(option, val) => option.code === val.code}
-      sx={{
-        ...(borderLeftRadius && {
-          "& .MuiInputBase-root": {
-            borderTopLeftRadius: borderLeftRadius,
-            borderBottomLeftRadius: borderLeftRadius,
-          },
-        }),
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label={bsTitle}
-          variant="outlined"
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {loading ? (
-                  <CircularProgress color="inherit" size={20} />
-                ) : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
-          }}
-        />
-      )}
-    />
+      {error && <FormHelperText>{helperText}</FormHelperText>}
+    </FormControl>
   );
 };
 
