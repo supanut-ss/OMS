@@ -7,6 +7,7 @@ const UserGroupPage = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
+  const [selectedRows, setSelectedRows] = useState([]);
 
   // ฟังก์ชันโหลด resource ของ group "UserGroup"
   const getLang = async () => {
@@ -38,7 +39,7 @@ const UserGroupPage = (props) => {
           bsPreObj="sec"
           bsObj="t_com_user_group"
           bsCols="user_group_id,name,description,is_active,create_by,create_date,update_by,update_date"
-          bsObjBy="name asc" 
+          bsObjBy="name asc"
           bsShowDescColumn={false}
           bsComboBox={[
             {
@@ -52,8 +53,12 @@ const UserGroupPage = (props) => {
               ObjBy: "application_name asc",
             },
           ]}
-          // bsBulkDelete={true}
-          // bsBulkEdit={true}
+          bsBulkDelete={true}
+          bsBulkEdit={true}
+          bsBulkAdd={true}
+          onCheckBoxSelected={(rows) => {
+            setSelectedRows(rows);
+          }}
         />
       </Paper>
     </>

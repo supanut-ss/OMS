@@ -80,6 +80,14 @@ const UserLogOnPage = (props) => {
           onCheckBoxSelected={(rows) => {
             setSelectedRows(rows);
           }}
+          bsRowConfig={(row) => {
+            if (row.status.toUpperCase() === "OFFLINE") {
+              return {
+                showCheckbox: false,
+              };
+            }
+            return {};
+          }}
         />
       </Paper>
     </>
