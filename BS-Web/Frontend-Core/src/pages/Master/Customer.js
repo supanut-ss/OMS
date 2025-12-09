@@ -32,6 +32,7 @@ const CustomerPage = (props) => {
           bsPreObj="tmt"
           bsObj="t_tmt_customer"
           bsObjBy="create_date desc"
+          bsUniqueFields={["customer_code"]}
           // bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           //bsBulkAction={true}
           bsEnableBulkMode={true} // Enable all bulk operations
@@ -47,6 +48,13 @@ const CustomerPage = (props) => {
               Column:
                 "user_def1,user_def2,user_def3,user_def4,user_def5,user_def6,user_def7,user_def8,user_def9,user_def10",
               name: "User Define Data",
+            },
+          ]}
+          bsColumnDefs={[
+            {
+              field: "customer_code",
+              editable: false,
+              readOnly: true,
             },
           ]}
         />

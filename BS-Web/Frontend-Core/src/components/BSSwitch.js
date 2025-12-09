@@ -118,7 +118,7 @@ const BSSwitchField = ({
         sx={{
           position: "absolute",
           top: -14,
-          left: 8,
+          left: 12,
           px: 0.5,
           fontSize: "0.75rem",
           color: disabled ? "text.disabled" : "text.secondary",
@@ -128,7 +128,8 @@ const BSSwitchField = ({
       >
         {label}
         {required && (
-          <Typography component="span" color="error.main" sx={{ ml: 0.25 }}>
+          // <Typography component="span" color="error.main" sx={{ ml: 0.25 }}>
+          <Typography component="span" sx={{ ml: 0.25 }}>
             *
           </Typography>
         )}

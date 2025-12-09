@@ -8497,14 +8497,27 @@ const BSDataGrid = forwardRef(
                                     required={!isNullable}
                                   >
                                     <InputLabel>
-                                      {formatColumnName(columnName)}{" "}
-                                      {!isNullable ? "*" : ""}
+                                      {formatColumnName(columnName)}
+                                      {!isNullable && (
+                                        <span style={{ color: "#d32f2f" }}>
+                                          {" "}
+                                          *
+                                        </span>
+                                      )}
                                     </InputLabel>
                                     <Select
                                       value={val || "YES"}
-                                      label={`${formatColumnName(columnName)} ${
-                                        !isNullable ? "*" : ""
-                                      }`}
+                                      label={
+                                        <>
+                                          {formatColumnName(columnName)}
+                                          {!isNullable && (
+                                            <span style={{ color: "#d32f2f" }}>
+                                              {" "}
+                                              *
+                                            </span>
+                                          )}
+                                        </>
+                                      }
                                       onChange={(e) =>
                                         updateBulkRow(
                                           rowIndex,
@@ -8594,9 +8607,17 @@ const BSDataGrid = forwardRef(
                                         }
                                       />
                                     }
-                                    label={`${formatColumnName(columnName)} ${
-                                      !isNullable ? "*" : ""
-                                    }`}
+                                    label={
+                                      <>
+                                        {formatColumnName(columnName)}
+                                        {!isNullable && (
+                                          <span style={{ color: "#d32f2f" }}>
+                                            {" "}
+                                            *
+                                          </span>
+                                        )}
+                                      </>
+                                    }
                                   />
                                 </Grid>
                               );
@@ -8621,9 +8642,17 @@ const BSDataGrid = forwardRef(
                               <TextField
                                 fullWidth
                                 size="small"
-                                label={`${formatColumnName(columnName)} ${
-                                  !isNullable ? "*" : ""
-                                }`}
+                                label={
+                                  <>
+                                    {formatColumnName(columnName)}
+                                    {!isNullable && (
+                                      <span style={{ color: "#d32f2f" }}>
+                                        {" "}
+                                        *
+                                      </span>
+                                    )}
+                                  </>
+                                }
                                 type={inputType}
                                 value={val}
                                 onChange={(e) =>
