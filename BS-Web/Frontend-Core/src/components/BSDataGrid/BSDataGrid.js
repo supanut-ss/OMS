@@ -84,6 +84,7 @@ import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
 import secureStorage from "../../utils/SecureStorage";
+import { BSSwitchField } from "../BSSwitch";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
@@ -5125,62 +5126,26 @@ const BSDataGrid = forwardRef(
           );
         }
 
-        // Special handling for is_active field
+        // Special handling for is_active and is_* fields - use iOS-style Switch
         if (isActiveField(columnName)) {
-          const isActiveContent = (
-            <FormControl
-              fullWidth
-              size="small"
-              required={isRequired}
-              disabled={isReadOnly}
-            >
-              <InputLabel>{formatColumnName(columnName)}</InputLabel>
-              <Select
-                value={rawVal || "YES"}
-                label={formatColumnName(columnName)}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, [columnName]: e.target.value }))
-                }
-                disabled={isReadOnly}
-              >
-                {getIsActiveOptions().map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "flex-start",
-                        width: "100%",
-                      }}
-                    >
-                      <Chip
-                        label={option.label}
-                        size="small"
-                        color={option.value === "YES" ? "success" : "error"}
-                        variant="outlined"
-                      />
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          );
-
           return (
             <Grid item size={dialogGridSize} key={columnName}>
-              {customDef?.tooltip || customDef?.description || description ? (
-                <Tooltip
-                  title={
-                    customDef?.tooltip || customDef?.description || description
-                  }
-                  arrow
-                  placement="top"
-                >
-                  {isActiveContent}
-                </Tooltip>
-              ) : (
-                isActiveContent
-              )}
+              <BSSwitchField
+                columnName={columnName}
+                label={formatColumnName(columnName)}
+                value={rawVal || "YES"}
+                onChange={(newValue) =>
+                  setFormData((p) => ({ ...p, [columnName]: newValue }))
+                }
+                disabled={isReadOnly}
+                required={isRequired}
+                description={
+                  customDef?.tooltip || customDef?.description || description
+                }
+                yesValue="YES"
+                noValue="NO"
+                localeText={getLocaleText(getEffectiveLocale())}
+              />
             </Grid>
           );
         }

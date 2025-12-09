@@ -282,6 +282,12 @@ export const englishLocaleText = {
   bsFieldAlreadyExists: (fieldName, value) =>
     `${fieldName}: "${value}" already exists in the system. Please use a different value.`,
 
+  // BSDataGrid Switch Labels
+  bsYes: "YES",
+  bsNo: "NO",
+  bsActive: "Active",
+  bsInactive: "Inactive",
+
   // BSDataGrid Confirm Messages
   bsConfirmDeleteRecord: "Are you sure you want to delete this record?",
   bsConfirmDeleteRecords: (count) =>

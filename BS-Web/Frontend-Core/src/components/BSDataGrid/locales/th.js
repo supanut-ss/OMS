@@ -299,4 +299,10 @@ export const thaiLocaleText = {
   bsTryAgain: "ลองใหม่",
   bsDataGridError: "เกิดข้อผิดพลาด DataGrid",
   bsFailedToRenderGrid: "ไม่สามารถแสดงตารางข้อมูลได้:",
+
+  // BSDataGrid Switch Labels
+  bsYes: "ใช่",
+  bsNo: "ไม่ใช่",
+  bsActive: "ใช้งาน",
+  bsInactive: "ไม่ใช้งาน",
 };
