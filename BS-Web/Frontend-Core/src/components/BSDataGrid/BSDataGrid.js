@@ -166,7 +166,16 @@ const BulkSplitButton = ({
         color={options[selectedIndex]?.color || "primary"}
         ref={anchorRef}
         aria-label="split button"
-        sx={{ mr: 1 }}
+        sx={{
+          mr: 1,
+          "& .MuiButton-root": {
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "0.8125rem",
+            minHeight: "32px",
+            padding: "4px 10px",
+          },
+        }}
       >
         <Button
           onClick={handleClick}
@@ -269,12 +278,22 @@ const AddRecordSplitButton = ({ onAdd, onInlineAdd, localeText }) => {
         ref={anchorRef}
         aria-label="add record split button"
         size="small"
+        // sx={{
+        //   "& .MuiButton-root": {
+        //     textTransform: "none",
+        //     fontWeight: 500,
+        //     fontSize: "0.8125rem",
+        //     minHeight: "32px",
+        //   },
+        // }}
         sx={{
+          mr: 1,
           "& .MuiButton-root": {
             textTransform: "none",
             fontWeight: 500,
             fontSize: "0.8125rem",
             minHeight: "32px",
+            padding: "4px 10px",
           },
         }}
       >
