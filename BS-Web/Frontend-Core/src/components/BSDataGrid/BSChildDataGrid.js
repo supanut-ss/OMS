@@ -206,7 +206,7 @@ const BSChildDataGrid = forwardRef((props, ref) => {
         // Hide FK columns from both grid and form (they are auto-populated)
         bsHiddenColumns={foreignKeys}
         // Ensure child grid has appropriate height
-        height={gridProps.height || 400}
+        height={gridProps.height}
       />
     </Box>
   );

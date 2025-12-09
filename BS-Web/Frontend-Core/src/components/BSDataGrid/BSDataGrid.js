@@ -8232,6 +8232,14 @@ const BSDataGrid = forwardRef(
                     expandIcon={<ExpandMoreIcon />}
                     aria-controls="parent-form-content"
                     id="parent-form-header"
+                    sx={{
+                      backgroundColor: "#EBEBEBFF",
+                      "&:hover": {
+                        backgroundColor: "#d5d5d5",
+                      },
+                      borderTopLeftRadius: "8px",
+                      borderTopRightRadius: "8px",
+                    }}
                   >
                     <Typography variant="subtitle1" fontWeight="bold">
                       {(() => {
@@ -8354,7 +8362,7 @@ const BSDataGrid = forwardRef(
                             bsPageSizeOptions={
                               childConfig.bsPageSizeOptions || [10, 25, 50]
                             }
-                            height={childConfig.height || 350}
+                            height={childConfig.height}
                             bsUniqueFields={childConfig.bsUniqueFields}
                           />
                         )}
