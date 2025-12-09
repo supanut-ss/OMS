@@ -34,6 +34,7 @@ const CustomerPage = (props) => {
           bsObjBy="create_date desc"
           // bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           //bsBulkAction={true}
+          bsEnableBulkMode={true} // Enable all bulk operations
           bsDialogSize="Large"
           bsDialogColumns={2}
           bsDialogTab={[

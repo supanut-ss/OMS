@@ -83,6 +83,7 @@ import Logger from "../../utils/logger";
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
+import secureStorage from "../../utils/SecureStorage";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
@@ -159,6 +160,7 @@ const BulkSplitButton = ({
   return (
     <React.Fragment>
       <ButtonGroup
+        size="small"
         variant="outlined"
         color={options[selectedIndex]?.color || "primary"}
         ref={anchorRef}
@@ -218,6 +220,128 @@ const BulkSplitButton = ({
                       </Box>
                     </MenuListItem>
                   ))}
+                </MenuList>
+              </ClickAwayListener>
+            </MenuPaper>
+          </Grow>
+        )}
+      </Popper>
+    </React.Fragment>
+  );
+};
+
+// Split Button Component for Add Record (Inline Add vs Dialog Add)
+const AddRecordSplitButton = ({ onAdd, onInlineAdd, localeText }) => {
+  const [open, setOpen] = useState(false);
+  const anchorRef = React.useRef(null);
+
+  const handleMainClick = () => {
+    // Main button action: Inline Add (add row directly in grid)
+    if (onInlineAdd) {
+      onInlineAdd();
+    }
+  };
+
+  const handleMenuItemClick = (action) => {
+    setOpen(false);
+    if (action) {
+      action();
+    }
+  };
+
+  const handleToggle = () => {
+    setOpen((prevOpen) => !prevOpen);
+  };
+
+  const handleClose = (event) => {
+    if (anchorRef.current && anchorRef.current.contains(event.target)) {
+      return;
+    }
+    setOpen(false);
+  };
+
+  return (
+    <React.Fragment>
+      <ButtonGroup
+        variant="outlined"
+        color="primary"
+        ref={anchorRef}
+        aria-label="add record split button"
+        size="small"
+        sx={{
+          "& .MuiButton-root": {
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "0.8125rem",
+            minHeight: "32px",
+          },
+        }}
+      >
+        <Button
+          size="small"
+          onClick={handleMainClick}
+          startIcon={<Add />}
+          sx={{
+            borderColor: "primary.main",
+            "&:hover": {
+              backgroundColor: "primary.main",
+              color: "white",
+            },
+          }}
+        >
+          {localeText.bsAddRecord}
+        </Button>
+        <Button
+          size="small"
+          aria-controls={open ? "add-record-split-menu" : undefined}
+          aria-expanded={open ? "true" : undefined}
+          aria-label="select add method"
+          aria-haspopup="menu"
+          onClick={handleToggle}
+          sx={{
+            borderColor: "primary.main",
+            "&:hover": {
+              backgroundColor: "primary.main",
+              color: "white",
+            },
+          }}
+        >
+          <ArrowDropDown />
+        </Button>
+      </ButtonGroup>
+      <Popper
+        sx={{ zIndex: 1300 }}
+        open={open}
+        anchorEl={anchorRef.current}
+        role={undefined}
+        transition
+        disablePortal
+      >
+        {({ TransitionProps, placement }) => (
+          <Grow
+            {...TransitionProps}
+            style={{
+              transformOrigin:
+                placement === "bottom" ? "center top" : "center bottom",
+            }}
+          >
+            <MenuPaper elevation={3}>
+              <ClickAwayListener onClickAway={handleClose}>
+                <MenuList id="add-record-split-menu" autoFocusItem>
+                  {/* <MenuListItem
+                    onClick={() => handleMenuItemClick(onInlineAdd)}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Add fontSize="small" />
+                      {localeText.bsAddInline || "Add Inline"}
+                    </Box>
+                  </MenuListItem> */}
+                  <MenuListItem onClick={() => handleMenuItemClick(onAdd)}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Add fontSize="small" />
+                      {localeText.bsAddByDialog || "Add by Dialog"}
+                    </Box>
+                  </MenuListItem>
                 </MenuList>
               </ClickAwayListener>
             </MenuPaper>
@@ -495,6 +619,7 @@ const CustomQuickFilter = ({ apiRef, localeText }) => {
 // Custom Toolbar - ใช้ GridToolbarContainer (วิธีที่ถูกต้อง)
 const DynamicGridToolbar = ({
   onAdd,
+  onInlineAdd,
   showAdd = true,
   headerFiltersEnabled,
   onToggleHeaderFilters,
@@ -565,8 +690,14 @@ const DynamicGridToolbar = ({
 
   return (
     <GridToolbarContainer>
-      {/* Custom BS Buttons */}
-      {showAdd && (
+      {/* Add Record Button - Split Button when bulk mode enabled, regular button otherwise */}
+      {showAdd && (bsEnableBulkMode || bsBulkAdd) ? (
+        <AddRecordSplitButton
+          onAdd={onAdd}
+          onInlineAdd={onInlineAdd}
+          localeText={localeText}
+        />
+      ) : showAdd ? (
         <Button
           size="small"
           startIcon={<Add />}
@@ -589,32 +720,7 @@ const DynamicGridToolbar = ({
         >
           {localeText.bsAddRecord}
         </Button>
-      )}
-
-      {/* Bulk Add button */}
-      {bsEnableBulkMode && bsBulkAdd && (
-        <Button
-          size="small"
-          startIcon={<Add />}
-          onClick={onBulkAdd}
-          sx={{
-            textTransform: "none",
-            fontWeight: 500,
-            fontSize: "0.8125rem",
-            padding: "4px 8px",
-            minHeight: "32px",
-            color: "primary.main",
-            borderColor: "primary.main",
-            border: "1px solid",
-            backgroundColor: "transparent",
-            "&:hover": {
-              backgroundColor: "rgba(25, 118, 210, 0.04)",
-            },
-          }}
-        >
-          {localeText.bsBulkAdd}
-        </Button>
-      )}
+      ) : null}
 
       {/* Bulk Edit/Delete Split Button - show only when rows are selected and checkbox is enabled */}
       {bsEnableBulkMode &&
@@ -1414,6 +1520,9 @@ const BSDataGrid = forwardRef(
       bsHiddenColumns = [], // Columns to hide from both grid and form (used by child grids to hide FK columns)
       bsParentRecordLabel, // Custom label for parent record accordion (supports "resource:key" format)
 
+      // Unique field validation
+      bsUniqueFields = [], // Fields that must be unique: ["field_name"] or [{ field: "field_name", message: "Custom error" }]
+
       onCheckBoxSelected,
 
       // Data binding callback
@@ -1435,10 +1544,17 @@ const BSDataGrid = forwardRef(
       bsStoredProcedure,
       hasBsRowConfig: !!bsRowConfig,
       bsRowConfigType: typeof bsRowConfig,
+      bsUniqueFields, // Debug: Check if bsUniqueFields is received
     });
 
     // Determine effective table name (bsObj takes priority over tableName)
     const effectiveTableName = bsObj || tableName;
+
+    // Determine effective bulk mode settings
+    // When bsEnableBulkMode is true, enable all bulk operations by default
+    const effectiveBulkAdd = bsEnableBulkMode || bsBulkAdd;
+    const effectiveBulkEdit = bsEnableBulkMode || bsBulkEdit;
+    const effectiveBulkDelete = bsEnableBulkMode || bsBulkDelete;
 
     // Parse BS-specific configurations
     const parsedCols = useMemo(() => {
@@ -1851,6 +1967,22 @@ const BSDataGrid = forwardRef(
         if (effectiveTableName || bsStoredProcedure) {
           const resourceGroup = bsStoredProcedure || effectiveTableName;
           Logger.log("🌐 Loading resources for:", resourceGroup);
+
+          // Debug: Check secureStorage resource data
+          const allResources = secureStorage.get("resource") || [];
+          const matchingResources = allResources.filter(
+            (r) => r.resource_group === resourceGroup
+          );
+          Logger.log("🔍 SecureStorage debug:", {
+            resourceGroup,
+            totalResourcesInStorage: allResources.length,
+            matchingResourcesCount: matchingResources.length,
+            matchingResources: matchingResources,
+            allResourceGroups: [
+              ...new Set(allResources.map((r) => r.resource_group)),
+            ].slice(0, 20), // Show first 20 groups
+          });
+
           const res = await getResources(resourceGroup);
           setResourceData(res);
           Logger.log("✅ Resources loaded:", res);
@@ -2040,7 +2172,14 @@ const BSDataGrid = forwardRef(
     // Load data from API
     const loadData = useCallback(
       async (forceRefresh = false) => {
-        if (!effectiveTableName || !metadata) return;
+        if (!effectiveTableName || !metadata) {
+          Logger.warn("⚠️ loadData skipped - missing requirements:", {
+            effectiveTableName: !!effectiveTableName,
+            metadata: !!metadata,
+            forceRefresh,
+          });
+          return;
+        }
 
         setLoading(true);
         setError(null);
@@ -3124,9 +3263,12 @@ const BSDataGrid = forwardRef(
       [dialogMode, metadata?.primaryKeys, bsKeyId]
     );
 
-    // Helper: Check if field is is_active
+    // Helper: Check if field is boolean type (is_active or any field starting with is_)
     const isActiveField = useCallback((columnName) => {
-      return columnName?.toLowerCase() === "is_active";
+      if (!columnName) return false;
+      const lowerName = columnName.toLowerCase();
+      // Match is_active or any field starting with is_
+      return lowerName === "is_active" || lowerName.startsWith("is_");
     }, []);
 
     // Helper: Check if field is audit field (should be read-only in inline editing)
@@ -3597,6 +3739,90 @@ const BSDataGrid = forwardRef(
       rows.length,
     ]);
 
+    // Inline Add - add new row directly in grid for editing
+    const handleInlineAdd = useCallback(() => {
+      if (!metadata?.columns && !bsStoredProcedure) {
+        Logger.warn("⚠️ Cannot add inline without metadata");
+        return;
+      }
+
+      const id = `new-${newRowIdCounter.current++}`;
+      const newRow = {
+        id,
+        ...initializeFormData(),
+        isNew: true,
+      };
+
+      // Find first editable column from metadata (skip id, actions, row number columns)
+      const metadataColumns = metadata?.columns || [];
+      const editableColumns = metadataColumns.filter(
+        (col) =>
+          col.column_name !== "id" &&
+          col.column_name !== "__row_number__" &&
+          col.column_name !== "actions" &&
+          !col.is_identity &&
+          !col.is_computed
+      );
+      const firstEditableField = editableColumns[0]?.column_name;
+
+      Logger.log("📝 Inline add - first editable field:", firstEditableField);
+
+      // Add new row at the beginning of the grid
+      setRows((oldRows) => [newRow, ...oldRows]);
+
+      // Set the row to edit mode immediately
+      setRowModesModel((oldModel) => ({
+        ...oldModel,
+        [id]: {
+          mode: GridRowModes.Edit,
+          fieldToFocus: firstEditableField,
+        },
+      }));
+
+      // Enable bulk edit mode if not already enabled
+      if (!bulkEditMode) {
+        setBulkEditMode(true);
+        unsavedChangesRef.current = {};
+        setHasUnsavedChanges(false);
+      }
+
+      // Use requestAnimationFrame + setTimeout to ensure the row is rendered and then focus
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (apiRef.current) {
+            try {
+              // Scroll to the new row first
+              apiRef.current.scrollToIndexes({ rowIndex: 0 });
+
+              // Ensure row is in edit mode
+              const rowMode = apiRef.current.getRowMode(id);
+              if (rowMode !== GridRowModes.Edit) {
+                apiRef.current.startRowEditMode({
+                  id,
+                  fieldToFocus: firstEditableField,
+                });
+              }
+
+              // Focus the first editable cell
+              if (firstEditableField) {
+                apiRef.current.setCellFocus(id, firstEditableField);
+              }
+
+              Logger.log("📝 Focus set to row:", {
+                id,
+                field: firstEditableField,
+                rowMode,
+              });
+            } catch (err) {
+              Logger.warn("⚠️ Could not focus cell:", err);
+            }
+          }
+        }, 50);
+      });
+
+      Logger.log("📝 Inline add - new row added:", { id, newRow });
+    }, [initializeFormData, metadata, bsStoredProcedure, bulkEditMode, apiRef]);
+
     // Open Edit dialog or delegate
     const handleEditClick = useCallback(
       (row) => {
@@ -3794,6 +4020,219 @@ const BSDataGrid = forwardRef(
       ]
     );
 
+    // Validate unique fields against database
+    // Supports:
+    // - Single field: "field_name" or { field: "field_name", message: "..." }
+    // - Composite key (multiple fields): { fields: ["field1", "field2"], message: "..." }
+    const validateUniqueFields = useCallback(
+      async (data, mode = "add", currentPrimaryKeyValue = null) => {
+        if (!bsUniqueFields || bsUniqueFields.length === 0) {
+          return { isValid: true, errors: [] };
+        }
+
+        const errors = [];
+        const primaryKeyField = bsKeyId || metadata?.primaryKeys?.[0] || "id";
+
+        // Merge bsDefaultFormValues with data to include hidden field values (e.g., FK values)
+        const mergedData = { ...bsDefaultFormValues, ...data };
+
+        Logger.log("🔍 Validating unique fields:", {
+          bsUniqueFields,
+          data,
+          bsDefaultFormValues,
+          mergedData,
+          mode,
+          currentPrimaryKeyValue,
+          primaryKeyField,
+        });
+
+        for (const fieldConfig of bsUniqueFields) {
+          // Determine if this is a composite key (multiple fields) or single field
+          const isCompositeKey =
+            typeof fieldConfig === "object" &&
+            Array.isArray(fieldConfig.fields);
+
+          if (isCompositeKey) {
+            // Composite key validation (multiple fields combined)
+            const fields = fieldConfig.fields;
+            const customMessage = fieldConfig.message;
+
+            // Check if all fields have values (use mergedData to include default/hidden values)
+            const allFieldsHaveValues = fields.every((f) => {
+              const val = mergedData[f];
+              return val != null && val !== "";
+            });
+
+            if (!allFieldsHaveValues) {
+              Logger.log(
+                "🔍 Skipping composite key validation - missing values:",
+                {
+                  fields,
+                  values: fields.map((f) => ({
+                    field: f,
+                    value: mergedData[f],
+                  })),
+                }
+              );
+              continue; // Skip if any field is empty
+            }
+
+            try {
+              // Build WHERE condition for all fields (use mergedData)
+              const whereConditions = fields.map((f) => {
+                const val = mergedData[f];
+                return `${f} = '${String(val).replace(/'/g, "''")}'`;
+              });
+              let whereCondition = whereConditions.join(" AND ");
+
+              // In edit mode, exclude current record from check
+              if (mode === "edit" && currentPrimaryKeyValue != null) {
+                whereCondition += ` AND ${primaryKeyField} <> '${String(
+                  currentPrimaryKeyValue
+                ).replace(/'/g, "''")}'`;
+              }
+
+              Logger.log("🔍 Checking composite unique key:", {
+                fields,
+                values: fields.map((f) => mergedData[f]),
+                whereCondition,
+              });
+
+              // Query database to check if combination exists
+              Logger.log("🔍 Composite key API call params:", {
+                tableName: effectiveTableName,
+                preObj: bsPreObj,
+                customWhere: whereCondition,
+                primaryKeyField,
+              });
+
+              const response = await getTableData({
+                tableName: effectiveTableName,
+                preObj: bsPreObj,
+                page: 1,
+                pageSize: 1,
+                customWhere: whereCondition,
+                selectColumns: [primaryKeyField],
+              });
+
+              Logger.log("🔍 Composite key API response:", {
+                response,
+                rowCount: response?.rowCount,
+                dataLength: response?.data?.length,
+                data: response?.data,
+              });
+
+              const existingCount =
+                response?.rowCount || response?.data?.length || 0;
+              Logger.log("🔍 Composite key check result:", {
+                fields,
+                existingCount,
+                willShowError: existingCount > 0,
+              });
+
+              if (existingCount > 0) {
+                const displayNames = fields
+                  .map((f) => formatColumnName(f))
+                  .join(" + ");
+                const displayValues = fields
+                  .map((f) => `"${mergedData[f]}"`)
+                  .join(", ");
+                const errorMessage =
+                  customMessage ||
+                  //`${displayNames}: The combination ${displayValues} already exists. Please use different values.`;
+                  `${displayNames}: The combination ${displayValues} already exists. Please use different values.`;
+                errors.push(errorMessage);
+              }
+            } catch (err) {
+              Logger.error(
+                "❌ Error checking composite unique key:",
+                fields,
+                err
+              );
+            }
+          } else {
+            // Single field validation (existing logic)
+            const fieldName =
+              typeof fieldConfig === "string" ? fieldConfig : fieldConfig.field;
+            const customMessage =
+              typeof fieldConfig === "object" ? fieldConfig.message : null;
+            const value = mergedData[fieldName];
+
+            // Skip if value is empty
+            if (value == null || value === "") {
+              continue;
+            }
+
+            try {
+              // Build WHERE condition to check for existing record
+              let whereCondition = `${fieldName} = '${String(value).replace(
+                /'/g,
+                "''"
+              )}' `;
+
+              // In edit mode, exclude current record from check
+              if (mode === "edit" && currentPrimaryKeyValue != null) {
+                whereCondition += ` AND ${primaryKeyField} <> '${String(
+                  currentPrimaryKeyValue
+                ).replace(/'/g, "''")}'`;
+              }
+
+              Logger.log("🔍 Checking unique field:", {
+                fieldName,
+                value,
+                whereCondition,
+              });
+
+              // Query database to check if value exists
+              const response = await getTableData({
+                tableName: effectiveTableName,
+                preObj: bsPreObj,
+                page: 1,
+                pageSize: 1,
+                customWhere: whereCondition,
+                selectColumns: [primaryKeyField],
+              });
+
+              Logger.log("🔍 Unique check response:", {
+                fieldName,
+                value,
+                rowCount: response?.rowCount || response?.data?.length || 0,
+              });
+
+              // If record found, field value is not unique
+              const existingCount =
+                response?.rowCount || response?.data?.length || 0;
+              if (existingCount > 0) {
+                const displayName = formatColumnName(fieldName);
+                const errorMessage =
+                  customMessage ||
+                  `${displayName}: "${value}" already exists in the system. Please use a different value.`;
+                errors.push(errorMessage);
+              }
+            } catch (err) {
+              Logger.error("❌ Error checking unique field:", fieldName, err);
+              // Continue with other validations if one fails
+            }
+          }
+        }
+
+        return {
+          isValid: errors.length === 0,
+          errors,
+        };
+      },
+      [
+        bsUniqueFields,
+        bsKeyId,
+        metadata,
+        effectiveTableName,
+        bsPreObj,
+        getTableData,
+        formatColumnName,
+        bsDefaultFormValues,
+      ]
+    );
+
     // Validate form data against metadata constraints
     const validateFormData = useCallback(
       (data) => {
@@ -3860,6 +4299,25 @@ const BSDataGrid = forwardRef(
             title: "Validation Errors",
             html: validation.errors.join("<br>"),
           });
+          return;
+        }
+
+        // Validate unique fields before saving
+        const primaryKeyField = bsKeyId || metadata?.primaryKeys?.[0] || "id";
+        const currentPrimaryKeyValue =
+          dialogMode === "edit" ? selectedRow?.[primaryKeyField] : null;
+
+        const uniqueValidation = await validateUniqueFields(
+          formData,
+          dialogMode,
+          currentPrimaryKeyValue
+        );
+        if (!uniqueValidation.isValid) {
+          BSAlertSwal2.show("error", "", {
+            title: "Duplicate Value Error",
+            html: uniqueValidation.errors.join("<br>"),
+          });
+          setFormLoading(false);
           return;
         }
 
@@ -4274,6 +4732,7 @@ const BSDataGrid = forwardRef(
       loadData,
       bsPreObj,
       validateFormData,
+      validateUniqueFields,
       bsStoredProcedure,
       bsStoredProcedureSchema,
       bsStoredProcedureParams,
@@ -4283,6 +4742,7 @@ const BSDataGrid = forwardRef(
       getUserId,
       bsChildGrids,
       bsPrimaryKeys,
+      bsKeyId,
     ]);
 
     const handleDialogClose = useCallback(() => {
@@ -6411,8 +6871,8 @@ const BSDataGrid = forwardRef(
 
     // Bulk operations handlers
     const handleBulkAdd = useCallback(() => {
-      if (!bsEnableBulkMode) {
-        Logger.warn("⚠️ Bulk mode is disabled");
+      if (!effectiveBulkAdd) {
+        Logger.warn("⚠️ Bulk Add is disabled");
         return;
       }
 
@@ -6430,11 +6890,11 @@ const BSDataGrid = forwardRef(
       setBulkAddRows(emptyRows);
       setBulkAddDialogOpen(true);
       Logger.log("📝 Bulk Add dialog opened with", bulkRowCount, "empty rows");
-    }, [bsEnableBulkMode, metadata, bulkRowCount, initializeFormData]);
+    }, [effectiveBulkAdd, metadata, bulkRowCount, initializeFormData]);
 
     const handleBulkEdit = useCallback(() => {
-      if (!bsEnableBulkMode) {
-        Logger.warn("⚠️ Bulk mode is disabled");
+      if (!effectiveBulkEdit) {
+        Logger.warn("⚠️ Bulk Edit is disabled");
         return;
       }
 
@@ -6453,11 +6913,11 @@ const BSDataGrid = forwardRef(
       unsavedChangesRef.current = {};
       setHasUnsavedChanges(false);
       Logger.log("📝 Bulk Edit mode enabled for", selectedRows.length, "rows");
-    }, [bsEnableBulkMode, rows, rowSelectionModel, getEffectivePrimaryKey]);
+    }, [effectiveBulkEdit, rows, rowSelectionModel, getEffectivePrimaryKey]);
 
     const handleBulkDelete = useCallback(async () => {
-      if (!bsEnableBulkMode) {
-        Logger.warn("⚠️ Bulk mode is disabled");
+      if (!effectiveBulkDelete) {
+        Logger.warn("⚠️ Bulk Delete is disabled");
         return;
       }
 
@@ -6495,7 +6955,7 @@ const BSDataGrid = forwardRef(
         }
       }
     }, [
-      bsEnableBulkMode,
+      effectiveBulkDelete,
       rows,
       rowSelectionModel,
       deleteRecord,
@@ -6956,13 +7416,13 @@ const BSDataGrid = forwardRef(
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
-      setLoading(true); // Set loading state
-      setBulkEditMode(false);
-      unsavedChangesRef.current = {};
-      setHasUnsavedChanges(false);
-      setRowSelectionModel([]);
-
       try {
+        setLoading(true); // Set loading state
+        setBulkEditMode(false);
+        unsavedChangesRef.current = {};
+        setHasUnsavedChanges(false);
+        setRowSelectionModel([]);
+
         // Ensure metadata is available before reloading data
         if (!metadata || !metadata.columns) {
           Logger.warn(
@@ -6974,13 +7434,14 @@ const BSDataGrid = forwardRef(
         }
 
         // Force reload to discard changes with loading state
+        // Note: loadData has its own guard for metadata, so we wrap in try-finally
         await loadData(true);
         Logger.log("🗑️ Bulk changes discarded");
       } catch (err) {
         Logger.error("❌ Failed to discard bulk changes:", err);
         setError(err.message || "Failed to discard changes");
       } finally {
-        setLoading(false); // Clear loading state
+        setLoading(false); // Always clear loading state
       }
     }, [loadData, metadata, loadMetadata, bsPreObj]);
 
@@ -6997,8 +7458,8 @@ const BSDataGrid = forwardRef(
       (params) => {
         Logger.log("📝 Row edit started:", params.id);
 
-        // If bulk mode is disabled, prevent any editing
-        if (!bsEnableBulkMode) {
+        // If bulk edit is disabled, prevent any editing
+        if (!effectiveBulkEdit && !bsBulkAddInline) {
           Logger.warn("⚠️ Bulk edit mode is disabled - preventing edit");
           // Prevent entering edit mode
           if (params.event) {
@@ -7007,15 +7468,15 @@ const BSDataGrid = forwardRef(
           return; // Stop execution here
         }
 
-        // Only enable bulk edit mode if bsEnableBulkMode is true
-        if (!bulkEditMode) {
+        // Only enable bulk edit mode if effectiveBulkEdit is true
+        if (!bulkEditMode && effectiveBulkEdit) {
           setBulkEditMode(true);
           unsavedChangesRef.current = {};
           setHasUnsavedChanges(false);
           Logger.log("📝 Bulk Edit mode enabled via row double-click");
         }
       },
-      [bulkEditMode, bsEnableBulkMode]
+      [bulkEditMode, effectiveBulkEdit, bsBulkAddInline]
     );
 
     const handleRowEditStop = useCallback(
@@ -7370,10 +7831,10 @@ const BSDataGrid = forwardRef(
                   }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
                     Array.isArray(columns) ? columns.length : 0
                   }`}
-                  // Editing - only enable if bsEnableBulkMode is true
+                  // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
-                    bsEnableBulkMode
+                    effectiveBulkEdit || bsBulkAddInline
                       ? bsBulkAddInline
                         ? processRowUpdate
                         : processBulkRowUpdate
@@ -7385,8 +7846,8 @@ const BSDataGrid = forwardRef(
                       ? handleInlineRowEditStop
                       : handleRowEditStop
                   }
-                  // Disable all cell editing when bsEnableBulkMode is false
-                  isCellEditable={() => bsEnableBulkMode}
+                  // Disable all cell editing when bulk edit mode is not enabled
+                  isCellEditable={() => effectiveBulkEdit || bsBulkAddInline}
                   // Inline editing for bsBulkAddInline
                   {...(bsBulkAddInline && {
                     rowModesModel,
@@ -7434,7 +7895,8 @@ const BSDataGrid = forwardRef(
                   // Row Selection (checkbox selection when enabled)
                   checkboxSelection={
                     bsShowCheckbox ||
-                    (bsEnableBulkMode && (bsBulkEdit || bsBulkDelete)) ||
+                    (bsEnableBulkMode &&
+                      (effectiveBulkEdit || effectiveBulkDelete)) ||
                     !!onCheckBoxSelected
                   }
                   rowSelectionModel={rowSelectionModel}
@@ -7556,18 +8018,19 @@ const BSDataGrid = forwardRef(
                       ? {
                           toolbar: {
                             onAdd: handleAddClick,
+                            onInlineAdd: handleInlineAdd,
                             showAdd,
                             headerFiltersEnabled,
                             onToggleHeaderFilters: handleToggleHeaderFilters,
-                            bsBulkEdit,
-                            bsBulkAdd,
-                            bsBulkDelete,
+                            bsBulkEdit: effectiveBulkEdit,
+                            bsBulkAdd: effectiveBulkAdd,
+                            bsBulkDelete: effectiveBulkDelete,
                             bsEnableBulkMode,
                             selectedRowCount: rowSelectionModel.length,
                             onBulkEdit: handleBulkEdit,
                             onBulkDelete: handleBulkDelete,
                             onBulkAdd: handleBulkAdd,
-                            showBulkDelete: bsBulkDelete,
+                            showBulkDelete: effectiveBulkDelete,
                             onRefresh: () => refreshData(true),
                             onExportExcel: handleExportExcel,
                             onExportCsv: handleExportCsv,
@@ -7722,6 +8185,31 @@ const BSDataGrid = forwardRef(
                       padding: "6px 4px !important",
                       height: "46px !important",
                     },
+                    // Edit mode cell input styling - add subtle border to show it's editable
+                    "& .MuiDataGrid-cell--editing": {
+                      backgroundColor: "#fafafa !important",
+                      "& .MuiInputBase-root": {
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        backgroundColor: "#fff",
+                        padding: "2px 8px",
+                        "&:hover": {
+                          borderColor: "#999",
+                        },
+                        "&.Mui-focused": {
+                          borderColor: "#1976d2",
+                          boxShadow: "0 0 0 2px rgba(25, 118, 210, 0.2)",
+                        },
+                      },
+                      "& .MuiInputBase-input": {
+                        padding: "4px 0",
+                      },
+                    },
+                    // New row styling
+                    "& .MuiDataGrid-row--editing": {
+                      backgroundColor: "#f5f9ff !important",
+                      boxShadow: "inset 0 0 0 1px #1976d2",
+                    },
                   }}
                   {...props}
                 />
@@ -7788,8 +8276,26 @@ const BSDataGrid = forwardRef(
                           if (bsParentRecordLabel.startsWith("resource:")) {
                             const resourceKey =
                               bsParentRecordLabel.substring(9);
+                            const resourceValue = getResource(
+                              resourceData,
+                              resourceKey
+                            );
+
+                            Logger.log(
+                              "🏷️ bsParentRecordLabel resource lookup:",
+                              {
+                                bsParentRecordLabel,
+                                resourceKey,
+                                resourceValue,
+                                resourceDataCount: resourceData?.length || 0,
+                                resourceDataSample: resourceData?.slice(0, 5),
+                                resourceGroup:
+                                  bsStoredProcedure || effectiveTableName,
+                              }
+                            );
+
                             return (
-                              getResource(resourceData, resourceKey) ||
+                              resourceValue ||
                               localeText.bsParentRecord ||
                               "Parent Record"
                             );
@@ -7884,6 +8390,7 @@ const BSDataGrid = forwardRef(
                               childConfig.bsPageSizeOptions || [10, 25, 50]
                             }
                             height={childConfig.height || 350}
+                            bsUniqueFields={childConfig.bsUniqueFields}
                           />
                         )}
                       </Box>

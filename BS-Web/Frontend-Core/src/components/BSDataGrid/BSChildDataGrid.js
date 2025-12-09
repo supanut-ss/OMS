@@ -191,6 +191,7 @@ const BSChildDataGrid = forwardRef((props, ref) => {
     parentKeyValues,
     foreignKeys,
     hiddenColumns: foreignKeys, // FK columns will be hidden from grid and form
+    bsUniqueFields: gridProps.bsUniqueFields, // Debug: Check if bsUniqueFields is passed
   });
 
   return (
