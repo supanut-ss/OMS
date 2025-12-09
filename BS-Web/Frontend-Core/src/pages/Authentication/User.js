@@ -88,9 +88,11 @@ const UserPage = (props) => {
       ...row,
       [row.name]: row.val === null ? "" : row.val,
     });
+
     setSelectedGroup(row.user_group_id || "");
     setSelectLocale(row.locale_id || "");
     setSelectSupervisor(row.supervisor || "");
+
     setEditMode(true);
     setOpen(true);
   };
@@ -140,26 +142,19 @@ const UserPage = (props) => {
     }
   };
 
-  useEffect(() => {
-    setSelectedGroup(form.user_group_id || "");
-  }, [form.user_group_id]);
-
   const handleGroupChange = (val) => {
-    const groupId = val?.user_group_id ?? "";
+    const groupId = val ?? "";
     setForm({ ...form, user_group_id: groupId });
-    setSelectedGroup(groupId);
   };
 
   const handleLocaleChange = (val) => {
-    const localeId = val?.value_member ?? ""; // ใช้ field key ที่ถูกต้อง
+    const localeId = val ?? ""; // ใช้ field key ที่ถูกต้อง
     setForm({ ...form, locale_id: localeId });
-    setSelectLocale(localeId);
   };
 
   const handleSupervisorChange = (val) => {
-    const supervisorId = val?.user_id ?? "";
+    const supervisorId = val ?? "";
     setForm({ ...form, supervisor: supervisorId });
-    setSelectSupervisor(supervisorId);
   };
 
   const handleSave = async () => {
