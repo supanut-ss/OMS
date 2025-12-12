@@ -27,7 +27,7 @@ namespace ApiCore.Controllers
                 var project = await projectsService.GetProjectsByIdAsync(projectId);
                 if (project != null && project?.project_header_id > 0)
                 {
-                    return AccessResponseDataSuccess("success", project,0);
+                    return AccessResponseDataSuccess("success", project, 0);
                 }
                 else
                 {
@@ -52,7 +52,7 @@ namespace ApiCore.Controllers
                 }
                 else
                 {
-                    return ResponseSuccess("failed", "Project phases not found " + projectId,1);
+                    return ResponseSuccess("failed", "Project phases not found " + projectId, 1);
                 }
             }
             catch (Exception ex)
@@ -142,6 +142,46 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
-
+        [HttpPost("task/assign_team")]
+        public async Task<IActionResult> AssignProjectTaskToTeamAsync([FromBody] AssignProjectTaskToTeamRequest assignProjectTaskToTeam)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                var result = await projectsService.InsertOrUpdateProjectTaskMemberAsync(assignProjectTaskToTeam, userId);
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Assign project task to team failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost("task/assign_team/delete/{projectTaskMemberId}")]
+        public async Task<IActionResult> DeleteAssignTaskMemberAsync(int projectTaskMemberId)
+        {
+            try
+            {
+                var result = await projectsService.DeleteAssignTaskMemberAsync(projectTaskMemberId);
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Delete assigned task member failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
     }
 }

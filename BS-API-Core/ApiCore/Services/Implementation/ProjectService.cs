@@ -347,6 +347,91 @@ namespace ApiCore.Services.Implementation
                 };
             }
         }
+        public async Task<ProjectAssignTaskMemberResponse> InsertOrUpdateProjectTaskMemberAsync(AssignProjectTaskToTeamRequest req, string userId)
+        {
+            var response = new ProjectAssignTaskMemberResponse();
 
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+
+                    using (var cmd = new SqlCommand("tmt.usp_upsert_project_task_member", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        // --- INPUT ---
+                        void AddIn(string name, SqlDbType type, object value, int? size = null)
+                        {
+                            var p = cmd.Parameters.Add(name, type);
+                            if (size.HasValue) p.Size = size.Value;
+                            p.Value = value ?? DBNull.Value;
+                        }
+
+                        AddIn("@in_intProjectTaskMemberId", SqlDbType.Int, req.project_task_member_id ?? null);
+                        AddIn("@in_intProjectTaskId", SqlDbType.Int, req.project_task_id);
+                        AddIn("@in_intProjectHeaderId", SqlDbType.Int, req.project_header_id);
+                        AddIn("@in_vchUserId", SqlDbType.NVarChar, req.user_id, 40);
+                        AddIn("@in_decManday", SqlDbType.Decimal, req.manday);
+                        AddIn("@in_vchDescription", SqlDbType.NVarChar, "", 500);
+                        AddIn("@in_vchActionUser", SqlDbType.NVarChar, userId, 40);
+
+                        // --- OUTPUT ---
+                        var outId = cmd.Parameters.Add("@out_intProjectTaskMemberId", SqlDbType.Int);
+                        outId.Direction = ParameterDirection.Output;
+
+                        var outCode = cmd.Parameters.Add("@out_vchErrorCode", SqlDbType.NVarChar, 50);
+                        outCode.Direction = ParameterDirection.Output;
+
+                        var outMsg = cmd.Parameters.Add("@out_vchErrorMessage", SqlDbType.NVarChar, 500);
+                        outMsg.Direction = ParameterDirection.Output;
+
+                        // Execute
+                        await cmd.ExecuteNonQueryAsync();
+
+                        // --- READ OUTPUT ---
+                        response.project_task_member_id = outId.Value != DBNull.Value ? (int)outId.Value : 0;
+                        response.message_code = outCode.Value?.ToString();
+                        response.message_text = outMsg.Value?.ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                response.project_task_member_id = 0;
+                response.message_code = "999";
+                response.message_text = ex.Message;
+            }
+
+            return response;
+        }
+
+        public async Task<ProjectAssignTaskMemberResponse> DeleteAssignTaskMemberAsync(int assignTaskMemberId)
+        {
+            using (var conn = new SqlConnection(_connectionString))
+            {
+                await conn.OpenAsync();
+                using (var cmd = new SqlCommand("tmt.usp_tmt_project_task_member", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    // Parameters
+                    cmd.Parameters.AddWithValue("@Operation", "DELETE");
+                    cmd.Parameters.AddWithValue("@ProjectTaskMemberId", assignTaskMemberId);
+                    // Output parameters (ต้องใส่ เพราะ procedure มี output)
+                    cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                    cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                    cmd.Parameters.Add("@OutputErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                    await cmd.ExecuteNonQueryAsync();
+                    int errorCode = (int)cmd.Parameters["@OutputErrorCode"].Value;
+                    return new ProjectAssignTaskMemberResponse
+                    {
+                        project_task_member_id = assignTaskMemberId,
+                        message_code = errorCode.ToString() ?? "",
+                        message_text = cmd.Parameters["@OutputMessage"].Value.ToString() ?? ""
+                    };
+                }
+            }
+        }
     }
 }

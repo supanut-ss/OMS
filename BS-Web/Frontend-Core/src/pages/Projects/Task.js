@@ -12,7 +12,7 @@ const ProjectTask = (props) => {
     const [loading, setLoading] = useState(false);
     const [taskPhases, setTaskPhases] = useState([]);
     const [phases, setPhases] = useState({});
-    const dataGridRef = useRef();
+    const gridRefs = useRef({});
     // ------ Dialog States ------
     const [openDialog, setOpenDialog] = useState(false);
     const handleDeleteTask = async (id) => {
@@ -26,7 +26,9 @@ const ProjectTask = (props) => {
             if (conf.isConfirmed) {
                 await AxiosMaster.post("/projects/task/delete/" + id).then((res) => {
                     BSAlertSwal2.show(res.data.message_code === "0" ? "success" : "warning", res.data.message_text ?? "")
-                    dataGridRef.current?.refreshData();
+                    if (phases?.project_task_phase_id) {
+                        gridRefs.current[phases.project_task_phase_id]?.refreshData();
+                    }
                 })
             }
         });
@@ -43,7 +45,9 @@ const ProjectTask = (props) => {
     };
 
     const handleCloseDialog = () => {
-        dataGridRef.current?.refreshData();
+        if (phases?.project_task_phase_id) {
+            gridRefs.current[phases.project_task_phase_id]?.refreshData();
+        }
         setOpenDialog(false);
         setPhases({});
     };
@@ -99,7 +103,9 @@ const ProjectTask = (props) => {
 
                     <AccordionDetails>
                         <BSDataGrid
-                            ref={dataGridRef}
+                            ref={el => {
+                                if (el) gridRefs.current[phase.project_task_phase_id] = el;
+                            }}
                             bsLocale={lang}
                             bsStoredProcedure="usp_tmt_project_task"
                             bsStoredProcedureSchema="tmt"

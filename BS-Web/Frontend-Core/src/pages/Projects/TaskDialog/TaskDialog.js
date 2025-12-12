@@ -331,7 +331,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         </Tabs>
 
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
-                            {tap === 0 && <AssignTeam project_task_id={formData.project_task_id} />}
+                            {tap === 0 && <AssignTeam title="Assign Team" project_task_id={formData.project_task_id} project_header_id={projectHeader.project_header_id} />}
                             {tap === 1 && <TaskTracking />}
                         </Box>
                     </Box>

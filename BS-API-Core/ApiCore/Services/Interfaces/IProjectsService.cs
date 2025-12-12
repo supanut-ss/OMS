@@ -5,6 +5,8 @@ namespace ApiCore.Services.Interfaces
 {
     public interface IProjectsService
     {
+        Task<ProjectAssignTaskMemberResponse> DeleteAssignTaskMemberAsync(int assignTaskMemberId);
+        Task<ProjectAssignTaskMemberResponse> InsertOrUpdateProjectTaskMemberAsync(AssignProjectTaskToTeamRequest assignTaskMemberRequest, string userId);
         Task<ProjectTaskDeleteResponse> DeleteProjectsTaskByIdAsync(int projectTaskId);
         Task<ProjectsTaskResponse> GetProjectsTaskByIdAsync(int projectTaskId);
         Task<ProjectsTaskResponse> InsertProjectTaskAsync(InsertProjectTaskRequest projectTask, string userId);

@@ -7,14 +7,20 @@ import CloseIcon from '@mui/icons-material/Close';
 import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
+import AxiosMaster from "../../../utils/AxiosMaster";
 const defaultData = {
-    project_task_member_id: null
+    project_task_member_id: null,
+    project_header_id: null,
+    project_task_id: null,
+    user_id: null,
+    description: "",
+    manday: 0,
 };
 
 const requiredFields = [
 ];
 const AssignTeam = (props) => {
-    const { lang, project_header_id } = props;
+    const { lang, project_header_id, project_task_id } = props;
     const {
         formData,
         errors,
@@ -25,6 +31,7 @@ const AssignTeam = (props) => {
     const [open, setOpen] = useState(false);
     const dataRef = useRef();
     const handleClose = () => {
+        dataRef.current.refreshData();
         setOpen(false);
     }
     const handleAdd = () => {
@@ -35,20 +42,57 @@ const AssignTeam = (props) => {
         setFormData(prev => ({ ...prev, ...row }))
         setOpen(true);
     }
-    const handleSave = () => {
+    const handleDelete = async (id) => {
+        BSAlertSwal2.fire({
+            title: "ลบข้อมูล?",
+            text: "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "ใช่, ลบเลย",
+        }).then(async (conf) => {
+            if (conf.isConfirmed) {
+                await AxiosMaster.post("/projects/task/assign_team/delete/" + id).then((res) => {
+                    if (res.data.message_code === "0") {
+                        BSAlertSwal2.show("success", res.data.message_text);
+                    } else {
+                        BSAlertSwal2.show("warning", res.data.message_text);
+                    }
+                    dataRef.current.refreshData();
+                })
+            }
+        })
+    }
+    const handleSave = async () => {
         if (!validate) return;
-        BSAlertSwal2.show("warning", "อยู่ในช่วงพัฒนา")
+        let data = {
+            ...formData,
+            project_header_id: project_header_id || null,
+            project_task_id: project_task_id || null
+        }
+        await AxiosMaster.post("/projects/task/assign_team", data)
+            .then((res) => {
+                if (res.data.message_code === "0") {
+                    BSAlertSwal2.show("success", res.data.message_text);
+                } else {
+                    BSAlertSwal2.show("warning", res.data.message_text);
+                }
+            })
     }
     return <Paper elevation={3} sx={{ p: 2, backgroundColor: 'hsla(215, 15%, 97%, 0.5)' }}>
         <BSDataGrid
             ref={dataRef}
             bsLocale={lang}
-            bsPreObj="tmt"
-            bsObj="v_tmt_project_task_member"
+            bsStoredProcedure="usp_tmt_project_task_member"
+            bsStoredProcedureSchema="tmt"
             bsCols="fullname,manday"
-            bsObjBy="project_task_member_id asc"
+            bsStoredProcedureParams={{
+                ProjectTaskId: project_task_id,
+            }}
+            bsShowRowNumber={true}
+            showAdd={true}
             onAdd={handleAdd}
             onEdit={handleEdit}
+            onDelete={handleDelete}
         />
         <Dialog open={open}
             onClose={handleClose} fullWidth maxWidth={"lg"} >
@@ -93,10 +137,18 @@ const AssignTeam = (props) => {
                         })}
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-
+                        {renderInput({
+                            item: {
+                                type: "decimal",
+                                field: "manday",
+                                headerName: "manday",
+                                component: "BSTextField",
+                                variant: "standard"
+                            },
+                            formData,
+                            errors,
+                            updateField
+                        })}
                     </Grid>
                 </Grid>
             </DialogContent>
