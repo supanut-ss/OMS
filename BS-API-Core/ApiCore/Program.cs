@@ -33,6 +33,7 @@ builder.Services.AddScoped<IDynamicCrudService, DynamicCrudService>();
 builder.Services.AddScoped<IAutoComplete, AutoCompleteServices>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
 builder.Services.AddScoped<IProjectsService, ProjectService>();
+builder.Services.AddScoped<IMyTaskService, MyTaskService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

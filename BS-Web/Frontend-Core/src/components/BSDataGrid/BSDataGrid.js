@@ -42,6 +42,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   Tooltip,
+  Avatar,
+  AvatarGroup,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -98,6 +100,68 @@ if (licenseStatus.hasLicenseKey) {
 } else {
   Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
 }
+
+/**
+ * Generate Avatar props from a name string
+ * Creates background color based on name hash and extracts initials
+ * Reference: https://mui.com/material-ui/react-avatar/
+ *
+ * @param {string} name - Full name (e.g., "John Doe")
+ * @returns {object} - Avatar props { sx: { bgcolor }, children: initials }
+ */
+const stringAvatar = (name) => {
+  if (!name || typeof name !== "string") {
+    return {
+      sx: { bgcolor: "#bdbdbd", width: 32, height: 32, fontSize: "0.875rem" },
+      children: "?",
+    };
+  }
+
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    return {
+      sx: { bgcolor: "#bdbdbd", width: 32, height: 32, fontSize: "0.875rem" },
+      children: "?",
+    };
+  }
+
+  // Generate color from name hash
+  const stringToColor = (string) => {
+    let hash = 0;
+    for (let i = 0; i < string.length; i++) {
+      hash = string.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    let color = "#";
+    for (let i = 0; i < 3; i++) {
+      const value = (hash >> (i * 8)) & 0xff;
+      color += `00${value.toString(16)}`.slice(-2);
+    }
+    return color;
+  };
+
+  // Extract initials (max 2 characters)
+  const nameParts = trimmedName.split(" ").filter((part) => part.length > 0);
+  let initials;
+  if (nameParts.length >= 2) {
+    initials = `${nameParts[0][0]}${
+      nameParts[nameParts.length - 1][0]
+    }`.toUpperCase();
+  } else if (nameParts.length === 1) {
+    initials = nameParts[0].substring(0, 2).toUpperCase();
+  } else {
+    initials = "?";
+  }
+
+  return {
+    sx: {
+      bgcolor: stringToColor(trimmedName),
+      width: 32,
+      height: 32,
+      fontSize: "0.875rem",
+    },
+    children: initials,
+  };
+};
 
 // Split Button Component for Bulk Operations
 const BulkSplitButton = ({
@@ -1197,7 +1261,7 @@ const ComboBoxField = ({
  * - field: string (required) - Column field name
  * - headerName: string - Display name in header
  * - width: number - Column width in pixels
- * - type: "string" | "number" | "boolean" | "date" | "dateTime" | "singleSelect" | "currency"
+ * - type: "string" | "number" | "boolean" | "date" | "dateTime" | "singleSelect" | "currency" | "stringAvatar"
  * - editable: boolean - Allow inline editing (default: true)
  * - readOnly: boolean - Disable editing in forms (default: false)
  * - required: boolean - Force required validation (overrides metadata)
@@ -1236,6 +1300,14 @@ const ComboBoxField = ({
  * - valueOptions: string[] | {value: any, label: string}[]
  * - multiple: boolean - Allow multiple selection
  *
+ * StringAvatar (displays avatars from comma-separated names):
+ * - maxAvatars: number (default: 4) - Maximum avatars to display before showing "+X"
+ * - avatarSize: number (default: 32) - Avatar size in pixels
+ * - showTooltip: boolean (default: true) - Show name tooltip on hover
+ * - Example data: "John Doe,Jane Smith,Bob Johnson" -> displays 3 avatars
+ * - Example usage:
+ *     bsColumnDefs={[{ field: "assignee", type: "stringAvatar", maxAvatars: 3 }]}
+ *
  * Rendering:
  * - renderCell: (params) => ReactNode - Custom cell renderer
  * - valueGetter: (params) => any - Custom value getter
@@ -1272,6 +1344,13 @@ const ComboBoxField = ({
  *   * Displays sequential numbers starting from 1 for each page
  *   * Automatically adjusts for pagination (e.g., page 2 starts from 26)
  *   * Useful for data reference and user navigation
+ *
+ * @bsVisibleView Configuration:
+ * - bsVisibleView={false} (default): Hide view button in actions column
+ * - bsVisibleView={true}: Show view button in actions column
+ *   * Requires onView callback to be provided
+ *   * Button will trigger onView callback with the row data
+ *   * Useful for read-only views or custom view dialogs
  *
  * @bsVisibleEdit Configuration:
  * - bsVisibleEdit={false}: Hide edit button in actions column
@@ -1503,6 +1582,7 @@ const BSDataGrid = forwardRef(
       bsShowCheckbox = false, // Show checkbox selection
       bsShowDescColumn = true,
       bsShowRowNumber = true, // Show row number column
+      bsVisibleView = false, // Show view button (requires onView callback)
       bsVisibleEdit = true, // Show edit button
       bsVisibleDelete = true, // Show delete button
       bsPinColsLeft,
@@ -5762,6 +5842,80 @@ const BSDataGrid = forwardRef(
           };
         }
 
+        // StringAvatar type - displays avatars from comma-separated names
+        if (customDef.type === "stringAvatar") {
+          const maxAvatars = customDef.maxAvatars || 4; // Maximum avatars to show
+          const avatarSize = customDef.avatarSize || 32; // Avatar size in pixels
+          const showTooltip = customDef.showTooltip !== false; // Show tooltip by default
+
+          mergedColumn.renderCell = (params) => {
+            const value = params.value;
+            if (!value || typeof value !== "string") {
+              return null;
+            }
+
+            // Split by comma and filter empty values
+            const names = value
+              .split(",")
+              .map((name) => name.trim())
+              .filter((name) => name.length > 0);
+
+            if (names.length === 0) {
+              return null;
+            }
+
+            // Single avatar
+            if (names.length === 1) {
+              const avatarProps = stringAvatar(names[0]);
+              avatarProps.sx = {
+                ...avatarProps.sx,
+                width: avatarSize,
+                height: avatarSize,
+              };
+
+              return showTooltip ? (
+                <Tooltip title={names[0]} arrow>
+                  <Avatar {...avatarProps} />
+                </Tooltip>
+              ) : (
+                <Avatar {...avatarProps} />
+              );
+            }
+
+            // Multiple avatars - use AvatarGroup
+            return (
+              <AvatarGroup
+                max={maxAvatars}
+                sx={{
+                  justifyContent: "flex-end",
+                  "& .MuiAvatar-root": {
+                    width: avatarSize,
+                    height: avatarSize,
+                    fontSize: avatarSize * 0.4,
+                    border: "2px solid white",
+                  },
+                }}
+              >
+                {names.map((name, index) => {
+                  const avatarProps = stringAvatar(name);
+                  return showTooltip ? (
+                    <Tooltip key={index} title={name} arrow>
+                      <Avatar {...avatarProps} />
+                    </Tooltip>
+                  ) : (
+                    <Avatar key={index} {...avatarProps} />
+                  );
+                })}
+              </AvatarGroup>
+            );
+          };
+
+          // Make column wider to accommodate avatars
+          if (!mergedColumn.width && !mergedColumn.minWidth) {
+            mergedColumn.minWidth = 120;
+          }
+        }
+
         // Select type
         if (customDef.type === "singleSelect" && customDef.valueOptions) {
           mergedColumn.type = "singleSelect";
@@ -6073,7 +6227,7 @@ const BSDataGrid = forwardRef(
           if (!readOnly) {
             const actions = [];
 
-            if (onView) {
+            if (bsVisibleView && onView) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6352,7 +6506,7 @@ const BSDataGrid = forwardRef(
         if (!readOnly) {
           const actions = [];
 
-          if (onView) {
+          if (bsVisibleView && onView) {
             actions.push((params) => {
               // Get row-specific config
               const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6481,11 +6635,11 @@ const BSDataGrid = forwardRef(
 
           // Only insert actions column if there are actual actions
           // Note: bulkEditMode and bsBulkAddInline always have actions, so check for them first
-          // For normal mode, check if we have any visible actions (onView, bsVisibleEdit, bsVisibleDelete)
+          // For normal mode, check if we have any visible actions (bsVisibleView, bsVisibleEdit, bsVisibleDelete)
           const hasActions =
             bulkEditMode ||
             bsBulkAddInline ||
-            onView ||
+            (bsVisibleView && onView) ||
             bsVisibleEdit ||
             bsVisibleDelete;
 
@@ -6689,6 +6843,7 @@ const BSDataGrid = forwardRef(
       bsShowRowNumber,
       bsRowPerPage,
       paginationModel,
+      bsVisibleView,
       bsVisibleEdit,
       bsVisibleDelete,
       parsedCols,
