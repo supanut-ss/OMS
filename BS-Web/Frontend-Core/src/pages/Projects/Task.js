@@ -47,13 +47,17 @@ const ProjectTask = (props) => {
         setOpenDialog(false);
         setPhases({});
     };
-    useEffect(() => {
+    const refreshData = useCallback(() => {
         if (refresh) {
             setTaskPhases([]);
             callTaskPhase(projectID);
             setRefresh(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refresh, projectID]);
+    useEffect(() => {
+        refreshData();
+    }, [refreshData]);
     const fetchTaskPhase = useCallback(async () => {
         try {
             if (!projectID && projectID <= 0) return;
@@ -63,6 +67,7 @@ const ProjectTask = (props) => {
         } catch (err) {
             setLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectID]);
     const callTaskPhase = async (id) => {
         setLoading(true);

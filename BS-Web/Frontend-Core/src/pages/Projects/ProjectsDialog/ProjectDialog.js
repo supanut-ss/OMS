@@ -3,16 +3,14 @@ import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedBut
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
 import { useCallback, useEffect, useState } from "react";
 import AxiosMaster from "../../../utils/AxiosMaster";
-import BSTextField from "../../../components/BSTextField";
-import BSAutoComplete from "../../../components/BSAutoComplete";
-import BSDatepicker from "../../../components/BSDatepicker";
-import dayjs from "dayjs";
 import ProjectsHistory from "../History";
 import ProjectsTeams from "../Teams";
 import ProjectTask from "../Task";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
 import CloseIcon from '@mui/icons-material/Close';
-const data = {
+import { renderInput } from "../../../components/FormRenderer";
+import useForm from "../../../hooks/useForm";
+const defaultData = {
     "project_name": null,
     "project_status": null,
     "application_type": null,
@@ -24,6 +22,7 @@ const data = {
     "plan_project_end": null,
     "is_active": "YES",
     "project_no": "",
+    "record_type": "PROJECT",
     "remark": ""
 };
 const ProjectsDialog = (props) => {
@@ -38,31 +37,21 @@ const ProjectsDialog = (props) => {
         "plan_project_start",
         "plan_project_end"
     ];
-
-    const [formData, setFormData] = useState({ ...data });
+    const {
+        formData,
+        errors,
+        updateField,
+        validate,
+        setFormData
+    } = useForm(defaultData, requiredFields);
     const [tap, setTap] = useState(0);
-    const [errors, setErrors] = useState({});
     const [taskRefresh, setTaskRefresh] = useState(false);
     const handleClose = () => {
-        setFormData({ ...data });
+        setFormData({ ...defaultData });
         props.onClose(false);
-
     };
-    const validateForm = () => {
-
-        let newErrors = {};
-        requiredFields.forEach(f => {
-            if (!formData[f] || formData[f] === "") {
-                newErrors[f] = "This field is required";
-            }
-        });
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
     const handleSave = async () => {
-        if (!validateForm()) return;
+        if (!validate()) return;
 
         try {
             await AxiosMaster.post("/projects", formData)
@@ -84,19 +73,11 @@ const ProjectsDialog = (props) => {
             });
         }
     };
-    const updateField = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
     const fetchformData = useCallback(async () => {
         if (formData.project_header_id || props.projectID) {
             await AxiosMaster.get(`/projects/${formData.project_header_id || props.projectID}`)
                 .then((response) => {
                     if (response?.data?.message_code !== 0) {
-                        setFormData({ ...data });
                         return;
                     }
                     setFormData(response.data.data);
@@ -104,16 +85,9 @@ const ProjectsDialog = (props) => {
                 .catch((error) => {
                     BSAlertSwal2.error("Error", "Failed to fetch project header data.</br>" + error);
                 });
-        } else {
-            setFormData({ ...data });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.projectID]);
-    useEffect(() => {
-        if (!props.open) {
-            setFormData({ ...data });
-            setErrors({});
-        }
-    }, [props.open]);
     useEffect(() => {
         fetchformData();
     }, [fetchformData]);
@@ -141,350 +115,427 @@ const ProjectsDialog = (props) => {
                     {/* Form fields for formData */}
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSTextField
-                                label="project_no"
-                                value={formData?.project_no || ""}
-                                variant="filled"
-                                readOnly={true}
-
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "project_no",
+                                    headerName: "project_no",
+                                    component: "BSTextField",
+                                    variant: "filled",
+                                    readOnly: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSTextField
-                                label="project_name"
-                                value={formData?.project_name || ""}
-                                variant="standard"
-                                error={!!errors.project_name}
-                                helperText={errors.project_name || ""}
-                                required={true}
-                                onChange={(e) => updateField("project_name", e)}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "project_name",
+                                    headerName: "project_name",
+                                    component: "BSTextField",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="parent_project_id"
-                                bsPreObj="tmt.t_tmt_"
-                                bsObj="project_header"
-                                bsColumes={[
-                                    {
-                                        field: "project_header_id",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "project_no",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    },
-                                    {
-                                        field: "project_name",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    },
-                                ]}
-                                bsObjBy="project_no asc"
-                                bsObjWh="is_active='YES' AND project_type='PROJECT'"
-                                variant="standard"
-                                bsValue={formData?.master_project_id}
-                                bsOnChange={(val) => updateField("master_project_id", val?.code || null)}
-
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "parent_project_id",
+                                    headerName: "parent_project_id",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "parent_project_id",
+                                    bsPreObj: "tmt.t_tmt_",
+                                    bsObj: "project_header",
+                                    bsColumes: [
+                                        {
+                                            field: "project_header_id",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "project_no",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        },
+                                        {
+                                            field: "project_name",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "project_no asc",
+                                    bsObjWh: "is_active='YES' AND project_type='PROJECT'",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="project_status"
-                                bsPreObj="sec.t_com_"
-                                bsObj="combobox_item"
-                                bsColumes={[
-                                    {
-                                        field: "value_member",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "display_member",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    }
-                                ]}
-                                bsObjBy="display_sequence asc"
-                                bsObjWh="is_active='YES' AND group_name='project_status'"
-                                variant="standard"
-                                bsOnChange={(val) => updateField("project_status", val?.code || null)}
-                                bsValue={formData?.project_status}
-                                error={!!errors.project_status}
-                                helperText={errors.project_status || ""}
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "project_status",
+                                    headerName: "project_status",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "project_status",
+                                    bsPreObj: "sec.t_com_",
+                                    bsObj: "combobox_item",
+                                    bsColumes: [
+                                        {
+                                            field: "value_member",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "display_member",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "display_sequence asc",
+                                    bsObjWh: "is_active='YES' AND group_name='project_status'",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="application_type"
-                                bsPreObj="sec.t_com_"
-                                bsObj="combobox_item"
-                                bsColumes={[
-                                    {
-                                        field: "value_member",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "display_member",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    }
-                                ]}
-                                bsObjBy="display_sequence asc"
-                                bsObjWh="is_active='YES' AND group_name='application_type'"
-                                variant="standard"
-                                bsValue={formData?.application_type}
-                                bsOnChange={(val) => updateField("application_type", val?.code || null)}
-                                error={!!errors.application_type}
-                                helperText={errors.application_type || ""}
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "application_type",
+                                    headerName: "application_type",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "application_type",
+                                    bsPreObj: "sec.t_com_",
+                                    bsObj: "combobox_item",
+                                    bsColumes: [
+                                        {
+                                            field: "value_member",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "display_member",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "display_sequence asc",
+                                    bsObjWh: "is_active='YES' AND group_name='application_type'",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="project_type"
-                                bsPreObj="sec.t_com_"
-                                bsObj="combobox_item"
-                                bsColumes={[
-                                    {
-                                        field: "value_member",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "display_member",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    }
-                                ]}
-                                bsObjBy="display_sequence asc"
-                                bsObjWh="is_active='YES' AND group_name='project_type'"
-                                variant="standard"
-                                bsValue={formData?.project_type}
-                                bsOnChange={(val) => updateField("project_type", val?.code || null)}
-                                error={!!errors.project_type}
-                                helperText={errors.project_type || ""}
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "project_type",
+                                    headerName: "project_type",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "project_type",
+                                    bsPreObj: "sec.t_com_",
+                                    bsObj: "combobox_item",
+                                    bsColumes: [
+                                        {
+                                            field: "value_member",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "display_member",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "display_sequence asc",
+                                    bsObjWh: "is_active='YES' AND group_name='project_type'",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="iso_type_id"
-                                bsPreObj="tmt.t_tmt_"
-                                bsObj="iso_type"
-                                bsColumes={[
-                                    {
-                                        field: "iso_type_id",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "iso_type_name",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    }
-                                ]}
-                                bsObjBy="iso_type_name asc"
-                                bsObjWh="is_active='YES'"
-                                bsValue={formData?.iso_type_id}
-                                bsOnChange={(val) => updateField("iso_type_id", val?.code || null)}
-                                error={!!errors.iso_type_id}
-                                helperText={errors.iso_type_id || ""}
-                                required={true}
-                                variant={formData.project_header_id ? 'filled' : 'standard'}
-                                disabled={formData.project_header_id ? true : false}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "iso_type_id",
+                                    headerName: "iso_type_id",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "iso_type_id",
+                                    bsPreObj: "tmt.t_tmt_",
+                                    bsObj: "iso_type",
+                                    bsColumes: [
+                                        {
+                                            field: "iso_type_id",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "iso_type_name",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "iso_type_name asc",
+                                    bsObjWh: "is_active='YES'",
+                                    required: true,
+                                    variant: formData.project_header_id ? 'filled' : 'standard',
+                                    disabled: formData.project_header_id ? true : false
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSTextField
-                                type="string"
-                                label="po_number"
-                                value={formData?.po_number}
-                                onChange={(e) => updateField("po_number", e)}
-                                variant="standard"
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "po_number",
+                                    headerName: "po_number",
+                                    component: "BSTextField",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="sale_id"
-                                bsPreObj="tmt.t_tmt_"
-                                bsObj="sale"
-                                bsColumes={[
-                                    {
-                                        field: "sale_id",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "sale_empolyee_code",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    },
-                                    {
-                                        field: "sale_name",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    }
-                                ]}
-                                bsObjBy="sale_empolyee_code asc"
-                                bsObjWh="is_active='YES'"
-                                variant="standard"
-                                bsValue={formData?.sale_id}
-                                bsOnChange={(val) => updateField("sale_id", val?.code || null)}
-                                error={!!errors.sale_id}
-                                helperText={errors.sale_id || ""}
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "sale_id",
+                                    headerName: "sale_id",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "sale_id",
+                                    bsPreObj: "tmt.t_tmt_",
+                                    bsObj: "sale",
+                                    bsColumes: [
+                                        {
+                                            field: "sale_id",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "sale_empolyee_code",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        },
+                                        {
+                                            field: "sale_name",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "sale_empolyee_code asc",
+                                    bsObjWh: "is_active='YES'",
+                                    variant: "standard",
+                                    required: true,
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSAutoComplete
-                                bsMode="single"
-                                bsTitle="customer_id"
-                                bsPreObj="tmt.t_tmt_"
-                                bsObj="customer"
-                                bsColumes={[
-                                    {
-                                        field: "customer_id",
-                                        display: false,
-                                        filter: false,
-                                        key: true,
-                                    },
-                                    {
-                                        field: "customer_code",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    },
-                                    {
-                                        field: "customer_name",
-                                        display: true,
-                                        filter: true,
-                                        key: false,
-                                    }
-                                ]}
-                                bsObjBy="customer_code asc"
-                                bsObjWh="is_active='YES'"
-                                variant="standard"
-                                bsValue={formData?.customer_id}
-                                bsOnChange={(val) => updateField("customer_id", val?.code || null)}
-                                error={!!errors.customer_id}
-                                helperText={errors.customer_id || ""}
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "customer_id",
+                                    headerName: "customer_id",
+                                    component: 'BSAutoComplete',
+                                    bsMode: "single",
+                                    bsTitle: "customer_id",
+                                    bsPreObj: "tmt.t_tmt_",
+                                    bsObj: "customer",
+                                    bsColumes: [
+                                        {
+                                            field: "customer_id",
+                                            display: false,
+                                            filter: false,
+                                            key: true,
+                                        },
+                                        {
+                                            field: "customer_code",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        },
+                                        {
+                                            field: "customer_name",
+                                            display: true,
+                                            filter: true,
+                                            key: false,
+                                        }
+                                    ],
+                                    bsObjBy: "customer_code asc",
+                                    bsObjWh: "is_active='YES'",
+                                    variant: "standard",
+                                    required: true,
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSTextField
-                                type="decimal"
-                                label="manday"
-                                value={formData?.manday}
-                                onChange={(e) => updateField("manday", e)}
-                                variant="standard"
-                            />
+                            {renderInput({
+                                item: {
+                                    type: "decimal",
+                                    field: "manday",
+                                    headerName: "manday",
+                                    component: "BSTextField",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSTextField
-                                type="string"
-                                label="management_cost"
-                                value={formData?.management_cost}
-                                onChange={(e) => updateField("management_cost", e)}
-                                variant="standard"
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "management_cost",
+                                    headerName: "management_cost",
+                                    component: "BSTextField",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSTextField
-                                type="string"
-                                label="travel_cost"
-                                value={formData?.travel_cost}
-                                onChange={(e) => updateField("travel_cost", e)}
-                                variant="standard"
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "travel_cost",
+                                    headerName: "travel_cost",
+                                    component: "BSTextField",
+                                    variant: "standard",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSDatepicker
-                                label="Plan Project Date"
-                                isRange={true}
-                                isDateOnly={true}
-                                value={[
-                                    formData?.plan_project_start ? dayjs(formData.plan_project_start) : null,
-                                    formData?.plan_project_end ? dayjs(formData.plan_project_end) : null
-                                ]}
-                                onChange={(newValue) => {
-                                    updateField("plan_project_start", newValue[0] ? newValue[0].format("YYYY-MM-DD") : null);
-                                    updateField("plan_project_end", newValue[1] ? newValue[1].format("YYYY-MM-DD") : null);
-                                }}
-                                format={"DD/MM/YYYY"}
-                                error={!!errors.plan_project_start || !!errors.plan_project_end}
-                                helperText={(errors.plan_project_start || "") || (errors.plan_project_end || "")}
-                                required={true}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "plan_project_date",
+                                    headerName: "plan_project_date",
+                                    component: "BSDatePicker",
+                                    isRange: true,
+                                    isDateOnly: true,
+                                    format: "DD/MM/YYYY",
+                                    start: "plan_project_start",
+                                    end: "plan_project_end",
+                                    required: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSDatepicker
-                                label="Revise Project Date"
-                                isRange={true}
-                                isDateOnly={true}
-                                value={[
-                                    formData?.revise_project_start ? dayjs(formData.revise_project_start) : null,
-                                    formData?.revise_project_end ? dayjs(formData.revise_project_end) : null
-                                ]}
-                                onChange={(newValue) => {
-                                    updateField("revise_project_start", newValue[0] ? newValue[0].format("YYYY-MM-DD") : null);
-                                    updateField("revise_project_end", newValue[1] ? newValue[1].format("YYYY-MM-DD") : null);
-                                }}
-                                format={"DD/MM/YYYY"}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "revise_project_date",
+                                    headerName: "revise_project_date",
+                                    component: "BSDatePicker",
+                                    isRange: true,
+                                    isDateOnly: true,
+                                    format: "DD/MM/YYYY",
+                                    start: "revise_project_start",
+                                    end: "revise_project_end"
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                            <BSDatepicker
-                                label="Actual Project Date"
-                                isRange={true}
-                                isDateOnly={true}
-                                value={[
-                                    formData?.actual_project_start ? dayjs(formData.actual_project_start) : null,
-                                    formData?.actual_project_end ? dayjs(formData.actual_project_end) : null
-                                ]}
-                                onChange={(newValue) => {
-                                    updateField("actual_project_start", newValue[0] ? newValue[0].format("YYYY-MM-DD") : null);
-                                    updateField("actual_project_end", newValue[1] ? newValue[1].format("YYYY-MM-DD") : null);
-                                }}
-                                format={"DD/MM/YYYY"}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "actual_project_date",
+                                    headerName: "actual_project_date",
+                                    component: "BSDatePicker",
+                                    isRange: true,
+                                    isDateOnly: true,
+                                    format: "DD/MM/YYYY",
+                                    start: "actual_project_start",
+                                    end: "actual_project_end"
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                            {renderInput({
+                                item: {
+                                    field: "record_type",
+                                    headerName: "record_type",
+                                    component: "BSTextField",
+                                    variant: "filled",
+                                    readOnly: true
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                         <Grid size={12}>
-                            <BSTextField
-                                type="string"
-                                label="Remark"
-                                value={formData?.remark}
-                                onChange={(e) => updateField("remark", e)}
-                                variant="outlined"
-                                multiline={true}
-                                minRows={3}
-                            />
+                            {renderInput({
+                                item: {
+                                    field: "remark",
+                                    headerName: "remark",
+                                    component: "BSTextField",
+                                    variant: "outlined",
+                                    multiline: true,
+                                    minRows: 3
+                                },
+                                formData,
+                                errors,
+                                updateField
+                            })}
                         </Grid>
                     </Grid>
                     {/* End of form fields for formData */}
