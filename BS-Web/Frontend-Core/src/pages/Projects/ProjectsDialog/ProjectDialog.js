@@ -434,8 +434,7 @@ const ProjectsDialog = (props) => {
                                     field: "management_cost",
                                     headerName: "management_cost",
                                     component: "BSTextField",
-                                    variant: "standard",
-                                    required: true
+                                    variant: "standard"
                                 },
                                 formData,
                                 errors,
@@ -448,8 +447,7 @@ const ProjectsDialog = (props) => {
                                     field: "travel_cost",
                                     headerName: "travel_cost",
                                     component: "BSTextField",
-                                    variant: "standard",
-                                    required: true
+                                    variant: "standard"
                                 },
                                 formData,
                                 errors,

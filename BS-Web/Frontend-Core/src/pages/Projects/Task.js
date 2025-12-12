@@ -101,10 +101,12 @@ const ProjectTask = (props) => {
                         <BSDataGrid
                             ref={dataGridRef}
                             bsLocale={lang}
-                            bsObj="v_tmt_project_task"
-                            bsPreObj="tmt"
+                            bsStoredProcedure="usp_tmt_project_task"
+                            bsStoredProcedureSchema="tmt"
                             bsCols="task_name,assignee,due_date,priority,manday,task_status"
-                            bsObjWh={`project_task_phase_id = ${phase.project_task_phase_id}`}
+                            bsStoredProcedureParams={{
+                                ProjectTaskPhaseId: phase.project_task_phase_id,
+                            }}
                             bsShowRowNumber={true}
                             showAdd={true}
                             onEdit={handleOpenEditTask}
