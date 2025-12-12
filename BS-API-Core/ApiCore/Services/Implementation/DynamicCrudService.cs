@@ -1477,10 +1477,19 @@ namespace ApiCore.Services.Implementation
 
                 // Read all result sets to find the one with actual data
                 var resultSets = new List<List<Dictionary<string, object>>>();
+                var resultSetSchemas = new List<List<string>>(); // Store column names for each result set
 
                 do
                 {
                     var currentResultSet = new List<Dictionary<string, object>>();
+
+                    // Capture column schema BEFORE reading rows (works even when no rows)
+                    var columnNames = new List<string>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        columnNames.Add(reader.GetName(i));
+                    }
+                    resultSetSchemas.Add(columnNames);
 
                     while (await reader.ReadAsync())
                     {
@@ -1500,38 +1509,61 @@ namespace ApiCore.Services.Implementation
 
                 _logger.LogInformation("📦 SERVICE: Read {ResultSetCount} result sets from SP", resultSets.Count);
 
+                // Log all result sets with their schema (including empty ones)
                 for (int i = 0; i < resultSets.Count; i++)
                 {
                     var rs = resultSets[i];
-                    if (rs.Any())
+                    var schema = resultSetSchemas[i];
+                    _logger.LogInformation("   - Result Set {Index}: {RowCount} rows, {ColumnCount} columns (schema), Columns: [{Columns}]",
+                        i, rs.Count, schema.Count, string.Join(", ", schema));
+                }
+
+                // Find the result set with more than 4 columns (data, not pagination output)
+                // Pagination result sets have only 4 columns: TotalRows, CurrentPage, PageSize, TotalPages
+                // Data result sets have many columns (e.g., 21 columns for task data)
+                int dataResultSetIndex = -1;
+                List<Dictionary<string, object>> dataResultSet = null;
+                List<string> dataResultSetSchema = null;
+
+                for (int i = 0; i < resultSetSchemas.Count; i++)
+                {
+                    var schema = resultSetSchemas[i];
+                    // Must have more than 4 columns (not pagination), not single count, not metadata
+                    if (schema.Count > 4 &&
+                        !schema.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase) &&
+                        !schema.Contains("DATA_TYPE", StringComparer.OrdinalIgnoreCase))
                     {
-                        _logger.LogInformation("   - Result Set {Index}: {RowCount} rows, {ColumnCount} columns, Columns: [{Columns}]",
-                            i, rs.Count, rs.First().Keys.Count, string.Join(", ", rs.First().Keys));
-                    }
-                    else
-                    {
-                        _logger.LogInformation("   - Result Set {Index}: EMPTY", i);
+                        dataResultSetIndex = i;
+                        dataResultSet = resultSets[i];
+                        dataResultSetSchema = schema;
+                        break;
                     }
                 }
 
-                // Find the result set with actual data (not metadata, not single-column count)
-                var dataResultSet = resultSets
-                    .Where(rs => rs.Any()) // Must have data
-                    .Where(rs => rs.First().Keys.Count > 1) // Must have more than 1 column (not just count)
-                    .Where(rs => !rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase) &&
-                                !rs.First().Keys.Contains("DATA_TYPE", StringComparer.OrdinalIgnoreCase)) // Not metadata
-                    .FirstOrDefault(); // Take the FIRST result set that matches criteria
-
-                if (dataResultSet != null)
+                if (dataResultSetIndex >= 0)
                 {
                     results = dataResultSet;
-                    _logger.LogInformation("✅ SERVICE: Selected DATA result set with {ColumnCount} columns and {RowCount} rows (not metadata, not count)",
-                        results.First().Keys.Count, results.Count);
+                    _logger.LogInformation("✅ SERVICE: Selected DATA result set #{Index} with {ColumnCount} columns and {RowCount} rows",
+                        dataResultSetIndex, dataResultSetSchema.Count, results.Count);
+
+                    // If data is empty but we have schema, add an empty row with column keys for metadata extraction
+                    if (results.Count == 0 && dataResultSetSchema.Count > 0)
+                    {
+                        _logger.LogInformation("📋 SERVICE: Data result set is empty but has {ColumnCount} columns in schema. Creating metadata placeholder.",
+                            dataResultSetSchema.Count);
+                        // Create a placeholder row with null values to preserve column structure
+                        var emptyRow = new Dictionary<string, object>();
+                        foreach (var col in dataResultSetSchema)
+                        {
+                            emptyRow[col] = null;
+                        }
+                        results = new List<Dictionary<string, object>> { emptyRow };
+                    }
                 }
                 else
                 {
                     _logger.LogWarning("⚠️ SERVICE: NO DATA RESULT SET found from SP! Available result sets: {ResultSetInfo}",
-                        string.Join(", ", resultSets.Select((rs, i) => $"Set{i}:{rs.Count}rows,{(rs.Any() ? rs.First().Keys.Count : 0)}cols")));
+                        string.Join(", ", resultSetSchemas.Select((schema, i) => $"Set{i}:{resultSets[i].Count}rows,{schema.Count}cols[{string.Join(",", schema.Take(3))}...]")));
                 }
 
                 // Try to find total count from any single-value result set
