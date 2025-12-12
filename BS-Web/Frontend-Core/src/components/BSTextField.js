@@ -13,7 +13,7 @@ const BSTextField = ({
   scale = 2, // จำนวนหลักทศนิยม เช่น decimal(18,2)
   borderLeftRadius = null,
   disblsed = false,
-  variant = "standard",
+  variant = "outlined",
   readOnly = false,
   ...props
 }) => {
@@ -44,7 +44,7 @@ const BSTextField = ({
   };
 
   return (
-    <FormControl fullWidth error={error} >
+    <FormControl fullWidth error={error}>
       <TextField
         error={error}
         variant={variant}

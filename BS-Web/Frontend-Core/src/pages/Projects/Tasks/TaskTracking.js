@@ -224,7 +224,6 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     ],
                     bsObjBy: "display_sequence asc",
                     bsObjWh: "is_active='YES' and group_name='issue_type'",
-                    variant: "standard",
                     required: true,
                   },
                   formData,

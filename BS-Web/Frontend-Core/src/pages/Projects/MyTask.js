@@ -124,7 +124,7 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
               </Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ backgroundColor: "#fafafa", pt: 0, pb: 1 }}>
-              <Grid container spacing={0.5}>
+              <Grid container spacing={1.2} rowSpacing={0.5}>
                 {/* Project No */}
                 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                   <Box

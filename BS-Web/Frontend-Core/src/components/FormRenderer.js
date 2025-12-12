@@ -17,7 +17,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
           required={item.required}
           readOnly={item.readOnly || false}
           onChange={(e) => updateField(item.field, e)}
-          variant={item.variant}
+          variant={item.variant || "outlined"}
           multiline={item.multiline}
           minRows={item.minRows || 1}
           error={!!errors[item.field]}
@@ -36,13 +36,13 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
           fullWidth
           bsOnChange={(e) => updateField(item.field, e?.code || "")}
           bsMode={item.bsMode}
-          bsTitle={item.bsTitle}
+          bsTitle={item.bsTitle || item.headerName}
           bsPreObj={item.bsPreObj}
           bsObj={item.bsObj}
           bsColumes={item.bsColumes}
           bsObjBy={item.bsObjBy}
           bsObjWh={item.bsObjWh}
-          variant={item.variant}
+          variant={item.variant || "outlined"}
           error={!!errors[item.field]}
           helperText={errors[item.field] || ""}
           required={item.required}
