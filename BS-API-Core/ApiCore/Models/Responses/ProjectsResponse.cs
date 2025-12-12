@@ -22,6 +22,7 @@
         public DateTime? revise_project_end { get; set; }
         public DateTime? actual_project_start { get; set; }
         public DateTime? actual_project_end { get; set; }
+        public string record_type { get; set; }
         public string remark { get; set; }
         public string is_active { get; set; }
         public string create_by { get; set; }

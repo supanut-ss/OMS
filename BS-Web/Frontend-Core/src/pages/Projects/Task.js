@@ -47,13 +47,17 @@ const ProjectTask = (props) => {
         setOpenDialog(false);
         setPhases({});
     };
-    useEffect(() => {
+    const refreshData = useCallback(() => {
         if (refresh) {
             setTaskPhases([]);
             callTaskPhase(projectID);
             setRefresh(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refresh, projectID]);
+    useEffect(() => {
+        refreshData();
+    }, [refreshData]);
     const fetchTaskPhase = useCallback(async () => {
         try {
             if (!projectID && projectID <= 0) return;
@@ -63,6 +67,7 @@ const ProjectTask = (props) => {
         } catch (err) {
             setLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectID]);
     const callTaskPhase = async (id) => {
         setLoading(true);
@@ -96,12 +101,10 @@ const ProjectTask = (props) => {
                         <BSDataGrid
                             ref={dataGridRef}
                             bsLocale={lang}
-                            bsStoredProcedure="usp_tmt_project_task"
-                            bsStoredProcedureSchema="tmt"
+                            bsObj="v_tmt_project_task"
+                            bsPreObj="tmt"
                             bsCols="task_name,assignee,due_date,priority,manday,task_status"
-                            bsStoredProcedureParams={{
-                                ProjectTaskPhaseId: phase.project_task_phase_id,
-                            }}
+                            bsObjWh={`project_task_phase_id = ${phase.project_task_phase_id}`}
                             bsShowRowNumber={true}
                             showAdd={true}
                             onEdit={handleOpenEditTask}

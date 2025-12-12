@@ -1,6 +1,5 @@
 import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Tab, Tabs } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import dayjs from "dayjs";
 import AxiosMaster from "../../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
 import AssignTeam from "../Tasks/AssignTeam";
@@ -9,7 +8,7 @@ import TaskTracking from "../Tasks/TaskTracking";
 import useForm from "../../../hooks/useForm";
 import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { renderInput } from "../../../components/FormRenderer";
 
 const defaultData = {
@@ -73,9 +72,9 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
             project_task_phase_id: phases.project_task_phase_id,
             project_header_id: projectHeader.project_header_id
         }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [phases]);
-
-    useEffect(() => {
+    const fetchData = useCallback(() => {
         if (!phases.project_task_id) return;
 
         AxiosMaster
@@ -91,7 +90,11 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                     }));
                 }
             });
-    }, [phases]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [phases])
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
 
     return (
