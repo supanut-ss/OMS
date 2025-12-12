@@ -1540,24 +1540,21 @@ namespace ApiCore.Services.Implementation
                     }
                 }
 
+                // Store the data schema for metadata generation (even if empty)
+                List<string> dataColumnSchema = null;
+
                 if (dataResultSetIndex >= 0)
                 {
                     results = dataResultSet;
+                    dataColumnSchema = dataResultSetSchema; // Store schema for metadata generation
                     _logger.LogInformation("✅ SERVICE: Selected DATA result set #{Index} with {ColumnCount} columns and {RowCount} rows",
                         dataResultSetIndex, dataResultSetSchema.Count, results.Count);
 
-                    // If data is empty but we have schema, add an empty row with column keys for metadata extraction
+                    // If data is empty, log it but DON'T add placeholder row - keep data empty, use schema for metadata
                     if (results.Count == 0 && dataResultSetSchema.Count > 0)
                     {
-                        _logger.LogInformation("📋 SERVICE: Data result set is empty but has {ColumnCount} columns in schema. Creating metadata placeholder.",
+                        _logger.LogInformation("📋 SERVICE: Data result set is empty but has {ColumnCount} columns in schema. Will use schema for metadata.",
                             dataResultSetSchema.Count);
-                        // Create a placeholder row with null values to preserve column structure
-                        var emptyRow = new Dictionary<string, object>();
-                        foreach (var col in dataResultSetSchema)
-                        {
-                            emptyRow[col] = null;
-                        }
-                        results = new List<Dictionary<string, object>> { emptyRow };
                     }
                 }
                 else
@@ -1805,6 +1802,58 @@ namespace ApiCore.Services.Implementation
                     };
 
                     _logger.LogInformation("✅ FALLBACK METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                        metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
+                }
+                else if (dataColumnSchema != null && dataColumnSchema.Count > 0)
+                {
+                    // 🆕 NEW: Use captured column schema when data is empty
+                    _logger.LogInformation("📋 No data returned, using captured column schema ({ColumnCount} columns) for metadata", dataColumnSchema.Count);
+
+                    var columns = new List<DynamicColumnInfo>();
+                    var detectedPrimaryKeys = new List<string>();
+
+                    foreach (var columnName in dataColumnSchema)
+                    {
+                        var columnInfo = new DynamicColumnInfo
+                        {
+                            ColumnName = columnName,
+                            DataType = "nvarchar", // Default to nvarchar when no data
+                            IsNullable = true,
+                            IsPrimaryKey = false,
+                            IsIdentity = false
+                        };
+
+                        columns.Add(columnInfo);
+                    }
+
+                    // 🔑 Detect primary key from column names
+                    var primaryKeyPatterns = new[] { "_id", "Id", "ID" };
+                    foreach (var pattern in primaryKeyPatterns)
+                    {
+                        var matchedColumn = columns.FirstOrDefault(c =>
+                            c.ColumnName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchedColumn != null)
+                        {
+                            matchedColumn.IsPrimaryKey = true;
+                            detectedPrimaryKeys.Add(matchedColumn.ColumnName);
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED from schema: {ColumnName}", matchedColumn.ColumnName);
+                            break;
+                        }
+                    }
+
+                    metadata = new DynamicTableMetadata
+                    {
+                        TableName = request.ProcedureName,
+                        SchemaName = request.SchemaName,
+                        TableType = DynamicTableType.StoredProcedure,
+                        Columns = columns,
+                        PrimaryKeys = detectedPrimaryKeys,
+                        TotalRows = 0, // No data
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    _logger.LogInformation("✅ SCHEMA-BASED METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
                         metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
                 }
                 else
