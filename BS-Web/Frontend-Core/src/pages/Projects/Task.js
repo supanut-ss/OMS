@@ -1,11 +1,25 @@
-import { Accordion, AccordionDetails, AccordionSummary, Paper, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Paper, Typography } from "@mui/material";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import BSDataGrid from "../../components/BSDataGrid";
 import TaskDialog from "./TaskDialog/TaskDialog";  // ← import Dialog
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
-
+import FlagIcon from "@mui/icons-material/Flag";
+const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+        case "urgent":
+            return "#d32f2f";
+        case "high":
+            return "#ed6c02";
+        case "normal":
+        case "medium":
+            return "#0288d1";
+        case "low":
+        default:
+            return "#9e9e9e";
+    }
+};
 const ProjectTask = (props) => {
     const { projectID, lang, refresh, setRefresh, projectHeader } = props;
 
@@ -115,9 +129,24 @@ const ProjectTask = (props) => {
                             }}
                             bsShowRowNumber={true}
                             showAdd={true}
-                            bsColumnDefs={[
-                                { field: "assignee", type: "avatar" },
-                                { field: "task_status", type: "status" }
+                            bsColumnDefs={[{
+                                field: "assignee",
+                                type: "stringAvatar",
+                                headerName: "Assignee",
+                                showTooltip: true,
+                            },
+                            { field: "task_status", type: "status" },
+                            {
+                                field: "priority",
+                                headerName: "Priority",
+                                width: 120,
+                                renderCell: (params) => (
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <FlagIcon sx={{ color: getPriorityColor(params.value) }} />
+                                        <span>{params.value || "-"}</span>
+                                    </Box>
+                                ),
+                            },
                             ]}
                             onEdit={handleOpenEditTask}
                             onAdd={() => handleOpenAddTask(phase)}

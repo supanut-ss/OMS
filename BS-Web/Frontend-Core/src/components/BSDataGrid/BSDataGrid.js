@@ -5839,55 +5839,7 @@ const BSDataGrid = forwardRef(
             );
           };
         }
-        //Avatar
-        if (customDef.type === "avatar") {
-          const stringToColor = (str) => {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-              hash = str.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            let color = "#";
-            for (let i = 0; i < 3; i++) {
-              const value = (hash >> (i * 8)) & 0xff;
-              color += ("00" + value.toString(16)).slice(-2);
-            }
-            return color;
-          };
-          mergedColumn.renderCell = (params) => {
-            const value = params.value || "";
-
-            const items = value
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-
-            return (
-              <Box sx={{ display: "flex", alignItems: "center", pl: "4px" }}>
-                {items.map((it, idx) => (
-                  <Avatar
-                    key={idx}
-                    sx={{
-                      width: 28,
-                      height: 28,
-                      fontSize: 12,
-                      bgcolor: stringToColor(it),
-                      color: "#fff",
-                      border: "2px solid white",
-                      fontWeight: "bold",
-                      position: "relative",
-                      ml: idx === 0 ? 0 : -1.2,
-                      zIndex: items.length - idx,
-                      cursor: "pointer"
-                    }}
-                    title={it}
-                  >
-                    {it.slice(0, 2).toUpperCase()}
-                  </Avatar>
-                ))}
-              </Box>
-            );
-          };
-        }
+        
         // status
         if (customDef.type === "status") {
           mergedColumn.renderCell = (params) => {
