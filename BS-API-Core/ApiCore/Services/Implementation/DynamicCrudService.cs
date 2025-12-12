@@ -1477,10 +1477,19 @@ namespace ApiCore.Services.Implementation
 
                 // Read all result sets to find the one with actual data
                 var resultSets = new List<List<Dictionary<string, object>>>();
+                var resultSetSchemas = new List<List<string>>(); // Store column names for each result set
 
                 do
                 {
                     var currentResultSet = new List<Dictionary<string, object>>();
+
+                    // Capture column schema BEFORE reading rows (works even when no rows)
+                    var columnNames = new List<string>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        columnNames.Add(reader.GetName(i));
+                    }
+                    resultSetSchemas.Add(columnNames);
 
                     while (await reader.ReadAsync())
                     {
@@ -1500,38 +1509,58 @@ namespace ApiCore.Services.Implementation
 
                 _logger.LogInformation("📦 SERVICE: Read {ResultSetCount} result sets from SP", resultSets.Count);
 
+                // Log all result sets with their schema (including empty ones)
                 for (int i = 0; i < resultSets.Count; i++)
                 {
                     var rs = resultSets[i];
-                    if (rs.Any())
+                    var schema = resultSetSchemas[i];
+                    _logger.LogInformation("   - Result Set {Index}: {RowCount} rows, {ColumnCount} columns (schema), Columns: [{Columns}]",
+                        i, rs.Count, schema.Count, string.Join(", ", schema));
+                }
+
+                // Find the result set with more than 4 columns (data, not pagination output)
+                // Pagination result sets have only 4 columns: TotalRows, CurrentPage, PageSize, TotalPages
+                // Data result sets have many columns (e.g., 21 columns for task data)
+                int dataResultSetIndex = -1;
+                List<Dictionary<string, object>> dataResultSet = null;
+                List<string> dataResultSetSchema = null;
+
+                for (int i = 0; i < resultSetSchemas.Count; i++)
+                {
+                    var schema = resultSetSchemas[i];
+                    // Must have more than 4 columns (not pagination), not single count, not metadata
+                    if (schema.Count > 4 &&
+                        !schema.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase) &&
+                        !schema.Contains("DATA_TYPE", StringComparer.OrdinalIgnoreCase))
                     {
-                        _logger.LogInformation("   - Result Set {Index}: {RowCount} rows, {ColumnCount} columns, Columns: [{Columns}]",
-                            i, rs.Count, rs.First().Keys.Count, string.Join(", ", rs.First().Keys));
-                    }
-                    else
-                    {
-                        _logger.LogInformation("   - Result Set {Index}: EMPTY", i);
+                        dataResultSetIndex = i;
+                        dataResultSet = resultSets[i];
+                        dataResultSetSchema = schema;
+                        break;
                     }
                 }
 
-                // Find the result set with actual data (not metadata, not single-column count)
-                var dataResultSet = resultSets
-                    .Where(rs => rs.Any()) // Must have data
-                    .Where(rs => rs.First().Keys.Count > 1) // Must have more than 1 column (not just count)
-                    .Where(rs => !rs.First().Keys.Contains("COLUMN_NAME", StringComparer.OrdinalIgnoreCase) &&
-                                !rs.First().Keys.Contains("DATA_TYPE", StringComparer.OrdinalIgnoreCase)) // Not metadata
-                    .FirstOrDefault(); // Take the FIRST result set that matches criteria
+                // Store the data schema for metadata generation (even if empty)
+                List<string> dataColumnSchema = null;
 
-                if (dataResultSet != null)
+                if (dataResultSetIndex >= 0)
                 {
                     results = dataResultSet;
-                    _logger.LogInformation("✅ SERVICE: Selected DATA result set with {ColumnCount} columns and {RowCount} rows (not metadata, not count)",
-                        results.First().Keys.Count, results.Count);
+                    dataColumnSchema = dataResultSetSchema; // Store schema for metadata generation
+                    _logger.LogInformation("✅ SERVICE: Selected DATA result set #{Index} with {ColumnCount} columns and {RowCount} rows",
+                        dataResultSetIndex, dataResultSetSchema.Count, results.Count);
+
+                    // If data is empty, log it but DON'T add placeholder row - keep data empty, use schema for metadata
+                    if (results.Count == 0 && dataResultSetSchema.Count > 0)
+                    {
+                        _logger.LogInformation("📋 SERVICE: Data result set is empty but has {ColumnCount} columns in schema. Will use schema for metadata.",
+                            dataResultSetSchema.Count);
+                    }
                 }
                 else
                 {
                     _logger.LogWarning("⚠️ SERVICE: NO DATA RESULT SET found from SP! Available result sets: {ResultSetInfo}",
-                        string.Join(", ", resultSets.Select((rs, i) => $"Set{i}:{rs.Count}rows,{(rs.Any() ? rs.First().Keys.Count : 0)}cols")));
+                        string.Join(", ", resultSetSchemas.Select((schema, i) => $"Set{i}:{resultSets[i].Count}rows,{schema.Count}cols[{string.Join(",", schema.Take(3))}...]")));
                 }
 
                 // Try to find total count from any single-value result set
@@ -1773,6 +1802,58 @@ namespace ApiCore.Services.Implementation
                     };
 
                     _logger.LogInformation("✅ FALLBACK METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
+                        metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
+                }
+                else if (dataColumnSchema != null && dataColumnSchema.Count > 0)
+                {
+                    // 🆕 NEW: Use captured column schema when data is empty
+                    _logger.LogInformation("📋 No data returned, using captured column schema ({ColumnCount} columns) for metadata", dataColumnSchema.Count);
+
+                    var columns = new List<DynamicColumnInfo>();
+                    var detectedPrimaryKeys = new List<string>();
+
+                    foreach (var columnName in dataColumnSchema)
+                    {
+                        var columnInfo = new DynamicColumnInfo
+                        {
+                            ColumnName = columnName,
+                            DataType = "nvarchar", // Default to nvarchar when no data
+                            IsNullable = true,
+                            IsPrimaryKey = false,
+                            IsIdentity = false
+                        };
+
+                        columns.Add(columnInfo);
+                    }
+
+                    // 🔑 Detect primary key from column names
+                    var primaryKeyPatterns = new[] { "_id", "Id", "ID" };
+                    foreach (var pattern in primaryKeyPatterns)
+                    {
+                        var matchedColumn = columns.FirstOrDefault(c =>
+                            c.ColumnName.EndsWith(pattern, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchedColumn != null)
+                        {
+                            matchedColumn.IsPrimaryKey = true;
+                            detectedPrimaryKeys.Add(matchedColumn.ColumnName);
+                            _logger.LogInformation("🔑 PRIMARY KEY DETECTED from schema: {ColumnName}", matchedColumn.ColumnName);
+                            break;
+                        }
+                    }
+
+                    metadata = new DynamicTableMetadata
+                    {
+                        TableName = request.ProcedureName,
+                        SchemaName = request.SchemaName,
+                        TableType = DynamicTableType.StoredProcedure,
+                        Columns = columns,
+                        PrimaryKeys = detectedPrimaryKeys,
+                        TotalRows = 0, // No data
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    _logger.LogInformation("✅ SCHEMA-BASED METADATA CREATED: {TableName}.{SchemaName} with {ColumnCount} columns, Primary Keys: [{PrimaryKeys}]",
                         metadata.TableName, metadata.SchemaName, metadata.Columns.Count, string.Join(", ", metadata.PrimaryKeys));
                 }
                 else

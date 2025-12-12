@@ -31,13 +31,14 @@ const CustomerPage = (props) => {
           bsLocale={props.lang}
           bsPreObj="tmt"
           bsObj="t_tmt_customer"
-          bsObjBy="create_date desc"
+          // bsObjBy="create_date desc"
           bsUniqueFields={["customer_code"]}
+          bsCols="customer_code,customer_name,description,addr_line_1,is_active,create_by,create_date,update_by,update_date"
           // bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           //bsBulkAction={true}
-          bsEnableBulkMode={true} // Enable all bulk operations
+          //bsEnableBulkMode={true} // Enable all bulk operations
           bsDialogSize="Large"
-          bsDialogColumns={2}
+          bsDialogColumns={3}
           bsDialogTab={[
             {
               Column:
@@ -53,7 +54,7 @@ const CustomerPage = (props) => {
           bsColumnDefs={[
             {
               field: "customer_code",
-              editable: false,
+              editable: true,
               readOnly: true,
             },
           ]}

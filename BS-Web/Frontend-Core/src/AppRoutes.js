@@ -28,6 +28,7 @@ import ImportMaster from "./pages/Import/ImportMaster";
 import UserLogOnPage from "./pages/Authentication/UserLogOn";
 import Combobox from "./pages/Configs/Combobox";
 import Projects from "./pages/Projects/Projects";
+import MyTaskPage from "./pages/Projects/MyTask";
 import CustomerPage from "./pages/Master/Customer";
 import HolidayPage from "./pages/Master/Holiday";
 import SalePage from "./pages/Master/Sale";
@@ -110,6 +111,7 @@ export default function AppRoutes() {
           <Route path="iso" element={<IsoPage lang={lang} />} />
         </Route>
         <Route path="projects" element={<Projects lang={lang} />} />
+        <Route path="my-task" element={<MyTaskPage lang={lang} />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
