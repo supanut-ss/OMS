@@ -24,7 +24,7 @@ namespace ApiCore.Services.Implementation
                     var sql = @$"SELECT project_header_id,master_project_id, project_no, project_name, project_status, application_type, project_type, iso_type_id, 
                                         po_number, sale_id, customer_id, manday, management_cost, travel_cost, plan_project_start, 
                                         plan_project_end, revise_project_start, revise_project_end, actual_project_start, actual_project_end, 
-                                        remark, is_active, create_by, create_date, update_by, update_date
+                                        record_type,remark, is_active, create_by, create_date, update_by, update_date
                                  FROM tmt.t_tmt_project_header
                                  WHERE project_header_id = @ProjectId";
                     using (var cmd = new SqlCommand(sql, conn))
@@ -54,12 +54,13 @@ namespace ApiCore.Services.Implementation
                                 response.revise_project_end = reader.IsDBNull(17) ? (DateTime?)null : reader.GetDateTime(17);
                                 response.actual_project_start = reader.IsDBNull(18) ? (DateTime?)null : reader.GetDateTime(18);
                                 response.actual_project_end = reader.IsDBNull(19) ? (DateTime?)null : reader.GetDateTime(19);
-                                response.remark = reader.GetString(20);
-                                response.is_active = reader.GetString(21);
-                                response.create_by = reader.GetString(22);
-                                response.create_date = reader.GetDateTime(23);
-                                response.update_by = reader.IsDBNull(24) ? null : reader.GetString(24);
-                                response.update_date = reader.IsDBNull(25) ? (DateTime?)null : reader.GetDateTime(25);
+                                response.record_type = reader.GetString(20);
+                                response.remark = reader.GetString(21);
+                                response.is_active = reader.GetString(22);
+                                response.create_by = reader.GetString(23);
+                                response.create_date = reader.GetDateTime(24);
+                                response.update_by = reader.IsDBNull(25) ? null : reader.GetString(25);
+                                response.update_date = reader.IsDBNull(26) ? (DateTime?)null : reader.GetDateTime(26);
 
                             }
                         }
@@ -162,6 +163,7 @@ namespace ApiCore.Services.Implementation
                 AddParam("@in_dateReviseProjectEnd", SqlDbType.DateTime, project.revise_project_end ?? null);
                 AddParam("@in_dateActualProjectStart", SqlDbType.DateTime, project.actual_project_start ?? null);
                 AddParam("@in_dateActualProjectEnd", SqlDbType.DateTime, project.actual_project_end ?? null);
+                AddParam("@in_vchRecordType", SqlDbType.NVarChar, project.record_type ?? null, 50);
                 AddParam("@in_vchRemark", SqlDbType.NVarChar, project.remark ?? null, 500);
                 AddParam("@in_vchIsActive", SqlDbType.VarChar, project.is_active ?? "YES", 3);
                 AddParam("@in_vchUserId", SqlDbType.NVarChar, userId, 40);
@@ -258,7 +260,7 @@ namespace ApiCore.Services.Implementation
                 Console.WriteLine(pOutCode.Value);
                 Console.WriteLine(pOutMsg.Value);
                 return await GetProjectsTaskByIdAsync(newId);
-                
+
             }
             catch (Exception ex)
             {

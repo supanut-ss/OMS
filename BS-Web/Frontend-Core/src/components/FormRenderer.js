@@ -22,6 +22,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
                     minRows={item.minRows || 1}
                     error={!!errors[item.field]}
                     helperText={errors[item.field] || ""}
+                    disabled={item.disabled}
                 />
             );
 
@@ -43,6 +44,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
                     error={!!errors[item.field]}
                     helperText={errors[item.field] || ""}
                     required={item.required}
+                    disabled={item.disabled}
                 />
             );
 
