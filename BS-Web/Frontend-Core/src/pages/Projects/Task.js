@@ -115,6 +115,10 @@ const ProjectTask = (props) => {
                             }}
                             bsShowRowNumber={true}
                             showAdd={true}
+                            bsColumnDefs={[
+                                { field: "assignee", type: "avatar" },
+                                { field: "task_status", type: "status" }
+                            ]}
                             onEdit={handleOpenEditTask}
                             onAdd={() => handleOpenAddTask(phase)}
                             onDelete={handleDeleteTask}

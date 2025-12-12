@@ -42,6 +42,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Tooltip,
+  Avatar,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -1712,8 +1713,8 @@ const BSDataGrid = forwardRef(
               if (tabItem.Tab) {
                 const columns = tabItem.Tab.Column
                   ? tabItem.Tab.Column.split(",")
-                      .map((c) => c.trim())
-                      .filter(Boolean)
+                    .map((c) => c.trim())
+                    .filter(Boolean)
                   : [];
                 tabs.push({
                   name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
@@ -1931,12 +1932,12 @@ const BSDataGrid = forwardRef(
     const [filterModel, setFilterModel] = useState(() => ({
       items: bsObjWh
         ? [
-            {
-              field: "custom_where",
-              operator: "custom",
-              value: bsObjWh,
-            },
-          ]
+          {
+            field: "custom_where",
+            operator: "custom",
+            value: bsObjWh,
+          },
+        ]
         : [],
     }));
 
@@ -2273,21 +2274,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-              bsCustomFilters &&
-              bsCustomFilters.length > 0
+                bsCustomFilters &&
+                bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields (optional until backend is ready)
             userLookup: bsUserLookup
               ? {
-                  table: bsUserLookup.table || "sec.t_com_user",
-                  idField: bsUserLookup.idField || "user_id",
-                  displayFields: bsUserLookup.displayFields || [
-                    "first_name",
-                    "last_name",
-                  ],
-                  separator: bsUserLookup.separator || " ",
-                }
+                table: bsUserLookup.table || "sec.t_com_user",
+                idField: bsUserLookup.idField || "user_id",
+                displayFields: bsUserLookup.displayFields || [
+                  "first_name",
+                  "last_name",
+                ],
+                separator: bsUserLookup.separator || " ",
+              }
               : undefined,
           };
 
@@ -2528,9 +2529,9 @@ const BSDataGrid = forwardRef(
             sortModel:
               bsFilterMode === "server"
                 ? currentSortModel.map((sort) => ({
-                    field: sort.field,
-                    sort: sort.sort,
-                  }))
+                  field: sort.field,
+                  sort: sort.sort,
+                }))
                 : [], // Only send sort for server-side mode
             filterModel:
               bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
@@ -2541,21 +2542,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-              bsCustomFilters &&
-              bsCustomFilters.length > 0
+                bsCustomFilters &&
+                bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields
             userLookup: bsUserLookup
               ? {
-                  table: bsUserLookup.table || "sec.t_com_user",
-                  idField: bsUserLookup.idField || "user_id",
-                  displayFields: bsUserLookup.displayFields || [
-                    "first_name",
-                    "last_name",
-                  ],
-                  separator: bsUserLookup.separator || " ",
-                }
+                table: bsUserLookup.table || "sec.t_com_user",
+                idField: bsUserLookup.idField || "user_id",
+                displayFields: bsUserLookup.displayFields || [
+                  "first_name",
+                  "last_name",
+                ],
+                separator: bsUserLookup.separator || " ",
+              }
               : undefined,
             userId: getUserId(),
           };
@@ -2609,9 +2610,8 @@ const BSDataGrid = forwardRef(
               expectedRowsForPage:
                 bsFilterMode === "client"
                   ? "All rows (client-side pagination)"
-                  : `Page ${currentPaginationModel.page + 1} with ${
-                      currentPaginationModel.pageSize
-                    } rows`,
+                  : `Page ${currentPaginationModel.page + 1} with ${currentPaginationModel.pageSize
+                  } rows`,
             });
 
             // Check if no data returned
@@ -3502,7 +3502,7 @@ const BSDataGrid = forwardRef(
           const allPrimaryKeys = [
             ...metadataPrimaryKeys,
             ...(detectedPrimaryKey &&
-            !metadataPrimaryKeys.includes(detectedPrimaryKey)
+              !metadataPrimaryKeys.includes(detectedPrimaryKey)
               ? [detectedPrimaryKey]
               : []),
           ];
@@ -4303,8 +4303,7 @@ const BSDataGrid = forwardRef(
               errors.push(
                 `${formatColumnName(
                   columnName
-                )}: Maximum ${maxLength} characters allowed (current: ${
-                  stringValue.length
+                )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
                 })`
               );
             }
@@ -5307,8 +5306,8 @@ const BSDataGrid = forwardRef(
             inputProps={{
               ...(maxLength > 0 &&
                 (inputType === "text" || multiline) && {
-                  maxLength: maxLength,
-                }),
+                maxLength: maxLength,
+              }),
             }}
             error={maxLength > 0 && String(displayVal).length > maxLength}
           />
@@ -5761,6 +5760,101 @@ const BSDataGrid = forwardRef(
             );
           };
         }
+        //Avatar
+        if (customDef.type === "avatar") {
+          const stringToColor = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+              hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = "#";
+            for (let i = 0; i < 3; i++) {
+              const value = (hash >> (i * 8)) & 0xff;
+              color += ("00" + value.toString(16)).slice(-2);
+            }
+            return color;
+          };
+          mergedColumn.renderCell = (params) => {
+            const value = params.value || "";
+
+            const items = value
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+
+            return (
+              <Box sx={{ display: "flex", alignItems: "center", pl: "4px" }}>
+                {items.map((it, idx) => (
+                  <Avatar
+                    key={idx}
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      fontSize: 12,
+                      bgcolor: stringToColor(it),
+                      color: "#fff",
+                      border: "2px solid white",
+                      fontWeight: "bold",
+                      position: "relative",
+                      ml: idx === 0 ? 0 : -1.2,
+                      zIndex: items.length - idx,
+                      cursor: "pointer"
+                    }}
+                    title={it}
+                  >
+                    {it.slice(0, 2).toUpperCase()}
+                  </Avatar>
+                ))}
+              </Box>
+            );
+          };
+        }
+        // status
+        if (customDef.type === "status") {
+          mergedColumn.renderCell = (params) => {
+            const val = (params.value || "").toString().toLowerCase();
+
+            const getStatusColor = (status) => {
+              switch (status) {
+                case "open":
+                  return "default"; // สีเทา
+                case "in process":
+                  return "warning"; // สีส้ม
+                case "close":
+                  return "success"; // สีเขียว
+                case "cancel":
+                  return "info"; // สีน้ำเงิน
+                default:
+                  return "default";
+              }
+            };
+
+            const getLabel = (status) => {
+              switch (status) {
+                case "open":
+                  return "Open";
+                case "in process":
+                  return "In Process";
+                case "close":
+                  return "Close";
+                case "cancel":
+                  return "Cancel";
+                default:
+                  return status;
+              }
+            };
+
+            return (
+              <Chip
+                label={getLabel(val)}
+                color={getStatusColor(val)}
+                size="small"
+                variant="outlined"
+              />
+            );
+          };
+        }
+
 
         // Select type
         if (customDef.type === "singleSelect" && customDef.valueOptions) {
@@ -6742,9 +6836,9 @@ const BSDataGrid = forwardRef(
         if (rowConfig.showCheckbox === false) {
           Logger.log("🚫 Hiding checkbox for row:", rowId);
           styles[`${rowSelector} .MuiDataGrid-cellCheckbox .MuiCheckbox-root`] =
-            {
-              visibility: "hidden",
-            };
+          {
+            visibility: "hidden",
+          };
         }
 
         // Apply background and text colors
@@ -6808,10 +6902,10 @@ const BSDataGrid = forwardRef(
             firstRowAllIds:
               rows.length > 0
                 ? {
-                    id: rows[0].id,
-                    Id: rows[0].Id,
-                    [primaryKey]: rows[0][primaryKey],
-                  }
+                  id: rows[0].id,
+                  Id: rows[0].Id,
+                  [primaryKey]: rows[0][primaryKey],
+                }
                 : "NO ROWS",
           });
 
@@ -7047,9 +7141,8 @@ const BSDataGrid = forwardRef(
         // Generate filename - use bsExportFileName prop if provided, otherwise use table name
         const exportFileName =
           bsExportFileName || effectiveTableName || "export";
-        const filename = `${exportFileName}_${
-          new Date().toISOString().split("T")[0]
-        }.xlsx`;
+        const filename = `${exportFileName}_${new Date().toISOString().split("T")[0]
+          }.xlsx`;
 
         // Trigger download
         XLSX.writeFile(workbook, filename);
@@ -7093,9 +7186,8 @@ const BSDataGrid = forwardRef(
             delimiter: ";",
             utf8WithBom: true,
             escapeFormulas: false,
-            fileName: `${exportFileName}_${
-              new Date().toISOString().split("T")[0]
-            }`,
+            fileName: `${exportFileName}_${new Date().toISOString().split("T")[0]
+              }`,
           });
           Logger.log("✅ CSV export triggered");
         }
@@ -7715,8 +7807,8 @@ const BSDataGrid = forwardRef(
               columnsValid: Array.isArray(columns) && columns.length > 0,
               sampleColumns: Array.isArray(columns)
                 ? columns
-                    .slice(0, 2)
-                    .map((c) => ({ field: c.field, type: c.type }))
+                  .slice(0, 2)
+                  .map((c) => ({ field: c.field, type: c.type }))
                 : "N/A",
               metadataExists: !!metadata,
               metadataColumnsCount: metadata?.columns?.length,
@@ -7908,11 +8000,9 @@ const BSDataGrid = forwardRef(
                   }
                   // Ensure we don't render until we have valid data structure
                   // Include rowCount and content hash in key to force re-render when data changes
-                  key={`datagrid-${effectiveTableName}-${rowCount}-${
-                    rows.length
-                  }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
-                    Array.isArray(columns) ? columns.length : 0
-                  }`}
+                  key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length
+                    }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${Array.isArray(columns) ? columns.length : 0
+                    }`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
@@ -8098,40 +8188,40 @@ const BSDataGrid = forwardRef(
                   slotProps={
                     showToolbar && !bulkEditMode
                       ? {
-                          toolbar: {
-                            onAdd: handleAddClick,
-                            onInlineAdd: handleInlineAdd,
-                            showAdd,
-                            headerFiltersEnabled,
-                            onToggleHeaderFilters: handleToggleHeaderFilters,
-                            bsBulkEdit: effectiveBulkEdit,
-                            bsBulkAdd: effectiveBulkAdd,
-                            bsBulkDelete: effectiveBulkDelete,
-                            bsEnableBulkMode,
-                            selectedRowCount: rowSelectionModel.length,
-                            onBulkEdit: handleBulkEdit,
-                            onBulkDelete: handleBulkDelete,
-                            onBulkAdd: handleBulkAdd,
-                            showBulkDelete: effectiveBulkDelete,
-                            onRefresh: () => refreshData(true),
-                            onExportExcel: handleExportExcel,
-                            onExportCsv: handleExportCsv,
-                            onPrint: handlePrint,
-                            localeText,
-                            apiRef,
-                          },
-                          // Header filter cell props to show inline clear button
-                          headerFilterCell: {
-                            showClearIcon: true,
-                          },
-                          // Pagination props to show first/last page buttons
-                          pagination: {
-                            showFirstButton: true,
-                            showLastButton: true,
-                          },
-                        }
+                        toolbar: {
+                          onAdd: handleAddClick,
+                          onInlineAdd: handleInlineAdd,
+                          showAdd,
+                          headerFiltersEnabled,
+                          onToggleHeaderFilters: handleToggleHeaderFilters,
+                          bsBulkEdit: effectiveBulkEdit,
+                          bsBulkAdd: effectiveBulkAdd,
+                          bsBulkDelete: effectiveBulkDelete,
+                          bsEnableBulkMode,
+                          selectedRowCount: rowSelectionModel.length,
+                          onBulkEdit: handleBulkEdit,
+                          onBulkDelete: handleBulkDelete,
+                          onBulkAdd: handleBulkAdd,
+                          showBulkDelete: effectiveBulkDelete,
+                          onRefresh: () => refreshData(true),
+                          onExportExcel: handleExportExcel,
+                          onExportCsv: handleExportCsv,
+                          onPrint: handlePrint,
+                          localeText,
+                          apiRef,
+                        },
+                        // Header filter cell props to show inline clear button
+                        headerFilterCell: {
+                          showClearIcon: true,
+                        },
+                        // Pagination props to show first/last page buttons
+                        pagination: {
+                          showFirstButton: true,
+                          showLastButton: true,
+                        },
+                      }
                       : headerFiltersEnabled
-                      ? {
+                        ? {
                           // Header filter cell props when toolbar is disabled but header filters are enabled
                           headerFilterCell: {
                             showClearIcon: true,
@@ -8142,7 +8232,7 @@ const BSDataGrid = forwardRef(
                             showLastButton: true,
                           },
                         }
-                      : {
+                        : {
                           // Always show pagination buttons
                           pagination: {
                             showFirstButton: true,
@@ -8173,9 +8263,9 @@ const BSDataGrid = forwardRef(
                     },
                     // Force header text bold
                     "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                      {
-                        fontWeight: "bold",
-                      },
+                    {
+                      fontWeight: "bold",
+                    },
                     // Required field styling
                     "& .required-field .MuiDataGrid-columnHeaderTitle": {
                       color: "error.main",
@@ -8489,16 +8579,16 @@ const BSDataGrid = forwardRef(
                 )}
               </Box>
             ) : // Standard Mode - no child grids
-            metadata?.columns || bsStoredProcedure ? (
-              renderFormFields()
-            ) : (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <CircularProgress />
-                <Typography variant="body2" sx={{ mt: 2 }}>
-                  {localeText.bsLoadingMetadata}
-                </Typography>
-              </Box>
-            )}
+              metadata?.columns || bsStoredProcedure ? (
+                renderFormFields()
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2 }}>
+                    {localeText.bsLoadingMetadata}
+                  </Typography>
+                </Box>
+              )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDialogClose} disabled={formLoading}>
@@ -8518,8 +8608,8 @@ const BSDataGrid = forwardRef(
                   bsChildGrids.length > 0 &&
                   dialogMode === "add" &&
                   !isParentSaved
-                ? localeText.bsSaveAndContinue || "Save & Continue"
-                : localeText.bsSave}
+                  ? localeText.bsSaveAndContinue || "Save & Continue"
+                  : localeText.bsSave}
             </Button>
           </DialogActions>
         </Dialog>
@@ -8793,8 +8883,8 @@ const BSDataGrid = forwardRef(
                                 inputProps={{
                                   ...(maxLength > 0 &&
                                     (inputType === "text" || multiline) && {
-                                      maxLength: maxLength,
-                                    }),
+                                    maxLength: maxLength,
+                                  }),
                                 }}
                                 error={
                                   maxLength > 0 &&

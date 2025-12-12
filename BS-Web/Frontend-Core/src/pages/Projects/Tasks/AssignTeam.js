@@ -52,11 +52,7 @@ const AssignTeam = (props) => {
         }).then(async (conf) => {
             if (conf.isConfirmed) {
                 await AxiosMaster.post("/projects/task/assign_team/delete/" + id).then((res) => {
-                    if (res.data.message_code === "0") {
-                        BSAlertSwal2.show("success", res.data.message_text);
-                    } else {
-                        BSAlertSwal2.show("warning", res.data.message_text);
-                    }
+                    BSAlertSwal2.show(res?.data?.message_code === "0" ? "success" : "warning", res?.data?.message_text ?? "error")
                     dataRef.current.refreshData();
                 })
             }
@@ -71,11 +67,7 @@ const AssignTeam = (props) => {
         }
         await AxiosMaster.post("/projects/task/assign_team", data)
             .then((res) => {
-                if (res.data.message_code === "0") {
-                    BSAlertSwal2.show("success", res.data.message_text);
-                } else {
-                    BSAlertSwal2.show("warning", res.data.message_text);
-                }
+                BSAlertSwal2.show(res?.data?.message_code === "0" ? "success" : "warning", res?.data?.message_text ?? "error")
             })
     }
     return <Paper elevation={3} sx={{ p: 2, backgroundColor: 'hsla(215, 15%, 97%, 0.5)' }}>

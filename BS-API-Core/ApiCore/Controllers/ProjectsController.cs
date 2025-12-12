@@ -183,5 +183,46 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
+        [HttpPost("team")]
+        public async Task<IActionResult> InsertOrUpdateProjectTeam([FromBody] ProjectTeamRequest projectTeamRequest)
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                var result = await projectsService.InsertOrUpdateProjectTeam(projectTeamRequest, userId);
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Insert/Update project team failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpPost("team/delete/{projectMemberId}")]
+        public async Task<IActionResult> DeleteProjectTeam(int projectMemberId)
+        {
+            try
+            {
+                var result = await projectsService.DeleteProjectTeam(projectMemberId);
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return ResponseSuccess("failed", "Delete project team failed", 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
     }
 }

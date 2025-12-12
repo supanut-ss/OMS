@@ -546,8 +546,8 @@ const ProjectsDialog = (props) => {
                         </Tabs>
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
                             {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} projectHeader={formData} />)}
-                            {tap === 1 && (<ProjectsTeams projectID={props.projectID} lang={props.lang} />)}
-                            {tap === 2 && (<ProjectsHistory projectID={props.projectID} lang={props.lang} />)}
+                            {tap === 1 && (<ProjectsTeams projectID={formData?.project_header_id || ""} lang={props.lang} />)}
+                            {tap === 2 && (<ProjectsHistory projectID={formData?.project_header_id || ""} lang={props.lang} />)}
                             {tap === 2 && (<Box>Project Close</Box>)}
                         </Box>
 

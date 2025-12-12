@@ -74,4 +74,9 @@
         public string message_text { get; set; }
         public int project_task_member_id { get; set; }
     }
+    public class ProjectTeamResponse
+    {
+        public string message_code { get; set; }
+        public string message_text { get; set; }
+    }
 }
