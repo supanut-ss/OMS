@@ -434,8 +434,7 @@ const ProjectsDialog = (props) => {
                                     field: "management_cost",
                                     headerName: "management_cost",
                                     component: "BSTextField",
-                                    variant: "standard",
-                                    required: true
+                                    variant: "standard"
                                 },
                                 formData,
                                 errors,
@@ -448,8 +447,7 @@ const ProjectsDialog = (props) => {
                                     field: "travel_cost",
                                     headerName: "travel_cost",
                                     component: "BSTextField",
-                                    variant: "standard",
-                                    required: true
+                                    variant: "standard"
                                 },
                                 formData,
                                 errors,
@@ -508,7 +506,7 @@ const ProjectsDialog = (props) => {
                                 updateField
                             })}
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        {/* <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             {renderInput({
                                 item: {
                                     field: "record_type",
@@ -521,7 +519,7 @@ const ProjectsDialog = (props) => {
                                 errors,
                                 updateField
                             })}
-                        </Grid>
+                        </Grid> */}
                         <Grid size={12}>
                             {renderInput({
                                 item: {
@@ -548,8 +546,8 @@ const ProjectsDialog = (props) => {
                         </Tabs>
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
                             {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} projectHeader={formData} />)}
-                            {tap === 1 && (<ProjectsTeams projectID={props.projectID} lang={props.lang} />)}
-                            {tap === 2 && (<ProjectsHistory projectID={props.projectID} lang={props.lang} />)}
+                            {tap === 1 && (<ProjectsTeams projectID={formData?.project_header_id || ""} lang={props.lang} />)}
+                            {tap === 2 && (<ProjectsHistory projectID={formData?.project_header_id || ""} lang={props.lang} />)}
                             {tap === 2 && (<Box>Project Close</Box>)}
                         </Box>
 

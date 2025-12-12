@@ -34,6 +34,9 @@ const Projects = (props) => {
                 setProjectHeaderID(e.project_header_id || "");
                 setOpenDialog(true);
             }}
+            bsColumnDefs={[
+                { field: "project_status", type: "status" },
+            ]}
             bsFilterMode="client"
             bsVisibleEdit={true}
             bsShowCheckbox={false}

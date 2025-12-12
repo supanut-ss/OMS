@@ -69,7 +69,8 @@
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
-    },{
+    },
+    {
       "DownstreamPathTemplate": "/users/reset_password",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -831,38 +832,43 @@
       "DownstreamPathTemplate": "/users/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-      {
+        {
           "Host": "auth_api",
           "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/users/delete",
-      "UpstreamHttpMethod": [ "post" ],
+      "UpstreamHttpMethod": [
+        "post"
+      ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
-  {
+    {
       "DownstreamPathTemplate": "/users/reset",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-       {
+        {
           "Host": "auth_api",
           "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/v1/api/users/reset",
-      "UpstreamHttpMethod": [ "post" ],
+      "UpstreamHttpMethod": [
+        "post"
+      ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
-    },{
+    },
+    {
       "DownstreamPathTemplate": "/users/clear_logon",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-       {
+        {
           "Host": "auth_api",
           "Port": 8080
         }
@@ -920,7 +926,11 @@
       "UpstreamPathTemplate": "/gateway/v1/api/menu/favorite",
       "UpstreamHttpMethod": [
         "post"
-      ]
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "DownstreamPathTemplate": "/api/projects/{projectId}",
@@ -934,7 +944,11 @@
       "UpstreamPathTemplate": "/gateway/v1/api/projects/{projectId}",
       "UpstreamHttpMethod": [
         "get"
-      ]
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "DownstreamPathTemplate": "/api/projects/task/phases/{projectId}",
@@ -948,7 +962,11 @@
       "UpstreamPathTemplate": "/gateway/v1/api/projects/task/phases/{projectId}",
       "UpstreamHttpMethod": [
         "get"
-      ]
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "DownstreamPathTemplate": "/api/projects",
@@ -962,7 +980,11 @@
       "UpstreamPathTemplate": "/gateway/v1/api/projects",
       "UpstreamHttpMethod": [
         "post"
-      ]
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "DownstreamPathTemplate": "/api/projects/task",
@@ -976,7 +998,11 @@
       "UpstreamPathTemplate": "/gateway/v1/api/projects/task",
       "UpstreamHttpMethod": [
         "post"
-      ]
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "DownstreamPathTemplate": "/api/projects/task/delete/{projectTaskId}",
@@ -990,20 +1016,6 @@
       "UpstreamPathTemplate": "/gateway/v1/api/projects/task/delete/{projectTaskId}",
       "UpstreamHttpMethod": [
         "post"
-      ]
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/task/{projectTaskId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/{projectTaskId}",
-      "UpstreamHttpMethod": [
-        "get"
       ]
     },
     {
@@ -1090,6 +1102,96 @@
       "UpstreamPathTemplate": "/gateway/v1/api/mytask/task/{projectTaskId}",
       "UpstreamHttpMethod": [
         "get"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/{projectTaskId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/{projectTaskId}",
+      "UpstreamHttpMethod": [
+        "get"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/assign_team",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/assign_team",
+      "UpstreamHttpMethod": [
+        "post"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/task/assign_team/delete/{projectTaskMemberId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/assign_team/delete/{projectTaskMemberId}",
+      "UpstreamHttpMethod": [
+        "post"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/team",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/team",
+      "UpstreamHttpMethod": [
+        "post"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/projects/team/delete/{projectMemberId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/projects/team/delete/{projectMemberId}",
+      "UpstreamHttpMethod": [
+        "post"
       ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
