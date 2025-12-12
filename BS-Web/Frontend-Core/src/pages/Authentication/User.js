@@ -50,6 +50,7 @@ const UserPage = (props) => {
   const [emailError, setEmailError] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectLocale, setSelectLocale] = useState("");
+  const [selectSupervisor, setSelectSupervisor] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
     useState(false);
@@ -77,6 +78,7 @@ const UserPage = (props) => {
     setForm(initialForm);
     setSelectedGroup("");
     setSelectLocale("");
+    setSelectSupervisor("");
     setEditMode(false);
     setOpen(true);
   };
@@ -84,10 +86,13 @@ const UserPage = (props) => {
   const handleOpenEdit = (row) => {
     setForm({
       ...row,
-      [row.name]: (row.val ?? "").toString(),
+      [row.name]: row.val === null ? "" : row.val,
     });
+
     setSelectedGroup(row.user_group_id || "");
     setSelectLocale(row.locale_id || "");
+    setSelectSupervisor(row.supervisor || "");
+
     setEditMode(true);
     setOpen(true);
   };
@@ -114,7 +119,7 @@ const UserPage = (props) => {
 
     if (eOrName?.target) {
       name = eOrName.target.name;
-      val = eOrName.target.value;
+      val = eOrName.target.value ?? "";
     } else {
       if (eOrName === "user_group_id") {
         name = eOrName;
@@ -138,13 +143,18 @@ const UserPage = (props) => {
   };
 
   const handleGroupChange = (val) => {
-    setSelectedGroup(val);
-    setForm({ ...form, user_group_id: val });
+    const groupId = val ?? "";
+    setForm({ ...form, user_group_id: groupId });
   };
 
   const handleLocaleChange = (val) => {
-    setSelectLocale(val);
-    setForm({ ...form, locale_id: val });
+    const localeId = val ?? ""; // ใช้ field key ที่ถูกต้อง
+    setForm({ ...form, locale_id: localeId });
+  };
+
+  const handleSupervisorChange = (val) => {
+    const supervisorId = val ?? "";
+    setForm({ ...form, supervisor: supervisorId });
   };
 
   const handleSave = async () => {
@@ -254,7 +264,21 @@ const UserPage = (props) => {
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user"
-          bsCols="user_id,group_name,first_name,last_name,department,email_address,supervisor,locale_id,is_active,create_by,create_date,update_by,update_date,user_group_id"
+          bsCols="user_id,
+          group_name,
+          first_name,
+          last_name,
+          department,
+          email_address,
+          supervisor,
+          locale_id,
+          is_active,
+          create_by,
+          create_date,
+          update_by,
+          update_date,
+          user_group_id,
+          domain"
           bsObjBy="user_id asc"
           bsComboBox={[
             {
@@ -269,7 +293,7 @@ const UserPage = (props) => {
               ObjWh: "is_active='YES'",
               ObjBy: "name asc",
             },
-          ]} 
+          ]}
           bsShowDescColumn={false}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
@@ -364,7 +388,9 @@ const UserPage = (props) => {
                   bsObjWh="is_active='YES'"
                   cacheKey="group_name"
                   //bsLoadOnOpen={true}
-                  bsOnChange={(val) => handleGroupChange(val.user_group_id)}
+                  bsOnChange={(val) => {
+                    handleGroupChange(val.user_group_id);
+                  }}
                   bsValue={selectedGroup}
                 />
               </Box>
@@ -399,20 +425,39 @@ const UserPage = (props) => {
             </Box>
             {/* Row 4 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                label={getResource(resourceData, "department")}
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-              />
-              <TextField
-                fullWidth
-                label={getResource(resourceData, "supervisor")}
-                name="supervisor"
-                value={form.supervisor}
-                onChange={handleChange}
-              />
+              <Box sx={{ flex: 1 }}>
+                <TextField
+                  fullWidth
+                  label={getResource(resourceData, "department")}
+                  name="department"
+                  value={form.department}
+                  onChange={handleChange}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <BsAutoComplete
+                  bsMode="single"
+                  bsTitle={getResource(resourceData, "supervisor")}
+                  bsPreObj="sec.t_com_"
+                  bsObj="user"
+                  bsColumes={[
+                    {
+                      field: "user_id",
+                      display: true,
+                      filter: false,
+                      key: true,
+                    },
+                  ]}
+                  bsObjBy=""
+                  bsObjWh={`user_id<>'${form.user_id}'`}
+                  cacheKey="supervisor"
+                  //bsLoadOnOpen={frue}
+                  bsOnChange={(val) =>
+                    handleSupervisorChange(val?.user_id ?? "")
+                  }
+                  bsValue={selectSupervisor}
+                />
+              </Box>
             </Box>
             {/* Row 5 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -454,11 +499,13 @@ const UserPage = (props) => {
           </Box>
         </DialogContent>
         <DialogActions
-          sx={{ display: "flex", justifyContent: "space-between" }}
+          sx={editMode && { display: "flex", justifyContent: "space-between" }}
         >
-          <Button onClick={handleResetPass} variant="contained" color="error">
-            {getResource(resourceData, "ResetPassword") || "Reset Password"}
-          </Button>
+          {editMode && (
+            <Button onClick={handleResetPass} variant="contained" color="error">
+              {getResource(resourceData, "ResetPassword") || "Reset Password"}
+            </Button>
+          )}
           <Box>
             <Button onClick={handleClose} sx={{ mr: 1 }}>
               {getResource(resourceData, "Cancel") || "Cancel"}

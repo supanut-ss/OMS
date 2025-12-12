@@ -228,6 +228,8 @@ export const englishLocaleText = {
 
   // BSDataGrid Custom UI Elements
   bsAddRecord: "Add Record",
+  bsAddInline: "Add Inline",
+  bsAddByDialog: "Add by Dialog",
   bsBulkAdd: "Bulk Add",
   bsBulkEdit: "Bulk Edit",
   bsBulkDelete: "Bulk Delete",
@@ -273,6 +275,18 @@ export const englishLocaleText = {
   bsSaveRecords: (count) => `Save ${count} Records`,
   bsRetry: "Retry",
   bsClose: "Close",
+
+  // BSDataGrid Validation Messages
+  bsValidationErrors: "Validation Errors",
+  bsDuplicateValueError: "Duplicate Value Error",
+  bsFieldAlreadyExists: (fieldName, value) =>
+    `${fieldName}: "${value}" already exists in the system. Please use a different value.`,
+
+  // BSDataGrid Switch Labels
+  bsYes: "YES",
+  bsNo: "NO",
+  bsActive: "Active",
+  bsInactive: "Inactive",
 
   // BSDataGrid Confirm Messages
   bsConfirmDeleteRecord: "Are you sure you want to delete this record?",

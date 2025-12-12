@@ -228,6 +228,8 @@ export const thaiLocaleText = {
 
   // BSDataGrid Custom UI Elements
   bsAddRecord: "เพิ่มข้อมูล",
+  bsAddInline: "เพิ่มในตาราง",
+  bsAddByDialog: "เพิ่มผ่านหน้าต่าง",
   bsBulkAdd: "เพิ่มหลายรายการ",
   bsBulkEdit: "แก้ไขหลายรายการ",
   bsBulkDelete: "ลบหลายรายการ",
@@ -273,6 +275,12 @@ export const thaiLocaleText = {
   bsRetry: "ลองใหม่",
   bsClose: "ปิด",
 
+  // BSDataGrid Validation Messages
+  bsValidationErrors: "พบข้อผิดพลาดในการตรวจสอบข้อมูล",
+  bsDuplicateValueError: "พบข้อมูลซ้ำ",
+  bsFieldAlreadyExists: (fieldName, value) =>
+    `${fieldName}: "${value}" มีอยู่ในระบบแล้ว กรุณาใช้ค่าอื่น`,
+
   // BSDataGrid Confirm Messages
   bsConfirmDeleteRecord: "คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?",
   bsConfirmDeleteRecords: (count) =>
@@ -291,4 +299,10 @@ export const thaiLocaleText = {
   bsTryAgain: "ลองใหม่",
   bsDataGridError: "เกิดข้อผิดพลาด DataGrid",
   bsFailedToRenderGrid: "ไม่สามารถแสดงตารางข้อมูลได้:",
+
+  // BSDataGrid Switch Labels
+  bsYes: "ใช่",
+  bsNo: "ไม่ใช่",
+  bsActive: "ใช้งาน",
+  bsInactive: "ไม่ใช้งาน",
 };

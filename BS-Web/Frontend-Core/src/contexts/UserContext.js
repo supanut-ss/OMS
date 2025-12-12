@@ -14,7 +14,15 @@ export function UserContext() {
 
   const updateUser = useCallback(async (user) => {
     try {
-      const res = await AxiosMaster.post(`/users/update`, user);
+      // แปลง null ทั้ง object
+      const cleanUser = Object.fromEntries(
+        Object.entries(user).map(([key, value]) => [
+          key,
+          value === null ? "" : value,
+        ])
+      );
+
+      const res = await AxiosMaster.post(`/users/update`, cleanUser);
       return res.data;
     } catch (err) {
       console.error("error ", err);

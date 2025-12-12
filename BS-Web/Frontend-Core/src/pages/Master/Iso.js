@@ -32,6 +32,27 @@ const IsoPage = (props) => {
   // Child grid configurations for hierarchical data
   const childGridConfigs = [
     {
+      // Tab 2: Phases
+      name: "Phases",
+      bsPreObj: "tmt",
+      bsObj: "t_tmt_iso_type_phase",
+      foreignKeys: ["iso_type_id"], // FK linking to parent
+      bsObjBy: "sequence asc",
+      bsVisibleEdit: true,
+      bsVisibleDelete: true,
+      bsShowRowNumber: true,
+      // bsRowPerPage: 10,
+      // bsPageSizeOptions: [10, 25, 50],
+      // height: 350,
+      bsDialogColumns: 2,
+      bsUniqueFields: [
+        {
+          fields: ["iso_type_id", "phase_name"], // ใช้ fields (array)
+          message: "ชื่อ Phase นี้มีอยู่แล้วใน ISO Type นี้", // optional custom message
+        },
+      ],
+    },
+    {
       // Tab 1: Documents
       name: "Documents",
       bsPreObj: "tmt",
@@ -41,9 +62,16 @@ const IsoPage = (props) => {
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
-      bsRowPerPage: 10,
-      bsPageSizeOptions: [10, 25, 50],
-      height: 350,
+      bsDialogColumns: 2,
+      bsUniqueFields: [
+        {
+          fields: ["iso_type_id", "doc_name"], // ใช้ fields (array)
+          message: "ชื่อ Document นี้มีอยู่แล้วใน ISO Type นี้", // optional custom message
+        },
+      ],
+      // bsRowPerPage: 10,
+      // bsPageSizeOptions: [10, 25, 50],
+      // height: 350,
       // Optional: specify columns to show
       // bsCols: "doc_name,doc_type,doc_path,create_date",
       // Optional: ComboBox configurations for child grid
@@ -57,20 +85,6 @@ const IsoPage = (props) => {
       //         Obj: "t_tmt_doc_type",
       //     }
       // ],
-    },
-    {
-      // Tab 2: Phases
-      name: "Phases",
-      bsPreObj: "tmt",
-      bsObj: "t_tmt_iso_type_phase",
-      foreignKeys: ["iso_type_id"], // FK linking to parent
-      bsObjBy: "sequence asc",
-      bsVisibleEdit: true,
-      bsVisibleDelete: true,
-      bsShowRowNumber: true,
-      bsRowPerPage: 10,
-      bsPageSizeOptions: [10, 25, 50],
-      height: 350,
     },
   ];
 
@@ -93,6 +107,10 @@ const IsoPage = (props) => {
           bsChildGrids={childGridConfigs} // Child grid configurations
           // Optional: Dialog size for hierarchical mode (recommended: Large or FullScreen)
           bsDialogSize="Large"
+          bsDialogColumns={3}
+          // bsParentRecordLabel="resource:iso_type_label_name"
+          bsParentRecordLabel="ISO Type"
+          bsUniqueFields={["iso_type_name"]}
         />
       </Paper>
     </Box>
