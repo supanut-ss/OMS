@@ -19,6 +19,7 @@ import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButto
 import { renderInput } from "../../../components/FormRenderer";
 import useForm from "../../../hooks/useForm";
 import AxiosMaster from "../../../utils/AxiosMaster";
+import SecureStorage from "../../../utils/SecureStorage";
 import dayjs from "dayjs";
 
 // Helper function to get today's date in YYYY-MM-DD format
@@ -32,6 +33,7 @@ const defaultTrackingData = {
   actual_work: "",
   actual_date: null,
   process_update: "",
+  assignee_user_id: null,
 };
 
 // Required fields for tracking form
@@ -41,6 +43,20 @@ const requiredTrackingFields = [
   "actual_date",
   "process_update",
 ];
+
+// Check if user is admin
+// TODO: Edit this function according to your user role management
+const isAdmin = () => {
+  const userInfo = SecureStorage.get("userInfo");
+  console.log("userInfo", userInfo);
+  return userInfo?.role === "admin" || userInfo?.is_admin === true;
+};
+
+// Get current user ID
+const getCurrentUserId = () => {
+  const userInfo = SecureStorage.get("userInfo");
+  return userInfo?.user_id || userInfo?.userId || null;
+};
 
 /**
  * TaskTracking Component
@@ -73,6 +89,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       ActualWork: formData.actual_work,
       ActualDate: formData.actual_date,
       ProcessUpdate: formData.process_update,
+      AssigneeUserId: formData.assignee_user_id || getCurrentUserId(),
     };
 
     try {
@@ -109,6 +126,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       ...defaultTrackingData,
       project_task_id: projectTaskId,
       actual_date: getTodayDate(),
+      assignee_user_id: getCurrentUserId(),
     });
     setOpenTrackingDialog(true);
   };
@@ -207,8 +225,38 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         <DialogContent>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Grid container spacing={2} sx={{ mt: 1 }}>
+              {/* Assignee - Only visible for admin */}
+              {isAdmin() && (
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  {renderInput({
+                    item: {
+                      field: "assignee_user_id",
+                      headerName: "Assignee",
+                      component: "BSAutoComplete",
+                      bsMode: "single",
+                      bsTitle: "Assignee",
+                      bsPreObj: "tmt.",
+                      bsObj: "t_tmt_project_task_member",
+                      bsColumes: [
+                        { field: "user_id", display: false, key: true },
+                        { field: "first_name", display: true },
+                        { field: "last_name", display: true },
+                      ],
+                      bsObjBy: "first_name asc",
+                      bsObjWh: `is_active='YES' AND project_header_id=${
+                        taskData?.project_header_id || 0
+                      } AND project_task_id=${projectTaskId || 0}`,
+                      required: false,
+                    },
+                    formData,
+                    errors,
+                    updateField,
+                  })}
+                </Grid>
+              )}
+
               {/* Issue Type (Task Tracking Type) */}
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: isAdmin() ? 6 : 4 }}>
                 {renderInput({
                   item: {
                     field: "issue_type",
