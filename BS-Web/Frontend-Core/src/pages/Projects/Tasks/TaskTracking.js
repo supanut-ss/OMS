@@ -45,17 +45,16 @@ const requiredTrackingFields = [
 ];
 
 // Check if user is admin
-// TODO: Edit this function according to your user role management
 const isAdmin = () => {
-  const userInfo = SecureStorage.get("userInfo");
-  console.log("userInfo", userInfo);
-  return userInfo?.role === "admin" || userInfo?.is_admin === true;
+  const role = SecureStorage.get("role");
+  console.log("role", role);
+  return role === "Administrator";
 };
 
 // Get current user ID
 const getCurrentUserId = () => {
   const userInfo = SecureStorage.get("userInfo");
-  return userInfo?.user_id || userInfo?.userId || null;
+  return userInfo?.UserId || userInfo?.user_id || userInfo?.userId || null;
 };
 
 /**
@@ -235,7 +234,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                       component: "BSAutoComplete",
                       bsMode: "single",
                       bsTitle: "Assignee",
-                      bsPreObj: "tmt.",
+                      bsPreObj: "tmt",
                       bsObj: "t_tmt_project_task_member",
                       bsColumes: [
                         { field: "user_id", display: false, key: true },
@@ -281,7 +280,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
               </Grid>
 
               {/* Actual Work (Work Hour) */}
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: isAdmin() ? 6 : 4 }}>
                 {renderInput({
                   item: {
                     field: "actual_work",
@@ -297,7 +296,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
               </Grid>
 
               {/* Actual Date */}
-              <Grid size={{ xs: 12, sm: 4 }}>
+              <Grid size={{ xs: 12, sm: isAdmin() ? 6 : 4 }}>
                 {renderInput({
                   item: {
                     field: "actual_date",
