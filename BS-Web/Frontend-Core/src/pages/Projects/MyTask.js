@@ -33,7 +33,7 @@ const TASK_STATUS = {
   CLOSE: "Close",
 };
 
-// Helper function to format date
+// ============ Helper Functions ============
 const formatDate = (dateValue) => {
   if (!dateValue) return "-";
   try {
@@ -48,22 +48,81 @@ const formatDate = (dateValue) => {
   }
 };
 
+const getStatusColor = (status) => {
+  switch (status) {
+    case TASK_STATUS.OPEN:
+      return "info";
+    case TASK_STATUS.IN_PROCESS:
+      return "warning";
+    case TASK_STATUS.CLOSE:
+      return "success";
+    default:
+      return "default";
+  }
+};
+
+const getPriorityColor = (priority) => {
+  switch (priority?.toLowerCase()) {
+    case "urgent":
+      return "#d32f2f";
+    case "high":
+      return "#ed6c02";
+    case "normal":
+    case "medium":
+      return "#0288d1";
+    case "low":
+    default:
+      return "#9e9e9e";
+  }
+};
+
+// ============ Priority Icon Component ============
+const PriorityDisplay = ({ priority, showLabel = true }) => (
+  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+    <FlagIcon fontSize="small" sx={{ color: getPriorityColor(priority) }} />
+    {showLabel && (
+      <Typography variant="body2" fontWeight="medium">
+        {priority || "-"}
+      </Typography>
+    )}
+  </Box>
+);
+
+// ============ Info Field Component ============
+const InfoField = ({ label, value, children, fullWidth = false }) => (
+  <Grid size={fullWidth ? 12 : { xs: 12, sm: 6, md: 4 }}>
+    <Box
+      sx={{
+        px: 1,
+        py: 0.7,
+        backgroundColor: "#fff",
+        borderRadius: 1,
+        border: "1px solid #e0e0e0",
+      }}
+    >
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{
+          fontWeight: 500,
+          textTransform: "uppercase",
+          fontSize: "0.7rem",
+          letterSpacing: 0.5,
+        }}
+      >
+        {label}
+      </Typography>
+      {children || (
+        <Typography variant="body2" fontWeight="medium">
+          {value || "-"}
+        </Typography>
+      )}
+    </Box>
+  </Grid>
+);
+
 // ============ Task Detail Dialog ============
 const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
-  // Get status chip color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case TASK_STATUS.OPEN:
-        return "info";
-      case TASK_STATUS.IN_PROCESS:
-        return "warning";
-      case TASK_STATUS.CLOSE:
-        return "success";
-      default:
-        return "default";
-    }
-  };
-
   return (
     <>
       <Dialog open={open} onClose={onClose} fullScreen>
@@ -125,344 +184,43 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
             </AccordionSummary>
             <AccordionDetails sx={{ backgroundColor: "#fafafa", pt: 0, pb: 1 }}>
               <Grid container spacing={1.2} rowSpacing={0.5}>
-                {/* Project No */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Project No
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {taskData?.project_no || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
+                <InfoField label="Project No" value={taskData?.project_no} />
+                <InfoField
+                  label="Project Name"
+                  value={taskData?.project_name}
+                />
+                <InfoField
+                  label="Project Type"
+                  value={taskData?.project_type}
+                />
+                <InfoField label="Task Name" value={taskData?.task_name} />
 
-                {/* Project Name */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Project Name
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {taskData?.project_name || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
+                {/* Priority with icon */}
+                <InfoField label="Priority">
+                  <PriorityDisplay priority={taskData?.priority} />
+                </InfoField>
 
-                {/* Project Type */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Project Type
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {taskData?.project_type || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
+                <InfoField label="Issue Type" value={taskData?.issue_type} />
+                <InfoField
+                  label="Due Date"
+                  value={`${formatDate(taskData?.start_date)} - ${formatDate(
+                    taskData?.end_date
+                  )}`}
+                />
+                <InfoField label="Manday (Hour)" value={taskData?.manday} />
 
-                {/* Task Name */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Task Name
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {taskData?.task_name || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
+                {/* Full width fields */}
+                <InfoField label="Task Description" fullWidth>
+                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                    {taskData?.task_description || "-"}
+                  </Typography>
+                </InfoField>
 
-                {/* Priority */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Priority
-                    </Typography>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.5,
-                        mt: 0.5,
-                      }}
-                    >
-                      <FlagIcon
-                        fontSize="small"
-                        sx={{
-                          color:
-                            taskData?.priority?.toLowerCase() === "urgent"
-                              ? "#d32f2f"
-                              : taskData?.priority?.toLowerCase() === "high"
-                              ? "#ed6c02"
-                              : taskData?.priority?.toLowerCase() ===
-                                  "normal" ||
-                                taskData?.priority?.toLowerCase() === "medium"
-                              ? "#0288d1"
-                              : "#9e9e9e",
-                        }}
-                      />
-                      <Typography variant="body2" fontWeight="medium">
-                        {taskData?.priority || "-"}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-
-                {/* Issue Type */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Issue Type
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {taskData?.issue_type || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
-
-                {/* Due Date (Start - End) */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Due Date
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {formatDate(taskData?.start_date)} -{" "}
-                      {formatDate(taskData?.end_date)}
-                    </Typography>
-                  </Box>
-                </Grid>
-
-                {/* Manday */}
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Manday (Hour)
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      fontWeight="medium"
-                      sx={{ mt: 0.5 }}
-                    >
-                      {taskData?.manday || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
-
-                {/* Task Description */}
-                <Grid size={12}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Task Description
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}
-                    >
-                      {taskData?.task_description || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
-
-                {/* Remark */}
-                <Grid size={12}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: 1,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.7rem",
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      Remark
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}
-                    >
-                      {taskData?.remark || "-"}
-                    </Typography>
-                  </Box>
-                </Grid>
+                <InfoField label="Remark" fullWidth>
+                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                    {taskData?.remark || "-"}
+                  </Typography>
+                </InfoField>
               </Grid>
             </AccordionDetails>
           </Accordion>
@@ -562,35 +320,12 @@ const TaskStatusSection = ({
                 field: "priority",
                 headerName: "Priority",
                 width: 120,
-                renderCell: (params) => {
-                  const priority = params.value?.toLowerCase();
-                  let color = "#9e9e9e"; // Default grey
-
-                  switch (priority) {
-                    case "urgent":
-                      color = "#d32f2f"; // Danger/Error red
-                      break;
-                    case "high":
-                      color = "#ed6c02"; // Warning orange
-                      break;
-                    case "normal":
-                    case "medium":
-                      color = "#0288d1"; // Info blue
-                      break;
-                    case "low":
-                      color = "#9e9e9e"; // Grey
-                      break;
-                    default:
-                      color = "#9e9e9e";
-                  }
-
-                  return (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <FlagIcon sx={{ color }} />
-                      <span>{params.value || "-"}</span>
-                    </Box>
-                  );
-                },
+                renderCell: (params) => (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <FlagIcon sx={{ color: getPriorityColor(params.value) }} />
+                    <span>{params.value || "-"}</span>
+                  </Box>
+                ),
               },
             ]}
           />
