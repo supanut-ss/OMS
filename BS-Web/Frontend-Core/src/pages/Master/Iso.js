@@ -38,6 +38,8 @@ const IsoPage = (props) => {
       bsObj: "t_tmt_iso_type_phase",
       foreignKeys: ["iso_type_id"], // FK linking to parent
       bsObjBy: "sequence asc",
+      bsCols:
+        "phase_name,description,sequence,is_active,create_by,create_date,update_by,update_date",
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
@@ -59,13 +61,15 @@ const IsoPage = (props) => {
       bsObj: "t_tmt_iso_type_doc",
       foreignKeys: ["iso_type_id"], // FK linking to parent
       bsObjBy: "sequence asc",
+      bsCols:
+        "document_name,document_control,description,sequence,is_require_attach_file,is_active,create_by,create_date,update_by,update_date",
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
       bsDialogColumns: 2,
       bsUniqueFields: [
         {
-          fields: ["iso_type_id", "doc_name"], // ใช้ fields (array)
+          fields: ["iso_type_id", "document_name"], // ใช้ fields (array)
           message: "ชื่อ Document นี้มีอยู่แล้วใน ISO Type นี้", // optional custom message
         },
       ],
@@ -101,6 +105,7 @@ const IsoPage = (props) => {
           bsPreObj="tmt"
           bsObj="t_tmt_iso_type"
           bsObjBy="create_date desc"
+          bsCols="iso_type_name,description,is_active,create_by,create_date,update_by,update_date"
           //   bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           // Hierarchical Data Configuration
           bsPrimaryKeys={["iso_type_id"]} // Parent table primary key(s)
