@@ -3722,11 +3722,20 @@ const BSDataGrid = forwardRef(
         return;
       }
 
-      // For Enhanced SP without metadata but with data, allow form creation
-      if (!metadata && bsStoredProcedure && rows.length === 0) {
+      // For Enhanced SP without metadata AND without bsColumnDefs/bsCols, show warning
+      // But if bsColumnDefs or bsCols is provided, allow Add even with no data
+      const hasColumnDefinitions =
+        (bsColumnDefs && bsColumnDefs.length > 0) ||
+        (bsCols && bsCols.length > 0);
+      if (
+        !metadata &&
+        bsStoredProcedure &&
+        rows.length === 0 &&
+        !hasColumnDefinitions
+      ) {
         BSAlertSwal2.show(
           "warning",
-          "No data available to generate form fields.\nPlease load data first or define bsColumnDefs.",
+          "No data available to generate form fields.\nPlease load data first or define bsColumnDefs or bsCols.",
           { title: "Add Record" }
         );
         return;
@@ -3765,6 +3774,8 @@ const BSDataGrid = forwardRef(
       bsBulkAddInline,
       bsStoredProcedure,
       rows.length,
+      bsColumnDefs,
+      bsCols,
     ]);
 
     // Inline Add - add new row directly in grid for editing
@@ -7735,46 +7746,122 @@ const BSDataGrid = forwardRef(
               hasValidRows: rows.length > 0,
             });
 
-            // If no valid columns, show appropriate message
+            // If no valid columns, show appropriate message with Add button
             if (validColumns.length === 0) {
               // Check if we're still loading data
               const isStillLoading = loading || metadataLoading;
 
+              // Check if Add should be allowed (Enhanced SP with bsColumnDefs or bsCols)
+              const canAddWithoutData =
+                bsStoredProcedure &&
+                ((bsColumnDefs && bsColumnDefs.length > 0) ||
+                  (bsCols && bsCols.length > 0));
+
               return (
                 <Box
                   sx={{
-                    height: height - 100,
+                    height: height === "auto" ? 400 : height,
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    flexDirection: "column",
                   }}
                 >
-                  <Box sx={{ textAlign: "center" }}>
-                    {isStillLoading ? (
-                      <>
-                        <CircularProgress sx={{ mb: 2 }} />
-                        <Typography variant="body1">
-                          {metadataLoading
-                            ? localeText.bsLoadingColumns
-                            : localeText.bsLoadingData}
-                        </Typography>
-                      </>
-                    ) : (
-                      <>
-                        <Typography
-                          variant="h6"
-                          color="text.secondary"
-                          sx={{ mb: 1 }}
+                  {/* Show Toolbar with Add button like normal DataGrid */}
+                  {showToolbar &&
+                    !bulkEditMode &&
+                    (canAddWithoutData || metadata) && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          p: 1,
+                          borderBottom: 1,
+                          borderColor: "divider",
+                          backgroundColor: "background.paper",
+                        }}
+                      >
+                        {showAdd && (
+                          <Button
+                            size="small"
+                            startIcon={<Add />}
+                            onClick={handleAddClick}
+                            sx={{
+                              textTransform: "none",
+                              fontWeight: 500,
+                              fontSize: "0.8125rem",
+                              padding: "4px 8px",
+                              minHeight: "32px",
+                              color: "primary.main",
+                              borderColor: "primary.main",
+                              border: "1px solid",
+                              backgroundColor: "transparent",
+                              "&:hover": {
+                                backgroundColor: "primary.main",
+                                color: "white",
+                              },
+                            }}
+                          >
+                            {localeText.bsAddRecord}
+                          </Button>
+                        )}
+                        <Box sx={{ flexGrow: 1 }} />
+                        <Button
+                          size="small"
+                          startIcon={<RefreshIcon />}
+                          onClick={() => refreshData(true)}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 500,
+                            fontSize: "0.8125rem",
+                            padding: "4px 8px",
+                            minHeight: "32px",
+                            color: "text.primary",
+                            "&:hover": {
+                              backgroundColor: "rgba(0, 0, 0, 0.04)",
+                            },
+                          }}
                         >
-                          {localeText.bsNoData}
-                        </Typography>
-                        <Typography variant="body2" color="text.disabled">
-                          {bsStoredProcedure
-                            ? localeText.bsNoDataInDatabase
-                            : localeText.bsNoRecordsInTable}
-                        </Typography>
-                      </>
+                          {localeText.bsRefresh || "Refresh"}
+                        </Button>
+                      </Box>
                     )}
+
+                  {/* No Data Message */}
+                  <Box
+                    sx={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Box sx={{ textAlign: "center" }}>
+                      {isStillLoading ? (
+                        <>
+                          <CircularProgress sx={{ mb: 2 }} />
+                          <Typography variant="body1">
+                            {metadataLoading
+                              ? localeText.bsLoadingColumns
+                              : localeText.bsLoadingData}
+                          </Typography>
+                        </>
+                      ) : (
+                        <>
+                          <Typography
+                            variant="h6"
+                            color="text.secondary"
+                            sx={{ mb: 1 }}
+                          >
+                            {localeText.bsNoData}
+                          </Typography>
+                          <Typography variant="body2" color="text.disabled">
+                            {bsStoredProcedure
+                              ? localeText.bsNoDataInDatabase
+                              : localeText.bsNoRecordsInTable}
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
               );
