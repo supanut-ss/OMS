@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { TextField, CircularProgress, FormControl, FormHelperText } from "@mui/material";
+import { TextField, CircularProgress, FormControl, FormHelperText, Box, Typography } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import SecureStorage from "../utils/SecureStorage";
 import AxiosMaster from "../utils/AxiosMaster";
-
+import FlagIcon from "@mui/icons-material/Flag";
+const getPriorityColor = (priority) => {
+  switch (priority?.toLowerCase()) {
+    case "urgent":
+      return "#d32f2f";
+    case "high":
+      return "#ed6c02";
+    case "normal":
+    case "medium":
+      return "#0288d1";
+    case "low":
+    default:
+      return "#9e9e9e";
+  }
+};
 const BSAutoComplete = ({
   bsMode = "single", // single, multi, select
   bsPreObj, // schema key
@@ -23,6 +37,7 @@ const BSAutoComplete = ({
   helperText = "",
   required = false,
   disabled = false,
+  bsFlagColor = false,
   ...props
 }) => {
   const multiple = bsMode === "multi";
@@ -190,7 +205,9 @@ const BSAutoComplete = ({
       <Autocomplete
         multiple={multiple}
         options={options}
-        getOptionLabel={(option) => option.value || ""}
+        getOptionLabel={(option) =>
+          option ? ` ${option.value}` : ""
+        }
         value={value}
         onChange={handleChange}
         loading={loading}
@@ -205,6 +222,23 @@ const BSAutoComplete = ({
             },
           }),
         }}
+        renderOption={(props, option) => (
+          <li {...props}>
+            {bsFlagColor ? (
+              <Box display="flex" alignItems="center" gap={1}>
+                <FlagIcon sx={{ color: getPriorityColor(option.code), mr: 1 }} />
+                <Typography variant="body2">
+                  {option.value}
+                </Typography>
+              </Box>
+            ) : (
+              <Typography variant="body2">
+                {option.value}
+              </Typography>
+            )}
+          </li>
+        )}
+
         renderInput={(params) => (
           <TextField
             {...params}
@@ -214,6 +248,12 @@ const BSAutoComplete = ({
             variant={variant}
             InputProps={{
               ...params.InputProps,
+              startAdornment: value?.code && (
+                bsFlagColor &&
+                <FlagIcon
+                  sx={{ color: getPriorityColor(value.code), mr: 1 }}
+                />
+              ),
               endAdornment: (
                 <>
                   {loading ? (

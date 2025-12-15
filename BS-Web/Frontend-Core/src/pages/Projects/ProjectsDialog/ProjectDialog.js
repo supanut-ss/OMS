@@ -10,6 +10,7 @@ import BSAlertSwal2 from "../../../components/BSAlertSwal2";
 import CloseIcon from '@mui/icons-material/Close';
 import { renderInput } from "../../../components/FormRenderer";
 import useForm from "../../../hooks/useForm";
+import { useResource } from "../../../hooks/useResource";
 const defaultData = {
     "project_name": null,
     "project_status": null,
@@ -46,6 +47,16 @@ const ProjectsDialog = (props) => {
     } = useForm(defaultData, requiredFields);
     const [tap, setTap] = useState(0);
     const [taskRefresh, setTaskRefresh] = useState(false);
+    const { getResource, getResources } = useResource();
+    const [resourceData, setResourceData] = useState();
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+    const getLang = async () => {
+        setResourceData(await getResources("t_tmt_project_header", props.lang));
+    }
+    useEffect(() => {
+        getLang()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [props.lang])
     const handleClose = () => {
         setFormData({ ...defaultData });
         props.onClose(false);
@@ -118,7 +129,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "project_no",
-                                    headerName: "project_no",
+                                    headerName: getResource(resourceData, "project_no"),
                                     component: "BSTextField",
                                     variant: "filled",
                                     readOnly: true
@@ -132,7 +143,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "project_name",
-                                    headerName: "project_name",
+                                    headerName: getResource(resourceData, "project_name"),
                                     component: "BSTextField",
                                     variant: "standard",
                                     required: true
@@ -146,7 +157,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "parent_project_id",
-                                    headerName: "parent_project_id",
+                                    headerName:  getResource(resourceData, "parent_project_id"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "parent_project_id",
@@ -186,7 +197,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "project_status",
-                                    headerName: "project_status",
+                                    headerName: getResource(resourceData, "project_status"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "project_status",
@@ -220,7 +231,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "application_type",
-                                    headerName: "application_type",
+                                    headerName:  getResource(resourceData, "application_type"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "application_type",
@@ -254,7 +265,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "project_type",
-                                    headerName: "project_type",
+                                    headerName: getResource(resourceData, "project_type"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "project_type",
@@ -288,7 +299,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "iso_type_id",
-                                    headerName: "iso_type_id",
+                                    headerName: getResource(resourceData, "iso_type_id"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "iso_type_id",
@@ -323,7 +334,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "po_number",
-                                    headerName: "po_number",
+                                    headerName: getResource(resourceData, "po_number"),
                                     component: "BSTextField",
                                     variant: "standard",
                                     required: true
@@ -337,7 +348,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "sale_id",
-                                    headerName: "sale_id",
+                                    headerName: getResource(resourceData, "sale_id"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "sale_id",
@@ -377,7 +388,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "customer_id",
-                                    headerName: "customer_id",
+                                    headerName: getResource(resourceData, "customer_id"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "customer_id",
@@ -418,7 +429,7 @@ const ProjectsDialog = (props) => {
                                 item: {
                                     type: "decimal",
                                     field: "manday",
-                                    headerName: "manday",
+                                    headerName: getResource(resourceData, "manday"),
                                     component: "BSTextField",
                                     variant: "standard",
                                     required: true
@@ -432,7 +443,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "management_cost",
-                                    headerName: "management_cost",
+                                    headerName: getResource(resourceData, "management_cost"),
                                     component: "BSTextField",
                                     variant: "standard"
                                 },
@@ -445,7 +456,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "travel_cost",
-                                    headerName: "travel_cost",
+                                    headerName: getResource(resourceData, "travel_cost"),
                                     component: "BSTextField",
                                     variant: "standard"
                                 },
@@ -458,7 +469,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "plan_project_date",
-                                    headerName: "plan_project_date",
+                                    headerName: getResource(resourceData, "plan_project_date"),
                                     component: "BSDatePicker",
                                     isRange: true,
                                     isDateOnly: true,
@@ -476,7 +487,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "revise_project_date",
-                                    headerName: "revise_project_date",
+                                    headerName: getResource(resourceData, "revise_project_date"),
                                     component: "BSDatePicker",
                                     isRange: true,
                                     isDateOnly: true,
@@ -493,7 +504,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "actual_project_date",
-                                    headerName: "actual_project_date",
+                                    headerName: getResource(resourceData, "actual_project_date"),
                                     component: "BSDatePicker",
                                     isRange: true,
                                     isDateOnly: true,
@@ -524,7 +535,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "remark",
-                                    headerName: "remark",
+                                    headerName: getResource(resourceData, "remark"),
                                     component: "BSTextField",
                                     variant: "outlined",
                                     multiline: true,
@@ -539,10 +550,10 @@ const ProjectsDialog = (props) => {
                     {/* End of form fields for formData */}
                     <Box>
                         <Tabs value={tap} onChange={(e, newValue) => setTap(newValue)} sx={{ mt: 3 }}>
-                            <Tab label="Task" />
-                            <Tab label="Project Teams" />
-                            <Tab label="Project History" />
-                            <Tab label="Project Close" />
+                            <Tab label={getResource(resourceData, "task")} />
+                            <Tab label={getResource(resourceData, "project_teams")} />
+                            <Tab label={getResource(resourceData, "project_history")} />
+                            <Tab label={getResource(resourceData, "project_close")} />
                         </Tabs>
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
                             {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} projectHeader={formData} />)}

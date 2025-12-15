@@ -10,7 +10,8 @@ import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedBut
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
 import { useCallback, useEffect, useState } from "react";
 import { renderInput } from "../../../components/FormRenderer";
-
+import { useResource } from "../../../hooks/useResource";
+import Selector from "../../../components/Selector";
 const defaultData = {
     project_task_id: "",
     project_task_phase_id: null,
@@ -38,8 +39,7 @@ const requiredFields = [
     "start_date",
     "end_date"
 ];
-
-const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
+const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
 
     const {
         formData,
@@ -50,7 +50,18 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
     } = useForm(defaultData, requiredFields);
 
     const [tap, setTap] = useState(0);
-
+    const { getResource, getResources } = useResource();
+    const [resourceData, setResourceData] = useState();
+    const [resourceDataProject, setResourceDataProject] = useState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const getLang = async () => {
+        setResourceData(await getResources("t_tmt_project_task", lang));
+        setResourceDataProject(await getResources("t_tmt_project_header", lang));
+    }
+    useEffect(() => {
+        getLang()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lang])
     const handleSave = async () => {
         if (!validate()) return;
 
@@ -109,28 +120,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
 
                 {/* Task Status */}
                 <Grid>
-                    {renderInput({
-                        item: {
-                            field: "task_status",
-                            headerName: "task status",
-                            component: 'BSAutoComplete',
-                            bsMode: "single",
-                            bsTitle: "task_status",
-                            bsPreObj: "sec.t_com_",
-                            bsObj: "combobox_item",
-                            bsColumes: [
-                                { field: "value_member", display: false, key: true },
-                                { field: "display_member", display: true }
-                            ],
-                            bsObjBy: "display_sequence asc",
-                            bsObjWh: "is_active='YES' and group_name ='task_status'",
-                            variant: "standard",
-                            required: true
-                        },
-                        formData,
-                        errors,
-                        updateField
-                    })}
+                    <Selector value={formData.task_status} setValue={(val) => updateField("task_status", val)} />
                 </Grid>
 
                 <Grid container spacing={2} mt={2}>
@@ -140,7 +130,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "project_no",
-                                headerName: "project_no",
+                                headerName: getResource(resourceDataProject, "project_no"),
                                 component: "BSTextField",
                                 value: projectHeader.project_no,
                                 variant: "filled",
@@ -157,7 +147,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "project_name",
-                                headerName: "project_name",
+                                headerName: getResource(resourceDataProject, "project_name"),
                                 component: "BSTextField",
                                 value: projectHeader.project_name,
                                 variant: "filled",
@@ -174,7 +164,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "project_type",
-                                headerName: "project_type",
+                                headerName: getResource(resourceDataProject, "project_type"),
                                 component: "BSTextField",
                                 value: projectHeader.project_type,
                                 variant: "filled",
@@ -191,7 +181,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "task_name",
-                                headerName: "task_name",
+                                headerName: getResource(resourceData, "task_name"),
                                 component: "BSTextField",
                                 required: true
                             },
@@ -206,7 +196,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "priority",
-                                headerName: "task_priority",
+                                headerName: getResource(resourceData, "task_priority"),
                                 component: "BSAutoComplete",
                                 bsMode: "single",
                                 bsTitle: "task_priority",
@@ -218,7 +208,8 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                                 ],
                                 bsObjBy: "display_sequence asc",
                                 bsObjWh: "is_active='YES' and group_name ='task_priority'",
-                                variant: "standard"
+                                variant: "standard",
+                                bsFlagColor: true,
                             },
                             formData,
                             errors,
@@ -231,7 +222,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "issue_type",
-                                headerName: "issue_type",
+                                headerName: getResource(resourceData, "issue_type"),
                                 component: "BSAutoComplete",
                                 bsMode: "single",
                                 bsTitle: "issue_type",
@@ -256,7 +247,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "due_date",
-                                headerName: "due_date",
+                                headerName: getResource(resourceData, "due_date"),
                                 component: "BSDatePicker",
                                 isRange: true,
                                 isDateOnly: true,
@@ -275,7 +266,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "manday",
-                                headerName: "manday",
+                                headerName: getResource(resourceData, "manday"),
                                 component: "BSTextField",
                                 type: "decimal",
                                 required: true
@@ -291,7 +282,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "task_description",
-                                headerName: "task_description",
+                                headerName: getResource(resourceData, "task_description"),
                                 component: "BSTextField",
                                 required: true,
                                 variant: "outlined",
@@ -309,7 +300,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                         {renderInput({
                             item: {
                                 field: "remark",
-                                headerName: "remark",
+                                headerName: getResource(resourceData, "remark"),
                                 component: "BSTextField",
                                 variant: "outlined",
                                 multiline: true,
@@ -326,12 +317,12 @@ const TaskDialog = ({ phases, projectHeader, open, onClose }) => {
                 {formData.project_task_id && (
                     <Box>
                         <Tabs value={tap} onChange={(e, v) => setTap(v)} sx={{ mt: 3 }}>
-                            <Tab label="Assign Team" />
-                            <Tab label="Task Tracking" />
+                            <Tab label={getResource(resourceData, "assign_team")} />
+                            <Tab label={getResource(resourceData, "task_tracking")} />
                         </Tabs>
 
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
-                            {tap === 0 && <AssignTeam title="Assign Team" project_task_id={formData.project_task_id} project_header_id={projectHeader.project_header_id} />}
+                            {tap === 0 && <AssignTeam title="Assign Team" project_task_id={formData.project_task_id} project_header_id={projectHeader.project_header_id} lang={lang} />}
                             {tap === 1 && <TaskTracking />}
                         </Box>
                     </Box>

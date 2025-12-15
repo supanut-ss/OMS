@@ -36,7 +36,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
           fullWidth
           bsOnChange={(e) => updateField(item.field, e?.code || "")}
           bsMode={item.bsMode}
-          bsTitle={item.bsTitle || item.headerName}
+          bsTitle={item.headerName || item.bsTitle}
           bsPreObj={item.bsPreObj}
           bsObj={item.bsObj}
           bsColumes={item.bsColumes}
@@ -47,6 +47,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
           helperText={errors[item.field] || ""}
           required={item.required}
           disabled={item.disabled}
+          bsFlagColor={item.bsFlagColor || false}
         />
       );
 
@@ -76,6 +77,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
                 val[1] ? val[1].format("YYYY-MM-DD") : null
               );
             }}
+            readOnly={item.readOnly || false}
             error={!!errors[item.start] || !!errors[item.end]}
             helperText={errors[item.start] || errors[item.end] || ""}
             minDate={item.minDate ? dayjs(item.minDate) : undefined}

@@ -42,7 +42,7 @@ const Projects = (props) => {
             bsShowCheckbox={false}
 
         />
-        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} />
+        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang}/>
     </Paper>);
 }
 export default Projects;

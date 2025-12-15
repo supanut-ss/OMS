@@ -55,6 +55,7 @@ const BSDatepicker = ({
               }}
               slots={{ field: SingleInputDateTimeRangeField }}
               calendars={2}
+              readOnly={props.readOnly}
             />) :
             <DateTimeRangePicker value={value || [null, null]}
               label={label}

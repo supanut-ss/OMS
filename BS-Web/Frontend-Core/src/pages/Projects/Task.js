@@ -110,12 +110,12 @@ const ProjectTask = (props) => {
             {loading && (<Typography>Loading task phases...</Typography>)}
 
             {taskPhases.length > 0 && taskPhases.map((phase) => (
-                <Accordion key={phase.project_task_phase_id}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Accordion key={phase.project_task_phase_id} sx={{ mb: 1 }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: "#B2D5D5" }}>
                         <Typography variant="h6">{phase.phase_name}</Typography>
                     </AccordionSummary>
 
-                    <AccordionDetails>
+                    <AccordionDetails sx={{ backgroundColor: "#fafafa" }}>
                         <BSDataGrid
                             ref={el => {
                                 if (el) gridRefs.current[phase.project_task_phase_id] = el;
@@ -132,13 +132,11 @@ const ProjectTask = (props) => {
                             bsColumnDefs={[{
                                 field: "assignee",
                                 type: "stringAvatar",
-                                headerName: "Assignee",
                                 showTooltip: true,
                             },
                             { field: "task_status", type: "status" },
                             {
                                 field: "priority",
-                                headerName: "Priority",
                                 width: 120,
                                 renderCell: (params) => (
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -160,6 +158,7 @@ const ProjectTask = (props) => {
             {/* ---------- TaskDialog ---------- */}
             {openDialog && (
                 <TaskDialog
+                    lang={lang}
                     open={openDialog}
                     onClose={handleCloseDialog}
                     phases={phases}

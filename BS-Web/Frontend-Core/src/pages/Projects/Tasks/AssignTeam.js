@@ -2,12 +2,13 @@ import { Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Pa
 import useForm from "../../../hooks/useForm";
 import { renderInput } from "../../../components/FormRenderer";
 import BSDataGrid from "../../../components/BSDataGrid";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CloseIcon from '@mui/icons-material/Close';
 import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
 import AxiosMaster from "../../../utils/AxiosMaster";
+import { useResource } from "../../../hooks/useResource";
 const defaultData = {
     project_task_member_id: null,
     project_header_id: null,
@@ -30,6 +31,16 @@ const AssignTeam = (props) => {
     } = useForm(defaultData, requiredFields);
     const [open, setOpen] = useState(false);
     const dataRef = useRef();
+    const { getResource, getResources } = useResource();
+    const [resourceData, setResourceData] = useState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const getLang = async () => {
+        setResourceData(await getResources("t_tmt_project_task_member", lang));
+    }
+    useEffect(() => {
+        getLang()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lang])
     const handleClose = () => {
         dataRef.current.refreshData();
         setOpen(false);
@@ -107,7 +118,7 @@ const AssignTeam = (props) => {
                         {renderInput({
                             item: {
                                 field: "user_id",
-                                headerName: "user_id",
+                                headerName: getResource(resourceData, "user_id"),
                                 component: 'BSAutoComplete',
                                 bsMode: "single",
                                 bsTitle: "user_id",
@@ -132,7 +143,7 @@ const AssignTeam = (props) => {
                         {renderInput({
                             item: {
                                 type: "decimal",
-                                field: "manday",
+                                field: getResource(resourceData, "manday"),
                                 headerName: "manday",
                                 component: "BSTextField",
                                 variant: "standard"
