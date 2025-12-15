@@ -18,12 +18,12 @@ namespace ApiCore.Controllers
         {
             invoiceService = _invoiceService;
         }
-        [HttpPost("invoice/delete/{projectTaskMemberId}")]
-        public async Task<IActionResult> DeleteInvoice(int invoiceId)
+        [HttpPost("invoice/delete/{projectInvoiceId}")]
+        public async Task<IActionResult> DeleteInvoice(int projectInvoiceId)
         {
             try
             {
-                var result = await invoiceService.DeleteInvoice(invoiceId);
+                var result = await invoiceService.DeleteInvoice(projectInvoiceId);
                 if (result != null)
                 {
                     return Ok(result);
