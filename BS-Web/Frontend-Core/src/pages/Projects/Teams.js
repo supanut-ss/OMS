@@ -103,7 +103,7 @@ const ProjectsTeams = (props) => {
                     // bsAllowEdit={true}
                     //  bsAllowDelete={true}
                     bsFilterMode="client"
-                    bsQueryParams={{ project_id: props.projectID }}
+                    bsStoredProcedureParams={{ project_id: props.projectID }}
                 />
             </Paper>
             <Dialog open={open}
