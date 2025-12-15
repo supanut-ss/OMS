@@ -32,7 +32,6 @@
 
   <ItemGroup>
     <Folder Include="Extension\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
   <ItemGroup>
