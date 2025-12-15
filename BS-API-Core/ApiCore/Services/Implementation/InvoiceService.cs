@@ -10,7 +10,7 @@ namespace ApiCore.Services.Implementation
     {
         private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB")
                   ?? throw new ArgumentNullException(nameof(_connectionString));
-        public async Task<InvoiceResponse> DeleteInvoice(int invoiceId)
+        public async Task<InvoiceResponse> DeleteInvoice(int projectInvoiceId)
         {
             try
             {
@@ -20,7 +20,7 @@ namespace ApiCore.Services.Implementation
                     using (var cmd = new SqlCommand("tmt.usp_delete_invoice", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.Parameters.AddWithValue("@in_intInvoiceId", invoiceId);
+                        cmd.Parameters.AddWithValue("@in_intProjectInvoiceId", projectInvoiceId);
                         cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
                         cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
                         cmd.Parameters.Add("@OutputErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;

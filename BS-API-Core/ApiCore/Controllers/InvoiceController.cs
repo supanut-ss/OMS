@@ -30,7 +30,7 @@ namespace ApiCore.Controllers
                 }
                 else
                 {
-                    return ResponseSuccess("failed", "Delete assigned task member failed", 1);
+                    return ResponseSuccess("failed", "Delete invoice failed", 1);
                 }
             }
             catch (Exception ex)
@@ -51,7 +51,7 @@ namespace ApiCore.Controllers
                 }
                 else
                 {
-                    return ResponseSuccess("failed", "Insert/Update project team failed", 1);
+                    return ResponseSuccess("failed", "Insert/Update invoice failed", 1);
                 }
             }
             catch (Exception ex)

@@ -5,7 +5,7 @@ namespace ApiCore.Services.Interfaces
 {
     public interface IInvoiceService
     {
-        Task<InvoiceResponse> DeleteInvoice(int invoiceId);
+        Task<InvoiceResponse> DeleteInvoice(int projectInvoiceId);
         Task<InvoiceResponse> InsertOrUpdateInvoice(InvoiceRequest invoiceRequest, string userId);
     }
 }
