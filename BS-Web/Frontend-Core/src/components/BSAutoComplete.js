@@ -125,7 +125,7 @@ const BSAutoComplete = ({
     } else if (isSelect) {
       bsOnChange(newValue?.code ?? "");
     } else {
-      bsOnChange(newValue?.code ?? null);
+      bsOnChange(newValue ?? null);
     }
   };
 
