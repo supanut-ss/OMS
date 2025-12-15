@@ -49,7 +49,7 @@ const ProjectsDialog = (props) => {
     const [taskRefresh, setTaskRefresh] = useState(false);
     const { getResource, getResources } = useResource();
     const [resourceData, setResourceData] = useState();
-     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const getLang = async () => {
         setResourceData(await getResources("t_tmt_project_header", props.lang));
     }
@@ -58,9 +58,17 @@ const ProjectsDialog = (props) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.lang])
     const handleClose = () => {
+        setTap(0);
         setFormData({ ...defaultData });
         props.onClose(false);
     };
+    const onChangeProjectHeaderID = (id) => {
+        setTap(0);
+        setFormData({ ...defaultData });
+        props.onClose(false);
+        props.onChangeProjectHeaderID(id);
+
+    }
     const handleSave = async () => {
         if (!validate()) return;
 
@@ -157,7 +165,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "parent_project_id",
-                                    headerName:  getResource(resourceData, "parent_project_id"),
+                                    headerName: getResource(resourceData, "parent_project_id"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "parent_project_id",
@@ -231,7 +239,7 @@ const ProjectsDialog = (props) => {
                             {renderInput({
                                 item: {
                                     field: "application_type",
-                                    headerName:  getResource(resourceData, "application_type"),
+                                    headerName: getResource(resourceData, "application_type"),
                                     component: 'BSAutoComplete',
                                     bsMode: "single",
                                     bsTitle: "application_type",
@@ -558,7 +566,7 @@ const ProjectsDialog = (props) => {
                         <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
                             {tap === 0 && (<ProjectTask projectID={formData?.project_header_id || ""} lang={props.lang} refresh={taskRefresh} setRefresh={setTaskRefresh} projectHeader={formData} />)}
                             {tap === 1 && (<ProjectsTeams projectID={formData?.project_header_id || ""} lang={props.lang} />)}
-                            {tap === 2 && (<ProjectsHistory projectID={formData?.project_header_id || ""} lang={props.lang} />)}
+                            {tap === 2 && (<ProjectsHistory projectID={formData?.project_header_id || ""} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID} />)}
                             {tap === 2 && (<Box>Project Close</Box>)}
                         </Box>
 

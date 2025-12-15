@@ -12,6 +12,11 @@ const Projects = (props) => {
         setProjectHeaderID("");
         setOpenDialog(val)
     }
+    const onChangeProjectHeaderID = (id) => {
+        console.log("onChangeProjectHeaderID:", id);
+        setProjectHeaderID(id);
+        setOpenDialog(true);
+    }
     return (<Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
             ref={dataGridRef}
@@ -42,7 +47,7 @@ const Projects = (props) => {
             bsShowCheckbox={false}
 
         />
-        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang}/>
+        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID}/>
     </Paper>);
 }
 export default Projects;
