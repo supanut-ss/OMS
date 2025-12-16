@@ -1,28 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
-import BsAutoComplete from "../../components/BSAutoComplete";
-import { UserContext } from "../../contexts/UserContext";
-import BSAlertSwal2 from "../../components/BSAlertSwal2";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useResource } from "../../hooks/useResource";
-
-const checkboxOptions = [
-  { value: "YES", label: "YES" },
-  { value: "NO", label: "NO" },
-];
-
-const initialForm = {
-  project_invoice_id: "",
-  document_type: "",
-  document_no: "",
-  document_date: "",
-  due_date: "",
-  amount: 0,
-  description: "",
-  is_incentive_requested: "NO",
-  is_cancel: "NO",
-};
 
 const InvoiceHistory = (props) => {
   const { getResource, getResources } = useResource();
@@ -33,6 +12,11 @@ const InvoiceHistory = (props) => {
   const bsObjWh = props.projectID
     ? `project_header_id='${props.projectID}'`
     : undefined;
+
+  // Default values for new records - set project_header_id from props
+  const defaultFormValues = props.projectID
+    ? { project_header_id: props.projectID }
+    : {};
 
   const gridRef = useRef();
   // โหลด resource ของ group "User"
@@ -85,11 +69,12 @@ const InvoiceHistory = (props) => {
             },
           ]}
           bsShowDescColumn={false}
+          bsDefaultFormValues={defaultFormValues}
+          bsHiddenColumns={["project_header_id"]}
           //   onEdit={handleOpenEdit}
           //   onAdd={handleOpenAdd}
           //   onDelete={handleOpenDelete}
           bsKeyId="project_invoice_id"
-          bsPrimaryKeys={["project_header_id"]}
         />
       </Paper>
     </>
