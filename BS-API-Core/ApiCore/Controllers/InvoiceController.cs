@@ -18,7 +18,7 @@ namespace ApiCore.Controllers
         {
             invoiceService = _invoiceService;
         }
-        [HttpPost("invoice/delete/{projectInvoiceId}")]
+        [HttpPost("delete/{projectInvoiceId}")]
         public async Task<IActionResult> DeleteInvoice(int projectInvoiceId)
         {
             try
@@ -38,7 +38,7 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
-        [HttpPost("invoice")]
+        [HttpPost]
         public async Task<IActionResult> InsertOrUpdateInvoice([FromBody] InvoiceRequest invoice)
         {
             try
