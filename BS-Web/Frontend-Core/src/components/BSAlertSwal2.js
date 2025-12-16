@@ -35,5 +35,26 @@ const BSAlertSwal2 = {
       ...options,
     });
   },
+
+  /**
+   * confirm - แสดง dialog ยืนยัน พร้อมปุ่ม Confirm และ Cancel
+   * @param {string} message - ข้อความที่จะแสดง
+   * @param {object} options - options เพิ่มเติม
+   * @returns {Promise<boolean>} - true ถ้ากด Confirm, false ถ้ากด Cancel
+   */
+  confirm: async (message = "", options = {}) => {
+    const result = await BSAlertSwal2.fire({
+      icon: "warning",
+      text: message,
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: options.confirmButtonText || "Yes, delete it!",
+      cancelButtonText: options.cancelButtonText || "Cancel",
+      reverseButtons: true,
+      ...options,
+    });
+    return result.isConfirmed;
+  },
 };
 export default BSAlertSwal2;

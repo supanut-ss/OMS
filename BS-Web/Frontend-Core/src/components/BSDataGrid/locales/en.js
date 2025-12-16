@@ -248,7 +248,7 @@ export const englishLocaleText = {
   bsShowFilters: "Show Filters",
   bsHeaderFiltersEnabled: "Header Filters Enabled",
   bsOfflineToolbar: "🔧 Offline Toolbar",
-  bsBulkEditMode: "🔄 Bulk Edit Mode",
+  bsBulkEditMode: "🔄 Bulk Mode",
   bsBulkEditMessage:
     "Edit cells directly in the grid. Changes are tracked but not saved until you click Save.",
   bsUnsavedChanges: "unsaved changes",
@@ -274,7 +274,6 @@ export const englishLocaleText = {
   bsRemove: "Remove",
   bsSaveRecords: (count) => `Save ${count} Records`,
   bsRetry: "Retry",
-  bsClose: "Close",
 
   // BSDataGrid Validation Messages
   bsValidationErrors: "Validation Errors",
@@ -289,6 +288,7 @@ export const englishLocaleText = {
   bsInactive: "Inactive",
 
   // BSDataGrid Confirm Messages
+  bsConfirmDelete: "Delete Confirmation",
   bsConfirmDeleteRecord: "Are you sure you want to delete this record?",
   bsConfirmDeleteRecords: (count) =>
     `Are you sure you want to delete ${count} records?`,

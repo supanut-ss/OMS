@@ -273,7 +273,6 @@ export const thaiLocaleText = {
   bsRemove: "ลบ",
   bsSaveRecords: (count) => `บันทึก ${count} รายการ`,
   bsRetry: "ลองใหม่",
-  bsClose: "ปิด",
 
   // BSDataGrid Validation Messages
   bsValidationErrors: "พบข้อผิดพลาดในการตรวจสอบข้อมูล",
@@ -282,6 +281,7 @@ export const thaiLocaleText = {
     `${fieldName}: "${value}" มีอยู่ในระบบแล้ว กรุณาใช้ค่าอื่น`,
 
   // BSDataGrid Confirm Messages
+  bsConfirmDelete: "ยืนยันการลบข้อมูล",
   bsConfirmDeleteRecord: "คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?",
   bsConfirmDeleteRecords: (count) =>
     `คุณแน่ใจหรือไม่ว่าต้องการลบ ${count} รายการ?`,
