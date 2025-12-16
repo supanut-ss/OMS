@@ -9,6 +9,8 @@
         public DateTime document_date { get; set; }
         public DateTime? due_date { get; set; }
         public decimal? amount { get; set; }
-        public string description { get; set; } = string.Empty;
+        public string description { get; set; }
+        public string is_incentive_requested { get; set; }
+        public string is_cancel { get; set; }
     }
 }

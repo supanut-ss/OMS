@@ -70,6 +70,8 @@ namespace ApiCore.Services.Implementation
                         AddParam("@in_dtDueDate", SqlDbType.DateTime, invoice.due_date ?? null);
                         AddParam("@in_decAmount", SqlDbType.Decimal, invoice.amount ?? null);
                         AddParam("@in_vchDescription", SqlDbType.NVarChar, invoice.description ?? null, 500);
+                        AddParam("@in_vchIsIncentiveRequested", SqlDbType.Char, invoice.is_incentive_requested ?? null, 1);
+                        AddParam("@in_vchIsCancel", SqlDbType.Char, invoice.is_cancel ?? null, 1);
                         AddParam("@in_vchActionUser", SqlDbType.NVarChar, userId, 40);
                         // Output parameters
                         var pOutId = new SqlParameter("@out_intProjectMemberId", SqlDbType.Int)
