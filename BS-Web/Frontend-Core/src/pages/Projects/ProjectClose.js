@@ -3,7 +3,7 @@ import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 
-const InvoiceHistory = (props) => {
+const ProjectClose = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
@@ -22,10 +22,10 @@ const InvoiceHistory = (props) => {
   // โหลด resource ของ group "User"
   const getLang = async () => {
     try {
-      const res = await getResources("t_tmt_project_invoice"); // ตั้งชื่อ group ตามที่ backend กำหนด
+      const res = await getResources("t_tmt_project_close_document"); // ตั้งชื่อ group ตามที่ backend กำหนด
       setResourceData(res);
     } catch (error) {
-      console.error("getResources(Invoice) error:", error);
+      console.error("getResources(ProjectClose) error:", error);
     }
   };
 
@@ -42,41 +42,28 @@ const InvoiceHistory = (props) => {
           ref={gridRef}
           bsLocale={locale_id}
           bsPreObj="tmt"
-          bsObj="t_tmt_project_invoice"
-          bsCols="project_invoice_id,
-          document_type,
-          document_no,
-          document_date,
-          due_date,
-          amount,
-          description,
-          is_incentive_requested,
-          is_cancel"
-          bsObjBy="document_no asc"
+          bsObj="t_tmt_project_close_document"
+          bsCols="project_close_doc_id,
+          document_name,
+          document_control,
+          sequence,
+          is_checklist,
+          is_require_attach_file,
+          create_by,
+          create_date,
+          update_by,
+          update_date"
+          bsObjBy="document_name asc"
           bsObjWh={bsObjWh}
-          bsComboBox={[
-            {
-              Column: "document_type",
-              Display: "display_member",
-              Value: "value_member",
-              Default:
-                getResource(resourceData, "Select Document Type") ||
-                "--- Select Document Type ---",
-              PreObj: "sec",
-              Obj: "t_com_combobox_item",
-              ObjWh: "is_active='YES' and group_name ='document_type'",
-              ObjBy: "display_sequence asc",
-            },
-          ]}
           bsShowDescColumn={false}
           bsDefaultFormValues={defaultFormValues}
-          bsUniqueFields={["document_no"]}
           bsHiddenColumns={["project_header_id"]}
-          bsKeyId="project_invoice_id"
+          bsKeyId="project_close_doc_id"
+          showToolbar={false}
         />
       </Paper>
     </>
   );
 };
 
-export default InvoiceHistory;
+export default ProjectClose;
