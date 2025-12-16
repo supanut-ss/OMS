@@ -22,6 +22,8 @@ import { renderInput } from "../../../components/FormRenderer";
 import useForm from "../../../hooks/useForm";
 import { useResource } from "../../../hooks/useResource";
 import InvoiceHistory from "../InvoiceHistory";
+import ProjectClose from "../ProjectClose";
+import MAHistory from "../MAHistory";
 const defaultData = {
   project_name: null,
   project_status: null,
@@ -588,6 +590,8 @@ const ProjectsDialog = (props) => {
                 <Tab label={getResource(resourceData, "project_teams")} />
                 <Tab label={getResource(resourceData, "project_history")} />
                 <Tab label={getResource(resourceData, "invoice_history")} />
+                <Tab label={getResource(resourceData, "project_close")} />
+                <Tab label={getResource(resourceData, "ma_history")} />
               </Tabs>
               <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
                 {tap === 0 && (
@@ -614,6 +618,18 @@ const ProjectsDialog = (props) => {
                 )}
                 {tap === 3 && (
                   <InvoiceHistory
+                    projectID={formData?.project_header_id || ""}
+                    lang={props.lang}
+                  />
+                )}
+                {tap === 4 && (
+                  <ProjectClose
+                    projectID={formData?.project_header_id || ""}
+                    lang={props.lang}
+                  />
+                )}
+                {tap === 5 && (
+                  <MAHistory
                     projectID={formData?.project_header_id || ""}
                     lang={props.lang}
                   />
