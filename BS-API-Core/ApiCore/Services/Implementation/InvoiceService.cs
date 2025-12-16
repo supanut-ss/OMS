@@ -17,9 +17,10 @@ namespace ApiCore.Services.Implementation
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new SqlCommand("tmt.usp_delete_invoice", conn))
+                    using (var cmd = new SqlCommand("tmt.usp_invoice", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@Operation", "DELETE");
                         cmd.Parameters.AddWithValue("@in_intProjectInvoiceId", projectInvoiceId);
                         cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
                         cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
@@ -64,17 +65,17 @@ namespace ApiCore.Services.Implementation
                         // Input parameters (type-safe)
                         AddParam("@in_intProjectInvoiceId", SqlDbType.Int, invoice.project_invoice_id ?? null);
                         AddParam("@in_intProjectHeaderId", SqlDbType.Int, invoice.project_header_id);
-                        AddParam("@in_vchDocumentType", SqlDbType.NVarChar, invoice.document_type ?? null, 50);
-                        AddParam("@in_vchDocumentNo", SqlDbType.NVarChar, invoice.document_no ?? null, 100);
+                        AddParam("@in_vchDocumentType", SqlDbType.NVarChar, invoice.document_type ?? null, 25);
+                        AddParam("@in_vchDocumentNo", SqlDbType.NVarChar, invoice.document_no ?? null, 50);
                         AddParam("@in_dtDocumentDate", SqlDbType.DateTime, invoice.document_date);
                         AddParam("@in_dtDueDate", SqlDbType.DateTime, invoice.due_date ?? null);
                         AddParam("@in_decAmount", SqlDbType.Decimal, invoice.amount ?? null);
                         AddParam("@in_vchDescription", SqlDbType.NVarChar, invoice.description ?? null, 500);
-                        AddParam("@in_vchIsIncentiveRequested", SqlDbType.Char, invoice.is_incentive_requested ?? null, 1);
-                        AddParam("@in_vchIsCancel", SqlDbType.Char, invoice.is_cancel ?? null, 1);
+                        AddParam("@in_vchIsIncentiveRequested", SqlDbType.Char, invoice.is_incentive_requested ?? null, 3);
+                        AddParam("@in_vchIsCancel", SqlDbType.Char, invoice.is_cancel ?? null, 3);
                         AddParam("@in_vchActionUser", SqlDbType.NVarChar, userId, 40);
                         // Output parameters
-                        var pOutId = new SqlParameter("@out_intProjectMemberId", SqlDbType.Int)
+                        var pOutId = new SqlParameter("@out_intProjectInvoiceId", SqlDbType.Int)
                         {
                             Direction = ParameterDirection.Output
                         };
