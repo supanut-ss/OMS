@@ -163,10 +163,12 @@ export const isValidDate = (value) => {
   }
 };
 
-export default {
+const dateUtils = {
   formatDate,
   formatDateTime,
   formatDateOnly,
   parseDate,
   isValidDate,
 };
+
+export default dateUtils;
