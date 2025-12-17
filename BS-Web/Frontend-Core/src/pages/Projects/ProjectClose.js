@@ -1,18 +1,26 @@
 import { useState, useRef, useEffect } from "react";
-import { Paper, IconButton, Tooltip } from "@mui/material";
+import { Paper, IconButton, Tooltip, Box } from "@mui/material";
 import { AttachFile as AttachFileIcon } from "@mui/icons-material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSFileUploadDialog from "../../components/BSDataGrid/BSFileUploadDialog";
 import { useResource } from "../../hooks/useResource";
+import { useDynamicCrud } from "../../hooks/useDynamicCrud";
+import { IOSSwitch } from "../../components/BSSwitch";
 
 const ProjectClose = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
 
+  // useDynamicCrud for updating records
+  const { updateRecord } = useDynamicCrud("t_tmt_project_close_document");
+
   // AttachFile Dialog states
   const [attachDialogOpen, setAttachDialogOpen] = useState(false);
   const [attachRowData, setAttachRowData] = useState(null);
+
+  // Local state for optimistic toggle updates
+  const [checklistOverrides, setChecklistOverrides] = useState({});
 
   // If a projectID is provided from props, use it to filter the grid by project_header_id
   const bsObjWh = props.projectID
@@ -47,8 +55,93 @@ const ProjectClose = (props) => {
     setAttachDialogOpen(true);
   };
 
+  // Handle is_checklist toggle
+  const handleChecklistToggle = async (rowData, newValue) => {
+    const rowId = rowData.project_close_doc_id;
+
+    // Optimistic update - update UI immediately
+    setChecklistOverrides((prev) => ({
+      ...prev,
+      [rowId]: newValue,
+    }));
+
+    try {
+      const updateData = {
+        is_checklist: newValue ? "YES" : "NO",
+      };
+
+      await updateRecord(
+        rowData.project_close_doc_id,
+        updateData,
+        "tmt", // preObj
+        { project_close_doc_id: rowData.project_close_doc_id } // whereConditions
+      );
+
+      // Refresh grid to show updated data
+      if (gridRef.current?.refreshData) {
+        gridRef.current.refreshData();
+      }
+
+      // Clear override after refresh
+      setChecklistOverrides((prev) => {
+        const newOverrides = { ...prev };
+        delete newOverrides[rowId];
+        return newOverrides;
+      });
+    } catch (error) {
+      console.error("Failed to update is_checklist:", error);
+      // Revert on error
+      setChecklistOverrides((prev) => {
+        const newOverrides = { ...prev };
+        delete newOverrides[rowId];
+        return newOverrides;
+      });
+    }
+  };
+
   // Column definitions with conditional attach file icon
   const columnDefs = [
+    {
+      field: "is_checklist",
+      headerName: locale_id === "th" ? "เช็คลิสต์" : "Checklist",
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        const rowId = params.row.project_close_doc_id;
+        const hasPrimaryKey = rowId !== undefined;
+
+        // Use override value if exists, otherwise use params.value
+        const isChecked =
+          checklistOverrides[rowId] !== undefined
+            ? checklistOverrides[rowId]
+            : params.value === "YES";
+
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <IOSSwitch
+              checked={isChecked}
+              onChange={(e) => {
+                e.stopPropagation();
+                if (hasPrimaryKey) {
+                  handleChecklistToggle(params.row, e.target.checked);
+                }
+              }}
+              disabled={!hasPrimaryKey}
+              inputProps={{ "aria-label": "Checklist" }}
+            />
+          </Box>
+        );
+      },
+    },
     {
       field: "is_require_attach_file",
       headerName: "Attach File",
