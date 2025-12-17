@@ -5362,11 +5362,16 @@ const BSDataGrid = forwardRef(
             customDef.dateFormat || customDef.dateTimeFormat || "dd/MM/yyyy";
           const includeTime = customDef.type === "dateTime";
 
-          mergedColumn.valueFormatter = (params) => {
-            if (!params.value) return "";
+          // Remove existing renderCell to let valueFormatter work
+          // This is needed because renderCell has higher priority than valueFormatter in MUI DataGrid
+          delete mergedColumn.renderCell;
+
+          // MUI X Data Grid v7+ signature: valueFormatter(value, row, column, apiRef)
+          mergedColumn.valueFormatter = (value) => {
+            if (!value) return "";
             try {
-              const date = new Date(params.value);
-              if (isNaN(date.getTime())) return params.value;
+              const date = new Date(value);
+              if (isNaN(date.getTime())) return value;
 
               // Simple date formatting based on format string
               const day = String(date.getDate()).padStart(2, "0");
@@ -5393,7 +5398,7 @@ const BSDataGrid = forwardRef(
 
               return formatted;
             } catch (e) {
-              return params.value;
+              return value;
             }
           };
         }

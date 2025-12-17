@@ -317,6 +317,18 @@ const TaskStatusSection = ({
                 showTooltip: true,
               },
               {
+                field: "start_date",
+                headerName: "Start Date",
+                type: "date",
+                dateFormat: "dd/MM/yyyy",
+              },
+              {
+                field: "end_date",
+                headerName: "End Date",
+                type: "date",
+                dateFormat: "dd/MM/yyyy",
+              },
+              {
                 field: "priority",
                 headerName: "Priority",
                 width: 120,
