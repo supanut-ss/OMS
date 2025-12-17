@@ -324,7 +324,7 @@ const TaskStatusSection = ({
               },
               {
                 field: "end_date",
-                headerName: "End Date",
+                headerName: "Due Date",
                 type: "date",
                 dateFormat: "dd/MM/yyyy",
               },
