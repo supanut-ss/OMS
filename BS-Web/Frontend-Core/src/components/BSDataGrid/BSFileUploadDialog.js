@@ -323,6 +323,7 @@ const BSFileUploadDialog = ({
     foreignKey,
     preObj,
     getAttachmentData,
+    fileNameColumn,
   ]);
 
   // Load files when dialog opens
@@ -331,96 +332,6 @@ const BSFileUploadDialog = ({
       loadFiles();
     }
   }, [open, effectiveForeignKeyValue, loadFiles]);
-
-  /**
-   * Handle file selection from input
-   */
-  const handleFileSelect = useCallback(
-    (event) => {
-      const selectedFiles = Array.from(event.target.files || []);
-      processFiles(selectedFiles);
-
-      // Reset input value to allow selecting same file again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    },
-    [files, maxFiles, maxFileSize, allowedTypes]
-  );
-
-  /**
-   * Process and validate selected files
-   */
-  const processFiles = useCallback(
-    (selectedFiles) => {
-      const validFiles = [];
-      const errors = [];
-
-      // Check max files limit
-      const remainingSlots = maxFiles - files.length - uploadingFiles.length;
-      if (selectedFiles.length > remainingSlots) {
-        errors.push(
-          `Maximum ${maxFiles} files allowed. You can add ${remainingSlots} more.`
-        );
-        selectedFiles = selectedFiles.slice(0, remainingSlots);
-      }
-
-      for (const file of selectedFiles) {
-        // Check file size
-        if (file.size > maxFileSize) {
-          errors.push(
-            `${file.name}: File size exceeds ${formatFileSize(maxFileSize)}`
-          );
-          continue;
-        }
-
-        // Check file type if restrictions exist
-        if (allowedTypes.length > 0) {
-          const isAllowed = allowedTypes.some((type) => {
-            if (type.startsWith(".")) {
-              // Extension check
-              return file.name.toLowerCase().endsWith(type.toLowerCase());
-            } else if (type.endsWith("/*")) {
-              // MIME type wildcard
-              const mimePrefix = type.slice(0, -2);
-              return file.type.startsWith(mimePrefix);
-            } else {
-              // Exact MIME type match
-              return file.type === type;
-            }
-          });
-
-          if (!isAllowed) {
-            errors.push(`${file.name}: File type not allowed`);
-            continue;
-          }
-        }
-
-        validFiles.push({
-          id: `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          file: file,
-          name: file.name,
-          size: file.size,
-          progress: 0,
-          status: "pending", // pending, uploading, success, error
-          error: null,
-        });
-      }
-
-      if (errors.length > 0) {
-        BSAlertSwal2.show("warning", errors.join("\n"), {
-          title: localeText.bsFileValidationError || "Validation Error",
-        });
-      }
-
-      if (validFiles.length > 0) {
-        setUploadingFiles((prev) => [...prev, ...validFiles]);
-        // Start uploading files
-        uploadFiles(validFiles);
-      }
-    },
-    [files, uploadingFiles, maxFiles, maxFileSize, allowedTypes, localeText]
-  );
 
   /**
    * Upload files to server
@@ -510,6 +421,104 @@ const BSFileUploadDialog = ({
       getUserId,
       additionalData,
     ]
+  );
+
+  /**
+   * Process and validate selected files
+   */
+  const processFiles = useCallback(
+    (selectedFiles) => {
+      const validFiles = [];
+      const errors = [];
+
+      // Check max files limit
+      const remainingSlots = maxFiles - files.length - uploadingFiles.length;
+      if (selectedFiles.length > remainingSlots) {
+        errors.push(
+          `Maximum ${maxFiles} files allowed. You can add ${remainingSlots} more.`
+        );
+        selectedFiles = selectedFiles.slice(0, remainingSlots);
+      }
+
+      for (const file of selectedFiles) {
+        // Check file size
+        if (file.size > maxFileSize) {
+          errors.push(
+            `${file.name}: File size exceeds ${formatFileSize(maxFileSize)}`
+          );
+          continue;
+        }
+
+        // Check file type if restrictions exist
+        if (allowedTypes.length > 0) {
+          const isAllowed = allowedTypes.some((type) => {
+            if (type.startsWith(".")) {
+              // Extension check
+              return file.name.toLowerCase().endsWith(type.toLowerCase());
+            } else if (type.endsWith("/*")) {
+              // MIME type wildcard
+              const mimePrefix = type.slice(0, -2);
+              return file.type.startsWith(mimePrefix);
+            } else {
+              // Exact MIME type match
+              return file.type === type;
+            }
+          });
+
+          if (!isAllowed) {
+            errors.push(`${file.name}: File type not allowed`);
+            continue;
+          }
+        }
+
+        validFiles.push({
+          id: `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          file: file,
+          name: file.name,
+          size: file.size,
+          progress: 0,
+          status: "pending", // pending, uploading, success, error
+          error: null,
+        });
+      }
+
+      if (errors.length > 0) {
+        BSAlertSwal2.show("warning", errors.join("\n"), {
+          title: localeText.bsFileValidationError || "Validation Error",
+        });
+      }
+
+      if (validFiles.length > 0) {
+        setUploadingFiles((prev) => [...prev, ...validFiles]);
+        // Start uploading files
+        uploadFiles(validFiles);
+      }
+    },
+    [
+      files,
+      uploadingFiles,
+      maxFiles,
+      maxFileSize,
+      allowedTypes,
+      localeText,
+      uploadFiles,
+    ]
+  );
+
+  /**
+   * Handle file selection from input
+   */
+  const handleFileSelect = useCallback(
+    (event) => {
+      const selectedFiles = Array.from(event.target.files || []);
+      processFiles(selectedFiles);
+
+      // Reset input value to allow selecting same file again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    [processFiles]
   );
 
   /**
