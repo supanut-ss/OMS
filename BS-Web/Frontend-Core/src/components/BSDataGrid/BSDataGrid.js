@@ -74,6 +74,7 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
+  AttachFile as AttachFileIcon,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
@@ -85,19 +86,16 @@ import Logger from "../../utils/logger";
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
+import BSFileUploadDialog from "./BSFileUploadDialog";
 import secureStorage from "../../utils/SecureStorage";
 import { BSSwitchField } from "../BSSwitch";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
 
-// Log license status for debugging
+// Check license status
 const licenseStatus = muiLicenseManager.getLicenseStatus();
-Logger.log("🔐 MUI X License Status:", licenseStatus);
-
-if (licenseStatus.hasLicenseKey) {
-  Logger.log("✅ MUI X Pro features are available");
-} else {
+if (!licenseStatus.hasLicenseKey) {
   Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
 }
 
@@ -564,6 +562,9 @@ const FallbackToolbar = ({
 };
 
 // Bulk Edit Toolbar - แสดงเมื่อเปิด bulk edit mode
+// NOTE: This component is currently not used as bulk edit toolbar is integrated into DynamicGridToolbar
+// Keeping it commented out for potential future use
+/*
 const BulkEditToolbar = ({
   onSave,
   onDiscard,
@@ -621,6 +622,7 @@ const BulkEditToolbar = ({
     </Box>
   );
 };
+*/
 
 // Custom Quick Filter - ค้นหาเมื่อกด Enter เท่านั้น
 const CustomQuickFilter = ({ apiRef, localeText }) => {
@@ -711,6 +713,7 @@ const DynamicGridToolbar = ({
   bsBulkAdd = false,
   bsBulkDelete = false,
   bsEnableBulkMode = false,
+  bsShowBulkSplitButton = false,
   selectedRowCount = 0,
   onBulkEdit,
   onBulkDelete,
@@ -722,6 +725,13 @@ const DynamicGridToolbar = ({
   onPrint,
   localeText,
   apiRef,
+  // Bulk Edit Mode props
+  bulkEditMode = false,
+  onBulkSave,
+  onBulkDiscard,
+  hasUnsavedChanges = false,
+  formLoading = false,
+  changesCount = 0,
 }) => {
   // Export menu state
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -755,22 +765,6 @@ const DynamicGridToolbar = ({
     setExportMenuOpen(false);
     if (onPrint) onPrint();
   };
-  Logger.log("🔧 DynamicGridToolbar rendering:", {
-    onAdd: typeof onAdd,
-    onAddExists: !!onAdd,
-    showAdd,
-    headerFiltersEnabled,
-    bsBulkEdit,
-    bsBulkAdd,
-    selectedRowCount,
-  });
-
-  // Force render check
-  Logger.log("🔍 DynamicGridToolbar DEFINITELY RENDERING");
-
-  React.useEffect(() => {
-    Logger.log("🚨 DynamicGridToolbar mounted!");
-  }, []);
 
   return (
     <GridToolbarContainer>
@@ -807,7 +801,9 @@ const DynamicGridToolbar = ({
       ) : null}
 
       {/* Bulk Edit/Delete Split Button - show only when rows are selected and checkbox is enabled */}
-      {bsEnableBulkMode &&
+      {/* Controlled by bsShowBulkSplitButton prop (default: false) */}
+      {bsShowBulkSplitButton &&
+        bsEnableBulkMode &&
         selectedRowCount > 0 &&
         (bsBulkEdit || bsBulkDelete) && (
           <BulkSplitButton
@@ -823,7 +819,66 @@ const DynamicGridToolbar = ({
       {/* Quick Filter - Right aligned (ค้นหาเมื่อกด Enter) */}
       <Box sx={{ flexGrow: 1 }} />
 
-      <CustomQuickFilter apiRef={apiRef} localeText={localeText} />
+      {/* Bulk Edit Mode Controls - Show when in bulk edit mode */}
+      {bulkEditMode ? (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1,
+            py: 0.5,
+            backgroundColor: "warning.light",
+            borderRadius: 1,
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{ color: "warning.contrastText", fontWeight: 500 }}
+          >
+            {localeText.bsBulkEditMode}
+            {changesCount > 0 &&
+              ` (${changesCount} ${localeText.bsUnsavedChanges})`}
+          </Typography>
+
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={onBulkDiscard}
+            disabled={formLoading}
+            sx={{
+              color: "warning.contrastText",
+              borderColor: "warning.contrastText",
+              fontSize: "0.75rem",
+              py: 0.25,
+              px: 1,
+              minHeight: 28,
+            }}
+          >
+            {localeText.bsDiscardAllChanges}
+          </Button>
+
+          <Button
+            size="small"
+            variant="contained"
+            onClick={onBulkSave}
+            disabled={formLoading || !hasUnsavedChanges}
+            startIcon={formLoading ? <CircularProgress size={14} /> : undefined}
+            sx={{
+              bgcolor: "success.main",
+              "&:hover": { bgcolor: "success.dark" },
+              fontSize: "0.75rem",
+              py: 0.25,
+              px: 1,
+              minHeight: 28,
+            }}
+          >
+            {formLoading ? localeText.bsSaving : localeText.bsSave}
+          </Button>
+        </Box>
+      ) : (
+        <CustomQuickFilter apiRef={apiRef} localeText={localeText} />
+      )}
 
       {/* Header Filters Toggle */}
       <Button
@@ -1010,18 +1065,8 @@ const ComboBoxField = ({
           groupBy: config.ObjGrp || null, // GROUP BY clause to remove duplicates
         };
 
-        Logger.log("🔍 Loading combobox options:", comboConfig);
         const result = await getComboBoxData(comboConfig);
         setOptions(result || []);
-
-        Logger.log("✅ Combobox options loaded:", {
-          count: result?.length || 0,
-          data: result,
-          valueField: config.Value,
-          displayField: config.Display,
-          sampleOption: result?.[0],
-          sampleKeys: result?.[0] ? Object.keys(result[0]) : [],
-        });
       } catch (error) {
         Logger.error("❌ Failed to load combobox options:", error);
         setOptions([]);
@@ -1049,50 +1094,10 @@ const ComboBoxField = ({
       const valueData = singleOption.data || singleOption;
       const autoSelectValue = valueData[config.Value] || singleOption.value;
 
-      Logger.log("🎯 Auto-selecting single ComboBox option:", {
-        columnName,
-        currentValue: value,
-        autoSelectValue,
-        reason: "only_one_option_available_and_value_empty",
-      });
-
       onChange(autoSelectValue);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.length]);
-
-  // Debug logging
-  Logger.log("🎯 ComboBoxField render:", {
-    columnName,
-    value,
-    valueType: typeof value,
-    optionsCount: options.length,
-    options: options,
-    valueField: config.Value,
-    displayField: config.Display,
-    loading,
-  });
-
-  // Debug value matching
-  const matchingOption = options.find((option) => {
-    const valueData = option.data || option;
-    const itemValue = valueData[config.Value] || option.value;
-    return itemValue === value || String(itemValue) === String(value);
-  });
-
-  Logger.log("🔍 Value matching debug:", {
-    value,
-    valueType: typeof value,
-    matchingOption,
-    optionValues: options.map((opt) => {
-      const valueData = opt.data || opt;
-      return {
-        itemValue: valueData[config.Value] || opt.value,
-        itemType: typeof (valueData[config.Value] || opt.value),
-        raw: opt,
-      };
-    }),
-  });
 
   // Build tooltip text
   const tooltipText = loading
@@ -1120,19 +1125,6 @@ const ComboBoxField = ({
 
           const itemValue = valueData[config.Value] || option.value;
           const itemDisplay = displayData[config.Display] || option.display;
-
-          Logger.log("🔹 Rendering MenuItem:", {
-            key: itemValue,
-            value: itemValue,
-            display: itemDisplay,
-            option,
-            configValue: config.Value,
-            configDisplay: config.Display,
-            optionKeys: Object.keys(option || {}),
-            rawOption: JSON.stringify(option),
-            extractedValue: itemValue,
-            extractedDisplay: itemDisplay,
-          });
 
           return (
             <MenuItem key={itemValue} value={itemValue}>
@@ -1261,7 +1253,7 @@ const ComboBoxField = ({
  * - field: string (required) - Column field name
  * - headerName: string - Display name in header
  * - width: number - Column width in pixels
- * - type: "string" | "number" | "boolean" | "date" | "dateTime" | "singleSelect" | "currency" | "stringAvatar"
+ * - type: "string" | "number" | "boolean" | "date" | "dateTime" | "singleSelect" | "currency" | "stringAvatar" | "attachFile"
  * - editable: boolean - Allow inline editing (default: true)
  * - readOnly: boolean - Disable editing in forms (default: false)
  * - required: boolean - Force required validation (overrides metadata)
@@ -1307,6 +1299,37 @@ const ComboBoxField = ({
  * - Example data: "John Doe,Jane Smith,Bob Johnson" -> displays 3 avatars
  * - Example usage:
  *     bsColumnDefs={[{ field: "assignee", type: "stringAvatar", maxAvatars: 3 }]}
+ *
+ * AttachFile (displays attach icon, opens file upload dialog on click):
+ * - attachConfig: object - Configuration for file attachment
+ *   - preObj: string - Schema prefix (e.g., "tmt")
+ *   - attachTable: string (required) - Table to store attachments
+ *   - foreignKey: string (required) - FK column linking to parent record
+ *   - fileNameColumn: string (default: "file_name") - Column for file name
+ *   - pathColumn: string (default: "path_file") - Column for file path
+ *   - primaryKey: string (default: "id") - Primary key of attachment table
+ *   - uploadEndpoint: string (default: "/api/files/upload") - Upload API endpoint
+ *   - downloadEndpoint: string (default: "/api/files/download") - Download API endpoint
+ *   - allowedTypes: string[] - Allowed file types (e.g., ["image/*", ".pdf", ".docx"])
+ *   - maxFileSize: number (default: 10MB) - Maximum file size in bytes
+ *   - maxFiles: number (default: 10) - Maximum number of files
+ * - Example usage:
+ *     bsColumnDefs={[{
+ *       field: "attachments",
+ *       type: "attachFile",
+ *       headerName: "Files",
+ *       width: 80,
+ *       attachConfig: {
+ *         preObj: "tmt",
+ *         attachTable: "t_tmt_project_attach_file",
+ *         foreignKey: "project_id",
+ *         fileNameColumn: "file_name",
+ *         pathColumn: "path_file",
+ *         allowedTypes: ["image/*", ".pdf", ".doc", ".docx"],
+ *         maxFileSize: 10 * 1024 * 1024,
+ *         maxFiles: 5
+ *       }
+ *     }]}
  *
  * Rendering:
  * - renderCell: (params) => ReactNode - Custom cell renderer
@@ -1580,6 +1603,7 @@ const BSDataGrid = forwardRef(
       bsBulkAddInline = false, // Inline bulk add mode
       bsEnableBulkMode = false, // Enable all bulk operations (default: disabled)
       bsShowCheckbox = false, // Show checkbox selection
+      bsShowBulkSplitButton = false, // Show Bulk Split Button (Edit/Delete dropdown)
       bsShowDescColumn = true,
       bsShowRowNumber = true, // Show row number column
       bsVisibleView = false, // Show view button (requires onView callback)
@@ -1633,20 +1657,6 @@ const BSDataGrid = forwardRef(
     },
     ref
   ) => {
-    // Debug: Log received props
-    Logger.log("🎯 BSDataGrid Props:", {
-      bsPreObj,
-      bsObj,
-      tableName,
-      bsPreObjType: typeof bsPreObj,
-      bsPreObjValue: bsPreObj,
-      bsKeyId,
-      bsStoredProcedure,
-      hasBsRowConfig: !!bsRowConfig,
-      bsRowConfigType: typeof bsRowConfig,
-      bsUniqueFields, // Debug: Check if bsUniqueFields is received
-    });
-
     // Determine effective table name (bsObj takes priority over tableName)
     const effectiveTableName = bsObj || tableName;
 
@@ -1659,7 +1669,6 @@ const BSDataGrid = forwardRef(
     // Parse BS-specific configurations
     const parsedCols = useMemo(() => {
       if (!bsCols) {
-        Logger.log("📋 No bsCols specified - will show all columns");
         return null;
       }
 
@@ -1667,12 +1676,6 @@ const BSDataGrid = forwardRef(
         .split(",")
         .map((col) => col.trim())
         .filter(Boolean);
-
-      Logger.log("📋 Parsed bsCols:", {
-        original: bsCols,
-        parsed: cols,
-        count: cols.length,
-      });
 
       return cols;
     }, [bsCols]);
@@ -1725,11 +1728,6 @@ const BSDataGrid = forwardRef(
             config[colDef.field] = colDef;
           }
         });
-        Logger.log("📊 Parsed bsColumnDefs:", {
-          count: Object.keys(config).length,
-          fields: Object.keys(config),
-          definitions: config,
-        });
       }
       return config;
     }, [bsColumnDefs]);
@@ -1762,12 +1760,6 @@ const BSDataGrid = forwardRef(
       const cols = validColumns.includes(bsDialogColumns) ? bsDialogColumns : 3;
       const size = 12 / cols;
 
-      console.log("📐 Dialog Grid Size:", {
-        bsDialogColumns,
-        effectiveColumns: cols,
-        gridSize: size,
-      });
-
       return size;
     }, [bsDialogColumns]);
 
@@ -1792,8 +1784,8 @@ const BSDataGrid = forwardRef(
               if (tabItem.Tab) {
                 const columns = tabItem.Tab.Column
                   ? tabItem.Tab.Column.split(",")
-                    .map((c) => c.trim())
-                    .filter(Boolean)
+                      .map((c) => c.trim())
+                      .filter(Boolean)
                   : [];
                 tabs.push({
                   name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
@@ -1825,14 +1817,6 @@ const BSDataGrid = forwardRef(
         if (tabs.length === 0) {
           return null;
         }
-
-        Logger.log("📑 Parsed bsDialogTab:", {
-          tabCount: tabs.length,
-          tabs: tabs.map((t) => ({
-            name: t.name,
-            columnCount: t.columns.length,
-          })),
-        });
 
         return tabs;
       } catch (error) {
@@ -1898,13 +1882,6 @@ const BSDataGrid = forwardRef(
           userObj?.id ||
           userObj?.Id ||
           "system";
-
-        Logger.log("👤 getUserId resolved:", {
-          userType: typeof user,
-          userObj: userObj,
-          resolvedUserId: userId,
-          availableFields: Object.keys(userObj || {}),
-        });
 
         return userId;
       } catch (e) {
@@ -2011,12 +1988,12 @@ const BSDataGrid = forwardRef(
     const [filterModel, setFilterModel] = useState(() => ({
       items: bsObjWh
         ? [
-          {
-            field: "custom_where",
-            operator: "custom",
-            value: bsObjWh,
-          },
-        ]
+            {
+              field: "custom_where",
+              operator: "custom",
+              value: bsObjWh,
+            },
+          ]
         : [],
     }));
 
@@ -2058,6 +2035,11 @@ const BSDataGrid = forwardRef(
     const [savedParentKeyValues, setSavedParentKeyValues] = useState({}); // Saved parent PK values for child grids
     const childGridRefs = useRef({}); // Refs for child grid components
 
+    // AttachFile Dialog states
+    const [attachFileDialogOpen, setAttachFileDialogOpen] = useState(false);
+    const [attachFileRowData, setAttachFileRowData] = useState(null);
+    const [attachFileConfig, setAttachFileConfig] = useState(null);
+
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
 
@@ -2066,26 +2048,8 @@ const BSDataGrid = forwardRef(
       const loadResourceData = async () => {
         if (effectiveTableName || bsStoredProcedure) {
           const resourceGroup = bsStoredProcedure || effectiveTableName;
-          Logger.log("🌐 Loading resources for:", resourceGroup);
-
-          // Debug: Check secureStorage resource data
-          const allResources = secureStorage.get("resource") || [];
-          const matchingResources = allResources.filter(
-            (r) => r.resource_group === resourceGroup
-          );
-          Logger.log("🔍 SecureStorage debug:", {
-            resourceGroup,
-            totalResourcesInStorage: allResources.length,
-            matchingResourcesCount: matchingResources.length,
-            matchingResources: matchingResources,
-            allResourceGroups: [
-              ...new Set(allResources.map((r) => r.resource_group)),
-            ].slice(0, 20), // Show first 20 groups
-          });
-
           const res = await getResources(resourceGroup);
           setResourceData(res);
-          Logger.log("✅ Resources loaded:", res);
         }
       };
       loadResourceData();
@@ -2096,12 +2060,7 @@ const BSDataGrid = forwardRef(
     useEffect(() => {
       if (autoLoad) {
         if (bsStoredProcedure) {
-          // For Enhanced Stored Procedure, create mock metadata to enable data loading
-          // The actual columns will be determined from the stored procedure response
-          Logger.log(
-            "🚀 Using Enhanced Stored Procedure mode - creating mock metadata"
-          );
-          // Skip metadata loading for Enhanced SP since it will handle everything
+          // For Enhanced Stored Procedure, skip metadata loading - columns come from SP response
         } else if (effectiveTableName && isLoadMetadata === false) {
           // For regular table mode, load metadata as usual
           setIsLoadMetadata(true);
@@ -2128,20 +2087,15 @@ const BSDataGrid = forwardRef(
     // Watch for changes in bsCustomFilters and apply them
     useEffect(() => {
       if (!bsCustomFilters || bsCustomFilters.length === 0) {
-        Logger.log("🔍 No custom filters applied");
         return;
       }
 
-      Logger.log("🔍 Custom filters changed:", bsCustomFilters);
-
       // For client-side filtering, reload data to apply filters
       if (bsFilterMode === "client" && hasLoadedRef.current) {
-        Logger.log("🔄 Reloading data with custom filters (client-side)");
         loadDataRef.current();
       }
       // For server-side filtering, reload data with custom filters
       else if (bsFilterMode === "server" && hasLoadedRef.current) {
-        Logger.log("🔄 Reloading data with custom filters (server-side)");
         loadDataRef.current();
       }
     }, [bsCustomFilters, bsFilterMode]);
@@ -2151,11 +2105,6 @@ const BSDataGrid = forwardRef(
       if (!customFilters || customFilters.length === 0) {
         return data;
       }
-
-      Logger.log("🔍 Applying custom filters to data:", {
-        rowCount: data.length,
-        filters: customFilters,
-      });
 
       return data.filter((row) => {
         // All filters must match (AND logic)
@@ -2319,11 +2268,6 @@ const BSDataGrid = forwardRef(
             sort: sort.sort,
           }));
 
-          Logger.log(
-            "🟡 [BSDataGrid] sortModelForApi to API:",
-            sortModelForApi
-          );
-
           // Include ComboBox fields in the query even if they're not in bsCols for display
           let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
           if (columnsForQuery && comboBoxConfig) {
@@ -2331,6 +2275,16 @@ const BSDataGrid = forwardRef(
             comboBoxFields.forEach((field) => {
               if (!columnsForQuery.includes(field)) {
                 columnsForQuery.push(field);
+              }
+            });
+          }
+
+          // Always include primary key columns in the query for proper row identification
+          // This ensures we have the actual primary key value for update/delete operations
+          if (columnsForQuery && metadata?.primaryKeys) {
+            metadata.primaryKeys.forEach((pk) => {
+              if (!columnsForQuery.includes(pk)) {
+                columnsForQuery.push(pk);
               }
             });
           }
@@ -2353,21 +2307,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-                bsCustomFilters &&
-                bsCustomFilters.length > 0
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields (optional until backend is ready)
             userLookup: bsUserLookup
               ? {
-                table: bsUserLookup.table || "sec.t_com_user",
-                idField: bsUserLookup.idField || "user_id",
-                displayFields: bsUserLookup.displayFields || [
-                  "first_name",
-                  "last_name",
-                ],
-                separator: bsUserLookup.separator || " ",
-              }
+                  table: bsUserLookup.table || "sec.t_com_user",
+                  idField: bsUserLookup.idField || "user_id",
+                  displayFields: bsUserLookup.displayFields || [
+                    "first_name",
+                    "last_name",
+                  ],
+                  separator: bsUserLookup.separator || " ",
+                }
               : undefined,
           };
 
@@ -2375,16 +2329,7 @@ const BSDataGrid = forwardRef(
           if (forceRefresh) {
             request.cacheBuster = Date.now();
             request._forceRefresh = true; // Additional flag for backend
-            Logger.log(
-              "🔄 Force refresh requested with cache buster:",
-              request.cacheBuster
-            );
           }
-
-          Logger.log("📡 Loading BS dynamic data with request:", {
-            ...request,
-            forceRefresh,
-          });
 
           const result = await getTableData(request);
 
@@ -2433,14 +2378,7 @@ const BSDataGrid = forwardRef(
             bsCustomFilters &&
             bsCustomFilters.length > 0
           ) {
-            Logger.log("🔍 Applying custom filters (client-side):", {
-              beforeCount: processedRows.length,
-              filters: bsCustomFilters,
-            });
             processedRows = applyCustomFilters(processedRows, bsCustomFilters);
-            Logger.log("✅ Custom filters applied:", {
-              afterCount: processedRows.length,
-            });
           }
 
           setRows(processedRows);
@@ -2461,10 +2399,6 @@ const BSDataGrid = forwardRef(
           if (onDataBind && typeof onDataBind === "function") {
             try {
               onDataBind(processedRows);
-              Logger.log("📊 onDataBind callback called with data:", {
-                rowCount: processedRows.length,
-                sampleData: processedRows.slice(0, 2),
-              });
             } catch (err) {
               Logger.error("❌ Error in onDataBind callback:", err);
             }
@@ -2472,70 +2406,6 @@ const BSDataGrid = forwardRef(
 
           // Reset row selection when data changes to prevent stale references
           setRowSelectionModel([]);
-
-          // Force component update if this is a refresh
-          if (forceRefresh) {
-            Logger.log(
-              "🔄 Force refresh completed, triggering component update"
-            );
-            // Small delay to ensure state is properly updated
-            setTimeout(() => {
-              Logger.log("� DataGrid should now show updated data");
-            }, 100);
-          }
-
-          Logger.log("�📊 BS dynamic data loaded successfully:", {
-            originalRowsCount: result.rows?.length || 0,
-            processedRowsCount: processedRows?.length || 0,
-            filteredOutCount:
-              (result.rows?.length || 0) - (processedRows?.length || 0),
-            total: result.rowCount || 0,
-            forceRefresh,
-            timestamp: new Date().toISOString(),
-            sampleData: processedRows.slice(0, 2), // Show first 2 rows for debugging
-            // User lookup debug info
-            hasUserLookup: !!bsUserLookup,
-            sampleRowKeys: processedRows[0]
-              ? Object.keys(processedRows[0])
-              : [],
-            hasCreateByDisplay:
-              processedRows[0]?.create_by_display !== undefined,
-            hasUpdateByDisplay:
-              processedRows[0]?.update_by_display !== undefined,
-            createByValue: processedRows[0]?.create_by,
-            createByDisplayValue: processedRows[0]?.create_by_display,
-            updateByValue: processedRows[0]?.update_by,
-            updateByDisplayValue: processedRows[0]?.update_by_display,
-            // Pagination debug info
-            currentPage: currentPaginationModel.page,
-            pageSize: currentPaginationModel.pageSize,
-            shouldShowPagination:
-              (result.rowCount || 0) > currentPaginationModel.pageSize,
-            paginationModel: currentPaginationModel,
-            totalPages: Math.ceil(
-              (result.rowCount || 0) / currentPaginationModel.pageSize
-            ),
-          });
-
-          // Extra debug for pagination issues
-          if ((result.rowCount || 0) > currentPaginationModel.pageSize) {
-            Logger.log("🔢 Pagination should be visible:", {
-              rowCount: result.rowCount,
-              pageSize: currentPaginationModel.pageSize,
-              totalPages: Math.ceil(
-                (result.rowCount || 0) / currentPaginationModel.pageSize
-              ),
-              currentPageIndex: currentPaginationModel.page,
-              message:
-                "Pagination controls should be displayed at bottom of DataGrid",
-            });
-          } else {
-            Logger.log("⚠️ Pagination hidden (not enough data):", {
-              rowCount: result.rowCount,
-              pageSize: currentPaginationModel.pageSize,
-              message: "Need more data than pageSize to show pagination",
-            });
-          }
 
           // Return processed rows for callers that need them (e.g., hierarchical data)
           return processedRows;
@@ -2585,15 +2455,6 @@ const BSDataGrid = forwardRef(
         setError(null);
 
         try {
-          Logger.log("🚀 Loading data from Enhanced Stored Procedure:", {
-            procedureName: bsStoredProcedure,
-            schema: bsStoredProcedureSchema,
-            params: bsStoredProcedureParams,
-            page: currentPaginationModel.page + 1,
-            pageSize: currentPaginationModel.pageSize,
-            forceRefresh,
-          });
-
           // Prepare request for Enhanced Stored Procedure
           const request = {
             procedureName: bsStoredProcedure,
@@ -2608,9 +2469,9 @@ const BSDataGrid = forwardRef(
             sortModel:
               bsFilterMode === "server"
                 ? currentSortModel.map((sort) => ({
-                  field: sort.field,
-                  sort: sort.sort,
-                }))
+                    field: sort.field,
+                    sort: sort.sort,
+                  }))
                 : [], // Only send sort for server-side mode
             filterModel:
               bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
@@ -2621,21 +2482,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-                bsCustomFilters &&
-                bsCustomFilters.length > 0
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields
             userLookup: bsUserLookup
               ? {
-                table: bsUserLookup.table || "sec.t_com_user",
-                idField: bsUserLookup.idField || "user_id",
-                displayFields: bsUserLookup.displayFields || [
-                  "first_name",
-                  "last_name",
-                ],
-                separator: bsUserLookup.separator || " ",
-              }
+                  table: bsUserLookup.table || "sec.t_com_user",
+                  idField: bsUserLookup.idField || "user_id",
+                  displayFields: bsUserLookup.displayFields || [
+                    "first_name",
+                    "last_name",
+                  ],
+                  separator: bsUserLookup.separator || " ",
+                }
               : undefined,
             userId: getUserId(),
           };
@@ -2654,20 +2515,10 @@ const BSDataGrid = forwardRef(
               bsCustomFilters &&
               bsCustomFilters.length > 0
             ) {
-              Logger.log(
-                "🔍 Applying custom filters to Enhanced SP (client-side):",
-                {
-                  beforeCount: processedRows.length,
-                  filters: bsCustomFilters,
-                }
-              );
               processedRows = applyCustomFilters(
                 processedRows,
                 bsCustomFilters
               );
-              Logger.log("✅ Custom filters applied to Enhanced SP:", {
-                afterCount: processedRows.length,
-              });
             }
 
             setRows(processedRows);
@@ -2679,39 +2530,10 @@ const BSDataGrid = forwardRef(
                 : result.rowCount || processedRows.length
             );
 
-            Logger.log("📊 Enhanced SP data loaded:", {
-              mode: bsFilterMode,
-              apiPage: request.page,
-              apiPageSize: request.pageSize,
-              processedRowsCount: processedRows.length,
-              rowCount: result.rowCount || processedRows.length,
-              currentPaginationModel,
-              expectedRowsForPage:
-                bsFilterMode === "client"
-                  ? "All rows (client-side pagination)"
-                  : `Page ${currentPaginationModel.page + 1} with ${currentPaginationModel.pageSize
-                  } rows`,
-            });
-
-            // Check if no data returned
-            if (processedRows.length === 0) {
-              Logger.log("ℹ️ Enhanced SP returned no data:", {
-                rowCount: result.rowCount,
-                message: result.message,
-              });
-            }
-
             // Call onDataBind callback with the loaded data
             if (onDataBind && typeof onDataBind === "function") {
               try {
                 onDataBind(processedRows);
-                Logger.log(
-                  "📊 Enhanced SP onDataBind callback called with data:",
-                  {
-                    rowCount: processedRows.length,
-                    sampleData: processedRows.slice(0, 2),
-                  }
-                );
               } catch (err) {
                 Logger.error(
                   "❌ Error in Enhanced SP onDataBind callback:",
@@ -2720,10 +2542,8 @@ const BSDataGrid = forwardRef(
               }
             }
 
-            // 🔍 Extract metadata from Enhanced SP result (API returns as 'metadata' property)
+            // Extract metadata from Enhanced SP result (API returns as 'metadata' property)
             if (result.metadata) {
-              Logger.log("📋 Enhanced SP returned metadata:", result.metadata);
-
               // Create metadata structure compatible with BSDataGrid
               const enhancedMetadataStructure = {
                 tableName: result.metadata.tableName || bsStoredProcedure,
@@ -2742,18 +2562,6 @@ const BSDataGrid = forwardRef(
 
               // Set metadata for use in form operations and primary key detection
               setEnhancedMetadata(enhancedMetadataStructure);
-
-              Logger.log("✅ Enhanced SP metadata applied:", {
-                primaryKeys: enhancedMetadataStructure.primaryKeys,
-                columnsCount: enhancedMetadataStructure.columns.length,
-                totalRows: enhancedMetadataStructure.totalRows,
-                columns: enhancedMetadataStructure.columns.map((c) => ({
-                  name: c.columnName,
-                  type: c.dataType,
-                  isPrimaryKey: c.isPrimaryKey,
-                  isIdentity: c.isIdentity,
-                })),
-              });
             } else {
               Logger.warn(
                 "⚠️ Enhanced SP did not return metadata - generating fallback from data"
@@ -2830,34 +2638,8 @@ const BSDataGrid = forwardRef(
                 };
 
                 setEnhancedMetadata(fallbackMetadata);
-
-                Logger.log("✅ Fallback metadata generated from data:", {
-                  primaryKey: detectedPrimaryKey,
-                  primaryKeySource: bsKeyId
-                    ? "bsKeyId (manual)"
-                    : "auto-detected",
-                  columnsCount: fallbackColumns.length,
-                  columns: fallbackColumns.map((c) => c.columnName),
-                });
-              } else {
-                Logger.warn(
-                  "⚠️ No data available to generate fallback metadata"
-                );
               }
             }
-
-            Logger.log(
-              "✅ Enhanced Stored Procedure data loaded successfully:",
-              {
-                rowsCount: processedRows.length,
-                totalCount: result.rowCount,
-                operation: result.operation,
-                message: result.message,
-                hasMetadata: !!result.metadata,
-                metadataPrimaryKeys: result.metadata?.primaryKeys,
-                metadataColumns: result.metadata?.columns?.length,
-              }
-            );
           } else {
             throw new Error(
               result.message || "Stored procedure execution failed"
@@ -2905,8 +2687,6 @@ const BSDataGrid = forwardRef(
     // Manual refresh data function
     const refreshData = useCallback(
       async (forceRefresh = false) => {
-        Logger.log("🔄 Manual refresh triggered", { forceRefresh });
-
         if (bsStoredProcedure) {
           await loadStoredProcedureData(
             paginationModel,
@@ -2948,7 +2728,6 @@ const BSDataGrid = forwardRef(
 
       // For Enhanced SP, load immediately without waiting for metadata
       if (bsStoredProcedure && !hasLoadedRef.current) {
-        Logger.log("🔄 Initial load for Enhanced SP");
         hasLoadedRef.current = true;
         loadDataRef.current();
         return;
@@ -2956,7 +2735,6 @@ const BSDataGrid = forwardRef(
 
       // For regular tables, wait for metadata before loading
       if (!bsStoredProcedure && metadata && !hasLoadedRef.current) {
-        Logger.log("🔄 Initial load for regular table");
         hasLoadedRef.current = true;
         loadDataRef.current();
         return;
@@ -2964,7 +2742,6 @@ const BSDataGrid = forwardRef(
 
       // Reset hasLoaded flag if table/SP changes
       if (isEnhancedSPRef.current !== !!bsStoredProcedure) {
-        Logger.log("🔄 Table/SP type changed, resetting load flag");
         isEnhancedSPRef.current = !!bsStoredProcedure;
         hasLoadedRef.current = false;
       }
@@ -2978,7 +2755,6 @@ const BSDataGrid = forwardRef(
       // Skip if initial load hasn't happened yet
       if (!hasLoadedRef.current) return;
 
-      Logger.log("🔄 Reloading data due to pagination/sort/filter change");
       loadDataRef.current();
     }, [paginationModel, sortModel, filterModel, bsFilterMode]);
 
@@ -2997,18 +2773,6 @@ const BSDataGrid = forwardRef(
         const filteredRows = filteredRowIds
           .map((id) => apiRef.current.getRow(id))
           .filter((row) => row != null);
-
-        Logger.log("📊 Filtered data changed:", {
-          totalRows: rows.length,
-          filteredRows: filteredRows.length,
-          filterMode: bsFilterMode,
-          hasFilters:
-            filterModel?.items?.length > 0 ||
-            filterModel?.quickFilterValues?.length > 0,
-          sampleFiltered: filteredRows
-            .slice(0, 2)
-            .map((r) => r.part_no || r.id),
-        });
 
         onFilteredDataChange(filteredRows);
       } catch (error) {
@@ -3029,36 +2793,14 @@ const BSDataGrid = forwardRef(
       return () => clearTimeout(timer);
     }, [rows, notifyFilteredDataChange]);
 
-    // Handler for sort model changes with debugging
-    const handleSortModelChange = useCallback(
-      (newSortModel) => {
-        Logger.log("🔀 Sort model changed:", {
-          oldModel: sortModel,
-          newModel: newSortModel,
-          sortCount: newSortModel?.length || 0,
-          sortFields:
-            newSortModel?.map((s) => `${s.field} ${s.sort}`).join(", ") ||
-            "none",
-          filterMode: bsFilterMode,
-        });
+    // Handler for sort model changes
+    const handleSortModelChange = useCallback((newSortModel) => {
+      setSortModel(newSortModel);
+    }, []);
 
-        setSortModel(newSortModel);
-      },
-      [sortModel, bsFilterMode]
-    );
-
-    // Handler for filter model changes with debugging
+    // Handler for filter model changes
     const handleFilterModelChange = useCallback(
       (newFilterModel) => {
-        Logger.log("🔍 Filter model changed:", {
-          oldModel: filterModel,
-          newModel: newFilterModel,
-          hasQuickFilter: !!newFilterModel.quickFilterValues?.length,
-          quickFilterValues: newFilterModel.quickFilterValues,
-          itemsCount: newFilterModel.items?.length || 0,
-          filterMode: bsFilterMode,
-        });
-
         setFilterModel(newFilterModel);
 
         // Notify parent about filtered data after a short delay
@@ -3066,7 +2808,7 @@ const BSDataGrid = forwardRef(
           notifyFilteredDataChange();
         }, 150);
       },
-      [filterModel, bsFilterMode, notifyFilteredDataChange]
+      [notifyFilteredDataChange]
     );
 
     // Helper: Format column name for display with multi-language support
@@ -3270,27 +3012,16 @@ const BSDataGrid = forwardRef(
           );
 
           if (isPrimaryKey) {
-            Logger.log(
-              `❌ Skipping ${columnName} - is primary key from metadata (primaryKeys: ${JSON.stringify(
-                metadata?.primaryKeys
-              )})`
-            );
             return false;
           }
 
           // Skip generic ID field (case-insensitive) - common auto-generated field
           if (columnName.toLowerCase() === "id") {
-            Logger.log(
-              `❌ Skipping ${columnName} - is generic ID field (auto-generated)`
-            );
             return false;
           }
 
           // Skip bsKeyId field if specified
           if (bsKeyId && columnName.toLowerCase() === bsKeyId.toLowerCase()) {
-            Logger.log(
-              `❌ Skipping ${columnName} - matches bsKeyId (${bsKeyId})`
-            );
             return false;
           }
 
@@ -3315,27 +3046,16 @@ const BSDataGrid = forwardRef(
           );
 
           if (isPrimaryKey) {
-            Logger.log(
-              `❌ Skipping ${columnName} - is primary key from metadata (primaryKeys: ${JSON.stringify(
-                metadata?.primaryKeys
-              )})`
-            );
             return false;
           }
 
           // Skip generic ID field (case-insensitive) - common auto-generated field
           if (columnName.toLowerCase() === "id") {
-            Logger.log(
-              `❌ Skipping ${columnName} - is generic ID field (auto-generated)`
-            );
             return false;
           }
 
           // Skip bsKeyId field if specified
           if (bsKeyId && columnName.toLowerCase() === bsKeyId.toLowerCase()) {
-            Logger.log(
-              `❌ Skipping ${columnName} - matches bsKeyId (${bsKeyId})`
-            );
             return false;
           }
         }
@@ -3409,45 +3129,6 @@ const BSDataGrid = forwardRef(
 
       const keys = Object.keys(rowData);
 
-      // Enhanced debugging to see all data - DEVICE COMPATIBILITY DEBUG
-      Logger.log("🔍 PRIMARY KEY DETECTION - Device compatibility debug:", {
-        allKeys: keys,
-        hasId: keys.includes("id"),
-        hasID: keys.includes("ID"),
-        hasId_caps: keys.includes("Id"),
-        hasPartId: keys.includes("part_id"),
-        hasPartID: keys.includes("part_ID"),
-        hasPartId_pascal: keys.includes("PartId"),
-        hasAtId: keys.includes("@id"),
-        hasAtPartId: keys.includes("@part_id"),
-        deviceSpecificKeys: keys.filter(
-          (key) =>
-            key.includes("id") ||
-            key.includes("Id") ||
-            key.includes("ID") ||
-            key.startsWith("@")
-        ),
-        sampleData: keys.reduce((sample, key, index) => {
-          if (index < 10) {
-            // Show first 10 fields
-            sample[key] = rowData[key];
-          }
-          return sample;
-        }, {}),
-      });
-
-      // Device-specific parameter detection (handle @id vs @part_id scenarios)
-      const deviceParams = keys.filter((key) => key.startsWith("@"));
-      if (deviceParams.length > 0) {
-        Logger.log("🔍 DEVICE PARAMETERS DETECTED:", {
-          deviceParams,
-          hasAtId: deviceParams.includes("@id"),
-          hasAtPartId: deviceParams.includes("@part_id"),
-          message:
-            "Some devices send @id instead of @part_id for update/delete operations",
-        });
-      }
-
       // Common primary key patterns (in order of priority) - enhanced for device compatibility
       const primaryKeyPatterns = [
         // Device-specific patterns (highest priority for compatibility)
@@ -3475,18 +3156,6 @@ const BSDataGrid = forwardRef(
       for (const pattern of primaryKeyPatterns) {
         const foundKey = keys.find((key) => pattern.test(key));
         if (foundKey) {
-          Logger.log(
-            `🔍 Detected primary key from Enhanced SP data: ${foundKey}`,
-            {
-              pattern: pattern.toString(),
-              allKeys: keys,
-              isDeviceParam: foundKey.startsWith("@"),
-              compatibilityNote: foundKey.startsWith("@")
-                ? "Device-specific parameter detected"
-                : "Standard parameter",
-              rowData: Object.keys(rowData).slice(0, 5), // Show first 5 keys for debugging
-            }
-          );
           return foundKey;
         }
       }
@@ -3503,13 +3172,6 @@ const BSDataGrid = forwardRef(
 
       if (possibleIdFields.length > 0) {
         const primaryKey = possibleIdFields[0]; // Take the first numeric field
-        Logger.log(
-          `🔍 Detected primary key by data type from Enhanced SP: ${primaryKey}`,
-          {
-            possibleIdFields,
-            allKeys: keys,
-          }
-        );
         return primaryKey;
       }
 
@@ -3581,7 +3243,7 @@ const BSDataGrid = forwardRef(
           const allPrimaryKeys = [
             ...metadataPrimaryKeys,
             ...(detectedPrimaryKey &&
-              !metadataPrimaryKeys.includes(detectedPrimaryKey)
+            !metadataPrimaryKeys.includes(detectedPrimaryKey)
               ? [detectedPrimaryKey]
               : []),
           ];
@@ -3639,34 +3301,12 @@ const BSDataGrid = forwardRef(
               init[key] = existing[key];
             });
 
-          Logger.log("🔧 Enhanced SP form data initialized:", {
-            existing,
-            init,
-            keys: Object.keys(init),
-            metadataPrimaryKeys,
-            detectedPrimaryKey,
-            allPrimaryKeys,
-            excludedFields: Object.keys(existing).filter((key) =>
-              excludedFields.some(
-                (excludedField) =>
-                  key.toLowerCase() === excludedField.toLowerCase()
-              )
-            ),
-          });
-
           return init;
         }
 
         // Regular metadata-based initialization
         if (!metadata?.columns) return {};
         const init = {};
-
-        Logger.log("🔧 Initializing form data:", {
-          existing,
-          existingKeys: existing ? Object.keys(existing) : [],
-          hasMetadata: !!metadata?.columns,
-          dialogMode,
-        });
 
         metadata.columns
           .filter((c) =>
@@ -3681,36 +3321,16 @@ const BSDataGrid = forwardRef(
           .forEach((c) => {
             if (existing && existing[c.columnName] !== undefined) {
               init[c.columnName] = existing[c.columnName];
-              Logger.log(`🔧 Setting ${c.columnName} from existing:`, {
-                value: existing[c.columnName],
-                type: typeof existing[c.columnName],
-              });
             } else {
               // For edit mode, if field is missing from row data, check if we should skip defaulting
               // This happens when the field exists in metadata but wasn't included in the grid columns
               if (existing !== null) {
                 // Edit mode - check if this field might have a value that wasn't loaded in the grid
-                Logger.log(
-                  `⚠️ Field ${c.columnName} missing from row data in edit mode`,
-                  {
-                    columnName: c.columnName,
-                    existingKeys: Object.keys(existing || {}),
-                    dataType: c.dataType,
-                  }
-                );
 
                 // For ComboBox fields in edit mode, don't default to 0 - leave empty until we can determine the real value
                 const comboConfig = comboBoxConfig[c.columnName];
                 if (comboConfig) {
                   init[c.columnName] = ""; // Leave empty for ComboBox fields
-                  Logger.log(
-                    `🔧 Setting ${c.columnName} empty for ComboBox (missing from row):`,
-                    {
-                      value: "",
-                      type: "string",
-                      reason: "missing_from_row_data",
-                    }
-                  );
                   return; // Skip default value assignment
                 }
               }
@@ -3748,11 +3368,6 @@ const BSDataGrid = forwardRef(
                     init[c.columnName] = "";
                 }
               }
-              Logger.log(`🔧 Setting ${c.columnName} default:`, {
-                value: init[c.columnName],
-                type: typeof init[c.columnName],
-                dataType: c.dataType,
-              });
             }
           });
 
@@ -3763,13 +3378,9 @@ const BSDataGrid = forwardRef(
         ) {
           Object.keys(bsDefaultFormValues).forEach((key) => {
             init[key] = bsDefaultFormValues[key];
-            Logger.log(`🔧 Setting ${key} from bsDefaultFormValues:`, {
-              value: bsDefaultFormValues[key],
-            });
           });
         }
 
-        Logger.log("🔧 Final initialized form data:", init);
         return init;
       },
       [
@@ -3883,8 +3494,6 @@ const BSDataGrid = forwardRef(
       );
       const firstEditableField = editableColumns[0]?.column_name;
 
-      Logger.log("📝 Inline add - first editable field:", firstEditableField);
-
       // Add new row at the beginning of the grid
       setRows((oldRows) => [newRow, ...oldRows]);
 
@@ -3925,20 +3534,12 @@ const BSDataGrid = forwardRef(
               if (firstEditableField) {
                 apiRef.current.setCellFocus(id, firstEditableField);
               }
-
-              Logger.log("📝 Focus set to row:", {
-                id,
-                field: firstEditableField,
-                rowMode,
-              });
             } catch (err) {
               Logger.warn("⚠️ Could not focus cell:", err);
             }
           }
         }, 50);
       });
-
-      Logger.log("📝 Inline add - new row added:", { id, newRow });
     }, [initializeFormData, metadata, bsStoredProcedure, bulkEditMode, apiRef]);
 
     // Open Edit dialog or delegate
@@ -3952,12 +3553,6 @@ const BSDataGrid = forwardRef(
         setDialogMode("edit");
         setSelectedRow(row);
         const initialFormData = initializeFormData(row);
-
-        Logger.log("🎯 Edit form data initialized:", {
-          initialFormData,
-          app_id: initialFormData?.app_id,
-          appIdType: typeof initialFormData?.app_id,
-        });
 
         setFormData(initialFormData);
 
@@ -3980,7 +3575,6 @@ const BSDataGrid = forwardRef(
           });
 
           setSavedParentKeyValues(pkValues);
-          Logger.log("🔗 Hierarchical Edit - Parent PK values:", pkValues);
         }
 
         setDialogOpen(true);
@@ -4022,7 +3616,17 @@ const BSDataGrid = forwardRef(
 
         // Get locale text for confirm message
         const currentLocaleText = getLocaleText(getEffectiveLocale());
-        if (window.confirm(currentLocaleText.bsConfirmDeleteRecord)) {
+        const isConfirmed = await BSAlertSwal2.confirm(
+          currentLocaleText.bsConfirmDeleteRecord,
+          {
+            title: currentLocaleText.bsConfirmDelete || "Delete Confirmation",
+            confirmButtonText:
+              currentLocaleText.bsYesDelete || "Yes, delete it!",
+            cancelButtonText: currentLocaleText.bsCancel || "Cancel",
+          }
+        );
+
+        if (isConfirmed) {
           try {
             if (bsStoredProcedure) {
               // Helper function to convert snake_case to PascalCase for SP parameters
@@ -4044,20 +3648,6 @@ const BSDataGrid = forwardRef(
 
               // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
               if (primaryKey.startsWith("@")) {
-                Logger.log(
-                  "� DEVICE COMPATIBILITY - Handling device-specific parameter for DELETE:",
-                  {
-                    originalPrimaryKey: primaryKey,
-                    pascalPrimaryKey: pascalPrimaryKey,
-                    id: id,
-                    deviceType: primaryKey.includes("part")
-                      ? "part_id device"
-                      : "id device",
-                    compatibilityNote:
-                      "Some devices send @id instead of @part_id",
-                  }
-                );
-
                 // Add both variations for maximum compatibility
                 if (primaryKey === "@id") {
                   deviceCompatParams["Id"] = id;
@@ -4067,14 +3657,6 @@ const BSDataGrid = forwardRef(
                   deviceCompatParams["Id"] = id; // Fallback for id devices
                 }
               }
-
-              Logger.log("�🔄 Converting parameters for Enhanced SP DELETE:", {
-                originalPrimaryKey: primaryKey,
-                pascalPrimaryKey: pascalPrimaryKey,
-                id: id,
-                deviceCompatParams: deviceCompatParams,
-                finalPrimaryKeyParam: pascalPrimaryKey,
-              });
 
               // Use Enhanced Stored Procedure for DELETE operation
               const deleteRequest = {
@@ -4101,10 +3683,6 @@ const BSDataGrid = forwardRef(
                   });
                 }
                 await loadStoredProcedureData();
-                Logger.log(
-                  "✅ Record deleted via Enhanced Stored Procedure:",
-                  result.message
-                );
               } else {
                 const errorMsg = result.message || "Delete operation failed";
                 BSAlertSwal2.show("error", errorMsg, { title: "Error" });
@@ -4114,7 +3692,6 @@ const BSDataGrid = forwardRef(
               // Use standard delete record
               await deleteRecord(id, null, bsPreObj);
               await loadData();
-              Logger.log("✅ Record deleted and data reloaded");
             }
           } catch (err) {
             Logger.error("❌ Failed to delete record:", err);
@@ -4153,16 +3730,6 @@ const BSDataGrid = forwardRef(
 
         // Merge bsDefaultFormValues with data to include hidden field values (e.g., FK values)
         const mergedData = { ...bsDefaultFormValues, ...data };
-
-        Logger.log("🔍 Validating unique fields:", {
-          bsUniqueFields,
-          data,
-          bsDefaultFormValues,
-          mergedData,
-          mode,
-          currentPrimaryKeyValue,
-          primaryKeyField,
-        });
 
         for (const fieldConfig of bsUniqueFields) {
           // Determine if this is a composite key (multiple fields) or single field
@@ -4210,20 +3777,7 @@ const BSDataGrid = forwardRef(
                 ).replace(/'/g, "''")}'`;
               }
 
-              Logger.log("🔍 Checking composite unique key:", {
-                fields,
-                values: fields.map((f) => mergedData[f]),
-                whereCondition,
-              });
-
               // Query database to check if combination exists
-              Logger.log("🔍 Composite key API call params:", {
-                tableName: effectiveTableName,
-                preObj: bsPreObj,
-                customWhere: whereCondition,
-                primaryKeyField,
-              });
-
               const response = await getTableData({
                 tableName: effectiveTableName,
                 preObj: bsPreObj,
@@ -4233,20 +3787,8 @@ const BSDataGrid = forwardRef(
                 selectColumns: [primaryKeyField],
               });
 
-              Logger.log("🔍 Composite key API response:", {
-                response,
-                rowCount: response?.rowCount,
-                dataLength: response?.data?.length,
-                data: response?.data,
-              });
-
               const existingCount =
                 response?.rowCount || response?.data?.length || 0;
-              Logger.log("🔍 Composite key check result:", {
-                fields,
-                existingCount,
-                willShowError: existingCount > 0,
-              });
 
               if (existingCount > 0) {
                 const displayNames = fields
@@ -4295,12 +3837,6 @@ const BSDataGrid = forwardRef(
                 ).replace(/'/g, "''")}'`;
               }
 
-              Logger.log("🔍 Checking unique field:", {
-                fieldName,
-                value,
-                whereCondition,
-              });
-
               // Query database to check if value exists
               const response = await getTableData({
                 tableName: effectiveTableName,
@@ -4309,12 +3845,6 @@ const BSDataGrid = forwardRef(
                 pageSize: 1,
                 customWhere: whereCondition,
                 selectColumns: [primaryKeyField],
-              });
-
-              Logger.log("🔍 Unique check response:", {
-                fieldName,
-                value,
-                rowCount: response?.rowCount || response?.data?.length || 0,
               });
 
               // If record found, field value is not unique
@@ -4382,7 +3912,8 @@ const BSDataGrid = forwardRef(
               errors.push(
                 `${formatColumnName(
                   columnName
-                )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
+                )}: Maximum ${maxLength} characters allowed (current: ${
+                  stringValue.length
                 })`
               );
             }
@@ -4453,32 +3984,16 @@ const BSDataGrid = forwardRef(
               // Handle GUID fields - let SQL Server generate with NEWID()
               if (dataType?.toLowerCase() === "uniqueidentifier") {
                 saveData[columnName] = "NEWID()"; // Special value to trigger server-side generation
-                Logger.log(`🔧 Adding GUID generation for ${columnName}:`, {
-                  value: "NEWID()",
-                  dataType,
-                });
               }
 
               // Handle fields with defaults - let SQL Server use default value
               else if (hasDefault && !isIdentity) {
                 saveData[columnName] = "DEFAULT"; // Special value to trigger server-side default
-                Logger.log(`🔧 Adding default value for ${columnName}:`, {
-                  value: "DEFAULT",
-                  dataType,
-                  hasDefault,
-                });
               }
 
               // Identity fields are handled automatically by SQL Server, no need to send
             });
           }
-
-          Logger.log("🔧 Saving with auto-generated values:", {
-            originalFormData: formData,
-            finalSaveData: saveData,
-            bsPreObj,
-            preObjPassed: !!bsPreObj,
-          });
 
           if (bsStoredProcedure) {
             // Helper function to convert snake_case to PascalCase for SP parameters
@@ -4497,12 +4012,6 @@ const BSDataGrid = forwardRef(
             Object.keys(saveData).forEach((key) => {
               const pascalKey = toPascalCase(key);
               spSaveData[pascalKey] = saveData[key];
-            });
-
-            Logger.log("🔄 Converting parameters for Enhanced SP INSERT:", {
-              originalSaveData: saveData,
-              convertedSaveData: spSaveData,
-              resolvedUserId: getUserId(),
             });
 
             // Use Enhanced Stored Procedure for INSERT operation
@@ -4531,25 +4040,12 @@ const BSDataGrid = forwardRef(
                 title: "Success",
               });
             }
-
-            Logger.log(
-              "✅ Record inserted via Enhanced Stored Procedure:",
-              result.message
-            );
           } else {
             // createRecord returns the created record with its PK (for identity columns)
             const createdRecord = await createRecord(saveData, bsPreObj);
 
             // Store created record for hierarchical data PK extraction
             if (bsChildGrids && bsChildGrids.length > 0) {
-              Logger.log(
-                "📦 Created record FULL response:",
-                JSON.stringify(createdRecord, null, 2)
-              );
-              Logger.log(
-                "📦 Created record response keys:",
-                createdRecord ? Object.keys(createdRecord) : "null"
-              );
               // Update formData with the returned PK values
               const effectivePrimaryKeys =
                 bsPrimaryKeys.length > 0
@@ -4562,9 +4058,6 @@ const BSDataGrid = forwardRef(
                 effectivePrimaryKeys.forEach((pk) => {
                   if (createdRecord[pk] !== undefined) {
                     formData[pk] = createdRecord[pk];
-                    Logger.log(
-                      `📦 Got PK from createRecord response: ${pk} = ${createdRecord[pk]}`
-                    );
                   }
                 });
 
@@ -4573,9 +4066,6 @@ const BSDataGrid = forwardRef(
                   effectivePrimaryKeys.forEach((pk) => {
                     if (createdRecord.data[pk] !== undefined && !formData[pk]) {
                       formData[pk] = createdRecord.data[pk];
-                      Logger.log(
-                        `📦 Got PK from createRecord.data: ${pk} = ${createdRecord.data[pk]}`
-                      );
                     }
                   });
                 }
@@ -4588,9 +4078,6 @@ const BSDataGrid = forwardRef(
                   const pk = effectivePrimaryKeys[0];
                   if (!formData[pk]) {
                     formData[pk] = createdRecord.insertedId;
-                    Logger.log(
-                      `📦 Got PK from insertedId: ${pk} = ${createdRecord.insertedId}`
-                    );
                   }
                 }
 
@@ -4602,9 +4089,6 @@ const BSDataGrid = forwardRef(
                   const pk = effectivePrimaryKeys[0];
                   if (!formData[pk]) {
                     formData[pk] = createdRecord.id;
-                    Logger.log(
-                      `📦 Got PK from response.id: ${pk} = ${createdRecord.id}`
-                    );
                   }
                 }
               }
@@ -4616,12 +4100,6 @@ const BSDataGrid = forwardRef(
           const id = selectedRow?.[primaryKey];
           if (!id) throw new Error("No primary key for update");
 
-          Logger.log("🔧 About to call updateRecord with:", {
-            id,
-            formDataKeys: Object.keys(formData),
-            bsPreObj,
-            bsPreObjType: typeof bsPreObj,
-          });
           ///
           if (bsStoredProcedure) {
             // Helper function to convert snake_case to PascalCase for SP parameters
@@ -4673,15 +4151,6 @@ const BSDataGrid = forwardRef(
                 deviceCompatParams["Id"] = id; // Fallback for id devices
               }
             }
-
-            Logger.log("🔄 Converting parameters for Enhanced SP:", {
-              originalPrimaryKey: primaryKey,
-              pascalPrimaryKey: pascalPrimaryKey,
-              originalFormData: formData,
-              convertedFormData: spFormData,
-              deviceCompatParams: deviceCompatParams,
-              finalPrimaryKeyParam: pascalPrimaryKey,
-            });
 
             // Use Enhanced Stored Procedure for UPDATE operation
             const updateRequest = {
@@ -4761,12 +4230,6 @@ const BSDataGrid = forwardRef(
             loadedRows &&
             loadedRows.length > 0
           ) {
-            Logger.log("📦 Searching for new record in loaded data:", {
-              loadedRowsCount: loadedRows.length,
-              effectivePrimaryKeys,
-              formDataKeys: Object.keys(formData),
-            });
-
             // For identity columns, find the row with the highest PK value (most recently created)
             const pk = effectivePrimaryKeys[0];
             if (pk) {
@@ -4780,9 +4243,6 @@ const BSDataGrid = forwardRef(
               const newestRow = sortedRows[0];
               if (newestRow && newestRow[pk] !== undefined) {
                 pkValues[pk] = newestRow[pk];
-                Logger.log(
-                  `📦 Got PK from newest row (highest ${pk}): ${newestRow[pk]}`
-                );
               }
             }
           }
@@ -4820,7 +4280,6 @@ const BSDataGrid = forwardRef(
           } else {
             await loadData();
           }
-          Logger.log("🔗 Hierarchical Edit - Parent saved, dialog stays open");
           return;
         }
 
@@ -4835,7 +4294,9 @@ const BSDataGrid = forwardRef(
         }
       } catch (err) {
         Logger.error("❌ Save failed:", err);
-        setError(err.message || "Failed to save record");
+        const errorMessage = err.message || "Failed to save record";
+        setError(errorMessage);
+        BSAlertSwal2.show("error", errorMessage, { title: "Save Failed" });
       } finally {
         setFormLoading(false);
       }
@@ -5282,8 +4743,11 @@ const BSDataGrid = forwardRef(
             break;
           case "datetime":
           case "datetime2":
-          case "date":
             inputType = "datetime-local";
+            break;
+          case "date":
+            // Date only (no time) - use date input
+            inputType = "date";
             break;
           case "text":
           case "ntext":
@@ -5296,6 +4760,13 @@ const BSDataGrid = forwardRef(
             inputType = "text";
         }
 
+        // Override input type based on bsColumnDefs type (highest priority)
+        if (customDef?.type === "date") {
+          inputType = "date";
+        } else if (customDef?.type === "dateTime") {
+          inputType = "datetime-local";
+        }
+
         // Determine the display value based on input type
         // For number and datetime fields, null should show empty input
         let displayVal;
@@ -5305,6 +4776,17 @@ const BSDataGrid = forwardRef(
         } else if (inputType === "datetime-local") {
           // For datetime inputs, null/undefined shows empty picker
           displayVal = rawVal === null || rawVal === undefined ? "" : rawVal;
+        } else if (inputType === "date") {
+          // For date inputs, extract only the date part (YYYY-MM-DD) and show empty if null
+          if (rawVal === null || rawVal === undefined || rawVal === "") {
+            displayVal = "";
+          } else {
+            // Handle ISO date string or date with time - extract only date part
+            const dateStr = String(rawVal);
+            displayVal = dateStr.includes("T")
+              ? dateStr.split("T")[0]
+              : dateStr.substring(0, 10);
+          }
         } else if (inputType === "checkbox") {
           // For checkbox, use Boolean conversion
           displayVal = Boolean(rawVal);
@@ -5338,12 +4820,12 @@ const BSDataGrid = forwardRef(
 
         // For text/ntext fields, use full width; otherwise use bsDialogColumns setting
         const gridSizeValue = multiline ? 12 : dialogGridSize;
-        console.log(
-          "📝 TextField Grid size:",
-          gridSizeValue,
-          "for",
-          columnName
-        );
+        // console.log(
+        //   "📝 TextField Grid size:",
+        //   gridSizeValue,
+        //   "for",
+        //   columnName
+        // );
 
         // Build tooltip text with length information
         // Use customDef.tooltip first, then customDef.description, then metadata description
@@ -5375,18 +4857,18 @@ const BSDataGrid = forwardRef(
             disabled={isReadOnly}
             multiline={multiline}
             rows={multiline ? 3 : 1}
-            // For datetime-local and number inputs, always shrink label to avoid overlap with browser placeholder
+            // For datetime-local, date, and number inputs, always shrink label to avoid overlap with browser placeholder
             InputLabelProps={{
               shrink:
-                inputType === "datetime-local" //|| inputType === "number"
+                inputType === "datetime-local" || inputType === "date" //|| inputType === "number"
                   ? true
                   : undefined,
             }}
             inputProps={{
               ...(maxLength > 0 &&
                 (inputType === "text" || multiline) && {
-                maxLength: maxLength,
-              }),
+                  maxLength: maxLength,
+                }),
             }}
             error={maxLength > 0 && String(displayVal).length > maxLength}
           />
@@ -5492,7 +4974,6 @@ const BSDataGrid = forwardRef(
       formatColumnName,
       dialogMode,
       isActiveField,
-      getIsActiveOptions,
       comboBoxConfig,
       selectedRow,
       bsShowCharacterCount,
@@ -5507,6 +4988,7 @@ const BSDataGrid = forwardRef(
       activeDialogTab,
       handleDialogTabChange,
       dialogGridSize,
+      bsHiddenColumns,
     ]);
 
     // Function to restore a single row to its original state
@@ -5555,6 +5037,98 @@ const BSDataGrid = forwardRef(
       }
     }, []);
 
+    // Bulk Edit Mode row-level handlers (Save/Cancel per row)
+    const handleBulkRowEditClick = useCallback((id) => {
+      setRowModesModel((oldModel) => ({
+        ...oldModel,
+        [id]: { mode: GridRowModes.Edit },
+      }));
+    }, []);
+
+    const handleBulkRowSaveClick = useCallback((id) => {
+      // Exit edit mode - processRowUpdate will handle the actual save tracking
+      setRowModesModel((oldModel) => ({
+        ...oldModel,
+        [id]: { mode: GridRowModes.View },
+      }));
+    }, []);
+
+    const handleBulkRowCancelClick = useCallback(
+      (id) => {
+        setRowModesModel((oldModel) => {
+          const newModel = { ...oldModel };
+          newModel[id] = { mode: GridRowModes.View, ignoreModifications: true };
+          return newModel;
+        });
+
+        // If it's a new row, remove it from the grid
+        const editedRow = rows.find((row) => {
+          const rowId = row[getEffectivePrimaryKey()] || row.id;
+          return String(rowId) === String(id);
+        });
+
+        const isNewRow =
+          editedRow &&
+          String(
+            editedRow[getEffectivePrimaryKey()] || editedRow.id
+          ).startsWith("new-");
+
+        if (isNewRow) {
+          setRows((oldRows) => {
+            const remainingRows = oldRows.filter((row) => {
+              const rowId = row[getEffectivePrimaryKey()] || row.id;
+              return String(rowId) !== String(id);
+            });
+
+            // Check if there are any remaining new rows or unsaved changes
+            const hasRemainingNewRows = remainingRows.some((row) => {
+              const rowId = row[getEffectivePrimaryKey()] || row.id;
+              return String(rowId).startsWith("new-");
+            });
+            const hasUnsavedEdits =
+              Object.keys(unsavedChangesRef.current).length > 0;
+
+            // If no more new rows and no unsaved changes, exit bulk edit mode
+            if (!hasRemainingNewRows && !hasUnsavedEdits) {
+              // Use setTimeout to avoid state update during render
+              setTimeout(() => {
+                setBulkEditMode(false);
+                setHasUnsavedChanges(false);
+                setRowModesModel({});
+              }, 0);
+            }
+
+            return remainingRows;
+          });
+        } else {
+          // For existing rows, remove from unsaved changes if present
+          if (unsavedChangesRef.current[id]) {
+            delete unsavedChangesRef.current[id];
+
+            // Check if there are any remaining unsaved changes or new rows
+            const hasUnsavedEdits =
+              Object.keys(unsavedChangesRef.current).length > 0;
+            const hasNewRows = rows.some((row) => {
+              const rowId = row[getEffectivePrimaryKey()] || row.id;
+              return String(rowId).startsWith("new-");
+            });
+
+            if (!hasUnsavedEdits && !hasNewRows) {
+              // Use setTimeout to avoid state update during render
+              setTimeout(() => {
+                setBulkEditMode(false);
+                setHasUnsavedChanges(false);
+                setRowModesModel({});
+              }, 0);
+            } else {
+              setHasUnsavedChanges(hasUnsavedEdits);
+            }
+          }
+        }
+      },
+      [rows, getEffectivePrimaryKey]
+    );
+
     const handleInlineEditClick = useCallback(
       (id) => () => {
         if (bsBulkAddInline) {
@@ -5598,7 +5172,27 @@ const BSDataGrid = forwardRef(
 
         const editedRow = rows.find((row) => row.id === id);
         if (editedRow?.isNew) {
-          setRows((oldRows) => oldRows.filter((row) => row.id !== id));
+          setRows((oldRows) => {
+            const remainingRows = oldRows.filter((row) => row.id !== id);
+
+            // Check if there are any remaining new rows
+            const hasRemainingNewRows = remainingRows.some(
+              (row) => row.isNew || String(row.id).startsWith("new-")
+            );
+            const hasUnsavedEdits =
+              Object.keys(unsavedChangesRef.current).length > 0;
+
+            // If no more new rows and no unsaved changes, exit bulk edit mode
+            if (!hasRemainingNewRows && !hasUnsavedEdits) {
+              setTimeout(() => {
+                setBulkEditMode(false);
+                setHasUnsavedChanges(false);
+                setRowModesModel({});
+              }, 0);
+            }
+
+            return remainingRows;
+          });
         }
       },
       [rows]
@@ -5839,7 +5433,7 @@ const BSDataGrid = forwardRef(
             );
           };
         }
-        
+
         // status
         if (customDef.type === "status") {
           mergedColumn.renderCell = (params) => {
@@ -5885,7 +5479,6 @@ const BSDataGrid = forwardRef(
             );
           };
         }
-
 
         // StringAvatar type - displays avatars from comma-separated names
         if (customDef.type === "stringAvatar") {
@@ -5959,6 +5552,78 @@ const BSDataGrid = forwardRef(
           if (!mergedColumn.width && !mergedColumn.minWidth) {
             mergedColumn.minWidth = 120;
           }
+        }
+
+        // AttachFile type - displays attach icon, opens file upload dialog on click
+        if (customDef.type === "attachFile") {
+          const attachConfig = customDef.attachConfig || {};
+
+          // Set column properties
+          mergedColumn.sortable = false;
+          mergedColumn.filterable = false;
+          mergedColumn.editable = false;
+          mergedColumn.align = "center";
+          mergedColumn.headerAlign = "center";
+
+          // Default width for attach column
+          if (!mergedColumn.width && !mergedColumn.minWidth) {
+            mergedColumn.width = 80;
+          }
+
+          mergedColumn.renderCell = (params) => {
+            const handleAttachClick = (event) => {
+              event.stopPropagation();
+
+              // Get the foreign key value from the row
+              const foreignKeyField = attachConfig.foreignKey;
+              const foreignKeyValue = foreignKeyField
+                ? params.row[foreignKeyField]
+                : null;
+
+              // Update state to open attach dialog
+              setAttachFileRowData(params.row);
+              setAttachFileConfig({
+                ...attachConfig,
+                foreignKeyValue: foreignKeyValue,
+              });
+              setAttachFileDialogOpen(true);
+            };
+
+            // Check if row has primary key (saved record)
+            const primaryKey = getEffectivePrimaryKey(params.row);
+            const hasPrimaryKey =
+              params.row[primaryKey] !== undefined &&
+              params.row[primaryKey] !== null;
+
+            return (
+              <Tooltip
+                title={
+                  hasPrimaryKey
+                    ? localeText.bsAttachFiles || "Attach Files"
+                    : localeText.bsSaveRecordFirst ||
+                      "Save record first to attach files"
+                }
+                arrow
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={handleAttachClick}
+                    disabled={!hasPrimaryKey}
+                    sx={{
+                      color: hasPrimaryKey ? "primary.main" : "action.disabled",
+                      "&:hover": {
+                        backgroundColor: "primary.light",
+                        color: "primary.contrastText",
+                      },
+                    }}
+                  >
+                    <AttachFileIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            );
+          };
         }
 
         // Select type
@@ -6291,7 +5956,66 @@ const BSDataGrid = forwardRef(
               });
             }
 
-            if (bsVisibleEdit) {
+            // In bulk edit mode, show Save/Cancel buttons for editing rows
+            if (bulkEditMode) {
+              actions.push((params) => {
+                const isInEditMode =
+                  rowModesModel[params.id]?.mode === GridRowModes.Edit;
+                const primaryKey =
+                  bsKeyId || detectPrimaryKeyFromData(rows) || "id";
+                const rowId = params.row[primaryKey] || params.row.id;
+                const hasChanges = !!unsavedChangesRef.current[rowId];
+
+                if (isInEditMode) {
+                  // Row is in edit mode - show Save and Cancel buttons
+                  return [
+                    <GridActionsCellItem
+                      key="save"
+                      icon={<SaveIcon />}
+                      label={localeText.bsSave}
+                      onClick={() => handleBulkRowSaveClick(params.id)}
+                      sx={{ color: "primary.main" }}
+                    />,
+                    <GridActionsCellItem
+                      key="cancel"
+                      icon={<CancelIcon />}
+                      label={localeText.bsCancel}
+                      onClick={() => handleBulkRowCancelClick(params.id)}
+                      color="inherit"
+                    />,
+                  ];
+                } else {
+                  // Row is in view mode - show Edit button (and Restore if has changes)
+                  const viewModeActions = [
+                    <GridActionsCellItem
+                      key="edit"
+                      icon={<Edit />}
+                      label={localeText.bsEdit}
+                      onClick={() => handleBulkRowEditClick(params.id)}
+                      color="inherit"
+                    />,
+                  ];
+                  if (hasChanges) {
+                    viewModeActions.push(
+                      <GridActionsCellItem
+                        key="restore"
+                        icon={<Restore />}
+                        label={localeText.bsRestore || "Restore"}
+                        onClick={() => handleRestoreRow(rowId)}
+                        sx={{
+                          color: "warning.main",
+                          "&:hover": {
+                            backgroundColor: "warning.light",
+                            color: "warning.dark",
+                          },
+                        }}
+                      />
+                    );
+                  }
+                  return viewModeActions;
+                }
+              });
+            } else if (bsVisibleEdit) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6331,17 +6055,23 @@ const BSDataGrid = forwardRef(
 
             // Only insert actions column if there are actual actions
             if (actions.length > 0) {
+              // Calculate actions column width based on mode
+              const actionsWidth = bulkEditMode ? 100 : 80;
+
               dataColumns.unshift({
                 field: "actions",
                 type: "actions",
                 headerName: "", // Hide column header
-                width: 80, // Set fixed minimal width for actions
+                width: actionsWidth,
                 sortable: false,
                 filterable: false,
                 hideable: false,
                 disableColumnMenu: true,
                 getActions: (params) =>
-                  actions.map((a) => a(params)).filter(Boolean),
+                  actions
+                    .map((a) => a(params))
+                    .flat()
+                    .filter(Boolean),
               });
             }
           }
@@ -6570,30 +6300,64 @@ const BSDataGrid = forwardRef(
             });
           }
 
-          // In bulk edit mode, show restore button for changed rows
+          // In bulk edit mode, show Save/Cancel buttons for editing rows, or Edit/Delete for non-editing rows
           if (bulkEditMode) {
             actions.push((params) => {
-              const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+              const isInEditMode =
+                rowModesModel[params.id]?.mode === GridRowModes.Edit;
+              const primaryKey = metadata?.primaryKeys?.[0] || bsKeyId || "id";
               const rowId =
                 params.row[primaryKey] || params.row.id || params.row.Id;
               const hasChanges = !!unsavedChangesRef.current[rowId];
 
-              if (!hasChanges) return null;
-
-              return (
-                <GridActionsCellItem
-                  icon={<Restore />}
-                  label="Restore"
-                  onClick={() => handleRestoreRow(rowId)}
-                  sx={{
-                    color: "warning.main",
-                    "&:hover": {
-                      backgroundColor: "warning.light",
-                      color: "warning.dark",
-                    },
-                  }}
-                />
-              );
+              if (isInEditMode) {
+                // Row is in edit mode - show Save and Cancel buttons
+                return [
+                  <GridActionsCellItem
+                    key="save"
+                    icon={<SaveIcon />}
+                    label={localeText.bsSave}
+                    onClick={() => handleBulkRowSaveClick(params.id)}
+                    sx={{ color: "primary.main" }}
+                  />,
+                  <GridActionsCellItem
+                    key="cancel"
+                    icon={<CancelIcon />}
+                    label={localeText.bsCancel}
+                    onClick={() => handleBulkRowCancelClick(params.id)}
+                    color="inherit"
+                  />,
+                ];
+              } else {
+                // Row is in view mode - show Edit button (and Restore if has changes)
+                const viewModeActions = [
+                  <GridActionsCellItem
+                    key="edit"
+                    icon={<Edit />}
+                    label={localeText.bsEdit}
+                    onClick={() => handleBulkRowEditClick(params.id)}
+                    color="inherit"
+                  />,
+                ];
+                if (hasChanges) {
+                  viewModeActions.push(
+                    <GridActionsCellItem
+                      key="restore"
+                      icon={<Restore />}
+                      label={localeText.bsRestore || "Restore"}
+                      onClick={() => handleRestoreRow(rowId)}
+                      sx={{
+                        color: "warning.main",
+                        "&:hover": {
+                          backgroundColor: "warning.light",
+                          color: "warning.dark",
+                        },
+                      }}
+                    />
+                  );
+                }
+                return viewModeActions;
+              }
             });
           } else if (bsBulkAddInline) {
             // Inline bulk add actions
@@ -6602,39 +6366,39 @@ const BSDataGrid = forwardRef(
                 rowModesModel[params.id]?.mode === GridRowModes.Edit;
 
               if (isInEditMode) {
-                return (
-                  <>
-                    <GridActionsCellItem
-                      icon={<SaveIcon />}
-                      label={localeText.bsSave}
-                      onClick={handleInlineSaveClick(params.id)}
-                      sx={{ color: "primary.main" }}
-                    />
-                    <GridActionsCellItem
-                      icon={<CancelIcon />}
-                      label={localeText.bsCancel}
-                      onClick={handleInlineCancelClick(params.id)}
-                      color="inherit"
-                    />
-                  </>
-                );
+                return [
+                  <GridActionsCellItem
+                    key="save"
+                    icon={<SaveIcon />}
+                    label={localeText.bsSave}
+                    onClick={handleInlineSaveClick(params.id)}
+                    sx={{ color: "primary.main" }}
+                  />,
+                  <GridActionsCellItem
+                    key="cancel"
+                    icon={<CancelIcon />}
+                    label={localeText.bsCancel}
+                    onClick={handleInlineCancelClick(params.id)}
+                    color="inherit"
+                  />,
+                ];
               } else {
-                return (
-                  <>
-                    <GridActionsCellItem
-                      icon={<Edit />}
-                      label={localeText.bsEdit}
-                      onClick={handleInlineEditClick(params.id)}
-                      color="inherit"
-                    />
-                    <GridActionsCellItem
-                      icon={<Delete />}
-                      label={localeText.bsDelete}
-                      onClick={handleInlineDeleteClick(params.id)}
-                      color="inherit"
-                    />
-                  </>
-                );
+                return [
+                  <GridActionsCellItem
+                    key="edit"
+                    icon={<Edit />}
+                    label={localeText.bsEdit}
+                    onClick={handleInlineEditClick(params.id)}
+                    color="inherit"
+                  />,
+                  <GridActionsCellItem
+                    key="delete"
+                    icon={<Delete />}
+                    label={localeText.bsDelete}
+                    onClick={handleInlineDeleteClick(params.id)}
+                    color="inherit"
+                  />,
+                ];
               }
             });
           } else {
@@ -6689,17 +6453,24 @@ const BSDataGrid = forwardRef(
             bsVisibleDelete;
 
           if (hasActions && actions.length > 0) {
+            // Calculate actions column width based on mode
+            // Bulk edit mode needs more space for Save/Cancel or Edit/Restore buttons
+            const actionsWidth = bulkEditMode || bsBulkAddInline ? 100 : 80;
+
             dataColumns.unshift({
               field: "actions",
               type: "actions",
               headerName: "", // Hide column header
-              width: 80, // Set fixed minimal width for actions
+              width: actionsWidth,
               sortable: false,
               filterable: false,
               hideable: false,
               disableColumnMenu: true,
               getActions: (params) =>
-                actions.map((a) => a(params)).filter(Boolean),
+                actions
+                  .map((a) => a(params))
+                  .flat()
+                  .filter(Boolean),
             });
           }
         }
@@ -6909,6 +6680,9 @@ const BSDataGrid = forwardRef(
       isAuditField,
       getIsActiveOptions,
       rowModesModel,
+      handleBulkRowEditClick,
+      handleBulkRowSaveClick,
+      handleBulkRowCancelClick,
       handleInlineEditClick,
       handleInlineSaveClick,
       handleInlineCancelClick,
@@ -6918,6 +6692,7 @@ const BSDataGrid = forwardRef(
       localeText,
       bsRowConfig,
       bsHiddenColumns,
+      bsKeyId,
     ]);
 
     // Generate custom row styles from bsRowConfig
@@ -6942,9 +6717,9 @@ const BSDataGrid = forwardRef(
         if (rowConfig.showCheckbox === false) {
           Logger.log("🚫 Hiding checkbox for row:", rowId);
           styles[`${rowSelector} .MuiDataGrid-cellCheckbox .MuiCheckbox-root`] =
-          {
-            visibility: "hidden",
-          };
+            {
+              visibility: "hidden",
+            };
         }
 
         // Apply background and text colors
@@ -7008,10 +6783,10 @@ const BSDataGrid = forwardRef(
             firstRowAllIds:
               rows.length > 0
                 ? {
-                  id: rows[0].id,
-                  Id: rows[0].Id,
-                  [primaryKey]: rows[0][primaryKey],
-                }
+                    id: rows[0].id,
+                    Id: rows[0].Id,
+                    [primaryKey]: rows[0][primaryKey],
+                  }
                 : "NO ROWS",
           });
 
@@ -7104,11 +6879,23 @@ const BSDataGrid = forwardRef(
         return;
       }
 
+      Logger.log("🔍 handleBulkEdit - checking selection:", {
+        rowSelectionModel,
+        rowsCount: rows.length,
+      });
+
       const selectedRows = rows.filter((row) => {
         const primaryKey = getEffectivePrimaryKey(row);
-        const rowId = row[primaryKey];
-        return rowSelectionModel.includes(rowId);
+        // Use String() to match getRowId logic which returns String(row[primaryKey])
+        const rowId =
+          row[primaryKey] != null ? String(row[primaryKey]) : row.id || row.Id;
+        const isSelected = rowSelectionModel.includes(rowId);
+
+        Logger.log("🔍 Row check:", { primaryKey, rowId, isSelected });
+        return isSelected;
       });
+
+      Logger.log("🔍 handleBulkEdit - selectedRows:", selectedRows.length);
 
       if (selectedRows.length === 0) {
         Logger.warn("⚠️ No rows selected for bulk edit");
@@ -7129,7 +6916,9 @@ const BSDataGrid = forwardRef(
 
       const selectedRows = rows.filter((row) => {
         const primaryKey = getEffectivePrimaryKey(row);
-        const rowId = row[primaryKey];
+        // Use String() to match getRowId logic which returns String(row[primaryKey])
+        const rowId =
+          row[primaryKey] != null ? String(row[primaryKey]) : row.id || row.Id;
         return rowSelectionModel.includes(rowId);
       });
 
@@ -7137,11 +6926,17 @@ const BSDataGrid = forwardRef(
 
       // Get locale text for confirm message
       const currentLocaleText = getLocaleText(getEffectiveLocale());
-      if (
-        window.confirm(
-          currentLocaleText.bsConfirmDeleteRecords(selectedRows.length)
-        )
-      ) {
+      const isConfirmed = await BSAlertSwal2.confirm(
+        currentLocaleText.bsConfirmDeleteRecords(selectedRows.length),
+        {
+          title: currentLocaleText.bsConfirmDelete || "Delete Confirmation",
+          confirmButtonText:
+            currentLocaleText.bsYesDelete || "Yes, delete them!",
+          cancelButtonText: currentLocaleText.bsCancel || "Cancel",
+        }
+      );
+
+      if (isConfirmed) {
         try {
           // TODO: Implement bulk delete API call
           for (const row of selectedRows) {
@@ -7247,8 +7042,9 @@ const BSDataGrid = forwardRef(
         // Generate filename - use bsExportFileName prop if provided, otherwise use table name
         const exportFileName =
           bsExportFileName || effectiveTableName || "export";
-        const filename = `${exportFileName}_${new Date().toISOString().split("T")[0]
-          }.xlsx`;
+        const filename = `${exportFileName}_${
+          new Date().toISOString().split("T")[0]
+        }.xlsx`;
 
         // Trigger download
         XLSX.writeFile(workbook, filename);
@@ -7277,8 +7073,6 @@ const BSDataGrid = forwardRef(
       bsExportFileName,
       getEffectivePrimaryKey,
       localeText,
-      paginationModel.page,
-      paginationModel.pageSize,
     ]);
 
     // Custom CSV Export Handler (uses DataGrid's built-in CSV export)
@@ -7292,8 +7086,9 @@ const BSDataGrid = forwardRef(
             delimiter: ";",
             utf8WithBom: true,
             escapeFormulas: false,
-            fileName: `${exportFileName}_${new Date().toISOString().split("T")[0]
-              }`,
+            fileName: `${exportFileName}_${
+              new Date().toISOString().split("T")[0]
+            }`,
           });
           Logger.log("✅ CSV export triggered");
         }
@@ -7406,7 +7201,24 @@ const BSDataGrid = forwardRef(
         if (!bulkEditMode) {
           // Normal mode - save immediately and refresh data
           const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const rowId = newRow[primaryKey] || newRow.id || newRow.Id;
+          // Get the actual primary key value from row data
+          // Do NOT use generated id (starts with "generated-") as it's not a real database value
+          let rowId = newRow[primaryKey];
+
+          // If primary key value is not found, try other common id fields
+          if (rowId == null) {
+            rowId = newRow.id || newRow.Id || newRow.ID;
+          }
+
+          // Validate that we have a real primary key value, not a generated one
+          if (
+            rowId == null ||
+            (typeof rowId === "string" && rowId.startsWith("generated-"))
+          ) {
+            const errorMsg = `Cannot update row: Primary key "${primaryKey}" value is missing or invalid. Please refresh the data.`;
+            Logger.error("❌ " + errorMsg, { newRow, primaryKey, rowId });
+            throw new Error(errorMsg);
+          }
 
           Logger.log("📝 Normal mode update:", {
             primaryKey,
@@ -7425,6 +7237,20 @@ const BSDataGrid = forwardRef(
           if (primaryKey !== "id") delete cleanData.id;
           if (primaryKey !== "Id") delete cleanData.Id;
           if (primaryKey !== "ID") delete cleanData.ID;
+
+          // Filter to only include fields that exist in metadata (actual table columns)
+          // This removes display-only fields like create_by_display, update_by_display
+          // that are generated by user lookup but are not actual database columns
+          if (metadata?.columns && Array.isArray(metadata.columns)) {
+            const validColumns = new Set(
+              metadata.columns.map((col) => col.columnName)
+            );
+            Object.keys(cleanData).forEach((key) => {
+              if (!validColumns.has(key)) {
+                delete cleanData[key];
+              }
+            });
+          }
 
           Logger.log("📝 Clean data for update (normal mode):", {
             primaryKey,
@@ -7493,11 +7319,77 @@ const BSDataGrid = forwardRef(
             });
         }
 
-        // Bulk edit mode - store changes WITHOUT saving to backend
-        const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-        const rowId = newRow[primaryKey] || newRow.id || newRow.Id;
+        // Bulk edit mode - handle new rows vs existing rows
+        const primaryKey = metadata?.primaryKeys?.[0] || bsKeyId || "id";
+        // Get the actual primary key value - prefer real PK over generated id
+        let rowId = newRow[primaryKey];
+        if (rowId == null) {
+          rowId = newRow.id || newRow.Id || newRow.ID;
+        }
 
-        // Store both new row data and original row data for restore functionality
+        // Check if this is a new row (Add mode) - new rows have id starting with "new-"
+        const isNewRow = typeof rowId === "string" && rowId.startsWith("new-");
+
+        // For new rows, save immediately to backend to get real ID
+        if (isNewRow) {
+          Logger.log("📝 Bulk edit - saving NEW row immediately:", {
+            rowId,
+            newRow,
+          });
+
+          // Remove invalid id fields from data before sending to backend
+          const cleanData = { ...newRow };
+          delete cleanData.id;
+          delete cleanData.Id;
+          delete cleanData.ID;
+          delete cleanData.isNew;
+
+          // Filter to only include fields that exist in metadata (actual table columns)
+          if (metadata?.columns && Array.isArray(metadata.columns)) {
+            const validColumns = new Set(
+              metadata.columns.map((col) => col.columnName)
+            );
+            Object.keys(cleanData).forEach((key) => {
+              if (!validColumns.has(key)) {
+                delete cleanData[key];
+              }
+            });
+          }
+
+          // Save new record to backend
+          return createRecord(cleanData, bsPreObj)
+            .then(async (result) => {
+              Logger.log("✅ New row created successfully:", result);
+
+              // Show success notification
+              BSAlertSwal2.show(
+                "success",
+                localeText.bsRecordCreated || "Record created successfully",
+                {
+                  title: localeText.bsSuccess || "Success",
+                }
+              );
+
+              // Refresh data to get the latest from server
+              setTimeout(() => {
+                loadData(true);
+              }, 100);
+
+              return result;
+            })
+            .catch((error) => {
+              Logger.error("❌ Failed to create new row:", error);
+              const errorMessage = error.message || "Failed to create record";
+              setError(errorMessage);
+              BSAlertSwal2.show("error", errorMessage, {
+                title: localeText.bsError || "Error",
+              });
+              throw error;
+            });
+        }
+
+        // For existing rows, store changes WITHOUT saving to backend
+        // User must click "Save All" to save changes
         unsavedChangesRef.current[rowId] = {
           newData: newRow,
           originalData: oldRow,
@@ -7505,10 +7397,24 @@ const BSDataGrid = forwardRef(
         setHasUnsavedChanges(true);
 
         Logger.log("📝 Bulk edit - row change stored (not saved):", {
+          primaryKey,
           rowId,
           newData: newRow,
           originalData: oldRow,
         });
+
+        // Update rows state to reflect the changes in UI immediately
+        // This is important for bulk edit mode where we need to show edited values
+        // even before saving to backend
+        setRows((prevRows) =>
+          prevRows.map((row) => {
+            const currentRowId = row[primaryKey] || row.id || row.Id || row.ID;
+            if (String(currentRowId) === String(rowId)) {
+              return { ...row, ...newRow };
+            }
+            return row;
+          })
+        );
 
         // Return newRow to update the grid display but don't save to backend
         return newRow;
@@ -7516,11 +7422,14 @@ const BSDataGrid = forwardRef(
       [
         bulkEditMode,
         metadata,
+        bsKeyId,
         updateRecord,
+        createRecord,
         loadData,
         bsPreObj,
         effectiveTableName,
         loadMetadata,
+        localeText,
       ]
     );
 
@@ -7560,7 +7469,17 @@ const BSDataGrid = forwardRef(
         // Save each changed row
         for (const row of changes) {
           const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-          const id = row[primaryKey] || row.id || row.Id;
+          // Get the actual primary key value from row data
+          // Do NOT use generated id (starts with "generated-") as it's not a real database value
+          let id = row[primaryKey];
+
+          // If primary key value is not found, try other common id fields
+          if (id == null) {
+            id = row.id || row.Id || row.ID;
+          }
+
+          // Check if this is a new row (Add mode) - new rows have id starting with "new-"
+          const isNewRow = typeof id === "string" && id.startsWith("new-");
 
           // Remove invalid id fields from data before sending to backend
           const cleanData = { ...row };
@@ -7570,15 +7489,48 @@ const BSDataGrid = forwardRef(
           if (primaryKey !== "Id") delete cleanData.Id;
           if (primaryKey !== "ID") delete cleanData.ID;
 
-          Logger.log("📝 Bulk save row:", {
-            primaryKey,
-            id,
-            cleanData,
-            bsPreObj,
-            preObjPassed: !!bsPreObj,
-          });
+          // Filter to only include fields that exist in metadata (actual table columns)
+          // This removes display-only fields like create_by_display, update_by_display
+          // that are generated by user lookup but are not actual database columns
+          if (metadata?.columns && Array.isArray(metadata.columns)) {
+            const validColumns = new Set(
+              metadata.columns.map((col) => col.columnName)
+            );
+            Object.keys(cleanData).forEach((key) => {
+              if (!validColumns.has(key)) {
+                delete cleanData[key];
+              }
+            });
+          }
 
-          await updateRecord(id, cleanData, bsPreObj);
+          if (isNewRow) {
+            // New row - use createRecord instead of updateRecord
+            Logger.log("📝 Bulk save NEW row:", {
+              isNewRow,
+              cleanData,
+              bsPreObj,
+            });
+            await createRecord(cleanData, bsPreObj);
+          } else {
+            // Existing row - use updateRecord
+            // Validate that we have a real primary key value, not a generated one
+            if (
+              id == null ||
+              (typeof id === "string" && id.startsWith("generated-"))
+            ) {
+              const errorMsg = `Cannot update row: Primary key "${primaryKey}" value is missing or invalid. Please ensure the primary key column is included in bsCols or refresh the data.`;
+              Logger.error("❌ " + errorMsg, { row, primaryKey, id });
+              throw new Error(errorMsg);
+            }
+
+            Logger.log("📝 Bulk save EXISTING row:", {
+              primaryKey,
+              id,
+              cleanData,
+              bsPreObj,
+            });
+            await updateRecord(id, cleanData, bsPreObj);
+          }
         }
 
         // Reset bulk edit state
@@ -7612,6 +7564,7 @@ const BSDataGrid = forwardRef(
       }
     }, [
       metadata,
+      createRecord,
       updateRecord,
       loadData,
       bsPreObj,
@@ -7861,17 +7814,8 @@ const BSDataGrid = forwardRef(
           </Alert>
         )}
 
-        {/* Bulk Edit Toolbar */}
-        {bulkEditMode && (
-          <BulkEditToolbar
-            onSave={handleBulkSaveChanges}
-            onDiscard={handleBulkDiscardChanges}
-            hasUnsavedChanges={hasUnsavedChanges}
-            formLoading={formLoading}
-            changesCount={Object.keys(unsavedChangesRef.current).length}
-            localeText={localeText}
-          />
-        )}
+        {/* Bulk Edit Toolbar - Now integrated into DynamicGridToolbar */}
+        {/* The old standalone BulkEditToolbar is no longer needed here */}
 
         {/* Table Info */}
         {
@@ -7913,8 +7857,8 @@ const BSDataGrid = forwardRef(
               columnsValid: Array.isArray(columns) && columns.length > 0,
               sampleColumns: Array.isArray(columns)
                 ? columns
-                  .slice(0, 2)
-                  .map((c) => ({ field: c.field, type: c.type }))
+                    .slice(0, 2)
+                    .map((c) => ({ field: c.field, type: c.type }))
                 : "N/A",
               metadataExists: !!metadata,
               metadataColumnsCount: metadata?.columns?.length,
@@ -7964,65 +7908,63 @@ const BSDataGrid = forwardRef(
                   }}
                 >
                   {/* Show Toolbar with Add button like normal DataGrid */}
-                  {showToolbar &&
-                    !bulkEditMode &&
-                    (canAddWithoutData || metadata) && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          p: 1,
-                          borderBottom: 1,
-                          borderColor: "divider",
-                          backgroundColor: "background.paper",
-                        }}
-                      >
-                        {showAdd && (
-                          <Button
-                            size="small"
-                            startIcon={<Add />}
-                            onClick={handleAddClick}
-                            sx={{
-                              textTransform: "none",
-                              fontWeight: 500,
-                              fontSize: "0.8125rem",
-                              padding: "4px 8px",
-                              minHeight: "32px",
-                              color: "primary.main",
-                              borderColor: "primary.main",
-                              border: "1px solid",
-                              backgroundColor: "transparent",
-                              "&:hover": {
-                                backgroundColor: "primary.main",
-                                color: "white",
-                              },
-                            }}
-                          >
-                            {localeText.bsAddRecord}
-                          </Button>
-                        )}
-                        <Box sx={{ flexGrow: 1 }} />
+                  {showToolbar && (canAddWithoutData || metadata) && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        p: 1,
+                        borderBottom: 1,
+                        borderColor: "divider",
+                        backgroundColor: "background.paper",
+                      }}
+                    >
+                      {showAdd && (
                         <Button
                           size="small"
-                          startIcon={<RefreshIcon />}
-                          onClick={() => refreshData(true)}
+                          startIcon={<Add />}
+                          onClick={handleAddClick}
                           sx={{
                             textTransform: "none",
                             fontWeight: 500,
                             fontSize: "0.8125rem",
                             padding: "4px 8px",
                             minHeight: "32px",
-                            color: "text.primary",
+                            color: "primary.main",
+                            borderColor: "primary.main",
+                            border: "1px solid",
+                            backgroundColor: "transparent",
                             "&:hover": {
-                              backgroundColor: "rgba(0, 0, 0, 0.04)",
+                              backgroundColor: "primary.main",
+                              color: "white",
                             },
                           }}
                         >
-                          {localeText.bsRefresh || "Refresh"}
+                          {localeText.bsAddRecord}
                         </Button>
-                      </Box>
-                    )}
+                      )}
+                      <Box sx={{ flexGrow: 1 }} />
+                      <Button
+                        size="small"
+                        startIcon={<RefreshIcon />}
+                        onClick={() => refreshData(true)}
+                        sx={{
+                          textTransform: "none",
+                          fontWeight: 500,
+                          fontSize: "0.8125rem",
+                          padding: "4px 8px",
+                          minHeight: "32px",
+                          color: "text.primary",
+                          "&:hover": {
+                            backgroundColor: "rgba(0, 0, 0, 0.04)",
+                          },
+                        }}
+                      >
+                        {localeText.bsRefresh || "Refresh"}
+                      </Button>
+                    </Box>
+                  )}
 
                   {/* No Data Message */}
                   <Box
@@ -8106,9 +8048,11 @@ const BSDataGrid = forwardRef(
                   }
                   // Ensure we don't render until we have valid data structure
                   // Include rowCount and content hash in key to force re-render when data changes
-                  key={`datagrid-${effectiveTableName}-${rowCount}-${rows.length
-                    }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${Array.isArray(columns) ? columns.length : 0
-                    }`}
+                  key={`datagrid-${effectiveTableName}-${rowCount}-${
+                    rows.length
+                  }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
+                    Array.isArray(columns) ? columns.length : 0
+                  }`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
@@ -8125,9 +8069,27 @@ const BSDataGrid = forwardRef(
                       : handleRowEditStop
                   }
                   // Disable all cell editing when bulk edit mode is not enabled
-                  isCellEditable={() => effectiveBulkEdit || bsBulkAddInline}
-                  // Inline editing for bsBulkAddInline
-                  {...(bsBulkAddInline && {
+                  // Also respect readOnly property from bsColumnDefs (only for existing rows, not new rows)
+                  isCellEditable={(params) => {
+                    if (!(effectiveBulkEdit || bsBulkAddInline)) {
+                      return false;
+                    }
+                    // Check if this is a new row (Add mode) - new rows have id starting with "new-"
+                    const rowId = params.row?.id || params.id;
+                    const isNewRow =
+                      typeof rowId === "string" && rowId.startsWith("new-");
+
+                    // readOnly only applies to existing rows (Edit mode), not new rows (Add mode)
+                    if (!isNewRow) {
+                      const customDef = columnDefsConfig[params.field];
+                      if (customDef?.readOnly === true) {
+                        return false;
+                      }
+                    }
+                    return true;
+                  }}
+                  // Inline editing for bsBulkAddInline or Bulk Edit mode (for row-level Save/Cancel)
+                  {...((effectiveBulkEdit || bsBulkAddInline) && {
                     rowModesModel,
                     onRowModesModelChange: handleRowModesModelChange,
                   })}
@@ -8171,12 +8133,9 @@ const BSDataGrid = forwardRef(
                   // showToolbar={showToolbar && !bulkEditMode}
                   //showToolbar
                   // Row Selection (checkbox selection when enabled)
-                  checkboxSelection={
-                    bsShowCheckbox ||
-                    (bsEnableBulkMode &&
-                      (effectiveBulkEdit || effectiveBulkDelete)) ||
-                    !!onCheckBoxSelected
-                  }
+                  // Only show checkbox when explicitly enabled or onCheckBoxSelected is provided
+                  // NOT automatically when bulkMode is active (user can still bulk edit via double-click)
+                  checkboxSelection={bsShowCheckbox || !!onCheckBoxSelected}
                   rowSelectionModel={rowSelectionModel}
                   onRowSelectionModelChange={handleRowSelectionChange}
                   // Enable multi-row selection by clicking on rows directly (no checkbox required)
@@ -8286,48 +8245,56 @@ const BSDataGrid = forwardRef(
                     return true;
                   }}
                   // Custom Toolbar (use slots + slotProps for better compatibility)
+                  // Show toolbar when showToolbar is true (including bulk edit mode)
                   slots={
-                    showToolbar && !bulkEditMode
-                      ? { toolbar: DynamicGridToolbar }
-                      : undefined
+                    showToolbar ? { toolbar: DynamicGridToolbar } : undefined
                   }
                   slotProps={
-                    showToolbar && !bulkEditMode
+                    showToolbar
                       ? {
-                        toolbar: {
-                          onAdd: handleAddClick,
-                          onInlineAdd: handleInlineAdd,
-                          showAdd,
-                          headerFiltersEnabled,
-                          onToggleHeaderFilters: handleToggleHeaderFilters,
-                          bsBulkEdit: effectiveBulkEdit,
-                          bsBulkAdd: effectiveBulkAdd,
-                          bsBulkDelete: effectiveBulkDelete,
-                          bsEnableBulkMode,
-                          selectedRowCount: rowSelectionModel.length,
-                          onBulkEdit: handleBulkEdit,
-                          onBulkDelete: handleBulkDelete,
-                          onBulkAdd: handleBulkAdd,
-                          showBulkDelete: effectiveBulkDelete,
-                          onRefresh: () => refreshData(true),
-                          onExportExcel: handleExportExcel,
-                          onExportCsv: handleExportCsv,
-                          onPrint: handlePrint,
-                          localeText,
-                          apiRef,
-                        },
-                        // Header filter cell props to show inline clear button
-                        headerFilterCell: {
-                          showClearIcon: true,
-                        },
-                        // Pagination props to show first/last page buttons
-                        pagination: {
-                          showFirstButton: true,
-                          showLastButton: true,
-                        },
-                      }
+                          toolbar: {
+                            onAdd: handleAddClick,
+                            onInlineAdd: handleInlineAdd,
+                            showAdd,
+                            headerFiltersEnabled,
+                            onToggleHeaderFilters: handleToggleHeaderFilters,
+                            bsBulkEdit: effectiveBulkEdit,
+                            bsBulkAdd: effectiveBulkAdd,
+                            bsBulkDelete: effectiveBulkDelete,
+                            bsEnableBulkMode,
+                            bsShowBulkSplitButton,
+                            selectedRowCount: rowSelectionModel.length,
+                            onBulkEdit: handleBulkEdit,
+                            onBulkDelete: handleBulkDelete,
+                            onBulkAdd: handleBulkAdd,
+                            showBulkDelete: effectiveBulkDelete,
+                            onRefresh: () => refreshData(true),
+                            onExportExcel: handleExportExcel,
+                            onExportCsv: handleExportCsv,
+                            onPrint: handlePrint,
+                            localeText,
+                            apiRef,
+                            // Bulk Edit Mode props
+                            bulkEditMode,
+                            onBulkSave: handleBulkSaveChanges,
+                            onBulkDiscard: handleBulkDiscardChanges,
+                            hasUnsavedChanges,
+                            formLoading,
+                            changesCount: Object.keys(unsavedChangesRef.current)
+                              .length,
+                          },
+                          // Header filter cell props to show inline clear button
+                          headerFilterCell: {
+                            showClearIcon: true,
+                          },
+                          // Pagination props to show first/last page buttons
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
+                        }
                       : headerFiltersEnabled
-                        ? {
+                      ? {
                           // Header filter cell props when toolbar is disabled but header filters are enabled
                           headerFilterCell: {
                             showClearIcon: true,
@@ -8338,7 +8305,7 @@ const BSDataGrid = forwardRef(
                             showLastButton: true,
                           },
                         }
-                        : {
+                      : {
                           // Always show pagination buttons
                           pagination: {
                             showFirstButton: true,
@@ -8351,7 +8318,7 @@ const BSDataGrid = forwardRef(
                     height:
                       height === "auto"
                         ? "100%" // Use full height of flex container
-                        : height - (showToolbar && !bulkEditMode ? 60 : 0), // Fixed height: account for toolbar height
+                        : height - (showToolbar ? 60 : 0), // Fixed height: account for toolbar height
                     //",
                     flex: height === "auto" ? 1 : "none", // Flex grow when auto height
                     minHeight: height === "auto" ? 300 : undefined, // Minimum height for auto mode
@@ -8369,9 +8336,9 @@ const BSDataGrid = forwardRef(
                     },
                     // Force header text bold
                     "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                    {
-                      fontWeight: "bold",
-                    },
+                      {
+                        fontWeight: "bold",
+                      },
                     // Required field styling
                     "& .required-field .MuiDataGrid-columnHeaderTitle": {
                       color: "error.main",
@@ -8685,16 +8652,16 @@ const BSDataGrid = forwardRef(
                 )}
               </Box>
             ) : // Standard Mode - no child grids
-              metadata?.columns || bsStoredProcedure ? (
-                renderFormFields()
-              ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
-                  <CircularProgress />
-                  <Typography variant="body2" sx={{ mt: 2 }}>
-                    {localeText.bsLoadingMetadata}
-                  </Typography>
-                </Box>
-              )}
+            metadata?.columns || bsStoredProcedure ? (
+              renderFormFields()
+            ) : (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <CircularProgress />
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  {localeText.bsLoadingMetadata}
+                </Typography>
+              </Box>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleDialogClose} disabled={formLoading}>
@@ -8714,8 +8681,8 @@ const BSDataGrid = forwardRef(
                   bsChildGrids.length > 0 &&
                   dialogMode === "add" &&
                   !isParentSaved
-                  ? localeText.bsSaveAndContinue || "Save & Continue"
-                  : localeText.bsSave}
+                ? localeText.bsSaveAndContinue || "Save & Continue"
+                : localeText.bsSave}
             </Button>
           </DialogActions>
         </Dialog>
@@ -8989,8 +8956,8 @@ const BSDataGrid = forwardRef(
                                 inputProps={{
                                   ...(maxLength > 0 &&
                                     (inputType === "text" || multiline) && {
-                                    maxLength: maxLength,
-                                  }),
+                                      maxLength: maxLength,
+                                    }),
                                 }}
                                 error={
                                   maxLength > 0 &&
@@ -9044,6 +9011,27 @@ const BSDataGrid = forwardRef(
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* AttachFile Dialog */}
+        <BSFileUploadDialog
+          open={attachFileDialogOpen}
+          onClose={() => {
+            setAttachFileDialogOpen(false);
+            setAttachFileRowData(null);
+            setAttachFileConfig(null);
+          }}
+          rowData={attachFileRowData}
+          attachConfig={attachFileConfig}
+          localeText={localeText}
+          onFilesChanged={() => {
+            // Optionally refresh grid data when files change
+            if (bsStoredProcedure) {
+              loadStoredProcedureData();
+            } else {
+              loadData();
+            }
+          }}
+        />
       </Paper>
     );
   }
