@@ -1478,6 +1478,7 @@ namespace ApiCore.Services.Implementation
                 // Read all result sets to find the one with actual data
                 var resultSets = new List<List<Dictionary<string, object>>>();
                 var resultSetSchemas = new List<List<string>>(); // Store column names for each result set
+                var resultSetFieldTypes = new List<Dictionary<string, Type>>(); // 🆕 Store field types for each result set
 
                 do
                 {
@@ -1485,11 +1486,15 @@ namespace ApiCore.Services.Implementation
 
                     // Capture column schema BEFORE reading rows (works even when no rows)
                     var columnNames = new List<string>();
+                    var fieldTypes = new Dictionary<string, Type>(); // 🆕 Capture field types from schema
                     for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        columnNames.Add(reader.GetName(i));
+                        var columnName = reader.GetName(i);
+                        columnNames.Add(columnName);
+                        fieldTypes[columnName] = reader.GetFieldType(i); // 🆕 Get type from schema, not value
                     }
                     resultSetSchemas.Add(columnNames);
+                    resultSetFieldTypes.Add(fieldTypes); // 🆕 Store field types
 
                     while (await reader.ReadAsync())
                     {
@@ -1524,6 +1529,7 @@ namespace ApiCore.Services.Implementation
                 int dataResultSetIndex = -1;
                 List<Dictionary<string, object>> dataResultSet = null;
                 List<string> dataResultSetSchema = null;
+                Dictionary<string, Type> dataResultSetFieldTypes = null; // 🆕 Store field types for data result set
 
                 for (int i = 0; i < resultSetSchemas.Count; i++)
                 {
@@ -1536,17 +1542,20 @@ namespace ApiCore.Services.Implementation
                         dataResultSetIndex = i;
                         dataResultSet = resultSets[i];
                         dataResultSetSchema = schema;
+                        dataResultSetFieldTypes = resultSetFieldTypes[i]; // 🆕 Get field types for this result set
                         break;
                     }
                 }
 
                 // Store the data schema for metadata generation (even if empty)
                 List<string> dataColumnSchema = null;
+                Dictionary<string, Type> dataColumnFieldTypes = null; // 🆕 Store field types for metadata generation
 
                 if (dataResultSetIndex >= 0)
                 {
                     results = dataResultSet;
                     dataColumnSchema = dataResultSetSchema; // Store schema for metadata generation
+                    dataColumnFieldTypes = dataResultSetFieldTypes; // 🆕 Store field types for metadata generation
                     _logger.LogInformation("✅ SERVICE: Selected DATA result set #{Index} with {ColumnCount} columns and {RowCount} rows",
                         dataResultSetIndex, dataResultSetSchema.Count, results.Count);
 
@@ -1728,10 +1737,29 @@ namespace ApiCore.Services.Implementation
                         var columnName = kvp.Key;
                         var value = kvp.Value;
 
-                        // Detect data type from value
+                        // 🆕 FIXED: Use field type from schema instead of value.GetType()
+                        // This correctly handles NULL values with proper schema type
                         string dataType = "nvarchar";
-                        if (value != null)
+
+                        // Try to get type from captured field types first (most accurate)
+                        if (dataColumnFieldTypes != null && dataColumnFieldTypes.TryGetValue(columnName, out var schemaType))
                         {
+                            dataType = schemaType.Name switch
+                            {
+                                "Int32" => "int",
+                                "Int64" => "bigint",
+                                "Decimal" => "decimal",
+                                "Double" => "float",
+                                "Boolean" => "bit",
+                                "DateTime" => "datetime",
+                                "String" => "nvarchar",
+                                _ => "nvarchar"
+                            };
+                            _logger.LogDebug("📋 Column type from SCHEMA: {ColumnName} ({SchemaType}) -> {DataType}", columnName, schemaType.Name, dataType);
+                        }
+                        else if (value != null)
+                        {
+                            // Fallback to value-based detection (legacy behavior)
                             var type = value.GetType();
                             dataType = type.Name switch
                             {
@@ -1744,6 +1772,11 @@ namespace ApiCore.Services.Implementation
                                 "String" => "nvarchar",
                                 _ => "nvarchar"
                             };
+                            _logger.LogDebug("📋 Column type from VALUE: {ColumnName} ({ValueType}) -> {DataType}", columnName, type.Name, dataType);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("📋 Column type defaulted to nvarchar: {ColumnName} (NULL value, no schema)", columnName);
                         }
 
                         var columnInfo = new DynamicColumnInfo
@@ -1756,9 +1789,7 @@ namespace ApiCore.Services.Implementation
                         };
 
                         columns.Add(columnInfo);
-                        _logger.LogDebug("📋 Column detected from data: {ColumnName} ({DataType})", columnName, dataType);
                     }
-
                     // 🔑 Detect primary key from column names (fallback method)
                     var primaryKeyPatterns = new[]
                     {
@@ -1814,10 +1845,28 @@ namespace ApiCore.Services.Implementation
 
                     foreach (var columnName in dataColumnSchema)
                     {
+                        // 🆕 FIXED: Use field type from schema instead of defaulting to nvarchar
+                        string dataType = "nvarchar";
+                        if (dataColumnFieldTypes != null && dataColumnFieldTypes.TryGetValue(columnName, out var schemaType))
+                        {
+                            dataType = schemaType.Name switch
+                            {
+                                "Int32" => "int",
+                                "Int64" => "bigint",
+                                "Decimal" => "decimal",
+                                "Double" => "float",
+                                "Boolean" => "bit",
+                                "DateTime" => "datetime",
+                                "String" => "nvarchar",
+                                _ => "nvarchar"
+                            };
+                            _logger.LogDebug("📋 Empty result column type from SCHEMA: {ColumnName} ({SchemaType}) -> {DataType}", columnName, schemaType.Name, dataType);
+                        }
+
                         var columnInfo = new DynamicColumnInfo
                         {
                             ColumnName = columnName,
-                            DataType = "nvarchar", // Default to nvarchar when no data
+                            DataType = dataType, // 🆕 Use schema type instead of hardcoded nvarchar
                             IsNullable = true,
                             IsPrimaryKey = false,
                             IsIdentity = false

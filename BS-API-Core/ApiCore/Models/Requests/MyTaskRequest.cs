@@ -37,5 +37,6 @@ namespace ApiCore.Models.Requests
         public decimal ActualWork { get; set; }                         // Work Hour
         public DateTime ActualDate { get; set; }
         public string ProcessUpdate { get; set; } = string.Empty;       // Description
+        public string? AssigneeUserId { get; set; }                     // Assignee User ID (can be different from logged-in user)
     }
 }

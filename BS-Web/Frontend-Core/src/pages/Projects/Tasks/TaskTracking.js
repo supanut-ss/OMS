@@ -79,6 +79,21 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const handleSaveTracking = async () => {
     if (!validate()) return;
 
+    // Get assignee_user_id - BSAutoComplete (single mode) returns object { code, label, ... }
+    // So we need to extract the code value
+    let assigneeValue = formData.assignee_user_id;
+    if (assigneeValue && typeof assigneeValue === "object") {
+      assigneeValue = assigneeValue.code;
+    }
+
+    // Use assignee_user_id from form, fallback to current user only if null/undefined/empty
+    const assigneeUserId =
+      assigneeValue !== null &&
+      assigneeValue !== undefined &&
+      assigneeValue !== ""
+        ? assigneeValue
+        : getCurrentUserId();
+
     const payload = {
       ...formData,
       project_task_id: projectTaskId,
@@ -88,7 +103,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       ActualWork: formData.actual_work,
       ActualDate: formData.actual_date,
       ProcessUpdate: formData.process_update,
-      AssigneeUserId: formData.assignee_user_id || getCurrentUserId(),
+      AssigneeUserId: assigneeUserId,
     };
 
     try {
@@ -115,6 +130,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     setFormData({
       ...defaultTrackingData,
       ...row,
+      // Map field "assignee" from SP to "assignee_user_id" for form
+      assignee_user_id: row.assignee || row.assignee_user_id || null,
     });
     setOpenTrackingDialog(true);
   };
@@ -234,7 +251,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                       component: "BSAutoComplete",
                       bsMode: "single",
                       bsTitle: "Assignee",
-                      bsPreObj: "tmt",
+                      bsPreObj: "tmt.",
                       bsObj: "t_tmt_project_task_member",
                       bsColumes: [
                         { field: "user_id", display: false, key: true },
@@ -242,7 +259,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                         { field: "last_name", display: true },
                       ],
                       bsObjBy: "first_name asc",
-                      bsObjWh: `is_active='YES' AND project_header_id=${
+                      bsObjWh: `project_header_id=${
                         taskData?.project_header_id || 0
                       } AND project_task_id=${projectTaskId || 0}`,
                       required: false,

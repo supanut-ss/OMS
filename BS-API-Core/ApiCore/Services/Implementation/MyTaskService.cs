@@ -189,6 +189,8 @@ namespace ApiCore.Services.Implementation
                 cmd.Parameters.AddWithValue("@ActualWork", request.ActualWork);
                 cmd.Parameters.AddWithValue("@ActualDate", request.ActualDate);
                 cmd.Parameters.AddWithValue("@ProcessUpdate", request.ProcessUpdate);
+                // AssigneeUserId = who the task is assigned to, UserId = who is creating the record
+                cmd.Parameters.AddWithValue("@AssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
                 cmd.Parameters.AddWithValue("@UserId", userId);
 
                 // Output parameters
@@ -247,6 +249,8 @@ namespace ApiCore.Services.Implementation
                 cmd.Parameters.AddWithValue("@ActualWork", request.ActualWork);
                 cmd.Parameters.AddWithValue("@ActualDate", request.ActualDate);
                 cmd.Parameters.AddWithValue("@ProcessUpdate", request.ProcessUpdate);
+                // AssigneeUserId = who the task is assigned to, UserId = who is updating the record
+                cmd.Parameters.AddWithValue("@AssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
                 cmd.Parameters.AddWithValue("@UserId", userId);
 
                 // Output parameters

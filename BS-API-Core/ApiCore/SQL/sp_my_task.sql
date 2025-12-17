@@ -234,7 +234,10 @@ CREATE PROCEDURE [tmt].[usp_tmt_project_task_tracking]
     -- Description
 
     -- Audit parameters
+    @AssigneeUserId VARCHAR(50) = NULL,
+    -- Who the task is assigned to (can be different from @UserId)
     @UserId VARCHAR(50) = 'system',
+    -- Who is creating/updating the record (logged-in user)
 
     -- Output parameters (Enhanced SP pattern - must have all 3)
     @OutputRowCount INT = 0 OUTPUT,
@@ -286,7 +289,7 @@ BEGIN
                 FROM tmt.t_tmt_project_task_tracking tt
                 ' + @WhereClause;
 
-        -- Build main query
+        -- Build main query with user display names
         SET @SQL = '
                 SELECT 
                     tt.project_task_tracking_id,
@@ -301,10 +304,14 @@ BEGIN
                     tt.assignee_last_name,
                     tt.assignee_first_name + '' '' + tt.assignee_last_name AS assignee_list,
                     tt.create_by,
+                    ISNULL(cu.first_name + '' '' + cu.last_name, tt.create_by) AS create_by_display,
                     tt.create_date,
                     tt.update_by,
-                    tt.update_date
+                    ISNULL(uu.first_name + '' '' + uu.last_name, tt.update_by) AS update_by_display,
+                    CAST(tt.update_date AS DATETIME) AS update_date
                 FROM tmt.t_tmt_project_task_tracking tt
+                LEFT JOIN sec.t_com_user cu ON tt.create_by = cu.user_id
+                LEFT JOIN sec.t_com_user uu ON tt.update_by = uu.user_id
                 ' + @WhereClause + '
                 ORDER BY ' + @OrderByClause + '
                 OFFSET ' + CAST(@Offset AS NVARCHAR(10)) + ' ROWS
@@ -316,8 +323,37 @@ BEGIN
         SET @CountSQL = 'SELECT @TotalRowsOut = (' + @CountSQL + ')';
         EXEC sp_executesql @CountSQL, @CountParams, @TotalRowsOut = @TotalRows OUTPUT;
 
-        -- Execute main query
+        -- Create temp table to ensure column schema is always returned correctly
+        CREATE TABLE #TrackingResults
+        (
+            project_task_tracking_id INT,
+            project_task_id INT,
+            project_header_id INT,
+            issue_type NVARCHAR(25),
+            actual_work DECIMAL(18,5),
+            actual_date DATETIME,
+            process_update NVARCHAR(MAX),
+            assignee NVARCHAR(50),
+            assignee_first_name NVARCHAR(200),
+            assignee_last_name NVARCHAR(200),
+            assignee_list NVARCHAR(500),
+            create_by NVARCHAR(50),
+            create_by_display NVARCHAR(500),
+            create_date DATETIME,
+            update_by NVARCHAR(50),
+            update_by_display NVARCHAR(500),
+            update_date DATETIME
+        );
+
+        -- Execute main query into temp table
+        INSERT INTO #TrackingResults
         EXEC sp_executesql @SQL;
+
+        -- Return data (with correct column schema)
+        SELECT *
+        FROM #TrackingResults;
+
+        DROP TABLE #TrackingResults;
 
         -- Return pagination metadata
         SELECT @TotalRows AS TotalRows,
@@ -386,11 +422,12 @@ BEGIN
             RETURN;
         END
 
-        -- Get user info for assignee
+        -- Get user info for assignee (use @AssigneeUserId if provided, otherwise @UserId)
+        DECLARE @EffectiveAssignee VARCHAR(50) = ISNULL(NULLIF(@AssigneeUserId, ''), @UserId);
         DECLARE @AssigneeFirstName NVARCHAR(200), @AssigneeLastName NVARCHAR(200);
         SELECT @AssigneeFirstName = first_name, @AssigneeLastName = last_name
         FROM sec.t_com_user
-        WHERE user_id = @UserId;
+        WHERE user_id = @EffectiveAssignee;
 
         -- Get next ID from sequence
         DECLARE @NewId INT = NEXT VALUE FOR tmt.ProjectTaskTrackingID;
@@ -420,7 +457,7 @@ BEGIN
                 @ActualWork,
                 @ActualDate,
                 @ProcessUpdate,
-                @UserId,
+                @EffectiveAssignee,
                 @AssigneeFirstName,
                 @AssigneeLastName,
                 @UserId,
@@ -484,6 +521,18 @@ BEGIN
             RETURN;
         END
 
+        -- Get assignee info if @AssigneeUserId is provided
+        DECLARE @UpdateAssignee VARCHAR(50) = NULL;
+        DECLARE @UpdateAssigneeFirstName NVARCHAR(200) = NULL;
+        DECLARE @UpdateAssigneeLastName NVARCHAR(200) = NULL;
+        IF @AssigneeUserId IS NOT NULL AND @AssigneeUserId != ''
+        BEGIN
+            SET @UpdateAssignee = @AssigneeUserId;
+            SELECT @UpdateAssigneeFirstName = first_name, @UpdateAssigneeLastName = last_name
+            FROM sec.t_com_user
+            WHERE user_id = @AssigneeUserId;
+        END
+
         -- Update tracking record
         UPDATE tmt.t_tmt_project_task_tracking
             SET 
@@ -491,6 +540,9 @@ BEGIN
                 actual_work = ISNULL(@ActualWork, actual_work),
                 actual_date = ISNULL(@ActualDate, actual_date),
                 process_update = ISNULL(@ProcessUpdate, process_update),
+                assignee = ISNULL(@UpdateAssignee, assignee),
+                assignee_first_name = ISNULL(@UpdateAssigneeFirstName, assignee_first_name),
+                assignee_last_name = ISNULL(@UpdateAssigneeLastName, assignee_last_name),
                 update_by = @UserId,
                 update_date = GETDATE()
             WHERE project_task_tracking_id = @ProjectTaskTrackingId;
