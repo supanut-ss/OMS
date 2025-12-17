@@ -35,8 +35,8 @@ const CustomerPage = (props) => {
           bsUniqueFields={["customer_code"]}
           bsCols="customer_code,customer_name,description,addr_line_1,is_active,create_by,create_date,update_by,update_date"
           // bsPageSizeOptions={[20, 100, 200, 500, 1000]}
-          //bsBulkAction={true}
-          //bsEnableBulkMode={true} // Enable all bulk operations
+          // bsBulkAction={true}
+          bsEnableBulkMode={true} // Enable all bulk operations
           bsDialogSize="Large"
           bsDialogColumns={3}
           bsDialogTab={[
