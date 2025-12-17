@@ -32,7 +32,13 @@ const HolidayPage = (props) => {
           bsPreObj="tmt"
           bsObj="t_tmt_holiday"
           bsObjBy="create_date desc"
-          bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+          bsColumnDefs={[
+            {
+              field: "holiday_date",
+              type: "date",
+              dateFormat: "dd/MM/yyyy",
+            },
+          ]}
         />
       </Paper>
     </Box>
