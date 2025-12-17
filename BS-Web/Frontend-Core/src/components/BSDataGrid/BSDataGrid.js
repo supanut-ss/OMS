@@ -2763,7 +2763,7 @@ const BSDataGrid = forwardRef(
         // Fallback to all rows if filtering fails
         onFilteredDataChange(rows);
       }
-    }, [onFilteredDataChange, apiRef, rows, bsFilterMode, filterModel]);
+    }, [onFilteredDataChange, apiRef, rows]);
 
     // Notify on initial load and data changes
     useEffect(() => {
@@ -3371,7 +3371,6 @@ const BSDataGrid = forwardRef(
         isFieldInForm,
         isActiveField,
         comboBoxConfig,
-        dialogMode,
         bsStoredProcedure,
         detectPrimaryKeyFromData,
         bsDefaultFormValues,
@@ -5638,7 +5637,8 @@ const BSDataGrid = forwardRef(
 
         return mergedColumn;
       },
-      [columnDefsConfig]
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [columnDefsConfig, getEffectivePrimaryKey]
     );
 
     // Get localization object for DataGrid
