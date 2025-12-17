@@ -74,6 +74,7 @@ import Logger from "../../utils/logger";
 import AxiosMaster from "../../utils/AxiosMaster";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
 import { getLocaleText } from "./locales";
+import { useAuth } from "../../contexts/AuthContext";
 
 /**
  * Get file icon based on file type/extension
@@ -153,29 +154,40 @@ const BSFileUploadDialog = ({
     additionalData = {}, // Additional data to include when creating attachment record
   } = attachConfig || {};
 
+  // Get current user from AuthContext (same as BSDataGrid)
+  const { user } = useAuth();
+
   /**
-   * Get user ID from localStorage for audit fields (create_by, update_by)
+   * Get user ID from AuthContext for audit fields (create_by, update_by)
+   * Uses same logic as BSDataGrid.getUserId()
    */
   const getUserId = useCallback(() => {
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const userObj = JSON.parse(userStr);
-        // Try different possible userId field names
-        const userId =
-          userObj?.UserId ||
-          userObj?.userid ||
-          userObj?.user_id ||
-          userObj?.id ||
-          userObj?.Id ||
-          "system";
-        return userId;
-      }
-    } catch (e) {
-      Logger.error("❌ Failed to parse user from localStorage:", e);
+    if (!user) {
+      Logger.warn(
+        "⚠️ BSFileUploadDialog: No user object available, defaulting to 'system'"
+      );
+      return "system";
     }
-    return "system";
-  }, []);
+
+    try {
+      // Parse user if it's a string
+      const userObj = typeof user === "string" ? JSON.parse(user) : user;
+
+      // Try different possible userId field names (same as BSDataGrid)
+      const userId =
+        userObj?.UserId ||
+        userObj?.userid ||
+        userObj?.user_id ||
+        userObj?.id ||
+        userObj?.Id ||
+        "system";
+
+      return userId;
+    } catch (e) {
+      Logger.error("❌ BSFileUploadDialog: Failed to parse user object:", e);
+      return "system";
+    }
+  }, [user]);
 
   // State
   const [files, setFiles] = useState([]); // Existing files from database
@@ -215,14 +227,13 @@ const BSFileUploadDialog = ({
       const payload = {
         tableName: table,
         schemaName: schema,
-        primaryKeyName: primaryKey,
-        primaryKeyValue: recordId,
+        whereConditions: {
+          [primaryKey]: recordId,
+        },
       };
 
       Logger.log("🗑️ BSFileUploadDialog: Deleting attachment:", payload);
-      const response = await AxiosMaster.delete("/dynamic/record", {
-        data: payload,
-      });
+      const response = await AxiosMaster.post("/dynamic/delete", payload);
       return response.data;
     },
     [primaryKey]
