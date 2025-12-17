@@ -73,6 +73,7 @@ import BSAlertSwal2 from "../BSAlertSwal2";
 import Logger from "../../utils/logger";
 import AxiosMaster from "../../utils/AxiosMaster";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
+import { formatDateTime } from "../../utils/dateUtils";
 import { getLocaleText } from "./locales";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -913,10 +914,9 @@ const BSFileUploadDialog = ({
                       }
                       secondary={
                         <Typography variant="caption" color="text.secondary">
-                          {(file.data?.create_date || file.create_date) &&
-                            new Date(
-                              file.data?.create_date || file.create_date
-                            ).toLocaleString()}
+                          {formatDateTime(
+                            file.data?.create_date || file.create_date
+                          )}
                           {(file.data?.create_by || file.create_by) && (
                             <> • {file.data?.create_by || file.create_by}</>
                           )}

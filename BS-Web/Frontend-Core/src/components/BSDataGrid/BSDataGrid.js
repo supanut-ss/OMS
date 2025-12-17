@@ -83,11 +83,11 @@ import * as XLSX from "xlsx";
 import { useResource } from "../../hooks/useResource";
 import { getLocaleText } from "./locales";
 import Logger from "../../utils/logger";
+import { formatDate } from "../../utils/dateUtils";
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
 import BSFileUploadDialog from "./BSFileUploadDialog";
-import secureStorage from "../../utils/SecureStorage";
 import { BSSwitchField } from "../BSSwitch";
 
 // Initialize MUI X License
@@ -1891,27 +1891,10 @@ const BSDataGrid = forwardRef(
     }, [user]);
 
     // Helper: Custom date formatter for consistent dd/MM/yyyy format
+    // Uses shared dateUtils for consistent formatting across application
     const formatDateCustom = useCallback(
       (date, includeTime = false, effectiveLocale) => {
-        const isThai = effectiveLocale === "th";
-
-        // Get year with locale-specific calendar
-        let year = date.getFullYear();
-        if (isThai) {
-          year += 543; // Convert to Buddhist Era
-        }
-
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const formattedDate = `${day}/${month}/${year}`;
-
-        if (includeTime) {
-          const hours = String(date.getHours()).padStart(2, "0");
-          const minutes = String(date.getMinutes()).padStart(2, "0");
-          return `${formattedDate} ${hours}:${minutes}`;
-        }
-
-        return formattedDate;
+        return formatDate(date, { includeTime, locale: effectiveLocale });
       },
       []
     );
