@@ -136,29 +136,6 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
               size="medium"
             />
           )}
-          {/* {taskData?.priority && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <FlagIcon
-                sx={{
-                  color:
-                    taskData.priority?.toLowerCase() === "urgent"
-                      ? "#d32f2f"
-                      : taskData.priority?.toLowerCase() === "high"
-                      ? "#ed6c02"
-                      : taskData.priority?.toLowerCase() === "normal" ||
-                        taskData.priority?.toLowerCase() === "medium"
-                      ? "#0288d1"
-                      : "#9e9e9e",
-                }}
-              />
-              <Chip
-                label={taskData.priority}
-                color={getPriorityColor(taskData.priority)}
-                size="small"
-                variant="outlined"
-              />
-            </Box>
-          )} */}
         </DialogTitle>
 
         <IconButton
