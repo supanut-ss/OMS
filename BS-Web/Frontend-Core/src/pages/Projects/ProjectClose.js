@@ -224,7 +224,9 @@ const ProjectClose = (props) => {
           bsHiddenColumns={["project_header_id"]}
           bsKeyId="project_close_doc_id"
           bsColumnDefs={columnDefs}
-          showToolbar={false}
+          showAdd={false}
+          bsVisibleEdit={false}
+          bsVisibleDelete={false}
         />
       </Paper>
 

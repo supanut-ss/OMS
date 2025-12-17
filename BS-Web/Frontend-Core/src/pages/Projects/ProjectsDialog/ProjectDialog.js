@@ -632,6 +632,7 @@ const ProjectsDialog = (props) => {
                   <MAHistory
                     projectID={formData?.project_header_id || ""}
                     lang={props.lang}
+                    onChangeProjectHeaderID={onChangeProjectHeaderID}
                   />
                 )}
               </Box>
