@@ -28,7 +28,7 @@ const CustomerPage = (props) => {
 
         <BSDataGrid
           ref={dataGridRef}
-          bsAutoPermission={true} // Auto-apply permissions from menu settings
+          // bsAutoPermission={true} // Auto-apply permissions from menu settings
           bsLocale={props.lang}
           bsPreObj="tmt"
           bsObj="t_tmt_customer"
