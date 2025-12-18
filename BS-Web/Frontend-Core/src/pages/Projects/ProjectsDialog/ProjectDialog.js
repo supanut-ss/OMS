@@ -72,11 +72,13 @@ const ProjectsDialog = (props) => {
     setFormData({ ...defaultData });
     props.onClose(false);
   };
-  const onChangeProjectHeaderID = (id) => {
-    setTap(0);
-    setFormData({ ...defaultData });
-    props.onClose(false);
-    props.onChangeProjectHeaderID(id);
+  const onChangeProjectHeaderID = ({ id, newtab }) => {
+    if (!newtab) {
+      setTap(0);
+      setFormData({ ...defaultData });
+      props.onClose(false);
+    }
+    props.onChangeProjectHeaderID({ id: id, newtab: newtab });
   };
   const handleSave = async () => {
     if (!validate()) return;
@@ -96,7 +98,7 @@ const ProjectsDialog = (props) => {
             );
           }
         })
-        .finally(() => {});
+        .finally(() => { });
     } catch (err) {
       BSAlertSwal2.show("error", err.message, {
         title: "Failed to Save Record",
@@ -181,7 +183,7 @@ const ProjectsDialog = (props) => {
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 {renderInput({
                   item: {
-                    field: "parent_project_id",
+                    field: "master_project_id",
                     headerName: getResource(resourceData, "parent_project_id"),
                     component: "BSAutoComplete",
                     bsMode: "single",
@@ -580,63 +582,68 @@ const ProjectsDialog = (props) => {
               </Grid>
             </Grid>
             {/* End of form fields for formData */}
-            <Box>
-              <Tabs
-                value={tap}
-                onChange={(e, newValue) => setTap(newValue)}
-                sx={{ mt: 3 }}
-              >
-                <Tab label={getResource(resourceData, "task")} />
-                <Tab label={getResource(resourceData, "project_teams")} />
-                <Tab label={getResource(resourceData, "project_history")} />
-                <Tab label={getResource(resourceData, "invoice_history")} />
-                <Tab label={getResource(resourceData, "project_close")} />
-                <Tab label={getResource(resourceData, "ma_history")} />
-              </Tabs>
-              <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
-                {tap === 0 && (
-                  <ProjectTask
-                    projectID={formData?.project_header_id || ""}
-                    lang={props.lang}
-                    refresh={taskRefresh}
-                    setRefresh={setTaskRefresh}
-                    projectHeader={formData}
-                  />
-                )}
-                {tap === 1 && (
-                  <ProjectsTeams
-                    projectID={formData?.project_header_id || ""}
-                    lang={props.lang}
-                  />
-                )}
-                {tap === 2 && (
-                  <ProjectsHistory
-                    projectID={formData?.project_header_id || ""}
-                    lang={props.lang}
-                    onChangeProjectHeaderID={onChangeProjectHeaderID}
-                  />
-                )}
-                {tap === 3 && (
-                  <InvoiceHistory
-                    projectID={formData?.project_header_id || ""}
-                    lang={props.lang}
-                  />
-                )}
-                {tap === 4 && (
-                  <ProjectClose
-                    projectID={formData?.project_header_id || ""}
-                    lang={props.lang}
-                  />
-                )}
-                {tap === 5 && (
-                  <MAHistory
-                    projectID={formData?.project_header_id || ""}
-                    lang={props.lang}
-                    onChangeProjectHeaderID={onChangeProjectHeaderID}
-                  />
-                )}
+            {/* Tabs for additional information */}
+            {formData.record_type === "PROJECT" && (
+              <Box>
+                <Tabs
+                  value={tap}
+                  onChange={(e, newValue) => setTap(newValue)}
+                  sx={{ mt: 3 }}
+                >
+                  <Tab label={getResource(resourceData, "task")} />
+                  <Tab label={getResource(resourceData, "project_teams")} />
+                  <Tab label={getResource(resourceData, "project_history")} />
+                  <Tab label={getResource(resourceData, "invoice_history")} />
+                  <Tab label={getResource(resourceData, "project_close")} />
+                  <Tab label={getResource(resourceData, "ma_history")} />
+                </Tabs>
+                <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
+                  {tap === 0 && (
+                    <ProjectTask
+                      projectID={formData?.project_header_id || ""}
+                      lang={props.lang}
+                      refresh={taskRefresh}
+                      setRefresh={setTaskRefresh}
+                      projectHeader={formData}
+                    />
+                  )}
+                  {tap === 1 && (
+                    <ProjectsTeams
+                      projectID={formData?.project_header_id || ""}
+                      lang={props.lang}
+                    />
+                  )}
+                  {tap === 2 && (
+                    <ProjectsHistory
+                      projectID={formData?.project_header_id || ""}
+                      lang={props.lang}
+                      onChangeProjectHeaderID={onChangeProjectHeaderID}
+                    />
+                  )}
+                  {tap === 3 && (
+                    <InvoiceHistory
+                      projectID={formData?.project_header_id || ""}
+                      lang={props.lang}
+                    />
+                  )}
+                  {tap === 4 && (
+                    <ProjectClose
+                      projectID={formData?.project_header_id || ""}
+                      lang={props.lang}
+                    />
+                  )}
+                  {tap === 5 && (
+                    <MAHistory
+                      projectID={formData?.project_header_id || ""}
+                      lang={props.lang}
+                      onChangeProjectHeaderID={onChangeProjectHeaderID}
+                    />
+                  )}
+                </Box>
               </Box>
-            </Box>
+            )}
+            {formData.record_type === "MA" && (<Box></Box>)}
+            {/* End of Tabs for additional information */}
           </Box>
         )}
         {props.children}

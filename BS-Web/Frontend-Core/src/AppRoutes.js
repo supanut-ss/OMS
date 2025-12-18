@@ -110,7 +110,10 @@ export default function AppRoutes() {
           <Route path="customer" element={<CustomerPage lang={lang} />} />
           <Route path="iso" element={<IsoPage lang={lang} />} />
         </Route>
-        <Route path="projects" element={<Projects lang={lang} />} />
+        <Route path="projects" >
+          <Route path="" element={<Projects lang={lang} />} />
+          <Route path="ma" element={<Projects lang={lang} ma={true} />} />
+        </Route>
         <Route path="my-task" element={<MyTaskPage lang={lang} />} />
       </Route>
       <Route path="*" element={<NotFound />} />
