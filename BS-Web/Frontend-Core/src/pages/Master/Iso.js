@@ -32,7 +32,7 @@ const IsoPage = (props) => {
   // Child grid configurations for hierarchical data
   const childGridConfigs = [
     {
-      // Tab 2: Phases
+      // Tab 1: Phases
       name: "Phases",
       bsPreObj: "tmt",
       bsObj: "t_tmt_iso_type_phase",
@@ -55,7 +55,7 @@ const IsoPage = (props) => {
       ],
     },
     {
-      // Tab 1: Documents
+      // Tab 2: Documents
       name: "Documents",
       bsPreObj: "tmt",
       bsObj: "t_tmt_iso_type_doc",

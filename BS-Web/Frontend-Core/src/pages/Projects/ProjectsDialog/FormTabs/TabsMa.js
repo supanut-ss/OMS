@@ -3,6 +3,7 @@ import InvoiceHistory from "../../InvoiceHistory";
 import MAHistory from "../../MAHistory";
 import ProjectsTeams from "../../Teams";
 import ProjectTask from "../../Task";
+import BSFileUpload from "../../../../components/BSFileUpload";
 
 const TabsMa = (props) => {
     const { formData, resourceData, getResource, tap, setTap, taskRefresh, setTaskRefresh, onChangeProjectHeaderID } = props;
@@ -49,7 +50,22 @@ const TabsMa = (props) => {
                     />
                 )}
                 {tap === 4 && (
-                    <Box>Attach Files Component Goes Here</Box>
+                    <BSFileUpload
+                        attachConfig={{
+                            preObj: "tmt",
+                            attachTable: "t_tmt_project_attach",
+                            foreignKey: "project_header_id",
+                            foreignKeyValue: formData?.project_header_id,
+                            fileNameColumn: "file_name",
+                            pathColumn: "path_file",
+                            primaryKey: "project_attach_id",
+                            maxFiles: 20,
+                            additionalData: {
+                                project_header_id: formData?.project_header_id,
+                            },
+                        }}
+                        locale={props.lang}
+                    />
                 )}
             </Box>}
     </Box>);

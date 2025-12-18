@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Paper, IconButton, Tooltip, Box } from "@mui/material";
 import { AttachFile as AttachFileIcon } from "@mui/icons-material";
 import BSDataGrid from "../../components/BSDataGrid";
-import BSFileUploadDialog from "../../components/BSDataGrid/BSFileUploadDialog";
+import BSFileUploadDialog from "../../components/BSFileUploadDialog";
 import { useResource } from "../../hooks/useResource";
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { IOSSwitch } from "../../components/BSSwitch";

@@ -5,23 +5,15 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
-  Tab,
-  Tabs,
 } from "@mui/material";
 import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
 import { useCallback, useEffect, useState } from "react";
 import AxiosMaster from "../../../utils/AxiosMaster";
-import ProjectsHistory from "../History";
-import ProjectsTeams from "../Teams";
-import ProjectTask from "../Task";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
 import CloseIcon from "@mui/icons-material/Close";
 import useForm from "../../../hooks/useForm";
 import { useResource } from "../../../hooks/useResource";
-import InvoiceHistory from "../InvoiceHistory";
-import ProjectClose from "../ProjectClose";
-import MAHistory from "../MAHistory";
 import FormProject from "./Form/Project";
 import FormProjectMa from "./Form/Ma";
 import TabsProject from "./FormTabs/TabsProject";
@@ -30,16 +22,20 @@ const ProjectsDialog = (props) => {
   const defaultData = props.ma ? {
     project_no: "",
     year: "",
-    project_name: "",
+    project_name: "-",
     project_status: null,
     master_project_id: null,
-    application_type: null,
+    application_type: "-",
     customer_id: null,
     sale_id: null,
-    plan_project_start: null,
-    plan_project_end: null,
+   actual_project_start: "",
+    actual_project_end: "",
+    project_type: "MA",
     is_active: "YES",
     record_type: "MA",
+    remark: "",
+    po_number: "",
+    iso_type_id: 0
   } : {
     project_name: null,
     project_status: null,
@@ -61,8 +57,8 @@ const ProjectsDialog = (props) => {
     "project_status",
     "customer_id",
     "sale_id",
-    "plan_project_start",
-    "plan_project_end"
+    "actual_project_start",
+    "actual_project_end"
   ] : [
     "project_name",
     "project_status",

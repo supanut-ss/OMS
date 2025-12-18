@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Paper } from "@mui/material";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Paper, Box, Stack } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 
@@ -35,9 +35,87 @@ const InvoiceHistory = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
+  // ===============================
+  // 📊 State สำหรับเก็บข้อมูล summary
+  // ===============================
+  const [totals, setTotals] = useState({
+    po: 0,
+    invoice: 0,
+    remain: 0,
+  });
+
+  // ===============================
+  // 📦 รับข้อมูลจาก BSDataGrid แล้วคำนวณผลรวม
+  // ใช้ onFilteredDataChange เพื่อให้ summary แสดงตามข้อมูลที่ผ่าน filter แล้ว
+  // ===============================
+  const handleFilteredDataChange = useCallback((data) => {
+    let totalPO = 0;
+    let totalInvoice = 0;
+
+    data.forEach((row) => {
+      const amount = parseFloat(row.amount) || 0;
+
+      if (row.document_type === "PO") {
+        totalPO += amount;
+      }
+
+      if (row.document_type === "Invoice" || row.document_type === "INVOICE") {
+        totalInvoice += amount;
+      }
+    });
+
+    setTotals({
+      po: totalPO,
+      invoice: totalInvoice,
+      remain: totalPO - totalInvoice,
+    });
+  }, []);
+
+
+
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
+        {/* สรุปผลรวม Total PO Amount*/}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            mt: 3,
+          }}
+        >
+          <Box sx={{ minWidth: 360, textAlign: "right" }}>
+            <Stack spacing={0.5}>
+              <Box>
+                <strong>
+                  {getResource(resourceData, "Total PO Amount") || "Total PO Amount"}
+                </strong>
+                &nbsp;&nbsp;
+                {totals.po.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </Box>
+
+              <Box>
+                <strong>
+                  {getResource(resourceData, "Total Invoice Amount") || "Total Invoice Amount"}
+                </strong>
+                &nbsp;&nbsp;
+                {totals.invoice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </Box>
+
+              <Box
+                sx={{
+                  fontWeight: 600,
+                  color: totals.remain < 0 ? "error.main" : "text.primary",
+                }}
+              >
+                <strong>{getResource(resourceData, "Remain") || "Remain"}</strong>
+                &nbsp;&nbsp;
+                {totals.remain.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </Box>
+            </Stack>
+          </Box>
+        </Box>
+
         <BSDataGrid
           ref={gridRef}
           bsLocale={locale_id}
@@ -73,6 +151,7 @@ const InvoiceHistory = (props) => {
           bsUniqueFields={["document_no"]}
           bsHiddenColumns={["project_header_id"]}
           bsKeyId="project_invoice_id"
+          onFilteredDataChange={handleFilteredDataChange}
         />
       </Paper>
     </>

@@ -113,7 +113,7 @@ const FormProjectMa = (props) => {
             {renderInput({
                 item: {
                     field: "year",
-                    type: "number",
+                    type: "decimal",
                     headerName: getResource(resourceData, "year"),
                     component: "BSTextField",
                     variant: "standard",

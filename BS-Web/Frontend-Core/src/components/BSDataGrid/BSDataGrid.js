@@ -79,6 +79,7 @@ import {
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePermission } from "../../hooks/usePermission";
 import * as XLSX from "xlsx";
 import { useResource } from "../../hooks/useResource";
 import { getLocaleText } from "./locales";
@@ -87,7 +88,7 @@ import { formatDate } from "../../utils/dateUtils";
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
-import BSFileUploadDialog from "./BSFileUploadDialog";
+import BSFileUploadDialog from "../BSFileUploadDialog";
 import { BSSwitchField } from "../BSSwitch";
 
 // Initialize MUI X License
@@ -733,6 +734,14 @@ const DynamicGridToolbar = ({
   formLoading = false,
   changesCount = 0,
 }) => {
+  // Debug: Log bulkEditMode and hasUnsavedChanges values
+  Logger.log("🔧 DynamicGridToolbar props:", {
+    bulkEditMode,
+    hasUnsavedChanges,
+    changesCount,
+    formLoading,
+  });
+
   // Export menu state
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportAnchorRef = React.useRef(null);
@@ -1152,7 +1161,22 @@ const ComboBoxField = ({
  * การใช้งานพื้นฐาน:
  * <BSDataGrid bsObj="t_wms_customer" />
  *
- * การใช้งานแบบเต็ม:
+ * ===== Bulk Mode Configuration (NEW - Recommended) =====
+ * รวม settings ทั้งหมดใน object เดียว ใช้งานง่ายกว่า:
+ * <BSDataGrid
+ *   bsObj="t_wms_customer"
+ *   bsBulkMode={{
+ *     enable: true,        // Enable all bulk operations (equivalent to bsEnableBulkMode)
+ *     addInline: true,     // Add new rows inline instead of dialog (equivalent to bsBulkAddInline)
+ *     edit: true,          // Enable bulk edit (equivalent to bsBulkEdit)
+ *     delete: true,        // Enable bulk delete (equivalent to bsBulkDelete)
+ *     add: true,           // Enable bulk add (equivalent to bsBulkAdd)
+ *     showCheckbox: true,  // Show checkbox selection (equivalent to bsShowCheckbox)
+ *     showSplitButton: false // Show split button for bulk actions (equivalent to bsShowBulkSplitButton)
+ *   }}
+ * />
+ *
+ * การใช้งานแบบเต็ม (Legacy props - still supported):
  * <BSDataGrid
  *   bsLocale="th"
  *   bsPreObj="default"
@@ -1550,6 +1574,19 @@ const ComboBoxField = ({
  *   * FK columns are auto-populated so users don't need to see/edit them
  *   * Example: bsHiddenColumns={["iso_type_id", "parent_id"]}
  *
+ * @bsAutoPermission Configuration:
+ * - bsAutoPermission={false} (default): Permission must be set manually via showAdd, bsVisibleEdit, etc.
+ * - bsAutoPermission={true}: Auto-apply permissions from menu settings
+ *   * Reads permissions from SecureStorage based on current route path
+ *   * Overrides showAdd, bsVisibleEdit, bsVisibleDelete, bsVisibleView based on canAdd, canEdit, canDelete, canView
+ *   * Menu permissions are set via AssignMenu page for each user group
+ *   * Example: <BSDataGrid bsAutoPermission={true} />
+ *   * Benefits:
+ *     - No need to manually set permission props in each page
+ *     - Centralized permission management through menu settings
+ *     - Automatic permission enforcement based on user role
+ *   * Note: Props are AND-combined with permissions (e.g., bsVisibleEdit={false} will hide edit even if canEdit=true)
+ *
  * Hierarchical Data Usage Example:
  * ```jsx
  * <BSDataGrid
@@ -1604,6 +1641,12 @@ const BSDataGrid = forwardRef(
       bsEnableBulkMode = false, // Enable all bulk operations (default: disabled)
       bsShowCheckbox = false, // Show checkbox selection
       bsShowBulkSplitButton = false, // Show Bulk Split Button (Edit/Delete dropdown)
+
+      // ===== NEW: Consolidated Bulk Mode Configuration =====
+      // bsBulkMode={{ enable: true, addInline: true, edit: true, delete: true, add: true, showCheckbox: true, showSplitButton: false }}
+      // This consolidates all bulk mode settings into a single object prop
+      // Individual props above are kept for backward compatibility
+      bsBulkMode = null,
       bsShowDescColumn = true,
       bsShowRowNumber = true, // Show row number column
       bsVisibleView = false, // Show view button (requires onView callback)
@@ -1647,6 +1690,9 @@ const BSDataGrid = forwardRef(
       // Unique field validation
       bsUniqueFields = [], // Fields that must be unique: ["field_name"] or [{ field: "field_name", message: "Custom error" }]
 
+      // Permission configuration
+      bsAutoPermission = false, // Auto-apply permissions from menu settings (canView, canAdd, canEdit, canDelete)
+
       onCheckBoxSelected,
 
       // Data binding callback
@@ -1660,11 +1706,63 @@ const BSDataGrid = forwardRef(
     // Determine effective table name (bsObj takes priority over tableName)
     const effectiveTableName = bsObj || tableName;
 
+    // ===== Consolidated Bulk Mode Configuration =====
+    // Support both new bsBulkMode object and legacy individual props
+    // bsBulkMode takes priority over individual props when specified
+    const bulkModeConfig = bsBulkMode || {};
+
+    // Merge bsBulkMode with individual props (bsBulkMode takes priority)
+    const resolvedBulkEnable = bulkModeConfig.enable ?? bsEnableBulkMode;
+    const resolvedBulkEdit = bulkModeConfig.edit ?? bsBulkEdit;
+    const resolvedBulkAdd = bulkModeConfig.add ?? bsBulkAdd;
+    const resolvedBulkDelete = bulkModeConfig.delete ?? bsBulkDelete;
+    const resolvedBulkAddInline = bulkModeConfig.addInline ?? bsBulkAddInline;
+    const resolvedShowCheckbox = bulkModeConfig.showCheckbox ?? bsShowCheckbox;
+    const resolvedShowSplitButton =
+      bulkModeConfig.showSplitButton ?? bsShowBulkSplitButton;
+
     // Determine effective bulk mode settings
-    // When bsEnableBulkMode is true, enable all bulk operations by default
-    const effectiveBulkAdd = bsEnableBulkMode || bsBulkAdd;
-    const effectiveBulkEdit = bsEnableBulkMode || bsBulkEdit;
-    const effectiveBulkDelete = bsEnableBulkMode || bsBulkDelete;
+    // When enable is true, enable all bulk operations by default
+    const effectiveBulkAdd = resolvedBulkEnable || resolvedBulkAdd;
+    const effectiveBulkEdit = resolvedBulkEnable || resolvedBulkEdit;
+    const effectiveBulkDelete = resolvedBulkEnable || resolvedBulkDelete;
+    const effectiveBulkAddInline = resolvedBulkAddInline;
+    const effectiveShowCheckbox = resolvedShowCheckbox;
+    const effectiveShowSplitButton = resolvedShowSplitButton;
+
+    // Get permissions from menu settings (when bsAutoPermission is enabled)
+    const permissions = usePermission();
+
+    // Determine effective permission-based visibility settings
+    // When bsAutoPermission is true, use permissions from menu
+    // Otherwise, use the props directly
+    const effectiveShowAdd = bsAutoPermission
+      ? permissions.canAdd && showAdd
+      : showAdd;
+    const effectiveVisibleEdit = bsAutoPermission
+      ? permissions.canEdit && bsVisibleEdit
+      : bsVisibleEdit;
+    const effectiveVisibleDelete = bsAutoPermission
+      ? permissions.canDelete && bsVisibleDelete
+      : bsVisibleDelete;
+    const effectiveVisibleView = bsAutoPermission
+      ? permissions.canView && bsVisibleView
+      : bsVisibleView;
+
+    // Log permission status when bsAutoPermission is enabled
+    if (bsAutoPermission) {
+      Logger.log("🔐 BSDataGrid: Auto Permission enabled", {
+        currentPath: permissions.currentPath,
+        canView: permissions.canView,
+        canAdd: permissions.canAdd,
+        canEdit: permissions.canEdit,
+        canDelete: permissions.canDelete,
+        effectiveShowAdd,
+        effectiveVisibleEdit,
+        effectiveVisibleDelete,
+        effectiveVisibleView,
+      });
+    }
 
     // Parse BS-specific configurations
     const parsedCols = useMemo(() => {
@@ -2763,7 +2861,7 @@ const BSDataGrid = forwardRef(
         // Fallback to all rows if filtering fails
         onFilteredDataChange(rows);
       }
-    }, [onFilteredDataChange, apiRef, rows, bsFilterMode, filterModel]);
+    }, [onFilteredDataChange, apiRef, rows]);
 
     // Notify on initial load and data changes
     useEffect(() => {
@@ -3371,7 +3469,6 @@ const BSDataGrid = forwardRef(
         isFieldInForm,
         isActiveField,
         comboBoxConfig,
-        dialogMode,
         bsStoredProcedure,
         detectPrimaryKeyFromData,
         bsDefaultFormValues,
@@ -3415,7 +3512,11 @@ const BSDataGrid = forwardRef(
       }
 
       // Inline bulk add mode
-      if (bsBulkAddInline) {
+      Logger.log(
+        "🔍 handleAddClick - effectiveBulkAddInline:",
+        effectiveBulkAddInline
+      );
+      if (effectiveBulkAddInline) {
         const id = `new-${newRowIdCounter.current++}`;
         const newRow = {
           id,
@@ -3431,6 +3532,14 @@ const BSDataGrid = forwardRef(
             fieldToFocus: Object.keys(newRow)[1],
           }, // Focus first editable field
         }));
+
+        // Enable bulk edit mode and mark as having unsaved changes
+        // This enables the Save All / Discard All buttons on the toolbar
+        Logger.log("🔧 Setting bulkEditMode=true and hasUnsavedChanges=true");
+        setBulkEditMode(true);
+        setHasUnsavedChanges(true);
+
+        Logger.log("➕ New row added in inline mode:", { id, newRow });
         return;
       }
 
@@ -3444,7 +3553,59 @@ const BSDataGrid = forwardRef(
       initializeFormData,
       metadata,
       tableName,
-      bsBulkAddInline,
+      effectiveBulkAddInline,
+      bsStoredProcedure,
+      rows.length,
+      bsColumnDefs,
+      bsCols,
+    ]);
+
+    // Dialog Add - force open dialog mode (bypass effectiveBulkAddInline)
+    // This is used by "Add by Dialog" menu option in AddRecordSplitButton
+    const handleDialogAdd = useCallback(() => {
+      if (onAdd) {
+        onAdd();
+        return;
+      }
+
+      // For offline mode without metadata AND no Enhanced SP data, show alert
+      if (!metadata && !bsStoredProcedure) {
+        BSAlertSwal2.show(
+          "warning",
+          `Offline mode: Cannot create form without metadata.\nPlease connect to backend server.`,
+          { title: `Add Record for ${tableName}` }
+        );
+        return;
+      }
+
+      // For Enhanced SP without metadata AND without bsColumnDefs/bsCols, show warning
+      const hasColumnDefinitions =
+        (bsColumnDefs && bsColumnDefs.length > 0) ||
+        (bsCols && bsCols.length > 0);
+      if (
+        !metadata &&
+        bsStoredProcedure &&
+        rows.length === 0 &&
+        !hasColumnDefinitions
+      ) {
+        BSAlertSwal2.show(
+          "warning",
+          "No data available to generate form fields.\nPlease load data first or define bsColumnDefs or bsCols.",
+          { title: "Add Record" }
+        );
+        return;
+      }
+
+      // Force dialog mode (ignore effectiveBulkAddInline)
+      setDialogMode("add");
+      setSelectedRow(null);
+      setFormData(initializeFormData());
+      setDialogOpen(true);
+    }, [
+      onAdd,
+      initializeFormData,
+      metadata,
+      tableName,
       bsStoredProcedure,
       rows.length,
       bsColumnDefs,
@@ -3493,8 +3654,15 @@ const BSDataGrid = forwardRef(
       if (!bulkEditMode) {
         setBulkEditMode(true);
         unsavedChangesRef.current = {};
-        setHasUnsavedChanges(false);
       }
+      // Always set hasUnsavedChanges to true when adding a new row
+      setHasUnsavedChanges(true);
+      Logger.log("➕ New row added via handleInlineAdd:", {
+        id,
+        newRow,
+        bulkEditMode: true,
+        hasUnsavedChanges: true,
+      });
 
       // Use requestAnimationFrame + setTimeout to ensure the row is rendered and then focus
       requestAnimationFrame(() => {
@@ -5014,11 +5182,45 @@ const BSDataGrid = forwardRef(
     );
 
     // Inline editing handlers for bsBulkAddInline functionality
-    const handleInlineRowEditStop = useCallback((params, event) => {
-      if (params.reason === GridRowEditStopReasons.rowFocusOut) {
-        event.defaultMuiPrevented = true;
-      }
-    }, []);
+    // Prevent auto-save when row loses focus - only save when user explicitly clicks Save button
+    const handleInlineRowEditStop = useCallback(
+      (params, event) => {
+        const rowId = params.id;
+        const isNewRow = typeof rowId === "string" && rowId.startsWith("new-");
+
+        // For new rows in bsBulkAddInline mode, prevent ALL automatic exits from edit mode
+        // User must explicitly click Save or Cancel button
+        if (isNewRow) {
+          // Allow only Escape key to cancel (which will remove the row)
+          if (params.reason === GridRowEditStopReasons.escapeKeyDown) {
+            // When Escape is pressed on a new row, remove it
+            Logger.log(`🚫 Escape pressed on new row: ${rowId} - removing row`);
+            setRows((oldRows) => oldRows.filter((row) => row.id !== rowId));
+            setRowModesModel((oldModel) => {
+              const newModel = { ...oldModel };
+              delete newModel[rowId];
+              return newModel;
+            });
+            // Prevent default to avoid processRowUpdate being called
+            event.defaultMuiPrevented = true;
+            return;
+          }
+
+          // Block all other reasons (focus out, enter, tab, etc.)
+          event.defaultMuiPrevented = true;
+          Logger.log(
+            `🚫 Prevented auto-exit for new row: ${rowId}, reason: ${params.reason}`
+          );
+          return;
+        }
+
+        // For existing rows, prevent only rowFocusOut (other reasons like Enter/Tab are ok)
+        if (params.reason === GridRowEditStopReasons.rowFocusOut) {
+          event.defaultMuiPrevented = true;
+        }
+      },
+      [setRows, setRowModesModel]
+    );
 
     // Bulk Edit Mode row-level handlers (Save/Cancel per row)
     const handleBulkRowEditClick = useCallback((id) => {
@@ -5114,14 +5316,14 @@ const BSDataGrid = forwardRef(
 
     const handleInlineEditClick = useCallback(
       (id) => () => {
-        if (bsBulkAddInline) {
+        if (effectiveBulkAddInline) {
           setRowModesModel((oldModel) => ({
             ...oldModel,
             [id]: { mode: GridRowModes.Edit },
           }));
         }
       },
-      [bsBulkAddInline]
+      [effectiveBulkAddInline]
     );
 
     const handleInlineSaveClick = useCallback(
@@ -5638,7 +5840,8 @@ const BSDataGrid = forwardRef(
 
         return mergedColumn;
       },
-      [columnDefsConfig]
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [columnDefsConfig, getEffectivePrimaryKey]
     );
 
     // Get localization object for DataGrid
@@ -5925,7 +6128,7 @@ const BSDataGrid = forwardRef(
           if (!readOnly) {
             const actions = [];
 
-            if (bsVisibleView && onView) {
+            if (effectiveVisibleView && onView) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6003,7 +6206,7 @@ const BSDataGrid = forwardRef(
                   return viewModeActions;
                 }
               });
-            } else if (bsVisibleEdit) {
+            } else if (effectiveVisibleEdit) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6022,7 +6225,7 @@ const BSDataGrid = forwardRef(
               });
             }
 
-            if (bsVisibleDelete) {
+            if (effectiveVisibleDelete) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6269,7 +6472,7 @@ const BSDataGrid = forwardRef(
         if (!readOnly) {
           const actions = [];
 
-          if (bsVisibleView && onView) {
+          if (effectiveVisibleView && onView) {
             actions.push((params) => {
               // Get row-specific config
               const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6347,7 +6550,7 @@ const BSDataGrid = forwardRef(
                 return viewModeActions;
               }
             });
-          } else if (bsBulkAddInline) {
+          } else if (effectiveBulkAddInline) {
             // Inline bulk add actions
             actions.push((params) => {
               const isInEditMode =
@@ -6391,7 +6594,7 @@ const BSDataGrid = forwardRef(
             });
           } else {
             // Regular edit/delete actions (only in normal mode)
-            if (bsVisibleEdit) {
+            if (effectiveVisibleEdit) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6410,7 +6613,7 @@ const BSDataGrid = forwardRef(
               });
             }
 
-            if (bsVisibleDelete) {
+            if (effectiveVisibleDelete) {
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6431,19 +6634,20 @@ const BSDataGrid = forwardRef(
           }
 
           // Only insert actions column if there are actual actions
-          // Note: bulkEditMode and bsBulkAddInline always have actions, so check for them first
-          // For normal mode, check if we have any visible actions (bsVisibleView, bsVisibleEdit, bsVisibleDelete)
+          // Note: bulkEditMode and effectiveBulkAddInline always have actions, so check for them first
+          // For normal mode, check if we have any visible actions (effectiveVisibleView, effectiveVisibleEdit, effectiveVisibleDelete)
           const hasActions =
             bulkEditMode ||
-            bsBulkAddInline ||
-            (bsVisibleView && onView) ||
-            bsVisibleEdit ||
-            bsVisibleDelete;
+            effectiveBulkAddInline ||
+            (effectiveVisibleView && onView) ||
+            effectiveVisibleEdit ||
+            effectiveVisibleDelete;
 
           if (hasActions && actions.length > 0) {
             // Calculate actions column width based on mode
             // Bulk edit mode needs more space for Save/Cancel or Edit/Restore buttons
-            const actionsWidth = bulkEditMode || bsBulkAddInline ? 100 : 80;
+            const actionsWidth =
+              bulkEditMode || effectiveBulkAddInline ? 100 : 80;
 
             dataColumns.unshift({
               field: "actions",
@@ -6643,13 +6847,13 @@ const BSDataGrid = forwardRef(
       metadata,
       readOnly,
       bulkEditMode,
-      bsBulkAddInline,
+      effectiveBulkAddInline,
       bsShowRowNumber,
       bsRowPerPage,
       paginationModel,
-      bsVisibleView,
-      bsVisibleEdit,
-      bsVisibleDelete,
+      effectiveVisibleView,
+      effectiveVisibleEdit,
+      effectiveVisibleDelete,
       parsedCols,
       comboBoxConfig,
       onView,
@@ -7427,9 +7631,35 @@ const BSDataGrid = forwardRef(
         setLoading(true); // Set loading to prevent rendering issues
 
         // Get only the new data from changes (not the original data)
-        const changes = Object.values(unsavedChangesRef.current).map(
+        const changesFromRef = Object.values(unsavedChangesRef.current).map(
           (change) => change.newData
         );
+
+        // Also include new rows that are in the rows state but not yet in unsavedChangesRef
+        // These are rows added via inline add mode
+        const newRowsInGrid = rows.filter((row) => {
+          const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
+          return rowId.startsWith("new-") || row.isNew;
+        });
+
+        // Merge changes: prefer unsavedChangesRef data over rows state
+        // because unsavedChangesRef may have more recent edits
+        const existingIds = new Set(
+          changesFromRef.map((r) => String(r.id || ""))
+        );
+        const additionalNewRows = newRowsInGrid.filter(
+          (row) => !existingIds.has(String(row.id || ""))
+        );
+
+        const changes = [...changesFromRef, ...additionalNewRows];
+
+        if (changes.length === 0) {
+          Logger.warn("⚠️ No changes to save");
+          BSAlertSwal2.show("info", "No changes to save", {
+            title: "Information",
+          });
+          return;
+        }
 
         // Validate all changed rows before saving
         const validationErrors = [];
@@ -7466,11 +7696,15 @@ const BSDataGrid = forwardRef(
             id = row.id || row.Id || row.ID;
           }
 
-          // Check if this is a new row (Add mode) - new rows have id starting with "new-"
-          const isNewRow = typeof id === "string" && id.startsWith("new-");
+          // Check if this is a new row (Add mode) - new rows have id starting with "new-" or isNew flag
+          const isNewRow =
+            row.isNew || (typeof id === "string" && id.startsWith("new-"));
 
           // Remove invalid id fields from data before sending to backend
           const cleanData = { ...row };
+
+          // Remove isNew flag before saving
+          delete cleanData.isNew;
 
           // Remove generic id fields that don't match the actual primary key
           if (primaryKey !== "id") delete cleanData.id;
@@ -7526,6 +7760,7 @@ const BSDataGrid = forwardRef(
         unsavedChangesRef.current = {};
         setHasUnsavedChanges(false);
         setRowSelectionModel([]);
+        setRowModesModel({}); // Clear row modes model to exit edit mode for all rows
 
         // Small delay to ensure database transactions are committed
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -7558,6 +7793,8 @@ const BSDataGrid = forwardRef(
       bsPreObj,
       validateFormData,
       loadMetadata,
+      rows,
+      getEffectivePrimaryKey,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
@@ -7567,6 +7804,18 @@ const BSDataGrid = forwardRef(
         unsavedChangesRef.current = {};
         setHasUnsavedChanges(false);
         setRowSelectionModel([]);
+
+        // IMPORTANT: Reset rowModesModel to clear any editing state
+        // This prevents "No row with id #new-X found" error
+        setRowModesModel({});
+
+        // Remove all new rows (rows with id starting with "new-") before reloading
+        setRows((oldRows) =>
+          oldRows.filter((row) => {
+            const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
+            return !rowId.startsWith("new-");
+          })
+        );
 
         // Ensure metadata is available before reloading data
         if (!metadata || !metadata.columns) {
@@ -7588,7 +7837,7 @@ const BSDataGrid = forwardRef(
       } finally {
         setLoading(false); // Always clear loading state
       }
-    }, [loadData, metadata, loadMetadata, bsPreObj]);
+    }, [loadData, metadata, loadMetadata, bsPreObj, getEffectivePrimaryKey]);
 
     const handleToggleHeaderFilters = useCallback(() => {
       setHeaderFiltersEnabled((prev) => {
@@ -7604,7 +7853,7 @@ const BSDataGrid = forwardRef(
         Logger.log("📝 Row edit started:", params.id);
 
         // If bulk edit is disabled, prevent any editing
-        if (!effectiveBulkEdit && !bsBulkAddInline) {
+        if (!effectiveBulkEdit && !effectiveBulkAddInline) {
           Logger.warn("⚠️ Bulk edit mode is disabled - preventing edit");
           // Prevent entering edit mode
           if (params.event) {
@@ -7621,7 +7870,7 @@ const BSDataGrid = forwardRef(
           Logger.log("📝 Bulk Edit mode enabled via row double-click");
         }
       },
-      [bulkEditMode, effectiveBulkEdit, bsBulkAddInline]
+      [bulkEditMode, effectiveBulkEdit, effectiveBulkAddInline]
     );
 
     const handleRowEditStop = useCallback(
@@ -7741,7 +7990,7 @@ const BSDataGrid = forwardRef(
           {showToolbar && (
             <FallbackToolbar
               onAdd={handleAddClick}
-              showAdd={showAdd}
+              showAdd={effectiveShowAdd}
               headerFiltersEnabled={headerFiltersEnabled}
               onToggleHeaderFilters={handleToggleHeaderFilters}
               localeText={localeText}
@@ -8044,22 +8293,22 @@ const BSDataGrid = forwardRef(
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
-                    effectiveBulkEdit || bsBulkAddInline
-                      ? bsBulkAddInline
+                    effectiveBulkEdit || effectiveBulkAddInline
+                      ? effectiveBulkAddInline
                         ? processRowUpdate
                         : processBulkRowUpdate
                       : undefined
                   }
                   onRowEditStart={handleRowEditStart}
                   onRowEditStop={
-                    bsBulkAddInline
+                    effectiveBulkAddInline
                       ? handleInlineRowEditStop
                       : handleRowEditStop
                   }
                   // Disable all cell editing when bulk edit mode is not enabled
                   // Also respect readOnly property from bsColumnDefs (only for existing rows, not new rows)
                   isCellEditable={(params) => {
-                    if (!(effectiveBulkEdit || bsBulkAddInline)) {
+                    if (!(effectiveBulkEdit || effectiveBulkAddInline)) {
                       return false;
                     }
                     // Check if this is a new row (Add mode) - new rows have id starting with "new-"
@@ -8076,8 +8325,8 @@ const BSDataGrid = forwardRef(
                     }
                     return true;
                   }}
-                  // Inline editing for bsBulkAddInline or Bulk Edit mode (for row-level Save/Cancel)
-                  {...((effectiveBulkEdit || bsBulkAddInline) && {
+                  // Inline editing for effectiveBulkAddInline or Bulk Edit mode (for row-level Save/Cancel)
+                  {...((effectiveBulkEdit || effectiveBulkAddInline) && {
                     rowModesModel,
                     onRowModesModelChange: handleRowModesModelChange,
                   })}
@@ -8123,7 +8372,9 @@ const BSDataGrid = forwardRef(
                   // Row Selection (checkbox selection when enabled)
                   // Only show checkbox when explicitly enabled or onCheckBoxSelected is provided
                   // NOT automatically when bulkMode is active (user can still bulk edit via double-click)
-                  checkboxSelection={bsShowCheckbox || !!onCheckBoxSelected}
+                  checkboxSelection={
+                    effectiveShowCheckbox || !!onCheckBoxSelected
+                  }
                   rowSelectionModel={rowSelectionModel}
                   onRowSelectionModelChange={handleRowSelectionChange}
                   // Enable multi-row selection by clicking on rows directly (no checkbox required)
@@ -8241,16 +8492,16 @@ const BSDataGrid = forwardRef(
                     showToolbar
                       ? {
                           toolbar: {
-                            onAdd: handleAddClick,
+                            onAdd: handleDialogAdd,
                             onInlineAdd: handleInlineAdd,
-                            showAdd,
+                            showAdd: effectiveShowAdd,
                             headerFiltersEnabled,
                             onToggleHeaderFilters: handleToggleHeaderFilters,
                             bsBulkEdit: effectiveBulkEdit,
                             bsBulkAdd: effectiveBulkAdd,
                             bsBulkDelete: effectiveBulkDelete,
-                            bsEnableBulkMode,
-                            bsShowBulkSplitButton,
+                            bsEnableBulkMode: resolvedBulkEnable,
+                            bsShowBulkSplitButton: effectiveShowSplitButton,
                             selectedRowCount: rowSelectionModel.length,
                             onBulkEdit: handleBulkEdit,
                             onBulkDelete: handleBulkDelete,

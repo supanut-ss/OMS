@@ -25,5 +25,6 @@
         public string record_type { get; set; } = "PROJECT";
         public string remark { get; set; }
         public string is_active { get; set; }
+        public int? year { get; set; }
     }
 }
