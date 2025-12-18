@@ -18,7 +18,6 @@ const storedProcedure = {
     }
 }
 const Projects = (props) => {
-    console.log("Projects props:", props);
     const [openDialog, setOpenDialog] = useState(false);
     const [projectHeaderID, setProjectHeaderID] = useState("");
     const dataGridRef = useRef();
@@ -81,7 +80,7 @@ const Projects = (props) => {
             bsShowCheckbox={false}
 
         />
-        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID} />
+        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID} ma={props.ma} />
     </Paper>);
 }
 export default Projects;
