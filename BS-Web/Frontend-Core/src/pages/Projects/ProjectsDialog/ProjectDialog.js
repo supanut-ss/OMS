@@ -183,7 +183,7 @@ const ProjectsDialog = (props) => {
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 {renderInput({
                   item: {
-                    field: "parent_project_id",
+                    field: "master_project_id",
                     headerName: getResource(resourceData, "parent_project_id"),
                     component: "BSAutoComplete",
                     bsMode: "single",
