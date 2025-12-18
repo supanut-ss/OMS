@@ -1,30 +1,28 @@
 /**
- * BSFileUploadDialog - Dialog component for uploading and managing attached files
+ * BSFileUpload - Reusable file upload component
  *
  * Features:
  * - Multi-file upload support
  * - Drag & drop file upload
  * - File list display with view/delete actions
- * - Integration with BSDataGrid attachFile column type
  * - Configurable attachment table and foreign key mapping
  *
- * Usage in bsColumnDefs:
- * {
- *   field: "attachments",
- *   type: "attachFile",
- *   attachConfig: {
- *     preObj: "tmt",                           // Schema prefix
- *     attachTable: "t_tmt_project_attach",     // Table to store attachments
- *     foreignKey: "project_id",                // FK column linking to parent
- *     fileNameColumn: "file_name",             // Column for file name
- *     pathColumn: "path_file",                 // Column for file path
- *     uploadEndpoint: "/api/upload",           // Upload API endpoint
- *     downloadEndpoint: "/api/download",       // Download API endpoint
- *     allowedTypes: ["image/*", "application/pdf", ".doc", ".docx", ".xls", ".xlsx"],
- *     maxFileSize: 10 * 1024 * 1024,          // 10MB max file size
- *     maxFiles: 10,                            // Maximum number of files
- *   }
- * }
+ * Usage:
+ * <BSFileUpload
+ *   attachConfig={{
+ *     preObj: "tmt",
+ *     attachTable: "t_tmt_project_attach",
+ *     foreignKey: "project_id",
+ *     foreignKeyValue: 123,
+ *     fileNameColumn: "file_name",
+ *     pathColumn: "path_file",
+ *     allowedTypes: ["image/*", "application/pdf"],
+ *     maxFileSize: 10 * 1024 * 1024,
+ *     maxFiles: 10,
+ *   }}
+ *   locale="th"
+ *   onFilesChanged={() => {}}
+ * />
  */
 
 import React, {
@@ -35,11 +33,6 @@ import React, {
   useMemo,
 } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Box,
   Typography,
   IconButton,
@@ -58,7 +51,6 @@ import {
 import {
   Close as CloseIcon,
   CloudUpload as CloudUploadIcon,
-  AttachFile as AttachFileIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Download as DownloadIcon,
@@ -69,13 +61,13 @@ import {
   TableChart as ExcelIcon,
   Folder as FolderIcon,
 } from "@mui/icons-material";
-import BSAlertSwal2 from "../BSAlertSwal2";
-import Logger from "../../utils/logger";
-import AxiosMaster from "../../utils/AxiosMaster";
-import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
-import { formatDateTime } from "../../utils/dateUtils";
-import { getLocaleText } from "./locales";
-import { useAuth } from "../../contexts/AuthContext";
+import BSAlertSwal2 from "./BSAlertSwal2";
+import Logger from "../utils/logger";
+import AxiosMaster from "../utils/AxiosMaster";
+import { getSchemaFromPreObj } from "../utils/SchemaMapping";
+import { formatDateTime } from "../utils/dateUtils";
+import { getLocaleText } from "./BSDataGrid/locales";
+import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Get file icon based on file type/extension
@@ -123,16 +115,16 @@ const formatFileSize = (bytes) => {
 };
 
 /**
- * BSFileUploadDialog Component
+ * BSFileUpload Component
  */
-const BSFileUploadDialog = ({
-  open,
-  onClose,
-  rowData,
+const BSFileUpload = ({
   attachConfig,
   localeText: propsLocaleText = {},
-  locale = "th", // Default locale
+  locale = "th",
   onFilesChanged,
+  showUploadArea = true,
+  showFileList = true,
+  height = "auto",
 }) => {
   // Merge locale from getLocaleText() with props (props takes priority)
   const localeText = useMemo(
@@ -155,26 +147,22 @@ const BSFileUploadDialog = ({
     additionalData = {}, // Additional data to include when creating attachment record
   } = attachConfig || {};
 
-  // Get current user from AuthContext (same as BSDataGrid)
+  // Get current user from AuthContext
   const { user } = useAuth();
 
   /**
    * Get user ID from AuthContext for audit fields (create_by, update_by)
-   * Uses same logic as BSDataGrid.getUserId()
    */
   const getUserId = useCallback(() => {
     if (!user) {
       Logger.warn(
-        "⚠️ BSFileUploadDialog: No user object available, defaulting to 'system'"
+        "⚠️ BSFileUpload: No user object available, defaulting to 'system'"
       );
       return "system";
     }
 
     try {
-      // Parse user if it's a string
       const userObj = typeof user === "string" ? JSON.parse(user) : user;
-
-      // Try different possible userId field names (same as BSDataGrid)
       const userId =
         userObj?.UserId ||
         userObj?.userid ||
@@ -182,10 +170,9 @@ const BSFileUploadDialog = ({
         userObj?.id ||
         userObj?.Id ||
         "system";
-
       return userId;
     } catch (e) {
-      Logger.error("❌ BSFileUploadDialog: Failed to parse user object:", e);
+      Logger.error("❌ BSFileUpload: Failed to parse user object:", e);
       return "system";
     }
   }, [user]);
@@ -200,7 +187,7 @@ const BSFileUploadDialog = ({
   // Refs
   const fileInputRef = useRef(null);
 
-  // Direct API functions instead of useDynamicCrud hook to avoid initialization issues
+  // Direct API functions
   const getAttachmentData = useCallback(async (request) => {
     const schema = getSchemaFromPreObj(request.preObj);
     const payload = {
@@ -214,7 +201,7 @@ const BSFileUploadDialog = ({
       preObj: request.preObj,
     };
 
-    Logger.log("📡 BSFileUploadDialog: Loading attachment data:", payload);
+    Logger.log("📡 BSFileUpload: Loading attachment data:", payload);
     const response = await AxiosMaster.post("/dynamic/bs-datagrid", payload);
     return {
       rows: response.data.rows || [],
@@ -233,7 +220,7 @@ const BSFileUploadDialog = ({
         },
       };
 
-      Logger.log("🗑️ BSFileUploadDialog: Deleting attachment:", payload);
+      Logger.log("🗑️ BSFileUpload: Deleting attachment:", payload);
       const response = await AxiosMaster.post("/dynamic/delete", payload);
       return response.data;
     },
@@ -249,29 +236,25 @@ const BSFileUploadDialog = ({
         data: recordData,
       };
 
-      Logger.log("➕ BSFileUploadDialog: Creating attachment record:", payload);
+      Logger.log("➕ BSFileUpload: Creating attachment record:", payload);
       const response = await AxiosMaster.post("/dynamic/create", payload);
       return response.data;
     },
     []
   );
 
-  // Determine the foreign key value from row data
-  const effectiveForeignKeyValue =
-    foreignKeyValue || (rowData && foreignKey ? rowData[foreignKey] : null);
+  // Determine the foreign key value from config
+  const effectiveForeignKeyValue = foreignKeyValue;
 
   /**
    * Load existing files from database
    */
   const loadFiles = useCallback(async () => {
     if (!attachTable || !effectiveForeignKeyValue) {
-      Logger.warn(
-        "BSFileUploadDialog: Missing attachTable or foreignKeyValue",
-        {
-          attachTable,
-          effectiveForeignKeyValue,
-        }
-      );
+      Logger.warn("BSFileUpload: Missing attachTable or foreignKeyValue", {
+        attachTable,
+        effectiveForeignKeyValue,
+      });
       setFiles([]);
       return;
     }
@@ -280,7 +263,7 @@ const BSFileUploadDialog = ({
     setError(null);
 
     try {
-      Logger.log("BSFileUploadDialog: Loading files for", {
+      Logger.log("BSFileUpload: Loading files for", {
         attachTable,
         preObj,
         foreignKey,
@@ -295,13 +278,7 @@ const BSFileUploadDialog = ({
         filterModel: { items: [], logicOperator: "and" },
       });
 
-      Logger.log("BSFileUploadDialog: Files loaded:", response);
-      console.log("📁 DEBUG - Files from API:", response);
-      console.log("📁 DEBUG - fileNameColumn:", fileNameColumn);
-      console.log(
-        "📁 DEBUG - First file data:",
-        response?.rows?.[0] || response?.data?.[0]
-      );
+      Logger.log("BSFileUpload: Files loaded:", response);
 
       if (response?.rows) {
         setFiles(response.rows);
@@ -323,15 +300,14 @@ const BSFileUploadDialog = ({
     foreignKey,
     preObj,
     getAttachmentData,
-    fileNameColumn,
   ]);
 
-  // Load files when dialog opens
+  // Load files when component mounts or foreignKeyValue changes
   useEffect(() => {
-    if (open && effectiveForeignKeyValue) {
+    if (effectiveForeignKeyValue) {
       loadFiles();
     }
-  }, [open, effectiveForeignKeyValue, loadFiles]);
+  }, [effectiveForeignKeyValue, loadFiles]);
 
   /**
    * Upload files to server
@@ -340,14 +316,12 @@ const BSFileUploadDialog = ({
     async (filesToUpload) => {
       for (const fileItem of filesToUpload) {
         try {
-          // Update status to uploading
           setUploadingFiles((prev) =>
             prev.map((f) =>
               f.id === fileItem.id ? { ...f, status: "uploading" } : f
             )
           );
 
-          // Create FormData for upload
           const formData = new FormData();
           formData.append("file", fileItem.file);
           formData.append("foreignKey", foreignKey);
@@ -355,7 +329,6 @@ const BSFileUploadDialog = ({
           formData.append("tableName", attachTable);
           formData.append("preObj", preObj);
 
-          // Perform upload using AxiosMaster to include auth token
           const response = await AxiosMaster.post("/files/upload", formData, {
             headers: {
               "Content-Type": "multipart/form-data",
@@ -364,21 +337,19 @@ const BSFileUploadDialog = ({
 
           const result = response.data;
 
-          // Create record in attachment table
           const attachmentRecord = {
             [foreignKey]: effectiveForeignKeyValue,
             [fileNameColumn]: fileItem.name,
             [pathColumn]: result.filePath || result.path || fileItem.name,
-            file_size: fileItem.size, // File size in bytes
-            file_type: fileItem.file?.type || "", // MIME type (e.g., "application/pdf", "image/png")
-            ...additionalData, // Include additional data (e.g., project_header_id)
-            create_date: new Date().toISOString(), // Current date/time
-            create_by: getUserId(), // User ID from localStorage
+            file_size: fileItem.size,
+            file_type: fileItem.file?.type || "",
+            ...additionalData,
+            create_date: new Date().toISOString(),
+            create_by: getUserId(),
           };
 
           await createAttachmentRecord(attachmentRecord, attachTable, preObj);
 
-          // Update status to success
           setUploadingFiles((prev) =>
             prev.map((f) =>
               f.id === fileItem.id
@@ -387,7 +358,6 @@ const BSFileUploadDialog = ({
             )
           );
 
-          // Remove from uploading list after delay and refresh file list
           setTimeout(() => {
             setUploadingFiles((prev) =>
               prev.filter((f) => f.id !== fileItem.id)
@@ -431,7 +401,6 @@ const BSFileUploadDialog = ({
       const validFiles = [];
       const errors = [];
 
-      // Check max files limit
       const remainingSlots = maxFiles - files.length - uploadingFiles.length;
       if (selectedFiles.length > remainingSlots) {
         errors.push(
@@ -441,7 +410,6 @@ const BSFileUploadDialog = ({
       }
 
       for (const file of selectedFiles) {
-        // Check file size
         if (file.size > maxFileSize) {
           errors.push(
             `${file.name}: File size exceeds ${formatFileSize(maxFileSize)}`
@@ -449,18 +417,14 @@ const BSFileUploadDialog = ({
           continue;
         }
 
-        // Check file type if restrictions exist
         if (allowedTypes.length > 0) {
           const isAllowed = allowedTypes.some((type) => {
             if (type.startsWith(".")) {
-              // Extension check
               return file.name.toLowerCase().endsWith(type.toLowerCase());
             } else if (type.endsWith("/*")) {
-              // MIME type wildcard
               const mimePrefix = type.slice(0, -2);
               return file.type.startsWith(mimePrefix);
             } else {
-              // Exact MIME type match
               return file.type === type;
             }
           });
@@ -477,7 +441,7 @@ const BSFileUploadDialog = ({
           name: file.name,
           size: file.size,
           progress: 0,
-          status: "pending", // pending, uploading, success, error
+          status: "pending",
           error: null,
         });
       }
@@ -490,7 +454,6 @@ const BSFileUploadDialog = ({
 
       if (validFiles.length > 0) {
         setUploadingFiles((prev) => [...prev, ...validFiles]);
-        // Start uploading files
         uploadFiles(validFiles);
       }
     },
@@ -513,7 +476,6 @@ const BSFileUploadDialog = ({
       const selectedFiles = Array.from(event.target.files || []);
       processFiles(selectedFiles);
 
-      // Reset input value to allow selecting same file again
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -558,7 +520,6 @@ const BSFileUploadDialog = ({
    */
   const handleDeleteFile = useCallback(
     async (file) => {
-      // Support nested data structure: { data: {...}, metadata: {...} }
       const fileData = file.data || file;
       const fileName = fileData[fileNameColumn];
       const fileId = fileData[primaryKey];
@@ -578,7 +539,6 @@ const BSFileUploadDialog = ({
       try {
         await deleteAttachmentRecord(fileId, attachTable, preObj);
 
-        // Remove from local state - check both nested and flat structure
         setFiles((prev) =>
           prev.filter((f) => (f.data || f)[primaryKey] !== fileId)
         );
@@ -614,25 +574,21 @@ const BSFileUploadDialog = ({
   const handleViewFile = useCallback(
     async (file) => {
       try {
-        // Support nested data structure: { data: {...}, metadata: {...} }
         const fileData = file.data || file;
         const filePath = fileData[pathColumn];
         const fileName = fileData[fileNameColumn];
 
-        // Download file using AxiosMaster to include auth token
         const response = await AxiosMaster.get("/files/download", {
           params: { path: filePath, name: fileName },
           responseType: "blob",
         });
 
-        // Create object URL and open in new tab
         const blob = new Blob([response.data], {
           type: response.headers["content-type"] || "application/octet-stream",
         });
         const url = window.URL.createObjectURL(blob);
         window.open(url, "_blank");
 
-        // Cleanup after a delay
         setTimeout(() => window.URL.revokeObjectURL(url), 60000);
       } catch (err) {
         Logger.error("Failed to view file:", err);
@@ -650,18 +606,15 @@ const BSFileUploadDialog = ({
   const handleDownloadFile = useCallback(
     async (file) => {
       try {
-        // Support nested data structure: { data: {...}, metadata: {...} }
         const fileData = file.data || file;
         const filePath = fileData[pathColumn];
         const fileName = fileData[fileNameColumn];
 
-        // Download file using AxiosMaster to include auth token
         const response = await AxiosMaster.get("/files/download", {
           params: { path: filePath, name: fileName, download: true },
           responseType: "blob",
         });
 
-        // Create download link
         const blob = new Blob([response.data], {
           type: response.headers["content-type"] || "application/octet-stream",
         });
@@ -708,181 +661,152 @@ const BSFileUploadDialog = ({
     files.length + uploadingFiles.length < maxFiles && effectiveForeignKeyValue;
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: 400 },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <AttachFileIcon color="primary" />
-          <Typography variant="h6">
-            {localeText.bsAttachFiles || "Attach Files"}
-          </Typography>
-          <Chip
-            label={`${files.length}/${maxFiles}`}
-            size="small"
-            color={files.length >= maxFiles ? "error" : "default"}
+    <Box sx={{ height, display: "flex", flexDirection: "column" }}>
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* No Foreign Key Warning */}
+      {!effectiveForeignKeyValue && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {localeText.bsSaveRecordFirst ||
+            "Please save the record first before attaching files."}
+        </Alert>
+      )}
+
+      {/* Upload Area */}
+      {showUploadArea && canAddMoreFiles && (
+        <Box
+          sx={{
+            p: 3,
+            border: 2,
+            borderStyle: "dashed",
+            borderColor: isDragging ? "primary.main" : "divider",
+            borderRadius: 2,
+            backgroundColor: isDragging ? "action.hover" : "background.default",
+            textAlign: "center",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            mb: 2,
+            "&:hover": {
+              borderColor: "primary.main",
+              backgroundColor: "action.hover",
+            },
+          }}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onClick={openFilePicker}
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept={acceptAttribute}
+            multiple
+            style={{ display: "none" }}
           />
-        </Box>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent sx={{ p: 0 }}>
-        {/* Error Alert */}
-        {error && (
-          <Alert severity="error" sx={{ m: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {/* No Foreign Key Warning */}
-        {!effectiveForeignKeyValue && (
-          <Alert severity="warning" sx={{ m: 2 }}>
-            {localeText.bsSaveRecordFirst ||
-              "Please save the record first before attaching files."}
-          </Alert>
-        )}
-
-        {/* Upload Area */}
-        {canAddMoreFiles && (
-          <Box
-            sx={{
-              m: 2,
-              p: 3,
-              border: 2,
-              borderStyle: "dashed",
-              borderColor: isDragging ? "primary.main" : "divider",
-              borderRadius: 2,
-              backgroundColor: isDragging
-                ? "action.hover"
-                : "background.default",
-              textAlign: "center",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              "&:hover": {
-                borderColor: "primary.main",
-                backgroundColor: "action.hover",
-              },
-            }}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={openFilePicker}
+          <CloudUploadIcon
+            sx={{ fontSize: 48, color: "primary.main", mb: 1 }}
+          />
+          <Typography variant="h6" gutterBottom>
+            {localeText.bsDragDropFiles || "Drag & Drop files here"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {localeText.bsOrClickToSelect || "or click to select files"}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
           >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept={acceptAttribute}
-              multiple
-              style={{ display: "none" }}
-            />
-            <CloudUploadIcon
-              sx={{ fontSize: 48, color: "primary.main", mb: 1 }}
-            />
-            <Typography variant="h6" gutterBottom>
-              {localeText.bsDragDropFiles || "Drag & Drop files here"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {localeText.bsOrClickToSelect || "or click to select files"}
-            </Typography>
+            {localeText.bsMaxFileSize || "Max file size"}:{" "}
+            {formatFileSize(maxFileSize)}
+          </Typography>
+          {allowedTypes.length > 0 && (
             <Typography
               variant="caption"
               color="text.secondary"
               display="block"
             >
-              {localeText.bsMaxFileSize || "Max file size"}:{" "}
-              {formatFileSize(maxFileSize)}
+              {localeText.bsAllowedTypes || "Allowed types"}:{" "}
+              {allowedTypes.join(", ")}
             </Typography>
-            {allowedTypes.length > 0 && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                display="block"
-              >
-                {localeText.bsAllowedTypes || "Allowed types"}:{" "}
-                {allowedTypes.join(", ")}
-              </Typography>
-            )}
-          </Box>
-        )}
+          )}
+        </Box>
+      )}
 
-        <Divider />
-
-        {/* Uploading Files */}
-        {uploadingFiles.length > 0 && (
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              {localeText.bsUploading || "Uploading..."}
-            </Typography>
-            <List dense>
-              {uploadingFiles.map((file) => (
-                <ListItem key={file.id}>
-                  <ListItemIcon>{getFileIcon(file.name)}</ListItemIcon>
-                  <ListItemText
-                    primary={file.name}
-                    secondary={
-                      <Box sx={{ width: "100%" }}>
-                        {file.status === "uploading" && (
-                          <LinearProgress
-                            variant="indeterminate"
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
-                        {file.status === "success" && (
-                          <Typography variant="caption" color="success.main">
-                            {localeText.bsUploadComplete || "Upload complete"}
-                          </Typography>
-                        )}
-                        {file.status === "error" && (
-                          <Typography variant="caption" color="error">
-                            {file.error || "Upload failed"}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-                  <ListItemSecondaryAction>
-                    {file.status === "uploading" && (
-                      <CircularProgress size={20} />
-                    )}
-                    {file.status === "error" && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveFailedUpload(file.id)}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-            <Divider />
-          </Box>
-        )}
-
-        {/* Existing Files List */}
-        <Box sx={{ px: 2, py: 1 }}>
+      {/* Uploading Files */}
+      {uploadingFiles.length > 0 && (
+        <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            {localeText.bsAttachedFiles || "Attached Files"} ({files.length})
+            {localeText.bsUploading || "Uploading..."}
           </Typography>
+          <List dense>
+            {uploadingFiles.map((file) => (
+              <ListItem key={file.id}>
+                <ListItemIcon>{getFileIcon(file.name)}</ListItemIcon>
+                <ListItemText
+                  primary={file.name}
+                  secondary={
+                    <Box sx={{ width: "100%" }}>
+                      {file.status === "uploading" && (
+                        <LinearProgress
+                          variant="indeterminate"
+                          sx={{ mt: 0.5 }}
+                        />
+                      )}
+                      {file.status === "success" && (
+                        <Typography variant="caption" color="success.main">
+                          {localeText.bsUploadComplete || "Upload complete"}
+                        </Typography>
+                      )}
+                      {file.status === "error" && (
+                        <Typography variant="caption" color="error">
+                          {file.error || "Upload failed"}
+                        </Typography>
+                      )}
+                    </Box>
+                  }
+                />
+                <ListItemSecondaryAction>
+                  {file.status === "uploading" && (
+                    <CircularProgress size={20} />
+                  )}
+                  {file.status === "error" && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveFailedUpload(file.id)}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </ListItemSecondaryAction>
+              </ListItem>
+            ))}
+          </List>
+          <Divider />
+        </Box>
+      )}
+
+      {/* Existing Files List */}
+      {showFileList && (
+        <Box sx={{ flex: 1, overflow: "auto" }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary">
+              {localeText.bsAttachedFiles || "Attached Files"} ({files.length})
+            </Typography>
+            <Chip
+              label={`${files.length}/${maxFiles}`}
+              size="small"
+              color={files.length >= maxFiles ? "error" : "default"}
+              sx={{ ml: 1 }}
+            />
+          </Box>
 
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -977,17 +901,9 @@ const BSFileUploadDialog = ({
             </List>
           )}
         </Box>
-      </DialogContent>
-
-      <DialogActions
-        sx={{ borderTop: 1, borderColor: "divider", px: 2, py: 1.5 }}
-      >
-        <Button onClick={onClose} variant="outlined">
-          {localeText.bsClose || "Close"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      )}
+    </Box>
   );
 };
 
-export default BSFileUploadDialog;
+export default BSFileUpload;
