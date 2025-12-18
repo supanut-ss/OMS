@@ -1,7 +1,9 @@
 import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import ProjectsDialog from "./ProjectsDialog/ProjectDialog";
-import { useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
+import secureStorage from "../../utils/SecureStorage";
+import Config from "../../utils/Config";
 
 const Projects = (props) => {
     const [openDialog, setOpenDialog] = useState(false);
@@ -12,11 +14,27 @@ const Projects = (props) => {
         setProjectHeaderID("");
         setOpenDialog(val)
     }
-    const onChangeProjectHeaderID = (id) => {
-        console.log("onChangeProjectHeaderID:", id);
-        setProjectHeaderID(id);
-        setOpenDialog(true);
+    const onChangeProjectHeaderID = ({
+        id,
+        newtab = false
+    }) => {
+        if (newtab) {
+            secureStorage.set("project_header_id", id);
+            window.open(`${Config.BASE_URL ?? ""}/projects`, '_blank', 'noopener,noreferrer');
+            return;
+        } else {
+            setProjectHeaderID(id);
+            setOpenDialog(true);
+        }
     }
+    useEffect(() => {
+        const storedProjectHeaderID = secureStorage.get("project_header_id");
+        if (storedProjectHeaderID) {
+            setProjectHeaderID(storedProjectHeaderID);
+            setOpenDialog(true);
+            secureStorage.remove("project_header_id");
+        }
+    }, []);
     return (<Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
             ref={dataGridRef}
@@ -47,7 +65,7 @@ const Projects = (props) => {
             bsShowCheckbox={false}
 
         />
-        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID}/>
+        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID} />
     </Paper>);
 }
 export default Projects;

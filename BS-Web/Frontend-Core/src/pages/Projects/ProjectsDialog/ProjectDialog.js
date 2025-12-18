@@ -72,11 +72,13 @@ const ProjectsDialog = (props) => {
     setFormData({ ...defaultData });
     props.onClose(false);
   };
-  const onChangeProjectHeaderID = (id) => {
-    setTap(0);
-    setFormData({ ...defaultData });
-    props.onClose(false);
-    props.onChangeProjectHeaderID(id);
+  const onChangeProjectHeaderID = ({ id, newtab }) => {
+    if (!newtab) {
+      setTap(0);
+      setFormData({ ...defaultData });
+      props.onClose(false);
+    }
+    props.onChangeProjectHeaderID({ id: id, newtab: newtab });
   };
   const handleSave = async () => {
     if (!validate()) return;
@@ -96,7 +98,7 @@ const ProjectsDialog = (props) => {
             );
           }
         })
-        .finally(() => {});
+        .finally(() => { });
     } catch (err) {
       BSAlertSwal2.show("error", err.message, {
         title: "Failed to Save Record",
