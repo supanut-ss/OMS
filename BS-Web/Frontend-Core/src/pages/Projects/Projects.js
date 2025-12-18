@@ -1,11 +1,24 @@
 import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import ProjectsDialog from "./ProjectsDialog/ProjectDialog";
-import { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import secureStorage from "../../utils/SecureStorage";
 import Config from "../../utils/Config";
 
+const storedProcedure = {
+    project: {
+        bsStoredProcedure: "usp_tmt_project_header",
+        bsStoredProcedureSchema: "tmt",
+        bsCols: "project_header_id,project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date"
+    },
+    ma: {
+        bsStoredProcedure: "usp_tmt_project_header_ma",
+        bsStoredProcedureSchema: "tmt",
+        bsCols: "project_header_id,project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date"
+    }
+}
 const Projects = (props) => {
+    console.log("Projects props:", props);
     const [openDialog, setOpenDialog] = useState(false);
     const [projectHeaderID, setProjectHeaderID] = useState("");
     const dataGridRef = useRef();
@@ -35,12 +48,15 @@ const Projects = (props) => {
             secureStorage.remove("project_header_id");
         }
     }, []);
+    useEffect(() => {
+        dataGridRef.current?.refreshData();
+    }, [props.ma]);
     return (<Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
             ref={dataGridRef}
-            bsStoredProcedure="usp_tmt_project_header"
-            bsStoredProcedureSchema="tmt"
-            bsCols="project_header_id,project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date"
+            bsStoredProcedure={storedProcedure[props?.ma ? "ma" : "project"].bsStoredProcedure}
+            bsStoredProcedureSchema={storedProcedure[props?.ma ? "ma" : "project"].bsStoredProcedureSchema}
+            bsCols={storedProcedure[props?.ma ? "ma" : "project"].bsCols}
             bsShowRowNumber={true}
             showAdd={true}
             bsVisibleDelete={true}

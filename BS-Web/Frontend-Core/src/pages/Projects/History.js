@@ -12,7 +12,7 @@ const ProjectsHistory = (props) => {
         setResourceData(res);
     };
     const handleViewTask = (data) => {
-        props.onChangeProjectHeaderID({ id: data.project_header_id, newtab: false });
+        props.onChangeProjectHeaderID({ id: data.project_header_id, newtab: true });
     };
     useEffect(() => {
         getLang();

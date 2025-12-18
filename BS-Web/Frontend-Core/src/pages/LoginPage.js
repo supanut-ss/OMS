@@ -10,6 +10,7 @@ import {
   IconButton,
   InputAdornment,
   Divider,
+  LinearProgress,
 } from "@mui/material";
 import {
   Visibility,
@@ -113,7 +114,8 @@ export default function LoginPage({ setLang }) {
   useEffect(() => {
     getVersion();
   }, [getVersion]);
-  return (
+  return (<>
+    {loading && <LinearProgress />}
     <Box
       sx={{
         minHeight: "100vh",
@@ -188,6 +190,7 @@ export default function LoginPage({ setLang }) {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
+              disabled={loading}
               name="usersname"
               label={getResource(resourceData, "Username")}
               type="text"
@@ -214,6 +217,7 @@ export default function LoginPage({ setLang }) {
 
             <TextField
               fullWidth
+              disabled={loading}
               name="password"
               label={getResource(resourceData, "Password")}
               type={showPassword ? "text" : "password"}
@@ -305,5 +309,6 @@ export default function LoginPage({ setLang }) {
         </CardContent>
       </Card>
     </Box>
+  </>
   );
 }
