@@ -81,7 +81,7 @@ const Projects = (props) => {
             bsShowCheckbox={false}
 
         />
-        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID} />
+        <ProjectsDialog open={openDialog} onClose={handleCloseOpenDialog} title="Project" projectID={projectHeaderID} lang={props.lang} onChangeProjectHeaderID={onChangeProjectHeaderID} ma={props.ma} />
     </Paper>);
 }
 export default Projects;

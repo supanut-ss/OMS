@@ -24,6 +24,7 @@ import { useResource } from "../../../hooks/useResource";
 import InvoiceHistory from "../InvoiceHistory";
 import ProjectClose from "../ProjectClose";
 import MAHistory from "../MAHistory";
+import BSFileUpload from "../../../components/BSFileUpload";
 const defaultData = {
   project_name: null,
   project_status: null,
@@ -596,6 +597,7 @@ const ProjectsDialog = (props) => {
                   <Tab label={getResource(resourceData, "invoice_history")} />
                   <Tab label={getResource(resourceData, "project_close")} />
                   <Tab label={getResource(resourceData, "ma_history")} />
+                  {props.ma && <Tab label={getResource(resourceData, "attach_file") || "Attach File"} />}
                 </Tabs>
                 <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
                   {tap === 0 && (
@@ -637,6 +639,24 @@ const ProjectsDialog = (props) => {
                       projectID={formData?.project_header_id || ""}
                       lang={props.lang}
                       onChangeProjectHeaderID={onChangeProjectHeaderID}
+                    />
+                  )}
+                  {tap === 6 && props.ma && (
+                    <BSFileUpload
+                      attachConfig={{
+                        preObj: "tmt",
+                        attachTable: "t_tmt_project_attach",
+                        foreignKey: "project_header_id",
+                        foreignKeyValue: formData?.project_header_id,
+                        fileNameColumn: "file_name",
+                        pathColumn: "path_file",
+                        primaryKey: "project_attach_id",
+                        maxFiles: 20,
+                        additionalData: {
+                          project_header_id: formData?.project_header_id,
+                        },
+                      }}
+                      locale={props.lang}
                     />
                   )}
                 </Box>
