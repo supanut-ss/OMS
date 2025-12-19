@@ -71,15 +71,15 @@ const UserLogOnPage = (props) => {
           bsObj="v_com_user_alive"
           bsCols="user_id,status,first_name,last_name,ip_address,refresh_token_expiry,device_info"
           bsObjBy="status DESC, user_id ASC"
-          bsBulkEdit={false}
-          bsBulkAdd={false}
-          bsBulkDelete={false}
+          // bsBulkEdit={false}
+          // bsBulkAdd={false}
+          // bsBulkDelete={false}
           bsShowDescColumn={false}
           showAdd={false}
           readOnly={true}
-          onCheckBoxSelected={(rows) => {
-            setSelectedRows(rows);
-          }}
+          // onCheckBoxSelected={(rows) => {
+          //   setSelectedRows(rows);
+          // }}
           bsRowConfig={(row) => {
             if (row.status.toUpperCase() === "OFFLINE") {
               return {

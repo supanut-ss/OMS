@@ -53,12 +53,12 @@ const UserGroupPage = (props) => {
               ObjBy: "application_name asc",
             },
           ]}
-          bsBulkDelete={true}
-          bsBulkEdit={true}
-          bsBulkAdd={true}
-          onCheckBoxSelected={(rows) => {
-            setSelectedRows(rows);
-          }}
+          // bsBulkDelete={true}
+          // bsBulkEdit={true}
+          // bsBulkAdd={true}
+          // onCheckBoxSelected={(rows) => {
+          //   setSelectedRows(rows);
+          // }}
         />
       </Paper>
     </>
