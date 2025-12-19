@@ -62,17 +62,10 @@ const UserGroupPage = (props) => {
             // showCheckbox: false,
             // showSplitButton: false,
           }}
-          // bsBulkDelete={true}
-          // bsBulkEdit={true}
-          // bsBulkAdd={true}
-          // onCheckBoxSelected={(rows) => {
-          //   setSelectedRows(rows);
-          // }}
           bsColumnDefs={[
             {
               field: "app_id",
               headerName: "Application",
-              width: 150,
             },
           ]}
         />
