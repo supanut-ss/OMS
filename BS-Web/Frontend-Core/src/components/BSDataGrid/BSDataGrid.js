@@ -90,6 +90,8 @@ import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
 import BSFileUploadDialog from "../BSFileUploadDialog";
 import { BSSwitchField } from "../BSSwitch";
+import BSSaveOutlinedButton from "../Button/BSSaveOutlinedButton";
+import BSCloseOutlinedButton from "../Button/BSCloseOutlinedButton";
 
 // Initialize MUI X License
 muiLicenseManager.initialize();
@@ -8615,7 +8617,7 @@ const BSDataGrid = forwardRef(
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#E0DEDEFF'} !important`,
+                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[200] : '#E0DEDEFF'} !important`,
                       borderBottom: `1px solid ${theme.palette.divider} !important`,
                       minHeight: "30px !important",
                       maxHeight: "46px !important",
@@ -8724,6 +8726,11 @@ const BSDataGrid = forwardRef(
           }
           fullWidth
           fullScreen={isDialogFullScreen}
+          PaperProps={{
+            sx: {
+              borderRadius: isDialogFullScreen ? 0 : 1,
+            },
+          }}
         >
           <DialogTitle>
             {dialogMode === "add"
@@ -8752,14 +8759,18 @@ const BSDataGrid = forwardRef(
                     expandIcon={<ExpandMoreIcon />}
                     aria-controls="parent-form-content"
                     id="parent-form-header"
-                    sx={{
-                      backgroundColor: "#EBEBEBFF",
+                    sx={(theme) => ({
+                      backgroundColor: theme.palette.mode === 'dark' 
+                        ? theme.palette.grey[300] 
+                        : '#EBEBEBFF',
                       "&:hover": {
-                        backgroundColor: "#d5d5d5",
+                        backgroundColor: theme.palette.mode === 'dark'
+                          ? theme.palette.grey[400]
+                          : '#d5d5d5',
                       },
                       borderTopLeftRadius: "8px",
                       borderTopRightRadius: "8px",
-                    }}
+                    })}
                   >
                     <Typography variant="subtitle1" fontWeight="bold">
                       {(() => {
@@ -8904,15 +8915,14 @@ const BSDataGrid = forwardRef(
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleDialogClose} disabled={formLoading}>
+            <BSCloseOutlinedButton onClick={handleDialogClose} disabled={formLoading}>
               {isParentSaved && bsChildGrids && bsChildGrids.length > 0
                 ? localeText.bsClose || "Close"
                 : localeText.bsCancel}
-            </Button>
+            </BSCloseOutlinedButton>
             {/* Show Save button always - user can save/update parent record anytime */}
-            <Button
+            <BSSaveOutlinedButton
               onClick={handleSave}
-              variant="contained"
               disabled={formLoading}
             >
               {formLoading
@@ -8923,7 +8933,7 @@ const BSDataGrid = forwardRef(
                   !isParentSaved
                 ? localeText.bsSaveAndContinue || "Save & Continue"
                 : localeText.bsSave}
-            </Button>
+            </BSSaveOutlinedButton>
           </DialogActions>
         </Dialog>
 
@@ -8933,6 +8943,11 @@ const BSDataGrid = forwardRef(
           onClose={handleBulkDialogClose}
           maxWidth="lg"
           fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+            },
+          }}
         >
           <DialogTitle>
             {localeText.bsBulkAddRecords}
@@ -9237,18 +9252,17 @@ const BSDataGrid = forwardRef(
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleBulkDialogClose} disabled={formLoading}>
+            <BSCloseOutlinedButton onClick={handleBulkDialogClose} disabled={formLoading}>
               {localeText.bsCancel}
-            </Button>
-            <Button
+            </BSCloseOutlinedButton>
+            <BSSaveOutlinedButton
               onClick={handleBulkSave}
-              variant="contained"
               disabled={formLoading}
             >
               {formLoading
                 ? localeText.bsSaving
                 : localeText.bsSaveRecords(bulkAddRows.length)}
-            </Button>
+            </BSSaveOutlinedButton>
           </DialogActions>
         </Dialog>
 
