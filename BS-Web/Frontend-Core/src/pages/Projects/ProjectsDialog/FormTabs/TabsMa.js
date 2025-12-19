@@ -53,13 +53,14 @@ const TabsMa = (props) => {
                     <BSFileUpload
                         attachConfig={{
                             preObj: "tmt",
-                            attachTable: "t_tmt_project_attach",
+                            attachTable: "t_tmt_project_attach_file",
                             foreignKey: "project_header_id",
                             foreignKeyValue: formData?.project_header_id,
                             fileNameColumn: "file_name",
                             pathColumn: "path_file",
-                            primaryKey: "project_attach_id",
-                            maxFiles: 20,
+                            primaryKey: "project_file_id",
+                            maxFiles: 10,
+                            maxFileSize: 1024 * 1024 * 10,
                             additionalData: {
                                 project_header_id: formData?.project_header_id,
                             },
