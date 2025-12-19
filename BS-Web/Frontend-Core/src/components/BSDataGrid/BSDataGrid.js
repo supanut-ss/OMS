@@ -778,7 +778,7 @@ const DynamicGridToolbar = ({
   };
 
   return (
-    <GridToolbarContainer>
+    <GridToolbarContainer sx={{ pb: '4px' }}>
       {/* Add Record Button - Split Button when bulk mode enabled, regular button otherwise */}
       {showAdd && (bsEnableBulkMode || bsBulkAdd) ? (
         <AddRecordSplitButton

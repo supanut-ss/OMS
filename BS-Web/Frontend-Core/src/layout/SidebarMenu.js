@@ -84,15 +84,14 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
       .map(m => (m.submenu || []).filter(x => x.favorite))
       .flat();
     
-    // Only add Favorite section if there are favorite items
-    if (favoriteMenu.length > 0) {
-      data = [{
-        text: "Favorite",
-        description: "",
-        path: "/",
-        submenu: favoriteMenu
-      }, ...data];
-    }
+    // Always include Favorite section at index 0 (use hidden flag to control visibility)
+    data = [{
+      text: "Favorite",
+      description: "",
+      path: "/",
+      submenu: favoriteMenu,
+      hidden: favoriteMenu.length === 0  // Hide when no favorites
+    }, ...data];
     
     setFilteredMenu(data);
   };
@@ -137,7 +136,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
     const key = `${index}-${menu.path}`;
     const hasSubmenu = menu?.submenu?.length > 0;
     return (
-      <div key={key}>
+      <div key={key} style={{ display: menu.hidden ? 'none' : 'block' }}>
         <Tooltip title={menu.description ?? ""} placement="right" arrow>
           <ListItemButton
             onClick={() => {
