@@ -1,5 +1,7 @@
 ﻿
+using Microsoft.AspNetCore.Authentication;
 using Novell.Directory.Ldap;
+using System.DirectoryServices.AccountManagement;
 
 namespace Authentication.Services.Auth
 {
@@ -10,26 +12,39 @@ namespace Authentication.Services.Auth
 
         public async Task<bool> AuthenAD(string domain, int port, string username, string password)
         {
-            try
+
+            using (PrincipalContext context = new PrincipalContext(ContextType.Domain, domain))
             {
-                using var conn = new Novell.Directory.Ldap.LdapConnection
+                if (context.ValidateCredentials(username.Trim(), password.Trim())) 
                 {
-                    SecureSocketLayer = port == 636
-                };
-
-                conn.Constraints.TimeLimit = 5;
-                conn.Constraints.ReferralFollowing = false;
-
-                await conn.ConnectAsync(domain, port);
-                await conn.BindAsync($"{domain.Split(".")[0] ?? "oga"}\\{username}", password);
-
-                return conn.Bound;
+                    return true;
+                }
+                else {
+                    return false;
+                }
             }
-            catch (Exception ex)
-            {
-                return false;
-            }
-        }
+
+                    // DOCKER LINUX
+                    //try
+                    //{
+                    //    using var conn = new Novell.Directory.Ldap.LdapConnection
+                    //    {
+                    //        SecureSocketLayer = port == 636
+                    //    };
+
+                    //    conn.Constraints.TimeLimit = 5;
+                    //    conn.Constraints.ReferralFollowing = false;
+
+                    //    await conn.ConnectAsync(domain, port);
+                    //    await conn.BindAsync($"{domain.Split(".")[0] ?? "oga"}\\{username}", password);
+
+                    //    return conn.Bound;
+                    //}
+                    //catch (Exception ex)
+                    //{
+                    //    return false;
+                    //}
+                }
         public void Logout()
         {
             if (_connection != null && _connection.Connected)
