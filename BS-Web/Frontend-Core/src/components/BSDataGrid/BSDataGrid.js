@@ -180,14 +180,14 @@ const BulkSplitButton = ({
   const options = [
     {
       label: `${localeText.bsBulkEdit} (${selectedRowCount})`,
-      icon: <Edit />,
+      icon: <Edit color="info" />,
       action: onBulkEdit,
       color: "info",
       show: bsBulkEdit,
     },
     {
       label: `${localeText.bsBulkDelete} (${selectedRowCount})`,
-      icon: <Delete />,
+      icon: <Delete color="error" />,
       action: onBulkDelete,
       color: "error",
       show: showBulkDelete,

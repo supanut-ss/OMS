@@ -225,7 +225,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         onSubmit={(e) => e.preventDefault()}
       >
         <InputBase
-          sx={{ ml: 1, flex: 1 }}
+          sx={{ ml: 4, flex: 1 }}
           placeholder={open ? "Search" : ""}
           inputProps={{ "aria-label": "search" }}
           value={search}
