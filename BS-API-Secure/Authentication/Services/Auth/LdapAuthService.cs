@@ -12,12 +12,20 @@ namespace Authentication.Services.Auth
         {
             try
             {
-                _connection = new Novell.Directory.Ldap.LdapConnection();
-               await _connection.ConnectAsync(domain, port);
-                await _connection.BindAsync(username + "@" + domain, password);
-                return _connection.Bound;
+                using var conn = new Novell.Directory.Ldap.LdapConnection
+                {
+                    SecureSocketLayer = port == 636
+                };
+
+                conn.Constraints.TimeLimit = 5;
+                conn.Constraints.ReferralFollowing = false;
+
+                await conn.ConnectAsync(domain, port);
+                await conn.BindAsync($"{domain.Split(".")[0] ?? "oga"}\\{username}", password);
+
+                return conn.Bound;
             }
-            catch
+            catch (Exception ex)
             {
                 return false;
             }
