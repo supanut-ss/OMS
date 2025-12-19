@@ -25,3 +25,54 @@ code {
   z-index: 50001 !important;
   position: fixed !important;
 }
+
+/* SweetAlert2 Dark Mode Styles */
+.swal2-dark-mode .swal2-popup {
+  background-color: #252526 !important;
+  color: #D4D4D4 !important;
+}
+
+.swal2-dark-mode .swal2-title {
+  color: #D4D4D4 !important;
+}
+
+.swal2-dark-mode .swal2-html-container,
+.swal2-dark-mode .swal2-content {
+  color: #9D9D9D !important;
+}
+
+.swal2-dark-mode .swal2-confirm {
+  background-color: #007ACC !important;
+  color: #FFFFFF !important;
+}
+
+.swal2-dark-mode .swal2-cancel {
+  background-color: #3C3C3C !important;
+  color: #D4D4D4 !important;
+}
+
+.swal2-dark-mode .swal2-deny {
+  background-color: #F14C4C !important;
+  color: #FFFFFF !important;
+}
+
+.swal2-dark-mode .swal2-close {
+  color: #9D9D9D !important;
+}
+
+.swal2-dark-mode .swal2-close:hover {
+  color: #D4D4D4 !important;
+}
+
+.swal2-dark-mode .swal2-input,
+.swal2-dark-mode .swal2-textarea,
+.swal2-dark-mode .swal2-select {
+  background-color: #1E1E1E !important;
+  color: #D4D4D4 !important;
+  border-color: #3C3C3C !important;
+}
+
+.swal2-dark-mode .swal2-validation-message {
+  background-color: #2D2D2D !important;
+  color: #F14C4C !important;
+}

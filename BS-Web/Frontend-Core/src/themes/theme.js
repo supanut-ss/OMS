@@ -63,64 +63,96 @@ export const getTheme = (mode) =>
               800: "#1F2937",
               900: "#111827",
             },
+            custom: {
+              saveButton: "#0B9ED0",
+              closeButton: "#F33838",
+              addButton: "#0B9ED0",
+              accordionHeader: "#B2D5D5",
+              accordionContent: "#fafafa",
+              mainBackground: "#F0F8FF",
+              paperBackground: "hsla(215, 15%, 97%, 0.5)",
+              priority: {
+                urgent: "#d32f2f",
+                high: "#ed6c02",
+                normal: "#0288d1",
+                low: "#9e9e9e",
+              },
+            },
           }
         : {
+            // VS Code Dark Theme Colors
             primary: {
-              main: "#0B9ED0", // Lighter Indigo for dark mode
-              light: "#A5A0FF",
-              dark: "#6366F1",
-              contrastText: "#000000",
+              main: "#007ACC", // VS Code Blue
+              light: "#1da1f2",
+              dark: "#005a9e",
+              contrastText: "#FFFFFF",
             },
             secondary: {
-              main: "#34D399", // Lighter Emerald for dark mode
-              light: "#6EE7B7",
-              dark: "#10B981",
-              contrastText: "#000000",
+              main: "#3C8C3C", // VS Code Green (git added)
+              light: "#4EC94E",
+              dark: "#2D6B2D",
+              contrastText: "#FFFFFF",
             },
             error: {
-              main: "#F87171", // Lighter Red for dark mode
-              light: "#FCA5A5",
-              dark: "#EF4444",
-              contrastText: "#000000",
+              main: "#F14C4C", // VS Code Error Red
+              light: "#F48771",
+              dark: "#D32F2F",
+              contrastText: "#FFFFFF",
             },
             warning: {
-              main: "#FBBF24", // Lighter Amber for dark mode
-              light: "#FCD34D",
-              dark: "#F59E0B",
+              main: "#CCA700", // VS Code Warning Yellow
+              light: "#E8B600",
+              dark: "#B89500",
               contrastText: "#000000",
             },
             info: {
-              main: "#60A5FA", // Lighter Blue for dark mode
-              light: "#93C5FD",
-              dark: "#3B82F6",
-              contrastText: "#000000",
+              main: "#3794FF", // VS Code Info Blue
+              light: "#75BEFF",
+              dark: "#007ACC",
+              contrastText: "#FFFFFF",
             },
             success: {
-              main: "#34D399", // Lighter Green for dark mode
-              light: "#6EE7B7",
-              dark: "#10B981",
+              main: "#89D185", // VS Code Success Green
+              light: "#A8E6A3",
+              dark: "#6ABF69",
               contrastText: "#000000",
             },
             background: {
-              default: "#0F172A", // Dark Slate
-              paper: "#1E293B", // Lighter Dark Slate
+              default: "#1E1E1E", // VS Code Editor Background
+              paper: "#252526", // VS Code Sidebar Background
             },
             text: {
-              primary: "#F1F5F9", // Very Light Gray
-              secondary: "#CBD5E1", // Light Gray
+              primary: "#D4D4D4", // VS Code Default Text
+              secondary: "#9D9D9D", // VS Code Comment Gray
             },
-            divider: "#334155",
+            divider: "#3C3C3C", // VS Code Border
             grey: {
-              50: "#0F172A",
-              100: "#1E293B",
-              200: "#334155",
-              300: "#475569",
-              400: "#64748B",
-              500: "#94A3B8",
-              600: "#CBD5E1",
-              700: "#E2E8F0",
-              800: "#F1F5F9",
-              900: "#F8FAFC",
+              // VS Code Dark Theme Grey Scale (inverted for dark mode)
+              50: "#1E1E1E",   // Darkest - Editor background
+              100: "#252526",  // Sidebar background
+              200: "#2D2D2D",  // Activity bar background
+              300: "#333333",  // Panel background
+              400: "#3C3C3C",  // Border color
+              500: "#6E6E6E",  // Inactive text
+              600: "#9D9D9D",  // Secondary text
+              700: "#CCCCCC",  // Primary text lighter
+              800: "#D4D4D4",  // Primary text
+              900: "#E8E8E8",  // Bright text
+            },
+            custom: {
+              saveButton: "#4FC3F7",
+              closeButton: "#F48771",
+              addButton: "#4FC3F7",
+              accordionHeader: "#2D2D2D",  // VS Code Panel Header
+              accordionContent: "#252526", // VS Code Sidebar
+              mainBackground: "#1E1E1E",   // VS Code Editor
+              paperBackground: "#252526",  // VS Code Sidebar
+              priority: {
+                urgent: "#F14C4C",
+                high: "#CCA700",
+                normal: "#3794FF",
+                low: "#6E6E6E",
+              },
             },
           }),
     },

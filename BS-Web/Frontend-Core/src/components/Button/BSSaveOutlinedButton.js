@@ -1,23 +1,24 @@
 import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 
-const BSSaveOutlinedButton = styled(Button)({
-  borderColor: '#0B9ED0',
-  color: '#0B9ED0',
+const BSSaveOutlinedButton = styled(Button)(({ theme }) => ({
+  borderColor: theme.palette.custom?.saveButton || theme.palette.primary.main,
+  color: theme.palette.custom?.saveButton || theme.palette.primary.main,
   '&:hover': {
-    borderColor: '#0B9ED0',
-    backgroundColor: '#0B9ED0',
-    color: '#FFFFFF',
+    borderColor: theme.palette.custom?.saveButton || theme.palette.primary.main,
+    backgroundColor: theme.palette.custom?.saveButton || theme.palette.primary.main,
+    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
   },
   '&.Mui-focusVisible': {
-    borderColor: '#087FA8',
-    backgroundColor: '#087FA8',
-    color: '#FFFFFF',
+    borderColor: theme.palette.primary.dark,
+    backgroundColor: theme.palette.primary.dark,
+    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
   },
   '&:active': {
-    borderColor: '#066788',
-    backgroundColor: '#066788',
-    color: '#FFFFFF',
+    borderColor: theme.palette.primary.dark,
+    backgroundColor: theme.palette.primary.dark,
+    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
   }
-});
+}));
+
 export default BSSaveOutlinedButton;

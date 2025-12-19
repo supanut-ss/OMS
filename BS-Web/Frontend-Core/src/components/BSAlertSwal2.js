@@ -1,4 +1,26 @@
 import Swal from "sweetalert2";
+
+/**
+ * Helper function to detect dark mode
+ */
+const isDarkMode = () => {
+  // Check localStorage for theme preference
+  const storedTheme = localStorage.getItem("theme-mode");
+  return storedTheme === "dark";
+};
+
+/**
+ * Get customClass based on current theme mode
+ */
+const getCustomClass = (additionalClasses = {}) => {
+  const darkMode = isDarkMode();
+  return {
+    container: darkMode ? "swal2-dark-mode" : "",
+    popup: "swal2-zindex-override",
+    ...additionalClasses,
+  };
+};
+
 /**
  * สามารถส่งค่า options อะไรก็ได้ของ SweetAlert2
  * https://sweetalert2.github.io/#configuration
@@ -14,11 +36,9 @@ const BSAlertSwal2 = {
       position: "center", // ค่า default
       allowOutsideClick: false,
       allowEscapeKey: true,
-      // เพิ่ม customClass เพื่อ z-index สูงกว่า MUI Dialog
-      customClass: {
-        popup: "swal2-zindex-override",
-      },
-      ...options, // spread options เพื่อให้ override ได้
+      // เพิ่ม customClass เพื่อ z-index สูงกว่า MUI Dialog และ dark mode support
+      customClass: getCustomClass(options.customClass),
+      ...options,
     });
   },
 
@@ -43,12 +63,13 @@ const BSAlertSwal2 = {
    * @returns {Promise<boolean>} - true ถ้ากด Confirm, false ถ้ากด Cancel
    */
   confirm: async (message = "", options = {}) => {
+    const darkMode = isDarkMode();
     const result = await BSAlertSwal2.fire({
       icon: "warning",
       text: message,
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: darkMode ? "#F14C4C" : "#d33",
+      cancelButtonColor: darkMode ? "#3C3C3C" : "#3085d6",
       confirmButtonText: options.confirmButtonText || "Yes, delete it!",
       cancelButtonText: options.cancelButtonText || "Cancel",
       reverseButtons: true,
@@ -58,3 +79,4 @@ const BSAlertSwal2 = {
   },
 };
 export default BSAlertSwal2;
+

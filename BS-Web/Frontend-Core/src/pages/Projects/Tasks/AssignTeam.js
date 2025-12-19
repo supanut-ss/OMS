@@ -1,4 +1,4 @@
-import { Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Paper } from "@mui/material";
+import { Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, Paper, useTheme } from "@mui/material";
 import useForm from "../../../hooks/useForm";
 import { renderInput } from "../../../components/FormRenderer";
 import BSDataGrid from "../../../components/BSDataGrid";
@@ -22,6 +22,7 @@ const requiredFields = [
 ];
 const AssignTeam = (props) => {
     const { lang, project_header_id, project_task_id } = props;
+    const theme = useTheme();
     const {
         formData,
         errors,
@@ -81,7 +82,7 @@ const AssignTeam = (props) => {
                 BSAlertSwal2.show(res?.data?.message_code === "0" ? "success" : "warning", res?.data?.message_text ?? "error")
             })
     }
-    return <Paper elevation={3} sx={{ p: 2, backgroundColor: 'hsla(215, 15%, 97%, 0.5)' }}>
+    return <Paper elevation={3} sx={{ p: 2, backgroundColor: theme.palette.custom?.paperBackground || theme.palette.background.paper }}>
         <BSDataGrid
             ref={dataRef}
             bsLocale={lang}

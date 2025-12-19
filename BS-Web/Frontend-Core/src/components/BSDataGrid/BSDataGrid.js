@@ -943,7 +943,7 @@ const DynamicGridToolbar = ({
 
       {/* Default MUI DataGrid Toolbar Components - Icon only */}
       <Box
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "center",
           "& .MuiButton-root": {
@@ -954,10 +954,10 @@ const DynamicGridToolbar = ({
             "& .MuiButton-startIcon": {
               margin: 0,
               fontSize: "1.5rem",
-              color: "rgba(0, 0, 0, 0.54)",
+              color: theme.palette.text.secondary,
             },
           },
-        }}
+        })}
       >
         <GridToolbarColumnsButton />
         <GridToolbarFilterButton />
@@ -972,13 +972,13 @@ const DynamicGridToolbar = ({
             startIcon={<FileDownloadIcon />}
             endIcon={
               <ArrowDropDown
-                sx={{
-                  color: "rgba(0, 0, 0, 0.54) !important",
+                sx={(theme) => ({
+                  color: `${theme.palette.text.secondary} !important`,
                   fontSize: "1.25rem !important",
-                }}
+                })}
               />
             }
-            sx={{
+            sx={(theme) => ({
               minWidth: "auto",
               padding: "4px 8px",
               fontSize: 0,
@@ -986,13 +986,13 @@ const DynamicGridToolbar = ({
               "& .MuiButton-startIcon": {
                 margin: 0,
                 fontSize: "1.5rem",
-                color: "rgba(0, 0, 0, 0.54)",
+                color: theme.palette.text.secondary,
               },
               "& .MuiButton-endIcon": {
                 margin: 0,
                 marginLeft: "-4px",
               },
-            }}
+            })}
           >
             Export
           </Button>
@@ -8553,7 +8553,7 @@ const BSDataGrid = forwardRef(
                         }
                   }
                   // Styling with required field indicator and custom row styles
-                  sx={{
+                  sx={(theme) => ({
                     height:
                       height === "auto"
                         ? "100%" // Use full height of flex container
@@ -8565,12 +8565,12 @@ const BSDataGrid = forwardRef(
                     // Apply custom row styles from bsRowConfig
                     ...customRowStyles,
                     [`& .${gridClasses.cell}`]: {
-                      borderBottom: "1px solid #f0f0f0",
+                      borderBottom: `1px solid ${theme.palette.divider}`,
                       fontSize: "0.875rem",
                     },
                     [`& .${gridClasses.columnHeaders}`]: {
-                      backgroundColor: "#f5f5f5",
-                      borderBottom: "2px solid #e0e0e0",
+                      backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
+                      borderBottom: `2px solid ${theme.palette.divider}`,
                       fontSize: "0.875rem",
                     },
                     // Force header text bold
@@ -8584,40 +8584,41 @@ const BSDataGrid = forwardRef(
                       fontWeight: "bold",
                     },
                     [`& .${gridClasses.row}`]: {
+                      backgroundColor: theme.palette.background.paper,
                       "&:hover": {
-                        backgroundColor: "#f9f9f9",
+                        backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[300] : theme.palette.grey[100],
                       },
-                      // Striped rows styling
+                      // Striped rows styling - even rows get slightly different background
                       "&.even": {
-                        backgroundColor: "#fafafa",
+                        backgroundColor: theme.palette.mode === 'dark' 
+                          ? theme.palette.grey[200] // #334155 - darker shade for stripe effect
+                          : theme.palette.grey[50], // light grey for light mode
                       },
                       // Highlight rows with unsaved changes
                       "&.unsaved-changes": {
-                        backgroundColor: "#fff3cd",
+                        backgroundColor: theme.palette.mode === 'dark' ? '#4a4000' : '#fff3cd',
                         "&:hover": {
-                          backgroundColor: "#ffeaa7",
+                          backgroundColor: theme.palette.mode === 'dark' ? '#5a5000' : '#ffeaa7',
                         },
                       },
                       // Selected row styling - darker background
                       "&.Mui-selected": {
-                        backgroundColor: "#bbdefb !important",
+                        backgroundColor: theme.palette.mode === 'dark' 
+                          ? `${theme.palette.primary.dark} !important`
+                          : '#bbdefb !important',
                         "&:hover": {
-                          backgroundColor: "#90caf9 !important",
+                          backgroundColor: theme.palette.mode === 'dark'
+                            ? `${theme.palette.primary.main} !important`
+                            : '#90caf9 !important',
                         },
                       },
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: "#E0DEDEFF !important",
-                      borderBottom: "1px solid #E0DEDEFF !important",
+                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#E0DEDEFF'} !important`,
+                      borderBottom: `1px solid ${theme.palette.divider} !important`,
                       minHeight: "30px !important",
                       maxHeight: "46px !important",
-                      // "& .MuiDataGrid-columnHeader": {
-                      //   height: "38px",
-                      //   width: "191.125px",
-                      //   borderRadius: "10px",
-                      //   border: "1px solid #cccccc",
-                      // },
                       "& .MuiInputBase-root": {
                         fontSize: "0.875rem !important",
                         minHeight: "30px !important",
@@ -8633,16 +8634,16 @@ const BSDataGrid = forwardRef(
                         height: "30px !important",
                       },
                       "& .MuiOutlinedInput-root": {
-                        backgroundColor: "#fff !important",
+                        backgroundColor: `${theme.palette.background.paper} !important`,
                         height: "30px !important",
                         "& fieldset": {
-                          borderColor: "rgba(0, 0, 0, 0.15) !important",
+                          borderColor: `${theme.palette.divider} !important`,
                         },
                         "&:hover fieldset": {
-                          borderColor: "rgba(25, 118, 210, 0.5) !important",
+                          borderColor: `${theme.palette.primary.light} !important`,
                         },
                         "&.Mui-focused fieldset": {
-                          borderColor: "#1976d2 !important",
+                          borderColor: `${theme.palette.primary.main} !important`,
                           borderWidth: "1px !important",
                         },
                       },
@@ -8671,18 +8672,18 @@ const BSDataGrid = forwardRef(
                     },
                     // Edit mode cell input styling - add subtle border to show it's editable
                     "& .MuiDataGrid-cell--editing": {
-                      backgroundColor: "#fafafa !important",
+                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#fafafa'} !important`,
                       "& .MuiInputBase-root": {
-                        border: "1px solid #ccc",
+                        border: `1px solid ${theme.palette.divider}`,
                         borderRadius: "4px",
-                        backgroundColor: "#fff",
+                        backgroundColor: theme.palette.background.paper,
                         padding: "2px 8px",
                         "&:hover": {
-                          borderColor: "#999",
+                          borderColor: theme.palette.grey[500],
                         },
                         "&.Mui-focused": {
-                          borderColor: "#1976d2",
-                          boxShadow: "0 0 0 2px rgba(25, 118, 210, 0.2)",
+                          borderColor: theme.palette.primary.main,
+                          boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
                         },
                       },
                       "& .MuiInputBase-input": {
@@ -8691,10 +8692,10 @@ const BSDataGrid = forwardRef(
                     },
                     // New row styling
                     "& .MuiDataGrid-row--editing": {
-                      backgroundColor: "#f5f9ff !important",
-                      boxShadow: "inset 0 0 0 1px #1976d2",
+                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#f5f9ff'} !important`,
+                      boxShadow: `inset 0 0 0 1px ${theme.palette.primary.main}`,
                     },
-                  }}
+                  })}
                   {...props}
                 />
               </Box>

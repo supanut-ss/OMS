@@ -1,23 +1,24 @@
 import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 
-const BSCloseOutlinedButton = styled(Button)({
-  borderColor: '#F33838',
-  color: '#F33838',
+const BSCloseOutlinedButton = styled(Button)(({ theme }) => ({
+  borderColor: theme.palette.custom?.closeButton || theme.palette.error.main,
+  color: theme.palette.custom?.closeButton || theme.palette.error.main,
   '&:hover': {
-    borderColor: '#F33838',
-    backgroundColor: '#F33838',
-    color: '#FFFFFF',
+    borderColor: theme.palette.custom?.closeButton || theme.palette.error.main,
+    backgroundColor: theme.palette.custom?.closeButton || theme.palette.error.main,
+    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
   },
   '&.Mui-focusVisible': {
-    borderColor: '#C80000',
-    backgroundColor: '#C80000',
-    color: '#FFFFFF',
+    borderColor: theme.palette.error.dark,
+    backgroundColor: theme.palette.error.dark,
+    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
   },
   '&:active': {
-    borderColor: '#B00000',
-    backgroundColor: '#B00000',
-    color: '#FFFFFF',
+    borderColor: theme.palette.error.dark,
+    backgroundColor: theme.palette.error.dark,
+    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
   }
-});
+}));
+
 export default BSCloseOutlinedButton;
