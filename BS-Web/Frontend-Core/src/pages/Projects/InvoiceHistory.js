@@ -76,7 +76,47 @@ const InvoiceHistory = (props) => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        {/* สรุปผลรวม Total PO Amount*/}
+        
+
+        <BSDataGrid
+          ref={gridRef}
+          bsLocale={locale_id}
+          bsPreObj="tmt"
+          bsObj="t_tmt_project_invoice"
+          bsCols="project_invoice_id,
+          document_type,
+          document_no,
+          document_date,
+          due_date,
+          amount,
+          description,
+          is_incentive_requested,
+          is_cancel"
+          bsObjBy="document_no asc"
+          bsObjWh={bsObjWh}
+          bsComboBox={[
+            {
+              Column: "document_type",
+              Display: "display_member",
+              Value: "value_member",
+              Default:
+                getResource(resourceData, "Select Document Type") ||
+                "--- Select Document Type ---",
+              PreObj: "sec",
+              Obj: "t_com_combobox_item",
+              ObjWh: "is_active='YES' and group_name ='document_type'",
+              ObjBy: "display_sequence asc",
+            },
+          ]}
+          bsShowDescColumn={false}
+          bsDefaultFormValues={defaultFormValues}
+          bsUniqueFields={["document_no"]}
+          bsHiddenColumns={["project_header_id"]}
+          bsKeyId="project_invoice_id"
+          onFilteredDataChange={handleFilteredDataChange}
+        />
+        
+{/* สรุปผลรวม Total PO Amount*/}
         <Box
           sx={{
             display: "flex",
@@ -116,43 +156,6 @@ const InvoiceHistory = (props) => {
           </Box>
         </Box>
 
-        <BSDataGrid
-          ref={gridRef}
-          bsLocale={locale_id}
-          bsPreObj="tmt"
-          bsObj="t_tmt_project_invoice"
-          bsCols="project_invoice_id,
-          document_type,
-          document_no,
-          document_date,
-          due_date,
-          amount,
-          description,
-          is_incentive_requested,
-          is_cancel"
-          bsObjBy="document_no asc"
-          bsObjWh={bsObjWh}
-          bsComboBox={[
-            {
-              Column: "document_type",
-              Display: "display_member",
-              Value: "value_member",
-              Default:
-                getResource(resourceData, "Select Document Type") ||
-                "--- Select Document Type ---",
-              PreObj: "sec",
-              Obj: "t_com_combobox_item",
-              ObjWh: "is_active='YES' and group_name ='document_type'",
-              ObjBy: "display_sequence asc",
-            },
-          ]}
-          bsShowDescColumn={false}
-          bsDefaultFormValues={defaultFormValues}
-          bsUniqueFields={["document_no"]}
-          bsHiddenColumns={["project_header_id"]}
-          bsKeyId="project_invoice_id"
-          onFilteredDataChange={handleFilteredDataChange}
-        />
       </Paper>
     </>
   );
