@@ -83,12 +83,17 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
     const favoriteMenu = (data || [])
       .map(m => (m.submenu || []).filter(x => x.favorite))
       .flat();
-    data = [{
-      text: "Favorite",
-      description: "",
-      path: "/",
-      submenu: favoriteMenu
-    }, ...data]
+    
+    // Only add Favorite section if there are favorite items
+    if (favoriteMenu.length > 0) {
+      data = [{
+        text: "Favorite",
+        description: "",
+        path: "/",
+        submenu: favoriteMenu
+      }, ...data];
+    }
+    
     setFilteredMenu(data);
   };
 
