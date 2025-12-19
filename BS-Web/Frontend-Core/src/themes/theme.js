@@ -236,6 +236,37 @@ export const getTheme = (mode) =>
       "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
     ],
     components: {
+      MuiCssBaseline: {
+        styleOverrides: (themeParam) => ({
+          // Custom scrollbar styling
+          '*': {
+            scrollbarWidth: 'thin',
+            scrollbarColor: themeParam.palette.mode === 'dark' 
+              ? '#6E6E6E #1E1E1E' 
+              : '#c1c1c1 #f1f1f1',
+          },
+          '*::-webkit-scrollbar': {
+            width: '10px',
+            height: '10px',
+          },
+          '*::-webkit-scrollbar-track': {
+            background: themeParam.palette.mode === 'dark' ? '#1E1E1E' : '#f1f1f1',
+          },
+          '*::-webkit-scrollbar-thumb': {
+            background: themeParam.palette.mode === 'dark' ? '#6E6E6E' : '#c1c1c1',
+            borderRadius: '5px',
+            border: themeParam.palette.mode === 'dark' 
+              ? '2px solid #1E1E1E' 
+              : '2px solid #f1f1f1',
+          },
+          '*::-webkit-scrollbar-thumb:hover': {
+            background: themeParam.palette.mode === 'dark' ? '#9D9D9D' : '#a8a8a8',
+          },
+          '*::-webkit-scrollbar-corner': {
+            background: themeParam.palette.mode === 'dark' ? '#1E1E1E' : '#f1f1f1',
+          },
+        }),
+      },
       MuiCard: {
         styleOverrides: {
           root: {
