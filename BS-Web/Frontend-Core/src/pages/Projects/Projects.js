@@ -28,11 +28,12 @@ const Projects = (props) => {
     }
     const onChangeProjectHeaderID = ({
         id,
-        newtab = false
+        newtab = false,
+        path = "projects"
     }) => {
         if (newtab) {
             secureStorage.set("project_header_id", id);
-            window.open(`${Config.BASE_URL ?? ""}/projects`, '_blank', 'noopener,noreferrer');
+            window.open(`${Config.BASE_URL ?? ""}/${path}`, '_blank', 'noopener,noreferrer');
             return;
         } else {
             setProjectHeaderID(id);

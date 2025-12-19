@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import BSDataGrid from "../../components/BSDataGrid";
-import TaskDialog from "./TaskDialog/TaskDialog";  // ← import Dialog
+import TaskDialog from "./TaskDialog";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import FlagIcon from "@mui/icons-material/Flag";
 const getPriorityColor = (priority) => {
