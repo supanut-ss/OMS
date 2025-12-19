@@ -80,79 +80,126 @@ export const getTheme = (mode) =>
             },
           }
         : {
-            // VS Code Dark Theme Colors
+            // =========================================
+            // Modern Glassmorphism Dark Theme
+            // =========================================
+            
+            // Primary Accent - Cyan Blue (main interactive elements)
             primary: {
-              main: "#007ACC", // VS Code Blue
-              light: "#1da1f2",
-              dark: "#005a9e",
-              contrastText: "#FFFFFF",
+              main: "#00D4FF",     // Vibrant Cyan
+              light: "#5CE1FF",
+              dark: "#00A8CC",
+              contrastText: "#000000",
             },
+            
+            // Secondary Accent - Purple (complementary)
             secondary: {
-              main: "#3C8C3C", // VS Code Green (git added)
-              light: "#4EC94E",
-              dark: "#2D6B2D",
+              main: "#A855F7",     // Electric Purple
+              light: "#C084FC",
+              dark: "#7C3AED",
               contrastText: "#FFFFFF",
             },
+            
+            // Status Colors - Vibrant but not harsh
             error: {
-              main: "#F14C4C", // VS Code Error Red
-              light: "#F48771",
-              dark: "#D32F2F",
+              main: "#FF6B6B",     // Soft Coral Red
+              light: "#FF8E8E",
+              dark: "#FF4757",
               contrastText: "#FFFFFF",
             },
             warning: {
-              main: "#CCA700", // VS Code Warning Yellow
-              light: "#E8B600",
-              dark: "#B89500",
+              main: "#FFD93D",     // Golden Yellow
+              light: "#FFE566",
+              dark: "#F0C000",
               contrastText: "#000000",
             },
             info: {
-              main: "#3794FF", // VS Code Info Blue
-              light: "#75BEFF",
-              dark: "#007ACC",
-              contrastText: "#FFFFFF",
-            },
-            success: {
-              main: "#89D185", // VS Code Success Green
-              light: "#A8E6A3",
-              dark: "#6ABF69",
+              main: "#4ECDC4",     // Teal Cyan
+              light: "#7DD9D2",
+              dark: "#3DBDB5",
               contrastText: "#000000",
             },
+            success: {
+              main: "#6BCB77",     // Fresh Green
+              light: "#8DD896",
+              dark: "#4CAF50",
+              contrastText: "#000000",
+            },
+            
+            // Background - Deep dark for glass effect contrast
             background: {
-              default: "#1E1E1E", // VS Code Editor Background
-              paper: "#252526", // VS Code Sidebar Background
+              default: "#0D0D0F",  // Near Black
+              paper: "rgba(20, 20, 25, 0.98)",  // Glass Card
             },
+            
+            // Text - High contrast for accessibility
             text: {
-              primary: "#D4D4D4", // VS Code Default Text
-              secondary: "#9D9D9D", // VS Code Comment Gray
+              primary: "#FFFFFF",    // Pure White
+              secondary: "#A0A0A0",  // Soft Gray
             },
-            divider: "#3C3C3C", // VS Code Border
+            
+            // Divider - Subtle glass edge
+            divider: "rgba(255, 255, 255, 0.08)",
+            
+            // Grey Scale - Glassmorphism optimized
             grey: {
-              // VS Code Dark Theme Grey Scale (inverted for dark mode)
-              50: "#1E1E1E",   // Darkest - Editor background
-              100: "#252526",  // Sidebar background
-              200: "#2D2D2D",  // Activity bar background
-              300: "#333333",  // Panel background
-              400: "#3C3C3C",  // Border color
-              500: "#6E6E6E",  // Inactive text
-              600: "#9D9D9D",  // Secondary text
-              700: "#CCCCCC",  // Primary text lighter
-              800: "#D4D4D4",  // Primary text
-              900: "#E8E8E8",  // Bright text
+              50:  "#0D0D0F",   // Deepest
+              100: "#141418",   // Dark surface
+              200: "#1A1A20",   // Elevated surface 
+              300: "#22222A",   // Card background
+              400: "#2A2A35",   // Border subtle
+              500: "#3A3A45",   // Muted elements
+              600: "#6A6A75",   // Disabled text
+              700: "#9A9AA5",   // Secondary text
+              800: "#CACAD0",   // Primary text light
+              900: "#FAFAFA",   // Bright white
             },
+            
+            // Custom Glassmorphism Properties
             custom: {
-              saveButton: "#4FC3F7",
-              closeButton: "#F48771",
-              addButton: "#4FC3F7",
-              accordionHeader: "#2D2D2D",  // VS Code Panel Header
-              accordionContent: "#252526", // VS Code Sidebar
-              mainBackground: "#1E1E1E",   // VS Code Editor
-              paperBackground: "#252526",  // VS Code Sidebar
-              priority: {
-                urgent: "#F14C4C",
-                high: "#CCA700",
-                normal: "#3794FF",
-                low: "#6E6E6E",
+              // Button Colors
+              saveButton: "#00D4FF",
+              closeButton: "#FF6B6B",
+              addButton: "#6BCB77",
+              
+              // Glass Card Styling (less transparent for readability)
+              glass: {
+                background: "rgba(20, 20, 25, 0.96)",
+                backgroundHover: "rgba(30, 30, 38, 0.95)",
+                border: "rgba(255, 255, 255, 0.08)",
+                borderHover: "rgba(255, 255, 255, 0.15)",
+                blur: "blur(12px)",
+                shadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
               },
+              
+              // Accordion Glass (more opaque)
+              accordionHeader: "rgba(30, 30, 38, 0.95)",
+              accordionContent: "rgba(22, 22, 28, 0.98)",
+              
+              // Main Backgrounds
+              mainBackground: "#0D0D0F",
+              paperBackground: "rgba(20, 20, 25, 0.92)",
+              
+              // Glow Effects
+              glow: {
+                primary: "0 0 20px rgba(0, 212, 255, 0.3)",
+                secondary: "0 0 20px rgba(168, 85, 247, 0.3)",
+                success: "0 0 20px rgba(107, 203, 119, 0.3)",
+                error: "0 0 20px rgba(255, 107, 107, 0.3)",
+              },
+              
+              // Priority with glow-friendly colors
+              priority: {
+                urgent: "#FF6B6B",
+                high: "#FFD93D",
+                normal: "#00D4FF",
+                low: "#6A6A75",
+              },
+              
+              // Section Colors with transparency
+              sectionOpen: "rgba(0, 212, 255, 0.12)",
+              sectionInProcess: "rgba(255, 217, 61, 0.12)",
+              sectionClose: "rgba(107, 203, 119, 0.12)",
             },
           }),
     },
@@ -238,32 +285,32 @@ export const getTheme = (mode) =>
     components: {
       MuiCssBaseline: {
         styleOverrides: (themeParam) => ({
-          // Custom scrollbar styling
+          // Custom scrollbar styling - Glassmorphism
           '*': {
             scrollbarWidth: 'thin',
             scrollbarColor: themeParam.palette.mode === 'dark' 
-              ? '#6E6E6E #1E1E1E' 
+              ? '#3A3A45 #0D0D0F' 
               : '#c1c1c1 #f1f1f1',
           },
           '*::-webkit-scrollbar': {
-            width: '10px',
-            height: '10px',
+            width: '8px',
+            height: '8px',
           },
           '*::-webkit-scrollbar-track': {
-            background: themeParam.palette.mode === 'dark' ? '#1E1E1E' : '#f1f1f1',
+            background: themeParam.palette.mode === 'dark' ? '#0D0D0F' : '#f1f1f1',
           },
           '*::-webkit-scrollbar-thumb': {
-            background: themeParam.palette.mode === 'dark' ? '#6E6E6E' : '#c1c1c1',
-            borderRadius: '5px',
+            background: themeParam.palette.mode === 'dark' ? '#3A3A45' : '#c1c1c1',
+            borderRadius: '4px',
             border: themeParam.palette.mode === 'dark' 
-              ? '2px solid #1E1E1E' 
+              ? '2px solid #0D0D0F' 
               : '2px solid #f1f1f1',
           },
           '*::-webkit-scrollbar-thumb:hover': {
-            background: themeParam.palette.mode === 'dark' ? '#9D9D9D' : '#a8a8a8',
+            background: themeParam.palette.mode === 'dark' ? '#6A6A75' : '#a8a8a8',
           },
           '*::-webkit-scrollbar-corner': {
-            background: themeParam.palette.mode === 'dark' ? '#1E1E1E' : '#f1f1f1',
+            background: themeParam.palette.mode === 'dark' ? '#0D0D0F' : '#f1f1f1',
           },
         }),
       },

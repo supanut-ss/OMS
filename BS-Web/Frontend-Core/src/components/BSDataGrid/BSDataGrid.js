@@ -8572,7 +8572,6 @@ const BSDataGrid = forwardRef(
                     },
                     [`& .${gridClasses.columnHeaders}`]: {
                       backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
-                      borderBottom: `2px solid ${theme.palette.divider}`,
                       fontSize: "0.875rem",
                     },
                     // Force header text bold
@@ -8588,29 +8587,36 @@ const BSDataGrid = forwardRef(
                     [`& .${gridClasses.row}`]: {
                       backgroundColor: theme.palette.background.paper,
                       "&:hover": {
-                        backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[300] : theme.palette.grey[100],
+                        backgroundColor: theme.palette.mode === 'dark' 
+                          ? theme.palette.grey[400] // Subtle hover
+                          : theme.palette.grey[100],
                       },
                       // Striped rows styling - even rows get slightly different background
                       "&.even": {
                         backgroundColor: theme.palette.mode === 'dark' 
-                          ? theme.palette.grey[200] // #334155 - darker shade for stripe effect
-                          : theme.palette.grey[50], // light grey for light mode
+                          ? theme.palette.grey[300] // Elevated surface for stripe
+                          : theme.palette.grey[50],
+                        "&:hover": {
+                          backgroundColor: theme.palette.mode === 'dark' 
+                            ? theme.palette.grey[400] 
+                            : theme.palette.grey[100],
+                        },
                       },
                       // Highlight rows with unsaved changes
                       "&.unsaved-changes": {
-                        backgroundColor: theme.palette.mode === 'dark' ? '#4a4000' : '#fff3cd',
+                        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 217, 61, 0.15)' : '#fff3cd',
                         "&:hover": {
-                          backgroundColor: theme.palette.mode === 'dark' ? '#5a5000' : '#ffeaa7',
+                          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 217, 61, 0.25)' : '#ffeaa7',
                         },
                       },
-                      // Selected row styling - darker background
+                      // Selected row styling - primary glow
                       "&.Mui-selected": {
                         backgroundColor: theme.palette.mode === 'dark' 
-                          ? `${theme.palette.primary.dark} !important`
+                          ? 'rgba(0, 212, 255, 0.2) !important'
                           : '#bbdefb !important',
                         "&:hover": {
                           backgroundColor: theme.palette.mode === 'dark'
-                            ? `${theme.palette.primary.main} !important`
+                            ? 'rgba(0, 212, 255, 0.3) !important'
                             : '#90caf9 !important',
                         },
                       },

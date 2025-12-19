@@ -339,25 +339,32 @@ const TaskStatusSection = ({
   );
 };
 
-// ============ Section Configurations with Theme Support ============
+// ============ Section Configurations with Glassmorphism ============
 const getSectionConfigs = (theme) => {
   const isDark = theme.palette.mode === 'dark';
+  const glass = theme.palette.custom?.glass;
   
   return [
     {
       status: TASK_STATUS.OPEN,
-      icon: <AssignmentIcon sx={{ color: isDark ? "#64B5F6" : "#1976d2" }} />,
-      color: isDark ? "#1a3a5c" : "#e3f2fd",
+      icon: <AssignmentIcon sx={{ color: isDark ? "#00D4FF" : "#1976d2" }} />,
+      color: isDark 
+        ? theme.palette.custom?.sectionOpen || "rgba(0, 212, 255, 0.12)" 
+        : "#e3f2fd",
     },
     {
       status: TASK_STATUS.IN_PROCESS,
-      icon: <AssignmentLateIcon sx={{ color: isDark ? "#FFB74D" : "#ed6c02" }} />,
-      color: isDark ? "#5c3a1a" : "#FFD8B3FF",
+      icon: <AssignmentLateIcon sx={{ color: isDark ? "#FFD93D" : "#ed6c02" }} />,
+      color: isDark 
+        ? theme.palette.custom?.sectionInProcess || "rgba(255, 217, 61, 0.12)" 
+        : "#FFD8B3FF",
     },
     {
       status: TASK_STATUS.CLOSE,
-      icon: <AssignmentTurnedInIcon sx={{ color: isDark ? "#81C784" : "#2e7d32" }} />,
-      color: isDark ? "#1a3d28" : "#D5F5E1FF",
+      icon: <AssignmentTurnedInIcon sx={{ color: isDark ? "#6BCB77" : "#2e7d32" }} />,
+      color: isDark 
+        ? theme.palette.custom?.sectionClose || "rgba(107, 203, 119, 0.12)" 
+        : "#D5F5E1FF",
     },
   ];
 };
@@ -403,15 +410,44 @@ const MyTaskPage = (props) => {
 
   return (
     <Paper
-      elevation={3}
-      sx={{ 
+      elevation={0}
+      sx={(t) => ({ 
         p: 3, 
-        backgroundColor: theme.palette.mode === 'dark' 
-          ? '#0d0d0e' 
-          : theme.palette.custom?.paperBackground || theme.palette.background.paper 
-      }}
+        // Glassmorphism background
+        backgroundColor: t.palette.mode === 'dark' 
+          ? t.palette.custom?.glass?.background || 'rgba(20, 20, 25, 0.6)' 
+          : t.palette.custom?.paperBackground || t.palette.background.paper,
+        // Backdrop blur for glass effect
+        backdropFilter: t.palette.mode === 'dark' ? 'blur(20px)' : 'none',
+        // Subtle glass border
+        border: t.palette.mode === 'dark' 
+          ? `1px solid ${t.palette.custom?.glass?.border || 'rgba(255, 255, 255, 0.08)'}` 
+          : 'none',
+        // Rounded corners
+        borderRadius: 3,
+        // Glass shadow
+        boxShadow: t.palette.mode === 'dark' 
+          ? t.palette.custom?.glass?.shadow || '0 8px 32px rgba(0, 0, 0, 0.4)'
+          : undefined,
+        // Smooth transition
+        transition: 'all 0.3s ease',
+      })}
     >
-      <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
+      <Typography 
+        variant="h5" 
+        fontWeight="bold" 
+        gutterBottom 
+        sx={(t) => ({ 
+          mb: 3,
+          // Gradient text in dark mode
+          background: t.palette.mode === 'dark' 
+            ? 'linear-gradient(135deg, #00D4FF 0%, #A855F7 100%)' 
+            : 'inherit',
+          backgroundClip: t.palette.mode === 'dark' ? 'text' : 'unset',
+          WebkitBackgroundClip: t.palette.mode === 'dark' ? 'text' : 'unset',
+          color: t.palette.mode === 'dark' ? 'transparent' : 'inherit',
+        })}
+      >
         My Tasks
       </Typography>
 
