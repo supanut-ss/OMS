@@ -774,11 +774,11 @@ export default function MainLayout({ lang, onChangeLang }) {
                   border: "unset",
                 }}
               >
-                {/* <img
-                  src={logoMiniSvg}
-                  alt="Timesheet Logo"
+                <img
+                  src={`${process.env.PUBLIC_URL}/images/logo.svg`}
+                  alt="App Logo"
                   style={{ width: 32, height: 32 }}
-                /> */}
+                />
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: 600, color: "text.primary" }}
