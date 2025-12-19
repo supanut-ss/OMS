@@ -83,12 +83,16 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
     const favoriteMenu = (data || [])
       .map(m => (m.submenu || []).filter(x => x.favorite))
       .flat();
+    
+    // Always include Favorite section at index 0 (use hidden flag to control visibility)
     data = [{
       text: "Favorite",
       description: "",
       path: "/",
-      submenu: favoriteMenu
-    }, ...data]
+      submenu: favoriteMenu,
+      hidden: favoriteMenu.length === 0  // Hide when no favorites
+    }, ...data];
+    
     setFilteredMenu(data);
   };
 
@@ -132,7 +136,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
     const key = `${index}-${menu.path}`;
     const hasSubmenu = menu?.submenu?.length > 0;
     return (
-      <div key={key}>
+      <div key={key} style={{ display: menu.hidden ? 'none' : 'block' }}>
         <Tooltip title={menu.description ?? ""} placement="right" arrow>
           <ListItemButton
             onClick={() => {
@@ -221,7 +225,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         onSubmit={(e) => e.preventDefault()}
       >
         <InputBase
-          sx={{ ml: 1, flex: 1 }}
+          sx={{ ml: 4, flex: 1 }}
           placeholder={open ? "Search" : ""}
           inputProps={{ "aria-label": "search" }}
           value={search}

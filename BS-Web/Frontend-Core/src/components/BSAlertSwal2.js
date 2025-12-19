@@ -1,4 +1,73 @@
 import Swal from "sweetalert2";
+import secureStorage from "../utils/SecureStorage";
+
+/**
+ * Inject CSS for scrollable SweetAlert2 content
+ */
+const injectScrollableStyles = () => {
+  const styleId = "bsalert-swal2-scrollable-styles";
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      .swal2-scrollable-content .swal2-html-container {
+        max-height: 60vh !important;
+        overflow-y: auto !important;
+        text-align: left !important;
+        padding: 0 1em !important;
+      }
+      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar {
+        width: 8px;
+      }
+      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      .swal2-dark-mode .swal2-html-container::-webkit-scrollbar-track {
+        background: #2d2d2d;
+      }
+      .swal2-dark-mode .swal2-html-container::-webkit-scrollbar-thumb {
+        background: #666;
+      }
+      .swal2-dark-mode .swal2-html-container::-webkit-scrollbar-thumb:hover {
+        background: #888;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+};
+
+// Inject styles on module load
+injectScrollableStyles();
+
+/**
+ * Helper function to detect dark mode
+ */
+const isDarkMode = () => {
+  // Check secureStorage for theme preference
+  const storedTheme = secureStorage.get("theme-mode");
+  return storedTheme === "dark";
+};
+
+/**
+ * Get customClass based on current theme mode
+ */
+const getCustomClass = (additionalClasses = {}) => {
+  const darkMode = isDarkMode();
+  return {
+    container: darkMode ? "swal2-dark-mode" : "",
+    popup: `swal2-zindex-override swal2-scrollable-content${darkMode ? " swal2-dark-mode" : ""}`,
+    ...additionalClasses,
+  };
+};
+
 /**
  * สามารถส่งค่า options อะไรก็ได้ของ SweetAlert2
  * https://sweetalert2.github.io/#configuration
@@ -14,11 +83,9 @@ const BSAlertSwal2 = {
       position: "center", // ค่า default
       allowOutsideClick: false,
       allowEscapeKey: true,
-      // เพิ่ม customClass เพื่อ z-index สูงกว่า MUI Dialog
-      customClass: {
-        popup: "swal2-zindex-override",
-      },
-      ...options, // spread options เพื่อให้ override ได้
+      // เพิ่ม customClass เพื่อ z-index สูงกว่า MUI Dialog และ dark mode support
+      customClass: getCustomClass(options.customClass),
+      ...options,
     });
   },
 
@@ -43,12 +110,13 @@ const BSAlertSwal2 = {
    * @returns {Promise<boolean>} - true ถ้ากด Confirm, false ถ้ากด Cancel
    */
   confirm: async (message = "", options = {}) => {
+    const darkMode = isDarkMode();
     const result = await BSAlertSwal2.fire({
       icon: "warning",
       text: message,
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: darkMode ? "#F14C4C" : "#d33",
+      cancelButtonColor: darkMode ? "#3C3C3C" : "#3085d6",
       confirmButtonText: options.confirmButtonText || "Yes, delete it!",
       cancelButtonText: options.cancelButtonText || "Cancel",
       reverseButtons: true,
@@ -58,3 +126,4 @@ const BSAlertSwal2 = {
   },
 };
 export default BSAlertSwal2;
+

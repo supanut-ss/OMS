@@ -63,64 +63,143 @@ export const getTheme = (mode) =>
               800: "#1F2937",
               900: "#111827",
             },
+            custom: {
+              saveButton: "#0B9ED0",
+              closeButton: "#F33838",
+              addButton: "#0B9ED0",
+              accordionHeader: "#B2D5D5",
+              accordionContent: "#fafafa",
+              mainBackground: "#F0F8FF",
+              paperBackground: "hsla(215, 15%, 97%, 0.5)",
+              priority: {
+                urgent: "#d32f2f",
+                high: "#ed6c02",
+                normal: "#0288d1",
+                low: "#9e9e9e",
+              },
+            },
           }
         : {
+            // =========================================
+            // Modern Glassmorphism Dark Theme
+            // =========================================
+            
+            // Primary Accent - Cyan Blue (main interactive elements)
             primary: {
-              main: "#0B9ED0", // Lighter Indigo for dark mode
-              light: "#A5A0FF",
-              dark: "#6366F1",
+              main: "#00D4FF",     // Vibrant Cyan
+              light: "#5CE1FF",
+              dark: "#00A8CC",
               contrastText: "#000000",
             },
+            
+            // Secondary Accent - Purple (complementary)
             secondary: {
-              main: "#34D399", // Lighter Emerald for dark mode
-              light: "#6EE7B7",
-              dark: "#10B981",
-              contrastText: "#000000",
+              main: "#A855F7",     // Electric Purple
+              light: "#C084FC",
+              dark: "#7C3AED",
+              contrastText: "#FFFFFF",
             },
+            
+            // Status Colors - Vibrant but not harsh
             error: {
-              main: "#F87171", // Lighter Red for dark mode
-              light: "#FCA5A5",
-              dark: "#EF4444",
-              contrastText: "#000000",
+              main: "#FF6B6B",     // Soft Coral Red
+              light: "#FF8E8E",
+              dark: "#FF4757",
+              contrastText: "#FFFFFF",
             },
             warning: {
-              main: "#FBBF24", // Lighter Amber for dark mode
-              light: "#FCD34D",
-              dark: "#F59E0B",
+              main: "#FFD93D",     // Golden Yellow
+              light: "#FFE566",
+              dark: "#F0C000",
               contrastText: "#000000",
             },
             info: {
-              main: "#60A5FA", // Lighter Blue for dark mode
-              light: "#93C5FD",
-              dark: "#3B82F6",
+              main: "#4ECDC4",     // Teal Cyan
+              light: "#7DD9D2",
+              dark: "#3DBDB5",
               contrastText: "#000000",
             },
             success: {
-              main: "#34D399", // Lighter Green for dark mode
-              light: "#6EE7B7",
-              dark: "#10B981",
+              main: "#6BCB77",     // Fresh Green
+              light: "#8DD896",
+              dark: "#4CAF50",
               contrastText: "#000000",
             },
+            
+            // Background - Deep dark for glass effect contrast
             background: {
-              default: "#0F172A", // Dark Slate
-              paper: "#1E293B", // Lighter Dark Slate
+              default: "#0D0D0F",  // Near Black
+              paper: "rgba(20, 20, 25, 0.98)",  // Glass Card
             },
+            
+            // Text - High contrast for accessibility
             text: {
-              primary: "#F1F5F9", // Very Light Gray
-              secondary: "#CBD5E1", // Light Gray
+              primary: "#FFFFFF",    // Pure White
+              secondary: "#A0A0A0",  // Soft Gray
             },
-            divider: "#334155",
+            
+            // Divider - Subtle glass edge
+            divider: "rgba(255, 255, 255, 0.08)",
+            
+            // Grey Scale - Glassmorphism optimized
             grey: {
-              50: "#0F172A",
-              100: "#1E293B",
-              200: "#334155",
-              300: "#475569",
-              400: "#64748B",
-              500: "#94A3B8",
-              600: "#CBD5E1",
-              700: "#E2E8F0",
-              800: "#F1F5F9",
-              900: "#F8FAFC",
+              50:  "#0D0D0F",   // Deepest
+              100: "#141418",   // Dark surface
+              200: "#1A1A20",   // Elevated surface 
+              300: "#22222A",   // Card background
+              400: "#2A2A35",   // Border subtle
+              500: "#3A3A45",   // Muted elements
+              600: "#6A6A75",   // Disabled text
+              700: "#9A9AA5",   // Secondary text
+              800: "#CACAD0",   // Primary text light
+              900: "#FAFAFA",   // Bright white
+            },
+            
+            // Custom Glassmorphism Properties
+            custom: {
+              // Button Colors
+              saveButton: "#00D4FF",
+              closeButton: "#FF6B6B",
+              addButton: "#6BCB77",
+              
+              // Glass Card Styling (less transparent for readability)
+              glass: {
+                background: "rgba(20, 20, 25, 0.96)",
+                backgroundHover: "rgba(30, 30, 38, 0.95)",
+                border: "rgba(255, 255, 255, 0.08)",
+                borderHover: "rgba(255, 255, 255, 0.15)",
+                blur: "blur(12px)",
+                shadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
+              },
+              
+              // Accordion Glass (more opaque)
+              accordionHeader: "rgba(30, 30, 38, 0.95)",
+              accordionContent: "rgba(22, 22, 28, 0.98)",
+              
+              // Main Backgrounds
+              mainBackground: "#0D0D0F",
+              paperBackground: "rgba(20, 20, 25, 0.92)",
+              
+              // Glow Effects
+              glow: {
+                primary: "0 0 20px rgba(0, 212, 255, 0.3)",
+                secondary: "0 0 20px rgba(168, 85, 247, 0.3)",
+                success: "0 0 20px rgba(107, 203, 119, 0.3)",
+                error: "0 0 20px rgba(255, 107, 107, 0.3)",
+              },
+              
+              // Priority with glow-friendly colors
+              priority: {
+                urgent: "#d32f2f",
+                high: "#ed6c02",
+                normal: "#0288d1",
+                low: "#9e9e9e",
+              },
+              
+              // Section Colors with transparency
+              sectionOpen: "rgba(0, 212, 255, 0.12)",
+              sectionInProcess: "rgba(255, 217, 61, 0.12)",
+              sectionClose: "rgba(107, 203, 119, 0.12)",
             },
           }),
     },
@@ -204,6 +283,37 @@ export const getTheme = (mode) =>
       "0px 25px 50px -12px rgba(0, 0, 0, 0.25)",
     ],
     components: {
+      MuiCssBaseline: {
+        styleOverrides: (themeParam) => ({
+          // Custom scrollbar styling - Glassmorphism
+          '*': {
+            scrollbarWidth: 'thin',
+            scrollbarColor: themeParam.palette.mode === 'dark' 
+              ? '#3A3A45 #0D0D0F' 
+              : '#c1c1c1 #f1f1f1',
+          },
+          '*::-webkit-scrollbar': {
+            width: '8px',
+            height: '8px',
+          },
+          '*::-webkit-scrollbar-track': {
+            background: themeParam.palette.mode === 'dark' ? '#0D0D0F' : '#f1f1f1',
+          },
+          '*::-webkit-scrollbar-thumb': {
+            background: themeParam.palette.mode === 'dark' ? '#3A3A45' : '#c1c1c1',
+            borderRadius: '4px',
+            border: themeParam.palette.mode === 'dark' 
+              ? '2px solid #0D0D0F' 
+              : '2px solid #f1f1f1',
+          },
+          '*::-webkit-scrollbar-thumb:hover': {
+            background: themeParam.palette.mode === 'dark' ? '#6A6A75' : '#a8a8a8',
+          },
+          '*::-webkit-scrollbar-corner': {
+            background: themeParam.palette.mode === 'dark' ? '#0D0D0F' : '#f1f1f1',
+          },
+        }),
+      },
       MuiCard: {
         styleOverrides: {
           root: {

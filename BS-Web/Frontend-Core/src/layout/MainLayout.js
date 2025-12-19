@@ -35,8 +35,8 @@ import {
 import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
-  //  Brightness4 as Brightness4Icon,
-  // Brightness7 as Brightness7Icon,
+  Brightness4 as Brightness4Icon,
+  Brightness7 as Brightness7Icon,
   Notifications as NotificationsIcon,
   // Settings as SettingsIcon,
   Logout as LogoutIcon,
@@ -46,7 +46,7 @@ import {
 } from "@mui/icons-material";
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-//import { useColorMode } from "../themes/ThemeContext";
+import { useColorMode } from "../themes/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
 import { styled } from "@mui/material/styles";
@@ -114,7 +114,7 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
 
 export default function MainLayout({ lang, onChangeLang }) {
   const theme = useTheme();
-  //const { toggleColorMode, mode } = useColorMode();
+  const { toggleColorMode, mode } = useColorMode();
   const { logout } = useAuth();
   const location = useLocation();
 
@@ -521,7 +521,7 @@ export default function MainLayout({ lang, onChangeLang }) {
               changeLanguage={(s) => onChangeLang(s)}
             />
             {/* Theme toggle */}
-            {/* <Tooltip title="เปลี่ยนธีม">
+            <Tooltip title={lang === "th" ? "เปลี่ยนธีม" : "Toggle theme"}>
               <IconButton
                 color="inherit"
                 onClick={toggleColorMode}
@@ -530,7 +530,7 @@ export default function MainLayout({ lang, onChangeLang }) {
               >
                 {mode === "dark" ? <Brightness7Icon /> : <Brightness4Icon />}
               </IconButton>
-            </Tooltip> */}
+            </Tooltip>
 
             {/* Notifications */}
             {/* <Tooltip title="การแจ้งเตือน">
@@ -774,11 +774,11 @@ export default function MainLayout({ lang, onChangeLang }) {
                   border: "unset",
                 }}
               >
-                {/* <img
-                  src={logoMiniSvg}
-                  alt="Timesheet Logo"
+                <img
+                  src={`${process.env.PUBLIC_URL}/images/logo.svg`}
+                  alt="App Logo"
                   style={{ width: 32, height: 32 }}
-                /> */}
+                />
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: 600, color: "text.primary" }}
@@ -828,7 +828,7 @@ export default function MainLayout({ lang, onChangeLang }) {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-          bgcolor: "aliceblue",
+          bgcolor: theme.palette.custom?.mainBackground || "background.default",
           height: `calc(100vh - ${theme.spacing(8)})`,
           position: "relative",
           overflow: "auto",

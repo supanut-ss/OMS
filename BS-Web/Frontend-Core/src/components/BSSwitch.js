@@ -122,7 +122,7 @@ const BSSwitchField = ({
           px: 0.5,
           fontSize: "0.75rem",
           color: disabled ? "text.disabled" : "text.secondary",
-          backgroundColor: "background.paper",
+          backgroundColor: "transparent",
           lineHeight: 1,
         }}
       >
