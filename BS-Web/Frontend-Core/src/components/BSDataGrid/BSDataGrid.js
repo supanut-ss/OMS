@@ -1158,6 +1158,97 @@ const ComboBoxField = ({
 };
 
 /**
+ * BulkAddComboBoxField Component for Bulk Add Dialog
+ * Simplified version of ComboBoxField for bulk add forms
+ */
+const BulkAddComboBoxField = ({ columnName, config, value, onChange, required }) => {
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { getComboBoxData } = useDynamicCrud(config.Obj || "dummy");
+
+  const formatColumnName = (name) => {
+    return name
+      .replace(/[_-]/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!config.Obj) return;
+
+      setLoading(true);
+      try {
+        const comboConfig = {
+          tableName: config.Obj,
+          schemaName: config.PreObj
+            ? getSchemaFromPreObj(config.PreObj)
+            : "tmt",
+          valueField: config.Value,
+          displayField: config.Display,
+          customWhere: config.ObjWh || null,
+          customOrderBy: config.ObjBy || null,
+          groupBy: config.ObjGrp || null,
+        };
+
+        const result = await getComboBoxData(comboConfig);
+        setOptions(result || []);
+      } catch (error) {
+        Logger.error("❌ Failed to load combobox options for bulk add:", error);
+        setOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    config.Obj,
+    config.PreObj,
+    config.Value,
+    config.Display,
+    config.ObjWh,
+    config.ObjBy,
+    config.ObjGrp,
+  ]);
+
+  return (
+    <FormControl fullWidth size="small" required={required}>
+      <InputLabel>
+        {formatColumnName(columnName)}
+        {required && (
+          <span style={{ color: "#d32f2f" }}> *</span>
+        )}
+      </InputLabel>
+      <Select
+        value={value || ""}
+        label={formatColumnName(columnName)}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={loading}
+      >
+        {config.Default && (
+          <MenuItem value="">
+            <em>{config.Default}</em>
+          </MenuItem>
+        )}
+        {options.map((option) => {
+          const valueData = option.data || option;
+          const displayData = option.data || option;
+          const itemValue = valueData[config.Value] || option.value;
+          const itemDisplay = displayData[config.Display] || option.display;
+
+          return (
+            <MenuItem key={itemValue} value={itemValue}>
+              {itemDisplay}
+            </MenuItem>
+          );
+        })}
+      </Select>
+    </FormControl>
+  );
+};
+
+/**
  * BSDataGrid - DataGrid ที่สร้างจาก metadata ของตารางอัตโนมัติ พร้อมรองรับ properties ครบครัน
  *
  * การใช้งานพื้นฐาน:
@@ -2048,6 +2139,7 @@ const BSDataGrid = forwardRef(
       createRecord,
       updateRecord,
       executeEnhancedStoredProcedure,
+      getComboBoxData,
     } = useDynamicCrud(effectiveTableName);
 
     // Enhanced SP metadata override
@@ -2125,6 +2217,73 @@ const BSDataGrid = forwardRef(
 
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
+
+    // ComboBox Lookup Data state - stores fetched data from combobox configs for display in grid
+    const [comboBoxLookupData, setComboBoxLookupData] = useState({});
+    // ComboBox Value Options state - stores dropdown options for inline editing
+    const [comboBoxValueOptions, setComboBoxValueOptions] = useState({});
+
+    // Load ComboBox lookup data for grid display and editing
+    useEffect(() => {
+      const loadComboBoxLookupData = async () => {
+        if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) return;
+
+        const lookupData = {};
+        const valueOptionsData = {};
+
+        for (const [columnName, config] of Object.entries(comboBoxConfig)) {
+          try {
+            const comboConfig = {
+              tableName: config.Obj,
+              schemaName: config.PreObj
+                ? getSchemaFromPreObj(config.PreObj)
+                : "tmt",
+              valueField: config.Value,
+              displayField: config.Display,
+              customWhere: config.ObjWh || null,
+              customOrderBy: config.ObjBy || null,
+              groupBy: config.ObjGrp || null,
+            };
+
+            const result = await getComboBoxData(comboConfig);
+            if (result && Array.isArray(result)) {
+              // Create a lookup map: value -> display
+              const lookupMap = {};
+              // Create valueOptions array for dropdown editing
+              const options = [];
+              
+              result.forEach((item) => {
+                const valueData = item.value !== undefined ? item : item.data || item;
+                const displayData = item.data || item;
+                const itemValue = valueData[config.Value] || item.value;
+                const itemDisplay = displayData[config.Display] || item.display;
+                if (itemValue !== undefined) {
+                  lookupMap[itemValue] = itemDisplay;
+                  options.push({ value: itemValue, label: itemDisplay });
+                }
+              });
+              
+              lookupData[columnName] = lookupMap;
+              valueOptionsData[columnName] = options;
+              
+              Logger.log(`✅ Loaded ComboBox lookup for ${columnName}:`, {
+                count: Object.keys(lookupMap).length,
+                sample: Object.entries(lookupMap).slice(0, 3),
+                options: options.slice(0, 3),
+              });
+            }
+          } catch (error) {
+            Logger.error(`❌ Failed to load ComboBox lookup for ${columnName}:`, error);
+          }
+        }
+
+        setComboBoxLookupData(lookupData);
+        setComboBoxValueOptions(valueOptionsData);
+      };
+
+      loadComboBoxLookupData();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [comboBoxConfig]);
 
     // Load resources for multi-language support when table or locale changes
     useEffect(() => {
@@ -3405,51 +3564,47 @@ const BSDataGrid = forwardRef(
             if (existing && existing[c.columnName] !== undefined) {
               init[c.columnName] = existing[c.columnName];
             } else {
-              // For edit mode, if field is missing from row data, check if we should skip defaulting
-              // This happens when the field exists in metadata but wasn't included in the grid columns
-              if (existing !== null) {
-                // Edit mode - check if this field might have a value that wasn't loaded in the grid
-
-                // For ComboBox fields in edit mode, don't default to 0 - leave empty until we can determine the real value
-                const comboConfig = comboBoxConfig[c.columnName];
-                if (comboConfig) {
-                  init[c.columnName] = ""; // Leave empty for ComboBox fields
-                  return; // Skip default value assignment
-                }
+              // Special handling for is_active field - default to empty string for new records (will show "-- เลือก --")
+              if (isActiveField(c.columnName)) {
+                init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                return;
               }
 
-              // Special handling for is_active field - default to YES for new records
-              if (isActiveField(c.columnName)) {
-                init[c.columnName] = "YES";
-              } else {
-                const dt = c.dataType?.toLowerCase();
-                switch (dt) {
-                  case "int":
-                  case "smallint":
-                  case "tinyint":
-                  case "bigint":
-                  case "decimal":
-                  case "float":
-                  case "real":
-                  case "money":
-                    // Don't set default value for numeric fields - leave empty/null
-                    // Setting 0 as default can cause incorrect data to be saved
-                    init[c.columnName] = null;
-                    break;
-                  case "bit":
-                    init[c.columnName] = false;
-                    break;
-                  case "datetime":
-                  case "datetime2":
-                  case "date":
-                  case "time":
-                    // Don't set default value for date/time fields - leave empty/null
-                    // User should explicitly select a date if needed
-                    init[c.columnName] = null;
-                    break;
-                  default:
-                    init[c.columnName] = "";
-                }
+              // For ComboBox fields, default to empty string (will show "-- เลือก --" placeholder)
+              const comboConfig = comboBoxConfig[c.columnName];
+              if (comboConfig) {
+                init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                return; // Skip default value assignment
+              }
+
+              // Handle other field types based on dataType
+              const dt = c.dataType?.toLowerCase();
+              switch (dt) {
+                case "int":
+                case "smallint":
+                case "tinyint":
+                case "bigint":
+                case "decimal":
+                case "float":
+                case "real":
+                case "money":
+                  // Don't set default value for numeric fields - leave empty/null
+                  // Setting 0 as default can cause incorrect data to be saved
+                  init[c.columnName] = null;
+                  break;
+                case "bit":
+                  init[c.columnName] = false;
+                  break;
+                case "datetime":
+                case "datetime2":
+                case "date":
+                case "time":
+                  // Don't set default value for date/time fields - leave empty/null
+                  // User should explicitly select a date if needed
+                  init[c.columnName] = null;
+                  break;
+                default:
+                  init[c.columnName] = "";
               }
             }
           });
@@ -4490,30 +4645,46 @@ const BSDataGrid = forwardRef(
 
     // Helper: Render combobox for columns with ComboBox configuration
     const renderComboBoxCell = useCallback((params, comboConfig) => {
-      const { value } = params;
-      const displayText =
-        comboConfig.valueOptions?.find((opt) => opt.value === value)?.label ||
-        value ||
-        comboConfig.Default ||
-        "";
+      const { value, field } = params;
+      
+      // First try to get display value from comboBoxLookupData
+      const lookupMap = comboBoxLookupData[field];
+      let displayText = lookupMap ? lookupMap[value] : null;
+      
+      // Fallback to valueOptions if no lookup data
+      if (!displayText) {
+        displayText =
+          comboConfig.valueOptions?.find((opt) => opt.value === value)?.label ||
+          value ||
+          comboConfig.Default ||
+          "";
+      }
 
       return (
         <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
           {displayText}
         </Box>
       );
-    }, []);
+    }, [comboBoxLookupData]);
 
-    // Helper: Get ComboBox value options for editing
-    const getComboBoxOptions = useCallback((comboConfig) => {
-      // TODO: In real implementation, this should fetch from API based on comboConfig
-      // For now, return empty array
-      return comboConfig.valueOptions || [];
-    }, []);
+    // Helper: Get ComboBox value options for editing (uses pre-fetched data)
+    const getComboBoxOptions = useCallback((comboConfig, columnName) => {
+      // Use pre-fetched valueOptions from comboBoxValueOptions state
+      const options = comboBoxValueOptions[columnName];
+      // Add empty option at the beginning for new rows with null/undefined values
+      const emptyOption = { value: "", label: "-- เลือก --" };
+      if (options && options.length > 0) {
+        return [emptyOption, ...options];
+      }
+      // Fallback to static valueOptions if provided in config
+      const staticOptions = comboConfig.valueOptions || [];
+      return staticOptions.length > 0 ? [emptyOption, ...staticOptions] : [emptyOption];
+    }, [comboBoxValueOptions]);
 
     // Helper: Get is_active dropdown options
     const getIsActiveOptions = useCallback(() => {
       return [
+        { value: "", label: "-- เลือก --" },
         { value: "YES", label: "YES" },
         { value: "NO", label: "NO" },
       ];
@@ -6413,7 +6584,7 @@ const BSDataGrid = forwardRef(
             }
             // ComboBox configuration
             else if (comboConfig) {
-              baseColumn.valueOptions = getComboBoxOptions(comboConfig);
+              baseColumn.valueOptions = getComboBoxOptions(comboConfig, columnName);
               baseColumn.renderCell = (params) =>
                 renderComboBoxCell(params, comboConfig);
             } else {
@@ -9013,13 +9184,15 @@ const BSDataGrid = forwardRef(
                       <Grid container spacing={2}>
                         {metadata.columns
                           .filter((c) =>
+                            // Include field if it passes normal isFieldInForm check
+                            // OR if it has a comboBoxConfig defined (FK fields that should be included)
                             isFieldInForm(
                               c.columnName,
                               c.dataType,
                               c.isIdentity,
                               c.hasDefault,
                               c.defaultValue
-                            )
+                            ) || comboBoxConfig[c.columnName]
                           )
                           .map((c) => {
                             const {
@@ -9105,6 +9278,30 @@ const BSDataGrid = forwardRef(
                                       ))}
                                     </Select>
                                   </FormControl>
+                                </Grid>
+                              );
+                            }
+
+                            // ComboBox field handling
+                            const comboConfig = comboBoxConfig[columnName];
+                            if (comboConfig) {
+                              return (
+                                <Grid
+                                  item
+                                  xs={12}
+                                  sm={6}
+                                  md={4}
+                                  key={columnName}
+                                >
+                                  <BulkAddComboBoxField
+                                    columnName={columnName}
+                                    config={comboConfig}
+                                    value={val}
+                                    onChange={(value) =>
+                                      updateBulkRow(rowIndex, columnName, value)
+                                    }
+                                    required={!isNullable}
+                                  />
                                 </Grid>
                               );
                             }
