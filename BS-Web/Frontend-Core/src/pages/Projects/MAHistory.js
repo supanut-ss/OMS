@@ -38,7 +38,7 @@ const MAHistory = (props) => {
       "";
 
     if (id && props.onChangeProjectHeaderID) {
-      props.onChangeProjectHeaderID({ id: id, newtab: true });
+      props.onChangeProjectHeaderID({ id: id, newtab: true, path: "projects/ma" });
     }
   };
   useEffect(() => {

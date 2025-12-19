@@ -1,11 +1,10 @@
 import React from "react";
-import { FormControl, FormHelperText } from "@mui/material";
+import { FormControl } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers-pro/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 import muiLicenseManager from "../utils/muiLicenseManager";
 import Logger from "../utils/logger";
-import { DateRangePicker, DateTimeRangePicker, SingleInputDateTimeRangeField } from "@mui/x-date-pickers-pro";
+import { DateRangePicker, DateTimePicker, DateTimeRangePicker, SingleInputDateTimeRangeField } from "@mui/x-date-pickers-pro";
 const BSDatepicker = ({
   label,
   value,
@@ -27,7 +26,6 @@ const BSDatepicker = ({
   } else {
     Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
   }
-  console.log("isRange:", isRange, "isDateOnly:", isDateOnly, "value:", value);
   return (
     isRange ? (
       <FormControl fullWidth error={error} sx={{ mb: 2 }}>
@@ -74,7 +72,7 @@ const BSDatepicker = ({
     ) : (
       <FormControl fullWidth error={error}>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker
+          <DateTimePicker
             label={label}
             value={value}
             onChange={onChange}
@@ -82,21 +80,25 @@ const BSDatepicker = ({
             slotProps={{
               textField: {
                 required,
-                //  size: "small",
+                error: error,
+                helperText: helperText,
                 fullWidth: true,
                 sx: {
                   ...(borderLeftRadius && {
                     "& .MuiPickersInputBase-root": {
                       borderTopLeftRadius: borderLeftRadius,
                       borderBottomLeftRadius: borderLeftRadius,
-                    },
-                  })
+                     '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: error ? 'red' : undefined,
+                      },
+                    }},
+                  }),
                 },
               },
             }}
           />
         </LocalizationProvider>
-        {error && <FormHelperText>{helperText}</FormHelperText>}
       </FormControl>)
   );
 };

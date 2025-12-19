@@ -28,7 +28,7 @@ const ProjectsDialog = (props) => {
     application_type: "-",
     customer_id: null,
     sale_id: null,
-   actual_project_start: "",
+    actual_project_start: "",
     actual_project_end: "",
     project_type: "MA",
     is_active: "YES",
@@ -91,13 +91,13 @@ const ProjectsDialog = (props) => {
     setFormData({ ...defaultData });
     props.onClose(false);
   };
-  const onChangeProjectHeaderID = ({ id, newtab }) => {
+  const onChangeProjectHeaderID = ({ id, newtab, path }) => {
     if (!newtab) {
       setTap(0);
       setFormData({ ...defaultData });
       props.onClose(false);
     }
-    props.onChangeProjectHeaderID({ id: id, newtab: newtab });
+    props.onChangeProjectHeaderID({ id: id, newtab: newtab, path: path });
   };
   const handleSave = async () => {
     if (!validate()) return;

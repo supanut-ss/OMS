@@ -1,6 +1,7 @@
 import { Grid } from "@mui/material";
 import { renderInput } from "../../../../components/FormRenderer";
 import BSSwitchField from "../../../../components/BSSwitch";
+import BSAutoComplete from "../../../../components/BSAutoComplete";
 
 const FormProjectMa = (props) => {
     const { formData, errors, updateField, resourceData, getResource } = props;
@@ -18,45 +19,49 @@ const FormProjectMa = (props) => {
                 errors,
                 updateField,
             })}
-        </Grid>  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            {renderInput({
-                item: {
-                    field: "master_project_id",
-                    headerName: getResource(resourceData, "parent_project_id"),
-                    component: "BSAutoComplete",
-                    bsMode: "single",
-                    bsTitle: "parent_project_id",
-                    bsPreObj: "tmt.t_tmt_",
-                    bsObj: "project_header",
-                    bsColumes: [
-                        {
-                            field: "project_header_id",
-                            display: false,
-                            filter: false,
-                            key: true,
-                        },
-                        {
-                            field: "project_no",
-                            display: true,
-                            filter: true,
-                            key: false,
-                        },
-                        {
-                            field: "project_name",
-                            display: true,
-                            filter: true,
-                            key: false,
-                        },
-                    ],
-                    bsObjBy: "project_no asc",
-                    bsObjWh: "is_active='YES' AND project_type='PROJECT'",
-                    variant: "standard",
-                    required: true,
-                },
-                formData,
-                errors,
-                updateField,
-            })}
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <BSAutoComplete
+                label={getResource(resourceData, "parent_project_id")}
+                bsValue={formData.master_project_id ? formData.master_project_id : ""}
+                fullWidth
+                bsOnChange={(e) => {
+                    updateField("master_project_id", e?.code || "");
+                    updateField("project_name", e?.project_name || "");
+                    updateField("application_type", e?.application_type || "");
+                }}
+                bsMode="single"
+                bsTitle={getResource(resourceData, "parent_project_id")}
+                bsPreObj="tmt.t_tmt_"
+                bsObj="project_header"
+                bsColumes={[
+                    {
+                        field: "project_header_id",
+                        display: false,
+                        filter: false,
+                        key: true,
+                    },
+                    {
+                        field: "project_no",
+                        display: true,
+                        filter: true,
+                        key: false,
+                    },
+                    {
+                        field: "project_name",
+                        display: true,
+                        filter: true,
+                        key: false,
+                    },
+                    {field: "application_type", display: false, filter: false, key: false}
+                ]}
+                bsObjBy="project_no asc"
+                bsObjWh="is_active='YES' AND project_type='PROJECT'"
+                variant="standard"
+                error={!!errors["master_project_id"]}
+                helperText={errors["master_project_id"] || ""}
+                required={true}
+            />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             {renderInput({

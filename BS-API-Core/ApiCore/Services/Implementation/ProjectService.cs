@@ -4,6 +4,7 @@ using ApiCore.Services.Interfaces;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 
 namespace ApiCore.Services.Implementation
@@ -222,25 +223,44 @@ namespace ApiCore.Services.Implementation
                     if (size > 0) p.Size = size;
                     p.Value = value ?? DBNull.Value;
                 }
-                // Input parameters (type-safe)
-                AddParam("@in_intProjectTaskId", SqlDbType.Int, request.project_task_id ?? null);
+                AddParam("@in_intProjectTaskId", SqlDbType.Int, request.project_task_id);
                 AddParam("@in_intProjectTaskPhaseId", SqlDbType.Int, request.project_task_phase_id);
                 AddParam("@in_intProjectHeaderId", SqlDbType.Int, request.project_header_id);
-                AddParam("@in_vchTaskNo", SqlDbType.VarChar, request.task_no ?? null, 25);
+
+                AddParam("@in_vchTaskNo", SqlDbType.VarChar, request.task_no, 25);
                 AddParam("@in_vchTaskName", SqlDbType.NVarChar, request.task_name, 200);
-                AddParam("@in_vchTaskDescription", SqlDbType.NVarChar, request.task_description ?? null, 500);
+                AddParam("@in_vchTaskDescription", SqlDbType.NVarChar, request.task_description); // NVARCHAR(MAX)
+
                 AddParam("@in_vchTaskStatus", SqlDbType.VarChar, request.task_status, 25);
                 AddParam("@in_vchIssueType", SqlDbType.VarChar, request.issue_type, 30);
-                AddParam("@in_vchPriority", SqlDbType.VarChar, request.priority, 30);
-                AddParam("@in_decManday", SqlDbType.Decimal, request.manday ?? null);
+                AddParam("@in_vchPriority", SqlDbType.VarChar, request.priority, 25);
+
+                var manday = cmd.Parameters.Add("@in_decManday", SqlDbType.Decimal);
+                manday.Precision = 18;
+                manday.Scale = 5;
+                manday.Value = request.manday ?? (object)DBNull.Value;
+
                 AddParam("@in_dateStartDate", SqlDbType.DateTime, request.start_date);
                 AddParam("@in_dateEndDate", SqlDbType.DateTime, request.end_date);
                 AddParam("@in_intSequence", SqlDbType.Int, request.sequence);
-                AddParam("@in_vchRemark", SqlDbType.NVarChar, request.remark ?? null, 500);
-                AddParam("@in_vchCloseBy", SqlDbType.NVarChar, request.close_by ?? null, 40);
-                AddParam("@in_dateCloseDate", SqlDbType.DateTime, request.close_date ?? null);
-                AddParam("@in_vchCloseRemark", SqlDbType.NVarChar, request.close_remark ?? null, 500);
+                AddParam("@in_vchRemark", SqlDbType.NVarChar, request.remark, 500);
+
+                AddParam("@in_vchIsIncident", SqlDbType.VarChar, request.is_incident ?? "YES", 3);
+                AddParam("@in_vchIncidentNo", SqlDbType.NVarChar, request.incident_no, 25);
+                AddParam("@in_intResponseTime", SqlDbType.Int, request.response_time);
+                AddParam("@in_intResolveDuration", SqlDbType.Int, request.resolve_duration);
+                AddParam("@in_dateStartIncidentDate", SqlDbType.DateTime, request.start_incident_date);
+                AddParam("@in_dateResponseDate", SqlDbType.DateTime, request.response_date);
+                AddParam("@in_dateResolveDurationDate", SqlDbType.DateTime, request.resolve_duration_date);
+                AddParam("@in_datePlanResponseDate", SqlDbType.DateTime, request.plan_response_date);
+                AddParam("@in_datePlanResolveDurationDate", SqlDbType.DateTime, request.plan_resolve_duration_date);
+
+                AddParam("@in_vchCloseBy", SqlDbType.NVarChar, request.close_by, 40);
+                AddParam("@in_dateCloseDate", SqlDbType.DateTime, request.close_date);
+                AddParam("@in_vchCloseRemark", SqlDbType.NVarChar, request.close_remark, 255);
+
                 AddParam("@in_vchUserId", SqlDbType.NVarChar, userId, 40);
+
                 // Output parameters
                 var pOutId = new SqlParameter("@out_intProjectTaskId", SqlDbType.Int)
                 {
@@ -277,7 +297,8 @@ namespace ApiCore.Services.Implementation
                 using var conn = new SqlConnection(_connectionString);
                 await conn.OpenAsync();
                 var sql = @$"SELECT project_task_id, project_header_id, project_task_phase_id, task_no, task_name, task_description, task_status, 
-                                   issue_type, priority, manday, start_date, end_date, sequence, remark
+                                   issue_type, priority, manday, start_date, end_date, sequence, remark , close_by, close_date, close_remark, is_incident, incident_no, response_time,
+                                   resolve_duration ,start_incident_date,response_date, resolve_duration_date,plan_response_date,plan_resolve_duration_date,create_by, create_date, update_by, update_date
                             FROM tmt.t_tmt_project_task
                             WHERE project_task_id = @ProjectTaskId";
                 using var cmd = new SqlCommand(sql, conn);
@@ -300,6 +321,22 @@ namespace ApiCore.Services.Implementation
                         response.end_date = reader.GetDateTime(11);
                         response.sequence = reader.GetInt32(12);
                         response.remark = reader.GetString(13);
+                        response.close_by = reader.IsDBNull(14) ? null : reader.GetString(14);
+                        response.close_date = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15);
+                        response.close_remark = reader.IsDBNull(16) ? null : reader.GetString(16);
+                        response.is_incident = reader.GetString(17);
+                        response.incident_no = reader.IsDBNull(18) ? null : reader.GetString(18);
+                        response.response_time = reader.IsDBNull(19) ? (int?)null : reader.GetInt32(19);
+                        response.resolve_duration = reader.IsDBNull(20) ? (int?)null : reader.GetInt32(20);
+                        response.start_incident_date = reader.IsDBNull(21) ? (DateTime?)null : reader.GetDateTime(21);
+                        response.response_date = reader.IsDBNull(22) ? (DateTime?)null : reader.GetDateTime(22);
+                        response.resolve_duration_date = reader.IsDBNull(23) ? (DateTime?)null : reader.GetDateTime(23);
+                        response.plan_response_date = reader.IsDBNull(24) ? (DateTime?)null : reader.GetDateTime(24);
+                        response.plan_resolve_duration_date = reader.IsDBNull(25) ? (DateTime?)null : reader.GetDateTime(25);
+                        response.create_by = reader.GetString(26);
+                        response.create_date = reader.GetDateTime(27);
+                        response.update_by = reader.IsDBNull(28) ? null : reader.GetString(28);
+                        response.update_date = reader.IsDBNull(29) ? (DateTime?)null : reader.GetDateTime(29);
                     }
                 }
                 return response;
