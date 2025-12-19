@@ -197,6 +197,7 @@ const ProjectsDialog = (props) => {
                 setTap={setTap}
                 taskRefresh={taskRefresh}
                 setTaskRefresh={setTaskRefresh}
+                lang={props.lang}
               />
             )}
             {/* End of Tabs for additional information */}

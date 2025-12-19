@@ -17,7 +17,7 @@ const TabsMa = (props) => {
             <Tab label={getResource(resourceData, "project_teams")} />
             <Tab label={getResource(resourceData, "ma_history")} />
             <Tab label={getResource(resourceData, "invoice_history")} />
-            <Tab label={getResource(resourceData, "attach_files")} />
+            <Tab label={(() => { const r = getResource(resourceData, "attach_file"); return r === "attach_file" ? "Attach File" : r; })()} />
         </Tabs>
         {props.formData?.project_header_id &&
             <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
