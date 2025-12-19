@@ -190,10 +190,10 @@ export const getTheme = (mode) =>
               
               // Priority with glow-friendly colors
               priority: {
-                urgent: "#FF6B6B",
-                high: "#FFD93D",
-                normal: "#00D4FF",
-                low: "#6A6A75",
+                urgent: "#d32f2f",
+                high: "#ed6c02",
+                normal: "#0288d1",
+                low: "#9e9e9e",
               },
               
               // Section Colors with transparency
