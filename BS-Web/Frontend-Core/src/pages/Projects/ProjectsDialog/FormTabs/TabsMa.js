@@ -13,10 +13,10 @@ const TabsMa = (props) => {
             onChange={(e, newValue) => setTap(newValue)}
             sx={{ mt: 3 }}
         >
-            <Tab label={getResource(resourceData, "tap_ticket")} />
-            <Tab label={getResource(resourceData, "project_teams")} />
-            <Tab label={getResource(resourceData, "ma_history")} />
-            <Tab label={getResource(resourceData, "invoice_history")} />
+            <Tab label={(() => { const r = getResource(resourceData, "tap_ticket"); return r === "tap_ticket" ? "Task" : r; })()} />
+            <Tab label={(() => { const r = getResource(resourceData, "project_teams"); return r === "project_teams" ? "Project Team" : r; })()} />
+            <Tab label={(() => { const r = getResource(resourceData, "ma_history"); return r === "ma_history" ? "MA History" : r; })()} />
+            <Tab label={(() => { const r = getResource(resourceData, "invoice_history"); return r === "invoice_history" ? "Invoice History" : r; })()} />
             <Tab label={(() => { const r = getResource(resourceData, "attach_file"); return r === "attach_file" ? "Attach File" : r; })()} />
         </Tabs>
         {props.formData?.project_header_id &&
