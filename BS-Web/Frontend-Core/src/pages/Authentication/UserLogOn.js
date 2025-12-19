@@ -77,9 +77,9 @@ const UserLogOnPage = (props) => {
           bsShowDescColumn={false}
           showAdd={false}
           readOnly={true}
-          // onCheckBoxSelected={(rows) => {
-          //   setSelectedRows(rows);
-          // }}
+          onCheckBoxSelected={(rows) => {
+            setSelectedRows(rows);
+          }}
           bsRowConfig={(row) => {
             if (row.status.toUpperCase() === "OFFLINE") {
               return {
