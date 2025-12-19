@@ -180,14 +180,14 @@ const BulkSplitButton = ({
   const options = [
     {
       label: `${localeText.bsBulkEdit} (${selectedRowCount})`,
-      icon: <Edit color="info" />,
+      icon: <Edit />,
       action: onBulkEdit,
       color: "info",
       show: bsBulkEdit,
     },
     {
       label: `${localeText.bsBulkDelete} (${selectedRowCount})`,
-      icon: <Delete color="error" />,
+      icon: <Delete />,
       action: onBulkDelete,
       color: "error",
       show: showBulkDelete,
@@ -6167,14 +6167,14 @@ const BSDataGrid = forwardRef(
                       icon={<SaveIcon />}
                       label={localeText.bsSave}
                       onClick={() => handleBulkRowSaveClick(params.id)}
-                      sx={{ color: "primary.main" }}
+                      sx={{ color: "success.main" }}
                     />,
                     <GridActionsCellItem
                       key="cancel"
                       icon={<CancelIcon />}
                       label={localeText.bsCancel}
                       onClick={() => handleBulkRowCancelClick(params.id)}
-                      color="inherit"
+                      sx={{ color: "error.main" }}
                     />,
                   ];
                 } else {
@@ -6185,7 +6185,7 @@ const BSDataGrid = forwardRef(
                       icon={<Edit />}
                       label={localeText.bsEdit}
                       onClick={() => handleBulkRowEditClick(params.id)}
-                      color="inherit"
+                      sx={{ color: "info.main" }}
                     />,
                   ];
                   if (hasChanges) {
@@ -6222,6 +6222,7 @@ const BSDataGrid = forwardRef(
                     label="Edit"
                     onClick={() => handleEditClick(params.row)}
                     disabled={rowConfig.disabled}
+                    sx={{ color: "info.main" }}
                   />
                 );
               });
@@ -6241,6 +6242,7 @@ const BSDataGrid = forwardRef(
                     label={localeText.bsDelete}
                     onClick={() => handleDeleteClick(params.row)}
                     disabled={rowConfig.disabled}
+                    sx={{ color: "error.main" }}
                   />
                 );
               });

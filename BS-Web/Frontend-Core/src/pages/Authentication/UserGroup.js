@@ -53,6 +53,15 @@ const UserGroupPage = (props) => {
               ObjBy: "application_name asc",
             },
           ]}
+          bsBulkMode={{
+            enable: true, // Enable all bulk operations
+            addInline: true, // Add new rows inline instead of dialog
+            // edit: true,      // Enabled by default when enable=true
+            // delete: true,    // Enabled by default when enable=true
+            // add: true,       // Enabled by default when enable=true
+            // showCheckbox: false,
+            // showSplitButton: false,
+          }}
           // bsBulkDelete={true}
           // bsBulkEdit={true}
           // bsBulkAdd={true}
