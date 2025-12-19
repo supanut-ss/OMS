@@ -185,6 +185,7 @@ const ProjectsDialog = (props) => {
                 setTap={setTap}
                 taskRefresh={taskRefresh}
                 setTaskRefresh={setTaskRefresh}
+                lang={props.lang}
               />
             )}
             {formData.record_type === "MA" && (
