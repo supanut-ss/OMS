@@ -404,7 +404,12 @@ const MyTaskPage = (props) => {
   return (
     <Paper
       elevation={3}
-      sx={{ p: 3, backgroundColor: theme.palette.custom?.paperBackground || theme.palette.background.paper }}
+      sx={{ 
+        p: 3, 
+        backgroundColor: theme.palette.mode === 'dark' 
+          ? '#0d0d0e' 
+          : theme.palette.custom?.paperBackground || theme.palette.background.paper 
+      }}
     >
       <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
         My Tasks
