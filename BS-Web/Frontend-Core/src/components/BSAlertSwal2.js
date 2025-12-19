@@ -1,11 +1,12 @@
 import Swal from "sweetalert2";
+import secureStorage from "../utils/SecureStorage";
 
 /**
  * Helper function to detect dark mode
  */
 const isDarkMode = () => {
-  // Check localStorage for theme preference
-  const storedTheme = localStorage.getItem("theme-mode");
+  // Check secureStorage for theme preference
+  const storedTheme = secureStorage.get("theme-mode");
   return storedTheme === "dark";
 };
 
