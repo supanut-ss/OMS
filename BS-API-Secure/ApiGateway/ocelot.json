@@ -27,6 +27,7 @@
       "UpstreamHttpMethod": [
         "post"
       ],
+      "DelegatingHandlers": [ "AddClientIpDelegatingHandler" ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,

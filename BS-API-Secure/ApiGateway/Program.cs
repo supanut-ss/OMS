@@ -4,6 +4,7 @@ using TokenManagement.Extensions;
 using TokenManagement.Interfaces;
 using TokenManagement.Services;
 using TokenManagement.Middleware;
+using ApiGateway.handler;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +30,10 @@ builder.Services.AddCors(options => {
 builder.Configuration.AddJsonFile("ocelot.json", optional: true, reloadOnChange: true);
 builder.Services.AddOcelot(builder.Configuration);
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<AddClientIpDelegatingHandler>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
+
 var app = builder.Build();
 
 
