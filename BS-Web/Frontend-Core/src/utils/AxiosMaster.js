@@ -211,9 +211,9 @@ AxiosMaster.interceptors.response.use(
         try {
           console.log("🔄 Attempting to refresh token...");
           const refreshResponse = await axios.post(
-            Config.API_URL.replace("/gateway/v1/api", "") + "/gateway/v1/api/refresh",
+            Config.API_URL + "/refresh",
             { refresh_token: refreshToken },
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { "Content-Type": "application/json" ,"X-Client-IP": originalRequest.headers["X-Client-IP"] || ""} }
           );
 
           if (refreshResponse.data.message_code === "0") {
