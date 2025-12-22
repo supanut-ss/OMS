@@ -194,12 +194,22 @@ AxiosMaster.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           subscribeTokenRefresh((token, err) => {
+            const storedToken = SecureStorage.get("token") ||
+              localStorage.getItem("token") ||
+              sessionStorage.getItem("token") || token;
             if (err || !token) {
               reject(err || new Error("Token refresh failed"));
               return;
             }
-            originalRequest.headers["Authorization"] = `Bearer ${token}`;
-            resolve(AxiosMaster(originalRequest));
+            try {
+              AxiosMaster.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+            } catch (e) {
+              console.warn("Failed to update Axios default header:", e);
+            }
+            originalRequest.headers = originalRequest.headers || {};
+            originalRequest.headers["Authorization"] = `Bearer ${storedToken}`;
+            const retryRequest = { ...originalRequest, headers: { ...originalRequest.headers } };
+            resolve(AxiosMaster(retryRequest));
           });
         });
       }
