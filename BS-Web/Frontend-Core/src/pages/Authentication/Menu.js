@@ -72,9 +72,15 @@ const MenuPage = (props) => {
               ObjGrp: "menu_group",
             },
           ]}
-          bsBulkDelete={true}
-          bsBulkEdit={true}
-          bsBulkAdd={true}
+          bsBulkMode={{
+            enable: true, // Enable all bulk operations
+            addInline: true, // Add new rows inline instead of dialog
+            // edit: true,      // Enabled by default when enable=true
+            // delete: true,    // Enabled by default when enable=true
+            // add: true,       // Enabled by default when enable=true
+            // showCheckbox: false,
+            // showSplitButton: false,
+          }}
         />
       </Paper>
     </>
