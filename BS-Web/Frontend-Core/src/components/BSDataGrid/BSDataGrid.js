@@ -3637,6 +3637,22 @@ const BSDataGrid = forwardRef(
           });
         }
 
+        // Apply defaultValue from bsColumnDefs
+        if (bsColumnDefs && Array.isArray(bsColumnDefs)) {
+          bsColumnDefs.forEach((colDef) => {
+            if (colDef.field && colDef.defaultValue !== undefined) {
+              // Only set if not already set by existing data or bsDefaultFormValues
+              if (
+                init[colDef.field] === undefined ||
+                init[colDef.field] === null ||
+                init[colDef.field] === ""
+              ) {
+                init[colDef.field] = colDef.defaultValue;
+              }
+            }
+          });
+        }
+
         return init;
       },
       [
@@ -3647,6 +3663,7 @@ const BSDataGrid = forwardRef(
         bsStoredProcedure,
         detectPrimaryKeyFromData,
         bsDefaultFormValues,
+        bsColumnDefs,
       ]
     );
 
@@ -6936,27 +6953,27 @@ const BSDataGrid = forwardRef(
               }
             });
 
-            // Add Delete button separately for bulk edit mode (so it always shows)
-            if (effectiveVisibleDelete) {
-              actions.push((params) => {
-                // Get row-specific config
-                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
-                const showDelete = rowConfig.showDelete !== false;
+            // // Add Delete button separately for bulk edit mode (so it always shows)
+            // if (effectiveVisibleDelete) {
+            //   actions.push((params) => {
+            //     // Get row-specific config
+            //     const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+            //     const showDelete = rowConfig.showDelete !== false;
 
-                if (!showDelete) return null;
+            //     if (!showDelete) return null;
 
-                return (
-                  <GridActionsCellItem
-                    key="delete"
-                    icon={<Delete />}
-                    label={localeText.bsDelete}
-                    onClick={() => handleDeleteClick(params.row)}
-                    disabled={rowConfig.disabled}
-                    sx={{ color: "error.main" }}
-                  />
-                );
-              });
-            }
+            //     return (
+            //       <GridActionsCellItem
+            //         key="delete"
+            //         icon={<Delete />}
+            //         label={localeText.bsDelete}
+            //         onClick={() => handleDeleteClick(params.row)}
+            //         disabled={rowConfig.disabled}
+            //         sx={{ color: "error.main" }}
+            //       />
+            //     );
+            //   });
+            // }
           } else if (effectiveBulkAddInline) {
             // Inline bulk add actions
             actions.push((params) => {
@@ -6981,6 +6998,7 @@ const BSDataGrid = forwardRef(
                   />,
                 ];
               } else {
+                // In bulk edit/add mode - only show edit button, no delete
                 return [
                   <GridActionsCellItem
                     key="edit"
