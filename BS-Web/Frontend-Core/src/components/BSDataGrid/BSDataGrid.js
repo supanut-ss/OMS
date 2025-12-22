@@ -1934,6 +1934,32 @@ const BSDataGrid = forwardRef(
       return config;
     }, [bsColumnDefs]);
 
+    // Build columnVisibilityModel from bsColumnDefs (hide: true)
+    const initialColumnVisibility = useMemo(() => {
+      const visibility = {};
+      if (Array.isArray(bsColumnDefs) && bsColumnDefs.length > 0) {
+        bsColumnDefs.forEach((colDef) => {
+          if (colDef.field && colDef.hide === true) {
+            visibility[colDef.field] = false;
+          }
+        });
+      }
+      return visibility;
+    }, [bsColumnDefs]);
+
+    // State for column visibility (allow user to toggle)
+    const [columnVisibilityModel, setColumnVisibilityModel] = useState(
+      initialColumnVisibility
+    );
+
+    // Update column visibility when bsColumnDefs changes
+    useEffect(() => {
+      setColumnVisibilityModel((prev) => ({
+        ...prev,
+        ...initialColumnVisibility,
+      }));
+    }, [initialColumnVisibility]);
+
     // Parse bsDialogSize to MUI Dialog maxWidth
     const dialogMaxWidth = useMemo(() => {
       switch (bsDialogSize?.toLowerCase()) {
@@ -9045,6 +9071,9 @@ const BSDataGrid = forwardRef(
                   //   !bsBulkDelete &&
                   //   !onCheckBoxSelected
                   // }
+                  // Column Visibility (for hide: true in bsColumnDefs)
+                  columnVisibilityModel={columnVisibilityModel}
+                  onColumnVisibilityModelChange={setColumnVisibilityModel}
                   // Column Pinning (Pro feature)
                   pinnedColumns={pinnedColumns}
                   onPinnedColumnsChange={setPinnedColumns}
