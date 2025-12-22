@@ -14,9 +14,10 @@ namespace Authentication.Services
         public string GetClientIpAddress()
         {
             var context = _httpContextAccessor.HttpContext;
+
             if (context == null)
                 return "Unknown";
-            var ip = context?.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
+            var ip = context?.Request.Headers["X-Client-IP"].FirstOrDefault() ?? context?.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
 
             if (!string.IsNullOrEmpty(ip))
             {

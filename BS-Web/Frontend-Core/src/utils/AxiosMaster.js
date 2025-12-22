@@ -10,6 +10,66 @@ const AxiosMaster = axios.create({
   },
 });
 
+// ---------------------------
+// Client IP header support
+// - fetches public IP from https://api.ipify.org
+// - caches result (SecureStorage/localStorage) for 24h to avoid repeated calls
+// - attaches header 'X-Client-IP' to outbound requests when available
+// ---------------------------
+const IP_CACHE_KEY = "client_ip_info";
+const IP_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+
+const parseStoredIp = (raw) => {
+  try {
+    return raw && typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return null;
+  }
+};
+
+const getCachedIp = () => {
+  try {
+    let infoRaw =
+      SecureStorage.get(IP_CACHE_KEY) ||
+      localStorage.getItem(IP_CACHE_KEY) ||
+      sessionStorage.getItem(IP_CACHE_KEY);
+    const info = parseStoredIp(infoRaw);
+    if (info && info.ip && info.ts && Date.now() - info.ts < IP_CACHE_TTL_MS) {
+      return info.ip;
+    }
+  } catch (e) {
+    console.error("Error reading cached IP:", e);
+  }
+  return null;
+};
+
+const fetchAndCacheIp = async () => {
+  try {
+    const resp = await axios.get("https://api.ipify.org?format=json", {
+      timeout: 2000,
+    });
+    const ip = resp?.data?.ip;
+    if (ip) {
+      const info = { ip, ts: Date.now() };
+      try {
+        SecureStorage.set(IP_CACHE_KEY, JSON.stringify(info));
+      } catch (_) {
+        localStorage.setItem(IP_CACHE_KEY, JSON.stringify(info));
+      }
+      return ip;
+    }
+  } catch (e) {
+    console.warn("Could not fetch public IP:", e);
+  }
+  return null;
+};
+
+const getClientIp = async () => {
+  const cached = getCachedIp();
+  if (cached) return cached;
+  return await fetchAndCacheIp();
+};
+
 AxiosMaster.interceptors.request.use(
   async (config) => {
     try {
@@ -31,6 +91,16 @@ AxiosMaster.interceptors.request.use(
         console.warn("⚠️ No valid JWT token found in any storage");
       }
 
+      // Attach client IP header if available (non-blocking but we await briefly)
+      try {
+        const clientIp = await getClientIp();
+        if (clientIp) {
+          config.headers["X-Client-IP"] = clientIp;
+        }
+      } catch (e) {
+        console.warn("Failed to attach client IP header:", e);
+      }
+
       return config;
     } catch (error) {
       console.error("❌ Error in request interceptor:", error);
@@ -44,6 +114,23 @@ AxiosMaster.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+
+
+const subscribeTokenRefresh = (cb) => refreshSubscribers.push(cb);
+const onRefreshed = (token) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+const onRefreshFailed = (err) => {
+  refreshSubscribers.forEach((cb) => cb(null, err));
+  refreshSubscribers = [];
+};
+
+
 
 AxiosMaster.interceptors.response.use(
   (response) => response,
@@ -73,11 +160,12 @@ AxiosMaster.interceptors.response.use(
       }
     }
 
-    // 🔒 Handle 401 Unauthorized
+    // 🔒 Handle 401 Unauthorized with single-refresh queue
     if (error.response && error.response.status === 401) {
       console.warn("🔒 401 Unauthorized - Token may be expired or invalid");
 
       const originalRequest = error.config;
+
 
       // ป้องกัน loop 401 ซ้ำ
       if (originalRequest._retry) {
@@ -102,39 +190,66 @@ AxiosMaster.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      try {
-        console.log("🔄 Attempting to refresh token...");
-        const refreshResponse = await axios.post(
-          Config.API_URL.replace("/gateway/v1/api", "") + "/gateway/v1/api/refresh",
-          { refresh_token: refreshToken },
-          { headers: { "Content-Type": "application/json" } }
-        );
-
-        if (refreshResponse.data.message_code === "0") {
-          console.log("✅ Token refreshed successfully");
-
-          const newToken = refreshResponse.data.data.access_token;
-          const newRefresh = refreshResponse.data.data.refresh_token;
-
-          // เก็บ token ใหม่
-          SecureStorage.set("token", newToken);
-          SecureStorage.set("refresh_token", newRefresh);
-
-          // อัปเดต header ของ request เดิม
-          originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
-
-          // 🔁 เรียก API เดิมใหม่อีกครั้ง
-          return AxiosMaster(originalRequest);
-        } else {
-          throw new Error(refreshResponse.data.message || "Token refresh failed");
-        }
-      } catch (refreshError) {
-        console.error("❌ Token refresh failed:", refreshError);
-        clearCorruptedTokens();
-        window.location.href = Config.BASE_URL + "/login";
-        return Promise.reject(refreshError);
+      // ถ้ามีการ refresh อยู่แล้ว ให้รอผล (subscribe)
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((token, err) => {
+            if (err || !token) {
+              reject(err || new Error("Token refresh failed"));
+              return;
+            }
+            originalRequest.headers["Authorization"] = `Bearer ${token}`;
+            resolve(AxiosMaster(originalRequest));
+          });
+        });
       }
+
+      isRefreshing = true;
+
+      // เริ่ม refresh และแจ้ง subscribers เมื่อเสร็จ
+      return new Promise(async (resolve, reject) => {
+        try {
+          console.log("🔄 Attempting to refresh token...");
+          const refreshResponse = await axios.post(
+            Config.API_URL.replace("/gateway/v1/api", "") + "/gateway/v1/api/refresh",
+            { refresh_token: refreshToken },
+            { headers: { "Content-Type": "application/json" } }
+          );
+
+          if (refreshResponse.data.message_code === "0") {
+            console.log("✅ Token refreshed successfully");
+
+            const newToken = refreshResponse.data.data.access_token;
+            const newRefresh = refreshResponse.data.data.refresh_token;
+
+            // เก็บ token ใหม่
+            SecureStorage.set("token", newToken);
+            SecureStorage.set("refresh_token", newRefresh);
+
+            // แจ้ง subscribers
+            onRefreshed(newToken);
+
+            // อัปเดต header ของ request เดิม
+            originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+
+            // 🔁 เรียก API เดิมใหม่อีกครั้ง
+            // note: do NOT finalize the queue here; the retried request will finalize when it completes
+            resolve(AxiosMaster(originalRequest));
+          } else {
+            throw new Error(refreshResponse.data.message || "Token refresh failed");
+          }
+        } catch (refreshError) {
+          console.error("❌ Token refresh failed:", refreshError);
+          onRefreshFailed(refreshError);
+          clearCorruptedTokens();
+          window.location.href = Config.BASE_URL + "/login";
+          reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      });
     }
+
 
     return Promise.reject(error);
   }
