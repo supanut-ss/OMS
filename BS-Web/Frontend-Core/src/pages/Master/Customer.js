@@ -65,6 +65,16 @@ const CustomerPage = (props) => {
               editable: false,
               readOnly: true,
             },
+            {
+              field: "user_def9",
+              type: "dateTime",
+              dateTimeFormat: "dd/MM/yyyy HH:mm",
+            },
+            {
+              field: "user_def10",
+              type: "dateTime",
+              dateTimeFormat: "dd/MM/yyyy HH:mm",
+            },
           ]}
         />
       </Paper>

@@ -85,6 +85,16 @@ import { useResource } from "../../hooks/useResource";
 import { getLocaleText } from "./locales";
 import Logger from "../../utils/logger";
 import { formatDate } from "../../utils/dateUtils";
+import dayjs from "dayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import {
+  DATE_FORMAT,
+  DATETIME_FORMAT,
+  USE_24_HOUR,
+} from "../../config/dateConfig";
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
@@ -5256,6 +5266,95 @@ const BSDataGrid = forwardRef(
             : lengthInfo;
         }
 
+        // For datetime-local and date, use MUI DateTimePicker/DatePicker for consistent format across locales
+        if (inputType === "datetime-local") {
+          const dateTimePickerContent = (
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DateTimePicker
+                label={formatColumnName(columnName)}
+                value={rawVal ? dayjs(rawVal) : null}
+                onChange={(newValue) => {
+                  // Convert dayjs to ISO string for storage
+                  const isoValue = newValue ? newValue.toISOString() : null;
+                  setFormData((p) => ({ ...p, [columnName]: isoValue }));
+                }}
+                disabled={isReadOnly}
+                format={DATETIME_FORMAT}
+                ampm={!USE_24_HOUR}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    fullWidth: true,
+                    required: isRequired,
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          );
+
+          return (
+            <Grid
+              item
+              size={gridSizeValue}
+              key={columnName}
+              sx={{ minWidth: 0 }}
+            >
+              {tooltipText ? (
+                <Tooltip title={tooltipText} arrow placement="top">
+                  <span>{dateTimePickerContent}</span>
+                </Tooltip>
+              ) : (
+                dateTimePickerContent
+              )}
+            </Grid>
+          );
+        }
+
+        // For date only, use MUI DatePicker
+        if (inputType === "date") {
+          const datePickerContent = (
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label={formatColumnName(columnName)}
+                value={rawVal ? dayjs(rawVal) : null}
+                onChange={(newValue) => {
+                  // Convert dayjs to YYYY-MM-DD format for storage
+                  const dateValue = newValue
+                    ? newValue.format("YYYY-MM-DD")
+                    : null;
+                  setFormData((p) => ({ ...p, [columnName]: dateValue }));
+                }}
+                disabled={isReadOnly}
+                format={DATE_FORMAT}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    fullWidth: true,
+                    required: isRequired,
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          );
+
+          return (
+            <Grid
+              item
+              size={gridSizeValue}
+              key={columnName}
+              sx={{ minWidth: 0 }}
+            >
+              {tooltipText ? (
+                <Tooltip title={tooltipText} arrow placement="top">
+                  <span>{datePickerContent}</span>
+                </Tooltip>
+              ) : (
+                datePickerContent
+              )}
+            </Grid>
+          );
+        }
+
         const textFieldContent = (
           <TextField
             fullWidth
@@ -5983,8 +6082,17 @@ const BSDataGrid = forwardRef(
           customDef.dateFormat ||
           customDef.dateTimeFormat
         ) {
+          // Use config from environment or bsColumnDefs override
+          const defaultFormat =
+            customDef.type === "dateTime"
+              ? DATETIME_FORMAT.toLowerCase()
+                  .replace("dd", "dd")
+                  .replace("mm", "MM")
+              : DATE_FORMAT.toLowerCase()
+                  .replace("dd", "dd")
+                  .replace("mm", "MM");
           const dateFormat =
-            customDef.dateFormat || customDef.dateTimeFormat || "dd/MM/yyyy";
+            customDef.dateFormat || customDef.dateTimeFormat || defaultFormat;
           const includeTime = customDef.type === "dateTime";
 
           // Remove existing renderCell to let valueFormatter work
@@ -9875,8 +9983,10 @@ const BSDataGrid = forwardRef(
                                 break;
                               case "datetime":
                               case "datetime2":
-                              case "date":
                                 inputType = "datetime-local";
+                                break;
+                              case "date":
+                                inputType = "date";
                                 break;
                               case "text":
                               case "ntext":
@@ -9887,6 +9997,107 @@ const BSDataGrid = forwardRef(
                                 break;
                               default:
                                 inputType = "text";
+                            }
+
+                            // Handle datetime-local with MUI DateTimePicker for consistent format
+                            if (inputType === "datetime-local") {
+                              return (
+                                <Grid
+                                  item
+                                  xs={12}
+                                  sm={6}
+                                  md={4}
+                                  key={columnName}
+                                >
+                                  <LocalizationProvider
+                                    dateAdapter={AdapterDayjs}
+                                  >
+                                    <DateTimePicker
+                                      label={
+                                        <>
+                                          {formatColumnName(columnName)}
+                                          {!isNullable && (
+                                            <span style={{ color: "#d32f2f" }}>
+                                              {" "}
+                                              *
+                                            </span>
+                                          )}
+                                        </>
+                                      }
+                                      value={val ? dayjs(val) : null}
+                                      onChange={(newValue) => {
+                                        const isoValue = newValue
+                                          ? newValue.toISOString()
+                                          : null;
+                                        updateBulkRow(
+                                          rowIndex,
+                                          columnName,
+                                          isoValue
+                                        );
+                                      }}
+                                      format={DATETIME_FORMAT}
+                                      ampm={!USE_24_HOUR}
+                                      slotProps={{
+                                        textField: {
+                                          size: "small",
+                                          fullWidth: true,
+                                          required: !isNullable,
+                                        },
+                                      }}
+                                    />
+                                  </LocalizationProvider>
+                                </Grid>
+                              );
+                            }
+
+                            // Handle date with MUI DatePicker for consistent format
+                            if (inputType === "date") {
+                              return (
+                                <Grid
+                                  item
+                                  xs={12}
+                                  sm={6}
+                                  md={4}
+                                  key={columnName}
+                                >
+                                  <LocalizationProvider
+                                    dateAdapter={AdapterDayjs}
+                                  >
+                                    <DatePicker
+                                      label={
+                                        <>
+                                          {formatColumnName(columnName)}
+                                          {!isNullable && (
+                                            <span style={{ color: "#d32f2f" }}>
+                                              {" "}
+                                              *
+                                            </span>
+                                          )}
+                                        </>
+                                      }
+                                      value={val ? dayjs(val) : null}
+                                      onChange={(newValue) => {
+                                        const dateValue = newValue
+                                          ? newValue.format("YYYY-MM-DD")
+                                          : null;
+                                        updateBulkRow(
+                                          rowIndex,
+                                          columnName,
+                                          dateValue
+                                        );
+                                      }}
+                                      format={DATE_FORMAT}
+                                      slotProps={{
+                                        textField: {
+                                          size: "small",
+                                          fullWidth: true,
+                                          required: !isNullable,
+                                        },
+                                      }}
+                                    />
+                                  </LocalizationProvider>
+                                </Grid>
+                              );
                             }
 
                             if (inputType === "checkbox") {
