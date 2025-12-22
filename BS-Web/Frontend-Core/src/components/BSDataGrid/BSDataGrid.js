@@ -7735,16 +7735,37 @@ const BSDataGrid = forwardRef(
           const { _id, ...data } = row;
           const validation = validateFormData(data);
           if (!validation.isValid) {
-            validationErrors.push(
-              `Row ${index + 1}: ${validation.errors.join(", ")}`
-            );
+            validationErrors.push({
+              rowNumber: index + 1,
+              errors: validation.errors,
+            });
           }
         });
 
         if (validationErrors.length > 0) {
+          // Build user-friendly HTML message
+          const errorHtml = validationErrors
+            .map((item) => {
+              const errorItems = item.errors
+                .map(
+                  (err) => `<li style="margin: 2px 0; color: #666;">${err}</li>`
+                )
+                .join("");
+              return `
+                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
+                  <strong style="color: #c0392b;">📋 ${
+                    localeText.bsRow || "Row"
+                  } ${item.rowNumber}</strong>
+                  <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
+                </div>`;
+            })
+            .join("");
+
           BSAlertSwal2.show("error", "", {
-            title: "Validation Errors",
-            html: validationErrors.join("<br>"),
+            title:
+              localeText.bsValidationError || "Please complete required fields",
+            html: `<div style="max-height: 300px; overflow-y: auto;">${errorHtml}</div>`,
+            width: 450,
           });
           return;
         }
@@ -8227,18 +8248,42 @@ const BSDataGrid = forwardRef(
         changes.forEach((row, index) => {
           const validation = validateFormData(row);
           if (!validation.isValid) {
-            const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
-            const rowId = row[primaryKey] || row.id || row.Id;
-            validationErrors.push(
-              `Row ID ${rowId}: ${validation.errors.join(", ")}`
-            );
+            // Build friendly error message for each row
+            const rowNumber = index + 1;
+            const errorList = validation.errors
+              .map((err) => `  • ${err}`)
+              .join("\n");
+            validationErrors.push({
+              rowNumber,
+              errors: validation.errors,
+            });
           }
         });
 
         if (validationErrors.length > 0) {
+          // Build user-friendly HTML message
+          const errorHtml = validationErrors
+            .map((item) => {
+              const errorItems = item.errors
+                .map(
+                  (err) => `<li style="margin: 2px 0; color: #666;">${err}</li>`
+                )
+                .join("");
+              return `
+                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
+                  <strong style="color: #c0392b;">📋 ${
+                    localeText.bsRow || "Row"
+                  } ${item.rowNumber}</strong>
+                  <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
+                </div>`;
+            })
+            .join("");
+
           BSAlertSwal2.show("error", "", {
-            title: "Validation Errors",
-            html: validationErrors.join("<br>"),
+            title:
+              localeText.bsValidationError || "Please complete required fields",
+            html: `<div style="max-height: 300px; overflow-y: auto;">${errorHtml}</div>`,
+            width: 450,
           });
           return;
         }
