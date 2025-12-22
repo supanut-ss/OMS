@@ -2209,6 +2209,8 @@ const BSDataGrid = forwardRef(
     const [bulkEditMode, setBulkEditMode] = useState(false);
     const unsavedChangesRef = React.useRef({});
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const isBulkSavingRef = React.useRef(false); // Track if bulk save is in progress
+    const savedRowIdsRef = React.useRef(new Set()); // Track rows already saved in bulk save to prevent double-save
 
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModel] = useState({});
@@ -3915,8 +3917,17 @@ const BSDataGrid = forwardRef(
     // Handle Delete (external or built-in)
     const handleDeleteClick = useCallback(
       async (row) => {
+        Logger.log("🗑️ handleDeleteClick called", { row });
         const primaryKey = getEffectivePrimaryKey(row);
         const id = row?.[primaryKey];
+        Logger.log(
+          "🗑️ Delete - primaryKey:",
+          primaryKey,
+          "id:",
+          id,
+          "metadata.primaryKeys:",
+          metadata?.primaryKeys
+        );
         if (!id) {
           Logger.error("❌ No primary key found for deletion", {
             primaryKey,
@@ -5535,15 +5546,73 @@ const BSDataGrid = forwardRef(
     );
 
     const handleInlineDeleteClick = useCallback(
-      (id) => () => {
-        setRows((oldRows) => oldRows.filter((row) => row.id !== id));
-        setRowModesModel((oldModel) => {
-          const newModel = { ...oldModel };
-          delete newModel[id];
-          return newModel;
+      (id) => async () => {
+        Logger.log("🗑️ handleInlineDeleteClick called", {
+          id,
+          rowsCount: rows.length,
         });
+
+        // Find the row to delete using the same logic as getRowId
+        // id from DataGrid params.id is the value returned by getRowId (primaryKey value as string)
+        const primaryKey = getEffectivePrimaryKey(rows[0]);
+        Logger.log("🗑️ Using primaryKey:", primaryKey);
+
+        // Try to find by primary key first (matches getRowId logic)
+        let rowToDelete = rows.find(
+          (row) => String(row[primaryKey]) === String(id)
+        );
+
+        // Fallback: try common id fields
+        if (!rowToDelete) {
+          rowToDelete = rows.find(
+            (row) =>
+              String(row.id) === String(id) ||
+              String(row.Id) === String(id) ||
+              String(row.ID) === String(id)
+          );
+        }
+
+        Logger.log("🗑️ Row to delete:", {
+          rowToDelete,
+          foundById: !!rowToDelete,
+          primaryKey,
+        });
+
+        if (!rowToDelete) {
+          Logger.error(
+            "❌ Could not find row with id:",
+            id,
+            "primaryKey:",
+            primaryKey
+          );
+          return;
+        }
+
+        const isNewRow = rowToDelete?.isNew || String(id).startsWith("new-");
+        Logger.log("🗑️ Is new row:", isNewRow);
+
+        if (isNewRow) {
+          // For new rows that haven't been saved yet, just remove from UI
+          // Use the same matching logic as above
+          setRows((oldRows) =>
+            oldRows.filter(
+              (row) =>
+                String(row[primaryKey]) !== String(id) &&
+                String(row.id) !== String(id)
+            )
+          );
+          setRowModesModel((oldModel) => {
+            const newModel = { ...oldModel };
+            delete newModel[id];
+            return newModel;
+          });
+        } else {
+          // For existing rows, use handleDeleteClick to delete from database
+          Logger.log("🗑️ Calling handleDeleteClick for existing row");
+          await handleDeleteClick(rowToDelete);
+        }
       },
-      []
+      [rows, handleDeleteClick, getEffectivePrimaryKey]
     );
 
     const handleInlineCancelClick = useCallback(
@@ -5584,6 +5653,13 @@ const BSDataGrid = forwardRef(
     const processRowUpdate = useCallback(
       async (newRow) => {
         try {
+          // CRITICAL: Skip all processing if bulk save is in progress
+          // This prevents double-save when stopCellEditMode triggers processRowUpdate
+          if (isBulkSavingRef.current) {
+            Logger.log("⏭️ processRowUpdate skipped - bulk save in progress");
+            return newRow;
+          }
+
           // Validate the row data
           const validation = validateFormData(newRow);
           if (!validation.isValid) {
@@ -5596,6 +5672,17 @@ const BSDataGrid = forwardRef(
 
           // If it's a new row, create it
           if (newRow.isNew) {
+            // Check if this row was already saved in bulk (prevents double-save)
+            const tempId = newRow.id || newRow.Id || newRow.ID;
+            if (tempId && savedRowIdsRef.current.has(String(tempId))) {
+              Logger.log(
+                "⏭️ processRowUpdate skipped - row already saved in bulk:",
+                tempId
+              );
+              savedRowIdsRef.current.delete(String(tempId));
+              return { ...newRow, isNew: false };
+            }
+
             const { isNew, id, ...dataToSave } = newRow;
 
             // Filter to only include fields that exist in metadata (actual table columns)
@@ -6510,6 +6597,10 @@ const BSDataGrid = forwardRef(
             }
 
             if (effectiveVisibleDelete) {
+              Logger.log(
+                "🗑️ Adding Delete button action - effectiveVisibleDelete:",
+                effectiveVisibleDelete
+              );
               actions.push((params) => {
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
@@ -6521,7 +6612,13 @@ const BSDataGrid = forwardRef(
                   <GridActionsCellItem
                     icon={<Delete />}
                     label={localeText.bsDelete}
-                    onClick={() => handleDeleteClick(params.row)}
+                    onClick={() => {
+                      Logger.log(
+                        "🗑️ Delete button clicked for row:",
+                        params.row
+                      );
+                      handleDeleteClick(params.row);
+                    }}
                     disabled={rowConfig.disabled}
                     sx={{ color: "error.main" }}
                   />
@@ -6838,6 +6935,28 @@ const BSDataGrid = forwardRef(
                 return viewModeActions;
               }
             });
+
+            // Add Delete button separately for bulk edit mode (so it always shows)
+            if (effectiveVisibleDelete) {
+              actions.push((params) => {
+                // Get row-specific config
+                const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+                const showDelete = rowConfig.showDelete !== false;
+
+                if (!showDelete) return null;
+
+                return (
+                  <GridActionsCellItem
+                    key="delete"
+                    icon={<Delete />}
+                    label={localeText.bsDelete}
+                    onClick={() => handleDeleteClick(params.row)}
+                    disabled={rowConfig.disabled}
+                    sx={{ color: "error.main" }}
+                  />
+                );
+              });
+            }
           } else if (effectiveBulkAddInline) {
             // Inline bulk add actions
             actions.push((params) => {
@@ -6933,9 +7052,9 @@ const BSDataGrid = forwardRef(
 
           if (hasActions && actions.length > 0) {
             // Calculate actions column width based on mode
-            // Bulk edit mode needs more space for Save/Cancel or Edit/Restore buttons
+            // Bulk edit mode needs more space for Save/Cancel/Delete or Edit/Restore/Delete buttons
             const actionsWidth =
-              bulkEditMode || effectiveBulkAddInline ? 100 : 80;
+              bulkEditMode || effectiveBulkAddInline ? 130 : 80;
 
             dataColumns.unshift({
               field: "actions",
@@ -7811,7 +7930,27 @@ const BSDataGrid = forwardRef(
         const isNewRow = typeof rowId === "string" && rowId.startsWith("new-");
 
         // For new rows, save immediately to backend to get real ID
+        // BUT skip if bulk save is already in progress OR row was already saved in bulk
         if (isNewRow) {
+          // Check if bulk save is in progress - if so, skip individual save
+          if (isBulkSavingRef.current) {
+            Logger.log(
+              "⏭️ Skipping individual save - bulk save in progress:",
+              rowId
+            );
+            return newRow; // Return row as-is, bulk save will handle it
+          }
+
+          // Check if this row was already saved in bulk save (prevents double-save after bulk completes)
+          if (savedRowIdsRef.current.has(rowId)) {
+            Logger.log(
+              "⏭️ Skipping individual save - row already saved in bulk:",
+              rowId
+            );
+            savedRowIdsRef.current.delete(rowId); // Clear after check
+            return newRow;
+          }
+
           Logger.log("📝 Bulk edit - saving NEW row immediately:", {
             rowId,
             newRow,
@@ -7942,6 +8081,85 @@ const BSDataGrid = forwardRef(
       try {
         setFormLoading(true);
         setLoading(true); // Set loading to prevent rendering issues
+        isBulkSavingRef.current = true; // Mark bulk save in progress
+
+        // CRITICAL: Get current edit state and merge with row data BEFORE stopping edits
+        // This ensures we capture values that are currently being edited
+        let editRowsState = {};
+        if (apiRef?.current) {
+          try {
+            editRowsState = apiRef.current.state?.editRows || {};
+            Logger.log("📝 Current editRows state:", editRowsState);
+          } catch (e) {
+            Logger.warn("⚠️ Could not get editRows state:", e);
+          }
+        }
+
+        // Get the latest rows from the grid state
+        let latestRows = [...rows]; // Clone to avoid mutation
+        if (apiRef?.current) {
+          try {
+            const allRowIds = apiRef.current.getAllRowIds();
+            latestRows = allRowIds
+              .map((id) => apiRef.current.getRow(id))
+              .filter(Boolean)
+              .map((row) => ({ ...row })); // Clone each row
+            Logger.log("📝 Got latest rows from apiRef:", latestRows.length);
+          } catch (getRowsError) {
+            Logger.warn(
+              "⚠️ Could not get rows from apiRef, using state:",
+              getRowsError
+            );
+          }
+        }
+
+        // CRITICAL: Merge editRows state values into the row data
+        // editRowsState structure: { [rowId]: { [fieldName]: { value: any } } }
+        latestRows = latestRows.map((row) => {
+          const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
+          const editingFields = editRowsState[rowId];
+
+          if (editingFields) {
+            const updatedRow = { ...row };
+            Object.entries(editingFields).forEach(([fieldName, fieldData]) => {
+              // fieldData has structure: { value: actualValue, ... }
+              if (fieldData && fieldData.value !== undefined) {
+                updatedRow[fieldName] = fieldData.value;
+                Logger.log(
+                  `📝 Merged edit value for ${rowId}.${fieldName}:`,
+                  fieldData.value
+                );
+              }
+            });
+            return updatedRow;
+          }
+          return row;
+        });
+
+        Logger.log("📝 Rows after merging editRows state:", latestRows);
+
+        // Now stop cell edit mode (optional cleanup)
+        if (apiRef?.current) {
+          try {
+            const editingRowIds = Object.keys(editRowsState);
+            for (const rowId of editingRowIds) {
+              const fieldIds = Object.keys(editRowsState[rowId] || {});
+              for (const field of fieldIds) {
+                try {
+                  apiRef.current.stopCellEditMode({
+                    id: rowId,
+                    field: field,
+                    ignoreModifications: true, // We already captured the values above
+                  });
+                } catch (stopError) {
+                  // Ignore - cell may have already exited edit mode
+                }
+              }
+            }
+          } catch (editCommitError) {
+            Logger.warn("⚠️ Error stopping cell edits:", editCommitError);
+          }
+        }
 
         // Get only the new data from changes (not the original data)
         const changesFromRef = Object.values(unsavedChangesRef.current).map(
@@ -7950,21 +8168,51 @@ const BSDataGrid = forwardRef(
 
         // Also include new rows that are in the rows state but not yet in unsavedChangesRef
         // These are rows added via inline add mode
-        const newRowsInGrid = rows.filter((row) => {
+        // Use latestRows (with merged edit values) to get most current data
+        const newRowsInGrid = latestRows.filter((row) => {
           const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
           return rowId.startsWith("new-") || row.isNew;
         });
 
-        // Merge changes: prefer unsavedChangesRef data over rows state
-        // because unsavedChangesRef may have more recent edits
-        const existingIds = new Set(
-          changesFromRef.map((r) => String(r.id || ""))
-        );
-        const additionalNewRows = newRowsInGrid.filter(
-          (row) => !existingIds.has(String(row.id || ""))
-        );
+        // Merge changes: prefer data from latestRows (with edit values), then from unsavedChangesRef
+        // Create a map to merge by row ID
+        const changesMap = new Map();
 
-        const changes = [...changesFromRef, ...additionalNewRows];
+        // First, add all new rows from the grid (these have the latest cell values including edits)
+        newRowsInGrid.forEach((row) => {
+          const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
+          changesMap.set(rowId, row);
+        });
+
+        // Then, merge with unsavedChangesRef data (for existing edited rows)
+        changesFromRef.forEach((row) => {
+          const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
+          const existingRow = changesMap.get(rowId);
+          if (existingRow) {
+            // Merge: existing row from grid has latest values, overlay with ref data
+            changesMap.set(rowId, { ...row, ...existingRow });
+          } else {
+            // For existing rows being edited, check if they have edit state
+            const editingFields = editRowsState[rowId];
+            if (editingFields) {
+              const updatedRow = { ...row };
+              Object.entries(editingFields).forEach(
+                ([fieldName, fieldData]) => {
+                  if (fieldData && fieldData.value !== undefined) {
+                    updatedRow[fieldName] = fieldData.value;
+                  }
+                }
+              );
+              changesMap.set(rowId, updatedRow);
+            } else {
+              changesMap.set(rowId, row);
+            }
+          }
+        });
+
+        const changes = Array.from(changesMap.values());
+
+        Logger.log("📝 Final changes to save:", changes);
 
         if (changes.length === 0) {
           Logger.warn("⚠️ No changes to save");
@@ -8070,6 +8318,11 @@ const BSDataGrid = forwardRef(
               cleanData,
               bsPreObj,
             });
+            // Mark this row as saved to prevent double-save in processRowUpdate
+            const originalRowId = row.id || row.Id || row.ID;
+            if (originalRowId) {
+              savedRowIdsRef.current.add(String(originalRowId));
+            }
             await createRecord(cleanData, bsPreObj);
           } else {
             // Existing row - use updateRecord
@@ -8122,6 +8375,11 @@ const BSDataGrid = forwardRef(
       } finally {
         setFormLoading(false);
         setLoading(false); // Clear loading state
+        isBulkSavingRef.current = false; // Reset bulk save flag
+        // Clear saved row IDs after a delay to allow any pending processRowUpdate calls to check
+        setTimeout(() => {
+          savedRowIdsRef.current.clear();
+        }, 500);
       }
     }, [
       metadata,
@@ -8133,6 +8391,7 @@ const BSDataGrid = forwardRef(
       loadMetadata,
       rows,
       getEffectivePrimaryKey,
+      apiRef,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
