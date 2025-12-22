@@ -628,16 +628,15 @@ const BulkEditToolbar = ({
 */
 
 // Custom Quick Filter - ค้นหาเมื่อกด Enter เท่านั้น
-const CustomQuickFilter = ({ apiRef, localeText }) => {
-  const [searchValue, setSearchValue] = useState("");
-
+// รับ value และ onChange จาก props เพื่อเก็บ state ไว้ที่ parent component
+const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
   const handleSearch = useCallback(() => {
     if (apiRef?.current) {
       apiRef.current.setQuickFilterValues(
-        searchValue ? searchValue.split(" ").filter((word) => word) : []
+        value ? value.split(" ").filter((word) => word) : []
       );
     }
-  }, [apiRef, searchValue]);
+  }, [apiRef, value]);
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -650,16 +649,16 @@ const CustomQuickFilter = ({ apiRef, localeText }) => {
   );
 
   const handleClear = useCallback(() => {
-    setSearchValue("");
+    onChange?.("");
     if (apiRef?.current) {
       apiRef.current.setQuickFilterValues([]);
     }
-  }, [apiRef]);
+  }, [apiRef, onChange]);
 
   return (
     <TextField
-      value={searchValue}
-      onChange={(e) => setSearchValue(e.target.value)}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
       onKeyDown={handleKeyDown}
       placeholder={localeText?.toolbarQuickFilterPlaceholder || "Search..."}
       variant="outlined"
@@ -670,7 +669,7 @@ const CustomQuickFilter = ({ apiRef, localeText }) => {
             <SearchIcon sx={{ color: "action.active", fontSize: "1.25rem" }} />
           </InputAdornment>
         ),
-        endAdornment: searchValue ? (
+        endAdornment: value ? (
           <InputAdornment position="end">
             <IconButton
               size="small"
@@ -728,6 +727,9 @@ const DynamicGridToolbar = ({
   onPrint,
   localeText,
   apiRef,
+  // Quick Filter props
+  quickFilterValue = "",
+  onQuickFilterChange,
   // Bulk Edit Mode props
   bulkEditMode = false,
   onBulkSave,
@@ -778,7 +780,7 @@ const DynamicGridToolbar = ({
   };
 
   return (
-    <GridToolbarContainer sx={{ pb: '4px' }}>
+    <GridToolbarContainer sx={{ pb: "4px" }}>
       {/* Add Record Button - Split Button when bulk mode enabled, regular button otherwise */}
       {showAdd && (bsEnableBulkMode || bsBulkAdd) ? (
         <AddRecordSplitButton
@@ -888,7 +890,12 @@ const DynamicGridToolbar = ({
           </Button>
         </Box>
       ) : (
-        <CustomQuickFilter apiRef={apiRef} localeText={localeText} />
+        <CustomQuickFilter
+          apiRef={apiRef}
+          localeText={localeText}
+          value={quickFilterValue}
+          onChange={onQuickFilterChange}
+        />
       )}
 
       {/* Header Filters Toggle */}
@@ -1161,7 +1168,13 @@ const ComboBoxField = ({
  * BulkAddComboBoxField Component for Bulk Add Dialog
  * Simplified version of ComboBoxField for bulk add forms
  */
-const BulkAddComboBoxField = ({ columnName, config, value, onChange, required }) => {
+const BulkAddComboBoxField = ({
+  columnName,
+  config,
+  value,
+  onChange,
+  required,
+}) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const { getComboBoxData } = useDynamicCrud(config.Obj || "dummy");
@@ -1216,9 +1229,7 @@ const BulkAddComboBoxField = ({ columnName, config, value, onChange, required })
     <FormControl fullWidth size="small" required={required}>
       <InputLabel>
         {formatColumnName(columnName)}
-        {required && (
-          <span style={{ color: "#d32f2f" }}> *</span>
-        )}
+        {required && <span style={{ color: "#d32f2f" }}> *</span>}
       </InputLabel>
       <Select
         value={value || ""}
@@ -2154,6 +2165,7 @@ const BSDataGrid = forwardRef(
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [headerFiltersEnabled, setHeaderFiltersEnabled] = useState(false);
+    const [quickFilterInputValue, setQuickFilterInputValue] = useState("");
 
     const [paginationModel, setPaginationModel] = useState(() => ({
       page: 0,
@@ -2251,9 +2263,10 @@ const BSDataGrid = forwardRef(
               const lookupMap = {};
               // Create valueOptions array for dropdown editing
               const options = [];
-              
+
               result.forEach((item) => {
-                const valueData = item.value !== undefined ? item : item.data || item;
+                const valueData =
+                  item.value !== undefined ? item : item.data || item;
                 const displayData = item.data || item;
                 const itemValue = valueData[config.Value] || item.value;
                 const itemDisplay = displayData[config.Display] || item.display;
@@ -2262,10 +2275,10 @@ const BSDataGrid = forwardRef(
                   options.push({ value: itemValue, label: itemDisplay });
                 }
               });
-              
+
               lookupData[columnName] = lookupMap;
               valueOptionsData[columnName] = options;
-              
+
               Logger.log(`✅ Loaded ComboBox lookup for ${columnName}:`, {
                 count: Object.keys(lookupMap).length,
                 sample: Object.entries(lookupMap).slice(0, 3),
@@ -2273,7 +2286,10 @@ const BSDataGrid = forwardRef(
               });
             }
           } catch (error) {
-            Logger.error(`❌ Failed to load ComboBox lookup for ${columnName}:`, error);
+            Logger.error(
+              `❌ Failed to load ComboBox lookup for ${columnName}:`,
+              error
+            );
           }
         }
 
@@ -4644,42 +4660,51 @@ const BSDataGrid = forwardRef(
     }, []);
 
     // Helper: Render combobox for columns with ComboBox configuration
-    const renderComboBoxCell = useCallback((params, comboConfig) => {
-      const { value, field } = params;
-      
-      // First try to get display value from comboBoxLookupData
-      const lookupMap = comboBoxLookupData[field];
-      let displayText = lookupMap ? lookupMap[value] : null;
-      
-      // Fallback to valueOptions if no lookup data
-      if (!displayText) {
-        displayText =
-          comboConfig.valueOptions?.find((opt) => opt.value === value)?.label ||
-          value ||
-          comboConfig.Default ||
-          "";
-      }
+    const renderComboBoxCell = useCallback(
+      (params, comboConfig) => {
+        const { value, field } = params;
 
-      return (
-        <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-          {displayText}
-        </Box>
-      );
-    }, [comboBoxLookupData]);
+        // First try to get display value from comboBoxLookupData
+        const lookupMap = comboBoxLookupData[field];
+        let displayText = lookupMap ? lookupMap[value] : null;
+
+        // Fallback to valueOptions if no lookup data
+        if (!displayText) {
+          displayText =
+            comboConfig.valueOptions?.find((opt) => opt.value === value)
+              ?.label ||
+            value ||
+            comboConfig.Default ||
+            "";
+        }
+
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+            {displayText}
+          </Box>
+        );
+      },
+      [comboBoxLookupData]
+    );
 
     // Helper: Get ComboBox value options for editing (uses pre-fetched data)
-    const getComboBoxOptions = useCallback((comboConfig, columnName) => {
-      // Use pre-fetched valueOptions from comboBoxValueOptions state
-      const options = comboBoxValueOptions[columnName];
-      // Add empty option at the beginning for new rows with null/undefined values
-      const emptyOption = { value: "", label: "-- เลือก --" };
-      if (options && options.length > 0) {
-        return [emptyOption, ...options];
-      }
-      // Fallback to static valueOptions if provided in config
-      const staticOptions = comboConfig.valueOptions || [];
-      return staticOptions.length > 0 ? [emptyOption, ...staticOptions] : [emptyOption];
-    }, [comboBoxValueOptions]);
+    const getComboBoxOptions = useCallback(
+      (comboConfig, columnName) => {
+        // Use pre-fetched valueOptions from comboBoxValueOptions state
+        const options = comboBoxValueOptions[columnName];
+        // Add empty option at the beginning for new rows with null/undefined values
+        const emptyOption = { value: "", label: "-- เลือก --" };
+        if (options && options.length > 0) {
+          return [emptyOption, ...options];
+        }
+        // Fallback to static valueOptions if provided in config
+        const staticOptions = comboConfig.valueOptions || [];
+        return staticOptions.length > 0
+          ? [emptyOption, ...staticOptions]
+          : [emptyOption];
+      },
+      [comboBoxValueOptions]
+    );
 
     // Helper: Get is_active dropdown options
     const getIsActiveOptions = useCallback(() => {
@@ -5572,18 +5597,31 @@ const BSDataGrid = forwardRef(
           // If it's a new row, create it
           if (newRow.isNew) {
             const { isNew, id, ...dataToSave } = newRow;
-            
+
             // Filter to only include fields that exist in metadata (actual table columns)
             // This removes display-only fields like create_by_display, update_by_display
             const cleanData = { ...dataToSave };
 
             // Remove audit fields - these should be managed by backend
             const auditFields = [
-              "create_by", "created_by", "createby",
-              "create_date", "created_date", "createdate", "created_at",
-              "update_by", "updated_by", "updateby", "modified_by",
-              "update_date", "updated_date", "updatedate", "updated_at", "modified_date",
-              "rowversion", "timestamp"
+              "create_by",
+              "created_by",
+              "createby",
+              "create_date",
+              "created_date",
+              "createdate",
+              "created_at",
+              "update_by",
+              "updated_by",
+              "updateby",
+              "modified_by",
+              "update_date",
+              "updated_date",
+              "updatedate",
+              "updated_at",
+              "modified_date",
+              "rowversion",
+              "timestamp",
             ];
             auditFields.forEach((field) => {
               delete cleanData[field];
@@ -5599,14 +5637,14 @@ const BSDataGrid = forwardRef(
                 }
               });
             }
-            
+
             const savedRecord = await createRecord(cleanData, bsPreObj);
 
             // Merge original row data with saved record to preserve all fields
             // savedRecord only contains the fields that were sent to the API
             const updatedRow = {
-              ...newRow,       // Keep original row data (including display columns)
-              ...savedRecord,  // Override with new values from API
+              ...newRow, // Keep original row data (including display columns)
+              ...savedRecord, // Override with new values from API
               isNew: false,
             };
 
@@ -5633,11 +5671,24 @@ const BSDataGrid = forwardRef(
 
           // Remove audit fields - these should be managed by backend
           const auditFields = [
-            "create_by", "created_by", "createby",
-            "create_date", "created_date", "createdate", "created_at",
-            "update_by", "updated_by", "updateby", "modified_by",
-            "update_date", "updated_date", "updatedate", "updated_at", "modified_date",
-            "rowversion", "timestamp"
+            "create_by",
+            "created_by",
+            "createby",
+            "create_date",
+            "created_date",
+            "createdate",
+            "created_at",
+            "update_by",
+            "updated_by",
+            "updateby",
+            "modified_by",
+            "update_date",
+            "updated_date",
+            "updatedate",
+            "updated_at",
+            "modified_date",
+            "rowversion",
+            "timestamp",
           ];
           auditFields.forEach((field) => {
             delete cleanData[field];
@@ -5663,9 +5714,9 @@ const BSDataGrid = forwardRef(
           // savedRecord only contains the fields that were sent to the API
           // but we need to keep all the original fields (like display columns)
           const updatedRow = {
-            ...newRow,       // Keep all original row data
-            ...savedRecord,  // Override with updated values from API
-            id: newRow.id,   // Preserve original id for DataGrid
+            ...newRow, // Keep all original row data
+            ...savedRecord, // Override with updated values from API
+            id: newRow.id, // Preserve original id for DataGrid
           };
 
           setRows((oldRows) =>
@@ -6643,7 +6694,10 @@ const BSDataGrid = forwardRef(
             }
             // ComboBox configuration
             else if (comboConfig) {
-              baseColumn.valueOptions = getComboBoxOptions(comboConfig, columnName);
+              baseColumn.valueOptions = getComboBoxOptions(
+                comboConfig,
+                columnName
+              );
               baseColumn.renderCell = (params) =>
                 renderComboBoxCell(params, comboConfig);
             } else {
@@ -7772,11 +7826,24 @@ const BSDataGrid = forwardRef(
 
           // Remove audit fields - these should be managed by backend
           const auditFields = [
-            "create_by", "created_by", "createby",
-            "create_date", "created_date", "createdate", "created_at",
-            "update_by", "updated_by", "updateby", "modified_by",
-            "update_date", "updated_date", "updatedate", "updated_at", "modified_date",
-            "rowversion", "timestamp"
+            "create_by",
+            "created_by",
+            "createby",
+            "create_date",
+            "created_date",
+            "createdate",
+            "created_at",
+            "update_by",
+            "updated_by",
+            "updateby",
+            "modified_by",
+            "update_date",
+            "updated_date",
+            "updatedate",
+            "updated_at",
+            "modified_date",
+            "rowversion",
+            "timestamp",
           ];
           auditFields.forEach((field) => {
             delete cleanData[field];
@@ -7959,11 +8026,24 @@ const BSDataGrid = forwardRef(
 
           // Remove audit fields - these should be managed by backend
           const auditFields = [
-            "create_by", "created_by", "createby",
-            "create_date", "created_date", "createdate", "created_at",
-            "update_by", "updated_by", "updateby", "modified_by",
-            "update_date", "updated_date", "updatedate", "updated_at", "modified_date",
-            "rowversion", "timestamp"
+            "create_by",
+            "created_by",
+            "createby",
+            "create_date",
+            "created_date",
+            "createdate",
+            "created_at",
+            "update_by",
+            "updated_by",
+            "updateby",
+            "modified_by",
+            "update_date",
+            "updated_date",
+            "updatedate",
+            "updated_at",
+            "modified_date",
+            "rowversion",
+            "timestamp",
           ];
           auditFields.forEach((field) => {
             delete cleanData[field];
@@ -8771,6 +8851,9 @@ const BSDataGrid = forwardRef(
                             onPrint: handlePrint,
                             localeText,
                             apiRef,
+                            // Quick Filter props
+                            quickFilterValue: quickFilterInputValue,
+                            onQuickFilterChange: setQuickFilterInputValue,
                             // Bulk Edit Mode props
                             bulkEditMode,
                             onBulkSave: handleBulkSaveChanges,
@@ -8827,7 +8910,10 @@ const BSDataGrid = forwardRef(
                       fontSize: "0.875rem",
                     },
                     [`& .${gridClasses.columnHeaders}`]: {
-                      backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100],
+                      backgroundColor:
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[800]
+                          : theme.palette.grey[100],
                       fontSize: "0.875rem",
                     },
                     // Force header text bold
@@ -8843,43 +8929,58 @@ const BSDataGrid = forwardRef(
                     [`& .${gridClasses.row}`]: {
                       backgroundColor: theme.palette.background.paper,
                       "&:hover": {
-                        backgroundColor: theme.palette.mode === 'dark' 
-                          ? theme.palette.grey[400] // Subtle hover
-                          : theme.palette.grey[100],
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? theme.palette.grey[400] // Subtle hover
+                            : theme.palette.grey[100],
                       },
                       // Striped rows styling - even rows get slightly different background
                       "&.even": {
-                        backgroundColor: theme.palette.mode === 'dark' 
-                          ? theme.palette.grey[300] // Elevated surface for stripe
-                          : theme.palette.grey[50],
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? theme.palette.grey[300] // Elevated surface for stripe
+                            : theme.palette.grey[50],
                         "&:hover": {
-                          backgroundColor: theme.palette.mode === 'dark' 
-                            ? theme.palette.grey[400] 
-                            : theme.palette.grey[100],
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? theme.palette.grey[400]
+                              : theme.palette.grey[100],
                         },
                       },
                       // Highlight rows with unsaved changes
                       "&.unsaved-changes": {
-                        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 217, 61, 0.15)' : '#fff3cd',
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(255, 217, 61, 0.15)"
+                            : "#fff3cd",
                         "&:hover": {
-                          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 217, 61, 0.25)' : '#ffeaa7',
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(255, 217, 61, 0.25)"
+                              : "#ffeaa7",
                         },
                       },
                       // Selected row styling - primary glow
                       "&.Mui-selected": {
-                        backgroundColor: theme.palette.mode === 'dark' 
-                          ? 'rgba(0, 212, 255, 0.2) !important'
-                          : '#bbdefb !important',
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(0, 212, 255, 0.2) !important"
+                            : "#bbdefb !important",
                         "&:hover": {
-                          backgroundColor: theme.palette.mode === 'dark'
-                            ? 'rgba(0, 212, 255, 0.3) !important'
-                            : '#90caf9 !important',
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(0, 212, 255, 0.3) !important"
+                              : "#90caf9 !important",
                         },
                       },
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[200] : '#E0DEDEFF'} !important`,
+                      backgroundColor: `${
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[200]
+                          : "#E0DEDEFF"
+                      } !important`,
                       borderBottom: `1px solid ${theme.palette.divider} !important`,
                       minHeight: "30px !important",
                       maxHeight: "46px !important",
@@ -8936,7 +9037,11 @@ const BSDataGrid = forwardRef(
                     },
                     // Edit mode cell input styling - add subtle border to show it's editable
                     "& .MuiDataGrid-cell--editing": {
-                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#fafafa'} !important`,
+                      backgroundColor: `${
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[800]
+                          : "#fafafa"
+                      } !important`,
                       "& .MuiInputBase-root": {
                         border: `1px solid ${theme.palette.divider}`,
                         borderRadius: "4px",
@@ -8956,7 +9061,11 @@ const BSDataGrid = forwardRef(
                     },
                     // New row styling
                     "& .MuiDataGrid-row--editing": {
-                      backgroundColor: `${theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#f5f9ff'} !important`,
+                      backgroundColor: `${
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[800]
+                          : "#f5f9ff"
+                      } !important`,
                       boxShadow: `inset 0 0 0 1px ${theme.palette.primary.main}`,
                     },
                   })}
@@ -9022,13 +9131,15 @@ const BSDataGrid = forwardRef(
                     aria-controls="parent-form-content"
                     id="parent-form-header"
                     sx={(theme) => ({
-                      backgroundColor: theme.palette.mode === 'dark' 
-                        ? theme.palette.grey[300] 
-                        : '#EBEBEBFF',
+                      backgroundColor:
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[300]
+                          : "#EBEBEBFF",
                       "&:hover": {
-                        backgroundColor: theme.palette.mode === 'dark'
-                          ? theme.palette.grey[400]
-                          : '#d5d5d5',
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? theme.palette.grey[400]
+                            : "#d5d5d5",
                       },
                       borderTopLeftRadius: "8px",
                       borderTopRightRadius: "8px",
@@ -9177,16 +9288,16 @@ const BSDataGrid = forwardRef(
             )}
           </DialogContent>
           <DialogActions>
-            <BSCloseOutlinedButton onClick={handleDialogClose} disabled={formLoading}>
+            <BSCloseOutlinedButton
+              onClick={handleDialogClose}
+              disabled={formLoading}
+            >
               {isParentSaved && bsChildGrids && bsChildGrids.length > 0
                 ? localeText.bsClose || "Close"
                 : localeText.bsCancel}
             </BSCloseOutlinedButton>
             {/* Show Save button always - user can save/update parent record anytime */}
-            <BSSaveOutlinedButton
-              onClick={handleSave}
-              disabled={formLoading}
-            >
+            <BSSaveOutlinedButton onClick={handleSave} disabled={formLoading}>
               {formLoading
                 ? localeText.bsSaving
                 : bsChildGrids &&
@@ -9266,16 +9377,17 @@ const BSDataGrid = forwardRef(
                       </Typography>
                       <Grid container spacing={2}>
                         {metadata.columns
-                          .filter((c) =>
-                            // Include field if it passes normal isFieldInForm check
-                            // OR if it has a comboBoxConfig defined (FK fields that should be included)
-                            isFieldInForm(
-                              c.columnName,
-                              c.dataType,
-                              c.isIdentity,
-                              c.hasDefault,
-                              c.defaultValue
-                            ) || comboBoxConfig[c.columnName]
+                          .filter(
+                            (c) =>
+                              // Include field if it passes normal isFieldInForm check
+                              // OR if it has a comboBoxConfig defined (FK fields that should be included)
+                              isFieldInForm(
+                                c.columnName,
+                                c.dataType,
+                                c.isIdentity,
+                                c.hasDefault,
+                                c.defaultValue
+                              ) || comboBoxConfig[c.columnName]
                           )
                           .map((c) => {
                             const {
@@ -9540,7 +9652,10 @@ const BSDataGrid = forwardRef(
             )}
           </DialogContent>
           <DialogActions>
-            <BSCloseOutlinedButton onClick={handleBulkDialogClose} disabled={formLoading}>
+            <BSCloseOutlinedButton
+              onClick={handleBulkDialogClose}
+              disabled={formLoading}
+            >
               {localeText.bsCancel}
             </BSCloseOutlinedButton>
             <BSSaveOutlinedButton
