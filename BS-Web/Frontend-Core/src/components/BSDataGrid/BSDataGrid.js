@@ -3608,9 +3608,9 @@ const BSDataGrid = forwardRef(
             if (existing && existing[c.columnName] !== undefined) {
               init[c.columnName] = existing[c.columnName];
             } else {
-              // Special handling for is_active field - default to empty string for new records (will show "-- เลือก --")
+              // Special handling for is_active field - default to "YES" for new records
               if (isActiveField(c.columnName)) {
-                init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                init[c.columnName] = "YES"; // Default to active for new records
                 return;
               }
 
@@ -3667,13 +3667,23 @@ const BSDataGrid = forwardRef(
         if (bsColumnDefs && Array.isArray(bsColumnDefs)) {
           bsColumnDefs.forEach((colDef) => {
             if (colDef.field && colDef.defaultValue !== undefined) {
+              // Find matching field in init (case-insensitive)
+              const matchingField = Object.keys(init).find(
+                (key) => key.toLowerCase() === colDef.field.toLowerCase()
+              );
+              const fieldToUse = matchingField || colDef.field;
+
               // Only set if not already set by existing data or bsDefaultFormValues
               if (
-                init[colDef.field] === undefined ||
-                init[colDef.field] === null ||
-                init[colDef.field] === ""
+                init[fieldToUse] === undefined ||
+                init[fieldToUse] === null ||
+                init[fieldToUse] === ""
               ) {
-                init[colDef.field] = colDef.defaultValue;
+                init[fieldToUse] = colDef.defaultValue;
+                Logger.log(
+                  `🎯 Applied defaultValue for ${fieldToUse}:`,
+                  colDef.defaultValue
+                );
               }
             }
           });
