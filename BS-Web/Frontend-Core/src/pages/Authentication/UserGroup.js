@@ -63,10 +63,10 @@ const UserGroupPage = (props) => {
             // showSplitButton: false,
           }}
           bsColumnDefs={[
-            {
-              field: "app_id",
-              headerName: "Application",
-            },
+            // {
+            //   field: "app_id",
+            //   headerName: "Application",
+            // },
             {
               field: "is_active",
               defaultValue: "YES",
