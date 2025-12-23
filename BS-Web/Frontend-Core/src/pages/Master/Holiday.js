@@ -35,6 +35,15 @@ const HolidayPage = (props) => {
           bsDialogSize="Large"
           bsDialogColumns={3}
           bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+          bsBulkMode={{
+            enable: true, // Enable all bulk operations
+            addInline: true, // Add new rows inline instead of dialog
+            // edit: true,      // Enabled by default when enable=true
+            // delete: true,    // Enabled by default when enable=true
+            // add: true,       // Enabled by default when enable=true
+            // showCheckbox: false,
+            // showSplitButton: false,
+          }}
           bsColumnDefs={[
             {
               field: "holiday_date",
@@ -42,6 +51,7 @@ const HolidayPage = (props) => {
               dateFormat: "dd/MM/yyyy",
             },
           ]}
+          bsUniqueFields={["holiday_date"]}
         />
       </Paper>
     </Box>
