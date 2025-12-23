@@ -1415,7 +1415,16 @@ namespace ApiCore.Services.Implementation
                 command.Parameters.Add(new SqlParameter("@Operation", request.Operation ?? "SELECT"));
                 command.Parameters.Add(new SqlParameter("@Page", request.Page ?? 1));
                 command.Parameters.Add(new SqlParameter("@PageSize", request.PageSize ?? 25));
-                command.Parameters.Add(new SqlParameter("@UserId", request.UserId ?? "system"));
+
+                // Only add @UserId if not already provided in custom parameters
+                // This prevents duplicate parameter error when data contains user_id field
+                bool hasUserIdInParams = request.Parameters?.ContainsKey("UserId") == true ||
+                                         request.Parameters?.ContainsKey("userId") == true ||
+                                         request.Parameters?.ContainsKey("User_Id") == true;
+                if (!hasUserIdInParams)
+                {
+                    command.Parameters.Add(new SqlParameter("@UserId", request.UserId ?? "system"));
+                }
 
                 // Add sort model as JSON
                 if (request.SortModel != null && request.SortModel.Any())
