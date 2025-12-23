@@ -300,7 +300,6 @@ const TaskStatusSection = ({
             bsKeyId="project_task_id"
             bsFilterMode="client"
             onDataLoaded={handleDataLoaded}
-            bsRowPerPage={20}
             bsColumnDefs={[
               {
                 field: "assignee_list",

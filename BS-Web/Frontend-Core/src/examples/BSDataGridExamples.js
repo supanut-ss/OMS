@@ -23,7 +23,7 @@ const BSDataGridExamples = () => {
         bsObj="t_com_user_group"
         bsCols="name,description,is_active,create_by,create_date,update_by,update_date"
         bsObjBy="name asc"
-        bsRowPerPage={20}
+        bsRowPerPage={25}
         bsShowDescColumn={false}
         bsBulkAdd={true}
         bsComboBox={[
@@ -65,7 +65,7 @@ const BSDataGridExamples = () => {
         bsObjWh="is_active='YES'"
         bsPinColsLeft="customer_id,customer_name"
         bsPinColsRight="actions"
-        bsRowPerPage={20}
+        bsRowPerPage={25}
         bsBulkEdit={true}
         bsBulkAdd={true}
         bsShowDescColumn={false}

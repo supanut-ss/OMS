@@ -64,7 +64,7 @@ const Projects = (props) => {
             bsAllowAdd={false}
             bsAllowEdit={true}
             bsAllowDelete={true}
-            bsRowPerPage={20}
+            bsRowPerPage={25}
             onAdd={(r) => {
                 setProjectHeaderID("");
                 setOpenDialog(true);
