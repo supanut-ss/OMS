@@ -31,6 +31,25 @@ const ImportMaster = (props) => {
           bsObj="t_mas_import_master"
           bsObjBy="create_date desc"
           bsPageSizeOptions={[20, 100, 200, 500, 1000]}
+          bsBulkMode={{
+            enable: true, // Enable all bulk operations
+            addInline: true, // Add new rows inline instead of dialog
+            // edit: true,      // Enabled by default when enable=true
+            // delete: true,    // Enabled by default when enable=true
+            // add: true,       // Enabled by default when enable=true
+            // showCheckbox: false,
+            // showSplitButton: false,
+          }}
+          bsColumnDefs={[
+            // {
+            //   field: "app_id",
+            //   headerName: "Application",
+            // },
+            {
+              field: "is_active",
+              defaultValue: "YES",
+            },
+          ]}
         />
       </Paper>
     </Box>

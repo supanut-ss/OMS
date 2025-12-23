@@ -11,13 +11,15 @@ const UserLogOnPage = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
   const gridRef = useRef();
 
   const getLang = async () => {
-    setResourceData(await getResources("UserLogOn"));
+    setResourceData(await getResources("v_com_user_alive")); // backend group ชื่อ "t_com_user_logon"
   };
 
   useEffect(() => {
+    setLocale_id(props.lang || "en");
     getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
@@ -60,13 +62,13 @@ const UserLogOnPage = (props) => {
           }}
           startIcon={<PersonRemoveIcon />}
         >
-          {getResource(resourceData, "Clear Logged On Users") ||
+          {getResource(resourceData, "ClearLoggedOnUsers") ||
             "Clear Logged On Users"}
         </Button>
 
         <BSDataGrid
           ref={gridRef}
-          bsLocale={props.lang}
+          bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user_alive"
           bsCols="user_id,status,first_name,last_name,ip_address,refresh_token_expiry,device_info"

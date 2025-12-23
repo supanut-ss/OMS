@@ -122,8 +122,8 @@ const MenuTreeView = () => {
         setLoading(true);
         try {
           const result = await getMenuAssign(
-            selectedGroup.code ?? "",
-            selectedPlatform.code ?? ""
+            selectedGroup ?? "",
+            selectedPlatform ?? ""
           );
           const tree = buildMenuTree(result?.data || []);
           setMenuData(tree);
@@ -245,7 +245,8 @@ const MenuTreeView = () => {
               bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
               cacheKey="group"
               bsLoadOnOpen={true}
-              bsOnChange={(val) => setSelectedGroup(val)}
+              bsOnChange={(val) => setSelectedGroup(val?.user_group_id ?? "")}
+              required={true}
             />
           </FormControl>
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
@@ -273,7 +274,10 @@ const MenuTreeView = () => {
               bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
               cacheKey="platform"
               bsLoadOnOpen={true}
-              bsOnChange={(val) => setSelectedPlatform(val)}
+              bsOnChange={(val) =>
+                setSelectedPlatform(val?.display_member ?? "")
+              }
+              required={true}
             />
           </FormControl>
 
