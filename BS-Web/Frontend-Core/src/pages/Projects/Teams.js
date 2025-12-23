@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useResource } from "../../hooks/useResource";
 import CloseIcon from "@mui/icons-material/Close";
 import { renderInput } from "../../components/FormRenderer";
@@ -36,6 +36,13 @@ const ProjectsTeams = (props) => {
     defaultData,
     requiredFields
   );
+
+  // Memoize stored procedure params to prevent infinite re-renders
+  const storedProcedureParams = useMemo(
+    () => ({ project_id: props.projectID }),
+    [props.projectID]
+  );
+
   const getLang = async () => {
     const res = await getResources("Projects Teams");
     setResourceData(res);
@@ -109,7 +116,7 @@ const ProjectsTeams = (props) => {
           // bsAllowEdit={true}
           //  bsAllowDelete={true}
           bsFilterMode="client"
-          bsStoredProcedureParams={{ project_id: props.projectID }}
+          bsStoredProcedureParams={storedProcedureParams}
         />
       </Paper>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth={"lg"}>

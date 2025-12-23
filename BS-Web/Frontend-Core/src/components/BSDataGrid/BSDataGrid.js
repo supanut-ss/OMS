@@ -103,6 +103,16 @@ import { BSSwitchField } from "../BSSwitch";
 import BSSaveOutlinedButton from "../Button/BSSaveOutlinedButton";
 import BSCloseOutlinedButton from "../Button/BSCloseOutlinedButton";
 
+// BSDataGrid verbose logging (disabled by default)
+// Enable by setting REACT_APP_BSDATAGRID_VERBOSE_LOG=true and rebuilding the frontend.
+const BSDATAGRID_VERBOSE_LOG =
+  process.env.REACT_APP_BSDATAGRID_VERBOSE_LOG === "true";
+const bsLog = (...args) => {
+  if (BSDATAGRID_VERBOSE_LOG) {
+    Logger.log(...args);
+  }
+};
+
 // Initialize MUI X License
 muiLicenseManager.initialize();
 
@@ -749,7 +759,7 @@ const DynamicGridToolbar = ({
   changesCount = 0,
 }) => {
   // Debug: Log bulkEditMode and hasUnsavedChanges values
-  Logger.log("🔧 DynamicGridToolbar props:", {
+  bsLog("🔧 DynamicGridToolbar props:", {
     bulkEditMode,
     hasUnsavedChanges,
     changesCount,
@@ -1865,7 +1875,7 @@ const BSDataGrid = forwardRef(
 
     // Log permission status when bsAutoPermission is enabled
     if (bsAutoPermission) {
-      Logger.log("🔐 BSDataGrid: Auto Permission enabled", {
+      bsLog("🔐 BSDataGrid: Auto Permission enabled", {
         currentPath: permissions.currentPath,
         canView: permissions.canView,
         canAdd: permissions.canAdd,
@@ -2317,7 +2327,7 @@ const BSDataGrid = forwardRef(
               lookupData[columnName] = lookupMap;
               valueOptionsData[columnName] = options;
 
-              Logger.log(`✅ Loaded ComboBox lookup for ${columnName}:`, {
+              bsLog(`✅ Loaded ComboBox lookup for ${columnName}:`, {
                 count: Object.keys(lookupMap).length,
                 sample: Object.entries(lookupMap).slice(0, 3),
                 options: options.slice(0, 3),
@@ -3215,7 +3225,7 @@ const BSDataGrid = forwardRef(
         const effectiveLocale = getEffectiveLocale();
         const formatOptions = getLocaleFormatOptions(effectiveLocale);
 
-        // Logger.log("🌐 Format cell value with locale:", {
+        // bsLog("🌐 Format cell value with locale:", {
         //   value,
         //   dataType,
         //   effectiveLocale,
@@ -3330,7 +3340,7 @@ const BSDataGrid = forwardRef(
           //     columnName.toLowerCase().includes("app"));
 
           // if (isSequencePrimaryKey) {
-          //   Logger.log(
+          //   bsLog(
           //     `❌ Skipping ${columnName} - detected as sequence-generated primary key by pattern`
           //   );
           //   return false;
@@ -3489,7 +3499,7 @@ const BSDataGrid = forwardRef(
       (rowData = null) => {
         // Priority 1: Manual bsKeyId specification (highest priority)
         if (bsKeyId) {
-          // Logger.log(
+          // bsLog(
           //   "🔑 Using manually specified primary key (bsKeyId):",
           //   bsKeyId
           // );
@@ -3498,7 +3508,7 @@ const BSDataGrid = forwardRef(
 
         // Priority 2: Metadata primary key
         if (metadata?.primaryKeys?.[0]) {
-          // Logger.log(
+          // bsLog(
           //   "🔑 Using primary key from metadata:",
           //   metadata.primaryKeys[0]
           // );
@@ -3508,12 +3518,12 @@ const BSDataGrid = forwardRef(
         // Priority 3: Auto-detect from data (for Enhanced SP)
         if (bsStoredProcedure && rowData) {
           const detected = detectPrimaryKeyFromData(rowData);
-          // Logger.log("🔑 Detected primary key from data:", detected);
+          // bsLog("🔑 Detected primary key from data:", detected);
           return detected;
         }
 
         // Priority 4: Fallback to common name
-        // Logger.log("🔑 Using fallback primary key: Id");
+        // bsLog("🔑 Using fallback primary key: Id");
         return "Id";
       },
       [
@@ -3690,7 +3700,7 @@ const BSDataGrid = forwardRef(
                 init[fieldToUse] === ""
               ) {
                 init[fieldToUse] = colDef.defaultValue;
-                Logger.log(
+                bsLog(
                   `🎯 Applied defaultValue for ${fieldToUse}:`,
                   colDef.defaultValue
                 );
@@ -3750,7 +3760,7 @@ const BSDataGrid = forwardRef(
       }
 
       // Inline bulk add mode
-      Logger.log(
+      bsLog(
         "🔍 handleAddClick - effectiveBulkAddInline:",
         effectiveBulkAddInline
       );
@@ -3773,11 +3783,11 @@ const BSDataGrid = forwardRef(
 
         // Enable bulk edit mode and mark as having unsaved changes
         // This enables the Save All / Discard All buttons on the toolbar
-        Logger.log("🔧 Setting bulkEditMode=true and hasUnsavedChanges=true");
+        bsLog("🔧 Setting bulkEditMode=true and hasUnsavedChanges=true");
         setBulkEditMode(true);
         setHasUnsavedChanges(true);
 
-        Logger.log("➕ New row added in inline mode:", { id, newRow });
+        bsLog("➕ New row added in inline mode:", { id, newRow });
         return;
       }
 
@@ -3895,7 +3905,7 @@ const BSDataGrid = forwardRef(
       }
       // Always set hasUnsavedChanges to true when adding a new row
       setHasUnsavedChanges(true);
-      Logger.log("➕ New row added via handleInlineAdd:", {
+      bsLog("➕ New row added via handleInlineAdd:", {
         id,
         newRow,
         bulkEditMode: true,
@@ -3980,10 +3990,10 @@ const BSDataGrid = forwardRef(
     // Handle Delete (external or built-in)
     const handleDeleteClick = useCallback(
       async (row) => {
-        Logger.log("🗑️ handleDeleteClick called", { row });
+        bsLog("🗑️ handleDeleteClick called", { row });
         const primaryKey = getEffectivePrimaryKey(row);
         const id = row?.[primaryKey];
-        Logger.log(
+        bsLog(
           "🗑️ Delete - primaryKey:",
           primaryKey,
           "id:",
@@ -4147,16 +4157,13 @@ const BSDataGrid = forwardRef(
             });
 
             if (!allFieldsHaveValues) {
-              Logger.log(
-                "🔍 Skipping composite key validation - missing values:",
-                {
-                  fields,
-                  values: fields.map((f) => ({
-                    field: f,
-                    value: mergedData[f],
-                  })),
-                }
-              );
+              bsLog("🔍 Skipping composite key validation - missing values:", {
+                fields,
+                values: fields.map((f) => ({
+                  field: f,
+                  value: mergedData[f],
+                })),
+              });
               continue; // Skip if any field is empty
             }
 
@@ -4526,7 +4533,7 @@ const BSDataGrid = forwardRef(
 
             // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
             if (primaryKey.startsWith("@")) {
-              Logger.log(
+              bsLog(
                 "🔧 DEVICE COMPATIBILITY - Handling device-specific parameter:",
                 {
                   originalPrimaryKey: primaryKey,
@@ -4579,7 +4586,7 @@ const BSDataGrid = forwardRef(
               });
             }
 
-            Logger.log(
+            bsLog(
               "✅ Record updated via Enhanced Stored Procedure:",
               result.message
             );
@@ -4661,7 +4668,7 @@ const BSDataGrid = forwardRef(
           setFormData(updatedFormData);
           setSelectedRow(updatedFormData);
 
-          Logger.log(
+          bsLog(
             "🔗 Hierarchical Add - Parent saved, switched to edit mode, PK values:",
             pkValues
           );
@@ -4873,7 +4880,7 @@ const BSDataGrid = forwardRef(
         const detectedPrimaryKey =
           bsKeyId || detectPrimaryKeyFromData(templateRow);
 
-        Logger.log("🔍 Enhanced SP Form - Primary Key Detection:", {
+        bsLog("🔍 Enhanced SP Form - Primary Key Detection:", {
           dialogMode,
           isAddMode: !selectedRow,
           bsKeyId,
@@ -4927,7 +4934,7 @@ const BSDataGrid = forwardRef(
           "timestamp",
         ];
 
-        Logger.log("🔍 Enhanced SP Form - Field Exclusion Setup:", {
+        bsLog("🔍 Enhanced SP Form - Field Exclusion Setup:", {
           excludedFields,
           excludedFieldsCount: excludedFields.length,
           templateRowFieldsCount: Object.keys(templateRow).length,
@@ -4937,7 +4944,7 @@ const BSDataGrid = forwardRef(
           .filter((key) => {
             // Exclude DataGrid internal IDs (sp_row_*, generated-*, etc.)
             if (key.startsWith("sp_row_") || key.startsWith("generated-")) {
-              Logger.log(`🚫 Excluding DataGrid internal ID: ${key}`);
+              bsLog(`🚫 Excluding DataGrid internal ID: ${key}`);
               return false;
             }
 
@@ -4948,15 +4955,13 @@ const BSDataGrid = forwardRef(
             );
 
             if (isExcluded) {
-              Logger.log(
+              bsLog(
                 `🚫 Excluding field from form (${dialogMode} mode): ${key} (matched: ${excludedFields.find(
                   (f) => f.toLowerCase() === key.toLowerCase()
                 )})`
               );
             } else {
-              Logger.log(
-                `✅ Including field in form (${dialogMode} mode): ${key}`
-              );
+              bsLog(`✅ Including field in form (${dialogMode} mode): ${key}`);
             }
 
             return !isExcluded;
@@ -5025,7 +5030,7 @@ const BSDataGrid = forwardRef(
         }
         // Filter out hidden columns (used by child grids to hide FK columns)
         if (bsHiddenColumns && bsHiddenColumns.includes(c.columnName)) {
-          Logger.log(`🙈 Hiding column from form: ${c.columnName}`);
+          bsLog(`🙈 Hiding column from form: ${c.columnName}`);
           return false;
         }
         return isFieldInForm(
@@ -5060,13 +5065,10 @@ const BSDataGrid = forwardRef(
               );
               if (shouldInclude) {
                 formColumns.push(comboColumn);
-                Logger.log(
-                  `✅ Added ComboBox field to form: ${comboFieldName}`,
-                  {
-                    column: comboColumn,
-                    comboConfig: comboBoxConfig[comboFieldName],
-                  }
-                );
+                bsLog(`✅ Added ComboBox field to form: ${comboFieldName}`, {
+                  column: comboColumn,
+                  comboConfig: comboBoxConfig[comboFieldName],
+                });
               }
             }
           }
@@ -5093,13 +5095,7 @@ const BSDataGrid = forwardRef(
         // Check if this column has a combobox configuration
         const comboConfig = comboBoxConfig[columnName];
         if (comboConfig) {
-          console.log(
-            "🎨 ComboBox Grid size:",
-            dialogGridSize,
-            "for",
-            columnName
-          );
-          Logger.log("🎨 Rendering ComboBox for column:", {
+          bsLog("🎨 Rendering ComboBox for column:", {
             columnName,
             value: rawVal,
             config: comboConfig,
@@ -5243,12 +5239,6 @@ const BSDataGrid = forwardRef(
 
         // For text/ntext fields, use full width; otherwise use bsDialogColumns setting
         const gridSizeValue = multiline ? 12 : dialogGridSize;
-        // console.log(
-        //   "📝 TextField Grid size:",
-        //   gridSizeValue,
-        //   "for",
-        //   columnName
-        // );
 
         // Build tooltip text with length information
         // Use customDef.tooltip first, then customDef.description, then metadata description
@@ -5523,7 +5513,7 @@ const BSDataGrid = forwardRef(
             const currentRowId = row[primaryKey];
 
             if (String(currentRowId) === String(rowId)) {
-              Logger.log("🔄 Restoring row to original state:", {
+              bsLog("🔄 Restoring row to original state:", {
                 rowId,
                 primaryKey,
                 originalData: change.originalData,
@@ -5534,7 +5524,7 @@ const BSDataGrid = forwardRef(
           })
         );
 
-        Logger.log("✅ Row restored successfully:", {
+        bsLog("✅ Row restored successfully:", {
           rowId,
           remainingChanges,
         });
@@ -5555,7 +5545,7 @@ const BSDataGrid = forwardRef(
           // Allow only Escape key to cancel (which will remove the row)
           if (params.reason === GridRowEditStopReasons.escapeKeyDown) {
             // When Escape is pressed on a new row, remove it
-            Logger.log(`🚫 Escape pressed on new row: ${rowId} - removing row`);
+            bsLog(`🚫 Escape pressed on new row: ${rowId} - removing row`);
             setRows((oldRows) => oldRows.filter((row) => row.id !== rowId));
             setRowModesModel((oldModel) => {
               const newModel = { ...oldModel };
@@ -5569,7 +5559,7 @@ const BSDataGrid = forwardRef(
 
           // Block all other reasons (focus out, enter, tab, etc.)
           event.defaultMuiPrevented = true;
-          Logger.log(
+          bsLog(
             `🚫 Prevented auto-exit for new row: ${rowId}, reason: ${params.reason}`
           );
           return;
@@ -5699,7 +5689,7 @@ const BSDataGrid = forwardRef(
 
     const handleInlineDeleteClick = useCallback(
       (id) => async () => {
-        Logger.log("🗑️ handleInlineDeleteClick called", {
+        bsLog("🗑️ handleInlineDeleteClick called", {
           id,
           rowsCount: rows.length,
         });
@@ -5707,7 +5697,7 @@ const BSDataGrid = forwardRef(
         // Find the row to delete using the same logic as getRowId
         // id from DataGrid params.id is the value returned by getRowId (primaryKey value as string)
         const primaryKey = getEffectivePrimaryKey(rows[0]);
-        Logger.log("🗑️ Using primaryKey:", primaryKey);
+        bsLog("🗑️ Using primaryKey:", primaryKey);
 
         // Try to find by primary key first (matches getRowId logic)
         let rowToDelete = rows.find(
@@ -5724,7 +5714,7 @@ const BSDataGrid = forwardRef(
           );
         }
 
-        Logger.log("🗑️ Row to delete:", {
+        bsLog("🗑️ Row to delete:", {
           rowToDelete,
           foundById: !!rowToDelete,
           primaryKey,
@@ -5741,7 +5731,7 @@ const BSDataGrid = forwardRef(
         }
 
         const isNewRow = rowToDelete?.isNew || String(id).startsWith("new-");
-        Logger.log("🗑️ Is new row:", isNewRow);
+        bsLog("🗑️ Is new row:", isNewRow);
 
         if (isNewRow) {
           // For new rows that haven't been saved yet, just remove from UI
@@ -5760,7 +5750,7 @@ const BSDataGrid = forwardRef(
           });
         } else {
           // For existing rows, use handleDeleteClick to delete from database
-          Logger.log("🗑️ Calling handleDeleteClick for existing row");
+          bsLog("🗑️ Calling handleDeleteClick for existing row");
           await handleDeleteClick(rowToDelete);
         }
       },
@@ -5808,7 +5798,7 @@ const BSDataGrid = forwardRef(
           // CRITICAL: Skip all processing if bulk save is in progress
           // This prevents double-save when stopCellEditMode triggers processRowUpdate
           if (isBulkSavingRef.current) {
-            Logger.log("⏭️ processRowUpdate skipped - bulk save in progress");
+            bsLog("⏭️ processRowUpdate skipped - bulk save in progress");
             return newRow;
           }
 
@@ -5827,7 +5817,7 @@ const BSDataGrid = forwardRef(
             // Check if this row was already saved in bulk (prevents double-save)
             const tempId = newRow.id || newRow.Id || newRow.ID;
             if (tempId && savedRowIdsRef.current.has(String(tempId))) {
-              Logger.log(
+              bsLog(
                 "⏭️ processRowUpdate skipped - row already saved in bulk:",
                 tempId
               );
@@ -5894,7 +5884,7 @@ const BSDataGrid = forwardRef(
             // Refresh data to get the latest from server
             await loadData(true);
 
-            Logger.log("✅ New record created successfully:", savedRecord);
+            bsLog("✅ New record created successfully:", savedRecord);
             return updatedRow;
           }
 
@@ -5962,7 +5952,7 @@ const BSDataGrid = forwardRef(
             oldRows.map((row) => (row.id === newRow.id ? updatedRow : row))
           );
 
-          Logger.log("✅ Record updated successfully:", {
+          bsLog("✅ Record updated successfully:", {
             savedRecord,
             updatedRow,
             preservedId: newRow.id,
@@ -5999,7 +5989,7 @@ const BSDataGrid = forwardRef(
         const customDef = columnDefsConfig[fieldName];
         if (!customDef) return column;
 
-        Logger.log(`🎨 Applying custom column def for: ${fieldName}`, {
+        bsLog(`🎨 Applying custom column def for: ${fieldName}`, {
           original: column,
           custom: customDef,
         });
@@ -6363,7 +6353,7 @@ const BSDataGrid = forwardRef(
         if (customDef.valueSetter)
           mergedColumn.valueSetter = customDef.valueSetter;
 
-        Logger.log(`✅ Applied bsColumnDefs for: ${fieldName}`, {
+        bsLog(`✅ Applied bsColumnDefs for: ${fieldName}`, {
           width: mergedColumn.width,
           type: mergedColumn.type,
           headerName: mergedColumn.headerName,
@@ -6386,31 +6376,12 @@ const BSDataGrid = forwardRef(
 
     // Build columns from metadata
     const columns = useMemo(() => {
-      Logger.log("🏗️ Building columns - START", {
-        hasMetadata: !!metadata,
-        hasColumns: !!metadata?.columns,
-        columnsCount: metadata?.columns?.length,
-        parsedCols,
-        readOnly,
-        bulkEditMode,
-        isEnhancedStoredProcedure: !!bsStoredProcedure,
-        rowsCount: rows?.length || 0,
-      });
-
       // For Enhanced Stored Procedure, try to create columns from data if no metadata
       if (
         bsStoredProcedure &&
         (!metadata?.columns || !Array.isArray(metadata.columns))
       ) {
         if (rows && rows.length > 0) {
-          Logger.log(
-            "🚀 Creating columns from Enhanced Stored Procedure data:",
-            {
-              firstRow: rows[0],
-              keys: Object.keys(rows[0] || {}),
-            }
-          );
-
           // Detect primary key to exclude it from visible columns
           const detectedPrimaryKey = detectPrimaryKeyFromData(rows[0]);
 
@@ -6421,21 +6392,21 @@ const BSDataGrid = forwardRef(
             .filter((key) => {
               // Skip special fields
               if (key === "__rowNumber") {
-                Logger.log(`🔍 Skipping special field: ${key}`);
+                // bsLog(`🔍 Skipping special field: ${key}`);
                 return false;
               }
 
               // Skip primary keys from metadata (Enhanced SP returned metadata)
               if (metadataPrimaryKeys.includes(key)) {
-                Logger.log(
-                  `🔍 Hiding primary key column from metadata: ${key}`
-                );
+                // bsLog(
+                //   `🔍 Hiding primary key column from metadata: ${key}`
+                // );
                 return false;
               }
 
               // Skip detected primary key (fallback detection)
               if (detectedPrimaryKey && key === detectedPrimaryKey) {
-                Logger.log(`🔍 Hiding detected primary key column: ${key}`);
+                // bsLog(`🔍 Hiding detected primary key column: ${key}`);
                 return false;
               }
 
@@ -6445,9 +6416,9 @@ const BSDataGrid = forwardRef(
                 ...rows[0],
               });
               if (isPrimaryKey === key) {
-                Logger.log(
-                  `🔍 Hiding primary key column (by detection): ${key}`
-                );
+                // bsLog(
+                //   `🔍 Hiding primary key column (by detection): ${key}`
+                // );
                 return false;
               }
 
@@ -6458,11 +6429,11 @@ const BSDataGrid = forwardRef(
                 /.*Id$/.test(key) ||
                 /.*ID$/.test(key)
               ) {
-                Logger.log(`🔍 Hiding primary key column (by pattern): ${key}`);
+                // bsLog(`🔍 Hiding primary key column (by pattern): ${key}`);
                 return false;
               }
 
-              Logger.log(`✅ Including column: ${key}`);
+              // bsLog(`✅ Including column: ${key}`);
               return true;
             })
             .map((key) => {
@@ -6643,13 +6614,13 @@ const BSDataGrid = forwardRef(
                 columnConfig.align = "center";
               }
 
-              Logger.log(`🔧 Column config for ${key}:`, {
-                field: key,
-                type: columnType,
-                width: width,
-                firstValue: firstValue,
-                valueType: typeof firstValue,
-              });
+              // bsLog(`🔧 Column config for ${key}:`, {
+              //   field: key,
+              //   type: columnType,
+              //   width: width,
+              //   firstValue: firstValue,
+              //   valueType: typeof firstValue,
+              // });
 
               // Apply custom column definitions if provided
               return applyColumnDefs(columnConfig, key);
@@ -6758,7 +6729,7 @@ const BSDataGrid = forwardRef(
             }
 
             if (effectiveVisibleDelete) {
-              Logger.log(
+              bsLog(
                 "🗑️ Adding Delete button action - effectiveVisibleDelete:",
                 effectiveVisibleDelete
               );
@@ -6774,10 +6745,7 @@ const BSDataGrid = forwardRef(
                     icon={<Delete />}
                     label={localeText.bsDelete}
                     onClick={() => {
-                      Logger.log(
-                        "🗑️ Delete button clicked for row:",
-                        params.row
-                      );
+                      bsLog("🗑️ Delete button clicked for row:", params.row);
                       handleDeleteClick(params.row);
                     }}
                     disabled={rowConfig.disabled}
@@ -6868,7 +6836,7 @@ const BSDataGrid = forwardRef(
             }
           }
 
-          Logger.log("✅ Generated columns from data:", dataColumns);
+          bsLog("✅ Generated columns from data:", dataColumns);
           return dataColumns;
         } else {
           Logger.warn(
@@ -7295,7 +7263,7 @@ const BSDataGrid = forwardRef(
         }
 
         // Apply column filtering if bsCols is specified
-        Logger.log("🔍 Column filtering in useMemo:", {
+        bsLog("🔍 Column filtering in useMemo:", {
           parsedCols,
           totalColumns: dataColumns.length,
           columnFields: dataColumns.map((c) => c.field),
@@ -7336,13 +7304,13 @@ const BSDataGrid = forwardRef(
             }
           });
 
-          Logger.log("✅ Column filtering applied:", {
+          bsLog("✅ Column filtering applied:", {
             originalCount: dataColumns.length,
             filteredCount: filteredDataColumns.length,
             filteredFields: filteredDataColumns.map((c) => c.field),
           });
         } else {
-          Logger.log("⚠️ No column filtering - showing all columns");
+          bsLog("⚠️ No column filtering - showing all columns");
         }
 
         // Apply hidden columns filter (used by child grids to hide FK columns)
@@ -7353,7 +7321,7 @@ const BSDataGrid = forwardRef(
               col.field === "__rowNumber" ||
               !bsHiddenColumns.includes(col.field)
           );
-          Logger.log("🙈 Hidden columns applied:", {
+          bsLog("🙈 Hidden columns applied:", {
             hiddenColumns: bsHiddenColumns,
             remainingCount: filteredDataColumns.length,
           });
@@ -7390,7 +7358,7 @@ const BSDataGrid = forwardRef(
           ...col, // Include any other properties
         }));
 
-        Logger.log("🔍 Final columns check:", {
+        bsLog("🔍 Final columns check:", {
           isArray: Array.isArray(finalColumns),
           count: finalColumns.length,
           type: typeof finalColumns,
@@ -7458,7 +7426,7 @@ const BSDataGrid = forwardRef(
 
     // Generate custom row styles from bsRowConfig
     const customRowStyles = useMemo(() => {
-      Logger.log("🎨 customRowStyles computing:", {
+      bsLog("🎨 customRowStyles computing:", {
         hasBsRowConfig: !!bsRowConfig,
         rowsLength: rows?.length || 0,
       });
@@ -7476,7 +7444,7 @@ const BSDataGrid = forwardRef(
 
         // Hide checkbox when showCheckbox is false
         if (rowConfig.showCheckbox === false) {
-          Logger.log("🚫 Hiding checkbox for row:", rowId);
+          bsLog("🚫 Hiding checkbox for row:", rowId);
           styles[`${rowSelector} .MuiDataGrid-cellCheckbox .MuiCheckbox-root`] =
             {
               visibility: "hidden",
@@ -7501,7 +7469,7 @@ const BSDataGrid = forwardRef(
         }
       });
 
-      Logger.log("🎨 customRowStyles result:", {
+      bsLog("🎨 customRowStyles result:", {
         stylesCount: Object.keys(styles).length,
         styles,
       });
@@ -7511,7 +7479,7 @@ const BSDataGrid = forwardRef(
     // Handle row selection changes for checkbox selection
     const handleRowSelectionChange = useCallback(
       (newRowSelectionModel) => {
-        Logger.log("🔍 ROW SELECTION DEBUG - Start:", {
+        bsLog("🔍 ROW SELECTION DEBUG - Start:", {
           newRowSelectionModel,
           rowsCount: rows.length,
           firstRowSample: rows.length > 0 ? Object.keys(rows[0]) : "NO ROWS",
@@ -7522,7 +7490,7 @@ const BSDataGrid = forwardRef(
 
         if (onCheckBoxSelected) {
           // Debug metadata information
-          Logger.log("🔑 PRIMARY KEY DETECTION - Start:", {
+          bsLog("🔑 PRIMARY KEY DETECTION - Start:", {
             hasMetadata: !!metadata,
             metadataPrimaryKeys: metadata?.primaryKeys,
             hasEnhancedMetadata: !!enhancedMetadata,
@@ -7536,9 +7504,9 @@ const BSDataGrid = forwardRef(
           const primaryKey =
             rows.length > 0 ? getEffectivePrimaryKey(rows[0]) : null;
 
-          Logger.log("🔑 Using primary key from metadata:", primaryKey);
+          bsLog("🔑 Using primary key from metadata:", primaryKey);
 
-          Logger.log("🔑 PRIMARY KEY for selection:", {
+          bsLog("🔑 PRIMARY KEY for selection:", {
             primaryKey,
             firstRowId: rows.length > 0 ? rows[0][primaryKey] : "NO ROWS",
             firstRowAllIds:
@@ -7574,7 +7542,7 @@ const BSDataGrid = forwardRef(
 
             const isSelected = newRowSelectionModel.includes(rowId);
 
-            Logger.log("🔍 Checking row:", {
+            bsLog("🔍 Checking row:", {
               rowPrimaryKey: primaryKeyValue,
               rowIdString: rowId,
               isInSelection: isSelected,
@@ -7589,7 +7557,7 @@ const BSDataGrid = forwardRef(
             return isSelected;
           });
 
-          Logger.log("✅ FINAL SELECTED ROWS:", {
+          bsLog("✅ FINAL SELECTED ROWS:", {
             count: selectedRows.length,
             selectedData: selectedRows.map((row) => ({
               [primaryKey]: row[primaryKey],
@@ -7631,7 +7599,7 @@ const BSDataGrid = forwardRef(
 
       setBulkAddRows(emptyRows);
       setBulkAddDialogOpen(true);
-      Logger.log("📝 Bulk Add dialog opened with", bulkRowCount, "empty rows");
+      bsLog("📝 Bulk Add dialog opened with", bulkRowCount, "empty rows");
     }, [effectiveBulkAdd, metadata, bulkRowCount, initializeFormData]);
 
     const handleBulkEdit = useCallback(() => {
@@ -7640,7 +7608,7 @@ const BSDataGrid = forwardRef(
         return;
       }
 
-      Logger.log("🔍 handleBulkEdit - checking selection:", {
+      bsLog("🔍 handleBulkEdit - checking selection:", {
         rowSelectionModel,
         rowsCount: rows.length,
       });
@@ -7652,11 +7620,11 @@ const BSDataGrid = forwardRef(
           row[primaryKey] != null ? String(row[primaryKey]) : row.id || row.Id;
         const isSelected = rowSelectionModel.includes(rowId);
 
-        Logger.log("🔍 Row check:", { primaryKey, rowId, isSelected });
+        bsLog("🔍 Row check:", { primaryKey, rowId, isSelected });
         return isSelected;
       });
 
-      Logger.log("🔍 handleBulkEdit - selectedRows:", selectedRows.length);
+      bsLog("🔍 handleBulkEdit - selectedRows:", selectedRows.length);
 
       if (selectedRows.length === 0) {
         Logger.warn("⚠️ No rows selected for bulk edit");
@@ -7666,7 +7634,7 @@ const BSDataGrid = forwardRef(
       setBulkEditMode(true);
       unsavedChangesRef.current = {};
       setHasUnsavedChanges(false);
-      Logger.log("📝 Bulk Edit mode enabled for", selectedRows.length, "rows");
+      bsLog("📝 Bulk Edit mode enabled for", selectedRows.length, "rows");
     }, [effectiveBulkEdit, rows, rowSelectionModel, getEffectivePrimaryKey]);
 
     const handleBulkDelete = useCallback(async () => {
@@ -7710,7 +7678,7 @@ const BSDataGrid = forwardRef(
 
           setRowSelectionModel([]);
           await loadData();
-          Logger.log("✅ Bulk delete completed");
+          bsLog("✅ Bulk delete completed");
         } catch (err) {
           Logger.error("❌ Bulk delete failed:", err);
           setError(err.message || "Failed to delete records");
@@ -7738,7 +7706,7 @@ const BSDataGrid = forwardRef(
         // Get filtered and sorted row IDs from grid using apiRef
         const filteredRowIds = gridFilteredSortedRowIdsSelector(apiRef);
 
-        Logger.log("📊 Export - filteredRowIds:", {
+        bsLog("📊 Export - filteredRowIds:", {
           count: filteredRowIds.length,
           sample: filteredRowIds.slice(0, 5),
         });
@@ -7756,7 +7724,7 @@ const BSDataGrid = forwardRef(
           })
           .filter(Boolean);
 
-        Logger.log("📊 Export - filteredRows:", {
+        bsLog("📊 Export - filteredRows:", {
           count: filteredRows.length,
           totalRows: rows.length,
         });
@@ -7810,7 +7778,7 @@ const BSDataGrid = forwardRef(
         // Trigger download
         XLSX.writeFile(workbook, filename);
 
-        Logger.log(
+        bsLog(
           "✅ Excel export completed:",
           filename,
           "rows:",
@@ -7851,7 +7819,7 @@ const BSDataGrid = forwardRef(
               new Date().toISOString().split("T")[0]
             }`,
           });
-          Logger.log("✅ CSV export triggered");
+          bsLog("✅ CSV export triggered");
         }
       } catch (err) {
         Logger.error("❌ CSV export failed:", err);
@@ -7866,7 +7834,7 @@ const BSDataGrid = forwardRef(
             hideFooter: false,
             hideToolbar: true,
           });
-          Logger.log("✅ Print triggered");
+          bsLog("✅ Print triggered");
         }
       } catch (err) {
         Logger.error("❌ Print failed:", err);
@@ -7932,7 +7900,7 @@ const BSDataGrid = forwardRef(
           return;
         }
 
-        Logger.log("💾 Saving", validRows.length, "bulk records");
+        bsLog("💾 Saving", validRows.length, "bulk records");
 
         // Save each row individually
         for (const row of validRows) {
@@ -7943,7 +7911,7 @@ const BSDataGrid = forwardRef(
         setBulkAddDialogOpen(false);
         setBulkAddRows([]);
         await loadData();
-        Logger.log("✅ Bulk add completed successfully");
+        bsLog("✅ Bulk add completed successfully");
       } catch (err) {
         Logger.error("❌ Bulk save failed:", err);
         setError(err.message || "Failed to save bulk records");
@@ -8002,7 +7970,7 @@ const BSDataGrid = forwardRef(
             throw new Error(errorMsg);
           }
 
-          Logger.log("📝 Normal mode update:", {
+          bsLog("📝 Normal mode update:", {
             primaryKey,
             rowId,
             newRow,
@@ -8034,7 +8002,7 @@ const BSDataGrid = forwardRef(
             });
           }
 
-          Logger.log("📝 Clean data for update (normal mode):", {
+          bsLog("📝 Clean data for update (normal mode):", {
             primaryKey,
             beforeClean: { ...newRow },
             afterClean: cleanData,
@@ -8047,7 +8015,7 @@ const BSDataGrid = forwardRef(
           // Perform update and refresh data
           return updateRecord(rowId, cleanData, bsPreObj)
             .then(async (result) => {
-              Logger.log("✅ Normal mode update successful:", {
+              bsLog("✅ Normal mode update successful:", {
                 result,
                 originalId: newRow.id,
                 primaryKey,
@@ -8070,7 +8038,7 @@ const BSDataGrid = forwardRef(
                 try {
                   await loadMetadata(bsPreObj);
                   await new Promise((resolve) => setTimeout(resolve, 100));
-                  Logger.log(
+                  bsLog(
                     "✅ Metadata reloaded successfully before background refresh"
                   );
                 } catch (metadataError) {
@@ -8117,7 +8085,7 @@ const BSDataGrid = forwardRef(
         if (isNewRow) {
           // Check if bulk save is in progress - if so, skip individual save
           if (isBulkSavingRef.current) {
-            Logger.log(
+            bsLog(
               "⏭️ Skipping individual save - bulk save in progress:",
               rowId
             );
@@ -8126,7 +8094,7 @@ const BSDataGrid = forwardRef(
 
           // Check if this row was already saved in bulk save (prevents double-save after bulk completes)
           if (savedRowIdsRef.current.has(rowId)) {
-            Logger.log(
+            bsLog(
               "⏭️ Skipping individual save - row already saved in bulk:",
               rowId
             );
@@ -8134,7 +8102,7 @@ const BSDataGrid = forwardRef(
             return newRow;
           }
 
-          Logger.log("📝 Bulk edit - saving NEW row immediately:", {
+          bsLog("📝 Bulk edit - saving NEW row immediately:", {
             rowId,
             newRow,
           });
@@ -8186,7 +8154,7 @@ const BSDataGrid = forwardRef(
           // Save new record to backend
           return createRecord(cleanData, bsPreObj)
             .then(async (result) => {
-              Logger.log("✅ New row created successfully:", result);
+              bsLog("✅ New row created successfully:", result);
 
               // Show success notification
               BSAlertSwal2.show(
@@ -8223,7 +8191,7 @@ const BSDataGrid = forwardRef(
         };
         setHasUnsavedChanges(true);
 
-        Logger.log("📝 Bulk edit - row change stored (not saved):", {
+        bsLog("📝 Bulk edit - row change stored (not saved):", {
           primaryKey,
           rowId,
           newData: newRow,
@@ -8272,7 +8240,7 @@ const BSDataGrid = forwardRef(
         if (apiRef?.current) {
           try {
             editRowsState = apiRef.current.state?.editRows || {};
-            Logger.log("📝 Current editRows state:", editRowsState);
+            bsLog("📝 Current editRows state:", editRowsState);
           } catch (e) {
             Logger.warn("⚠️ Could not get editRows state:", e);
           }
@@ -8287,7 +8255,7 @@ const BSDataGrid = forwardRef(
               .map((id) => apiRef.current.getRow(id))
               .filter(Boolean)
               .map((row) => ({ ...row })); // Clone each row
-            Logger.log("📝 Got latest rows from apiRef:", latestRows.length);
+            bsLog("📝 Got latest rows from apiRef:", latestRows.length);
           } catch (getRowsError) {
             Logger.warn(
               "⚠️ Could not get rows from apiRef, using state:",
@@ -8308,7 +8276,7 @@ const BSDataGrid = forwardRef(
               // fieldData has structure: { value: actualValue, ... }
               if (fieldData && fieldData.value !== undefined) {
                 updatedRow[fieldName] = fieldData.value;
-                Logger.log(
+                bsLog(
                   `📝 Merged edit value for ${rowId}.${fieldName}:`,
                   fieldData.value
                 );
@@ -8319,7 +8287,7 @@ const BSDataGrid = forwardRef(
           return row;
         });
 
-        Logger.log("📝 Rows after merging editRows state:", latestRows);
+        bsLog("📝 Rows after merging editRows state:", latestRows);
 
         // Now stop cell edit mode (optional cleanup)
         if (apiRef?.current) {
@@ -8395,7 +8363,7 @@ const BSDataGrid = forwardRef(
 
         const changes = Array.from(changesMap.values());
 
-        Logger.log("📝 Final changes to save:", changes);
+        bsLog("📝 Final changes to save:", changes);
 
         if (changes.length === 0) {
           Logger.warn("⚠️ No changes to save");
@@ -8450,7 +8418,7 @@ const BSDataGrid = forwardRef(
           return;
         }
 
-        Logger.log("💾 Saving bulk changes:", changes.length, "rows");
+        bsLog("💾 Saving bulk changes:", changes.length, "rows");
 
         // Save each changed row
         for (const row of changes) {
@@ -8520,7 +8488,7 @@ const BSDataGrid = forwardRef(
 
           if (isNewRow) {
             // New row - use createRecord instead of updateRecord
-            Logger.log("📝 Bulk save NEW row:", {
+            bsLog("📝 Bulk save NEW row:", {
               isNewRow,
               cleanData,
               bsPreObj,
@@ -8543,7 +8511,7 @@ const BSDataGrid = forwardRef(
               throw new Error(errorMsg);
             }
 
-            Logger.log("📝 Bulk save EXISTING row:", {
+            bsLog("📝 Bulk save EXISTING row:", {
               primaryKey,
               id,
               cleanData,
@@ -8575,7 +8543,7 @@ const BSDataGrid = forwardRef(
 
         // Force reload data from server with cache buster
         await loadData(true);
-        Logger.log("✅ Bulk changes saved successfully and data refreshed");
+        bsLog("✅ Bulk changes saved successfully and data refreshed");
       } catch (err) {
         Logger.error("❌ Bulk save failed:", err);
         setError(err.message || "Failed to save bulk changes");
@@ -8634,7 +8602,7 @@ const BSDataGrid = forwardRef(
         // Force reload to discard changes with loading state
         // Note: loadData has its own guard for metadata, so we wrap in try-finally
         await loadData(true);
-        Logger.log("🗑️ Bulk changes discarded");
+        bsLog("🗑️ Bulk changes discarded");
       } catch (err) {
         Logger.error("❌ Failed to discard bulk changes:", err);
         setError(err.message || "Failed to discard changes");
@@ -8646,7 +8614,7 @@ const BSDataGrid = forwardRef(
     const handleToggleHeaderFilters = useCallback(() => {
       setHeaderFiltersEnabled((prev) => {
         const newValue = !prev;
-        Logger.log(`🔧 Header filters ${newValue ? "enabled" : "disabled"}`);
+        bsLog(`🔧 Header filters ${newValue ? "enabled" : "disabled"}`);
         return newValue;
       });
     }, []);
@@ -8654,7 +8622,7 @@ const BSDataGrid = forwardRef(
     // Handle row editing events
     const handleRowEditStart = useCallback(
       (params) => {
-        Logger.log("📝 Row edit started:", params.id);
+        bsLog("📝 Row edit started:", params.id);
 
         // If bulk edit is disabled, prevent any editing
         if (!effectiveBulkEdit && !effectiveBulkAddInline) {
@@ -8671,7 +8639,7 @@ const BSDataGrid = forwardRef(
           setBulkEditMode(true);
           unsavedChangesRef.current = {};
           setHasUnsavedChanges(false);
-          Logger.log("📝 Bulk Edit mode enabled via row double-click");
+          bsLog("📝 Bulk Edit mode enabled via row double-click");
         }
       },
       [bulkEditMode, effectiveBulkEdit, effectiveBulkAddInline]
@@ -8679,15 +8647,13 @@ const BSDataGrid = forwardRef(
 
     const handleRowEditStop = useCallback(
       (params) => {
-        Logger.log("📝 Row edit stopped:", params.id, "reason:", params.reason);
+        bsLog("📝 Row edit stopped:", params.id, "reason:", params.reason);
 
         // If user cancels editing (Escape key) and there are no unsaved changes,
         // automatically exit bulk edit mode
         if (params.reason === "escapeKeyDown" && !hasUnsavedChanges) {
           setBulkEditMode(false);
-          Logger.log(
-            "📝 Bulk Edit mode disabled - user cancelled with no changes"
-          );
+          bsLog("📝 Bulk Edit mode disabled - user cancelled with no changes");
         }
         // For other reasons (like clicking away), keep bulk edit mode active
         // Let user manually save/discard changes via toolbar
@@ -8697,7 +8663,7 @@ const BSDataGrid = forwardRef(
 
     // Loading state
     if (metadataLoading) {
-      Logger.log("🔄 BSDataGrid: metadata is loading...", effectiveTableName);
+      bsLog("🔄 BSDataGrid: metadata is loading...", effectiveTableName);
       return (
         <Paper
           sx={{
@@ -8817,7 +8783,7 @@ const BSDataGrid = forwardRef(
       );
     }
 
-    Logger.log("✅ BSDataGrid: rendering with metadata", {
+    bsLog("✅ BSDataGrid: rendering with metadata", {
       effectiveTableName,
       metadataLoaded: !!metadata,
       showToolbar,
@@ -8891,7 +8857,7 @@ const BSDataGrid = forwardRef(
         {(() => {
           try {
             // Debug columns before passing to DataGridPro
-            Logger.log("🔧 About to render DataGridPro with:", {
+            bsLog("🔧 About to render DataGridPro with:", {
               columnsType: typeof columns,
               columnsIsArray: Array.isArray(columns),
               columnsLength: Array.isArray(columns) ? columns.length : "N/A",
@@ -8915,19 +8881,6 @@ const BSDataGrid = forwardRef(
                 typeof col.field === "string" &&
                 col.field.length > 0
             );
-
-            Logger.log("🎯 DataGridPro render decision:", {
-              originalLength: safeColumns.length,
-              validLength: validColumns.length,
-              filtered: safeColumns.length - validColumns.length,
-              isDataReady: validColumns.length > 0 && !metadataLoading,
-              loading: loading || metadataLoading || validColumns.length === 0,
-              // Pagination debug info
-              rowCount,
-              paginationModel,
-              rowsLength: rows.length,
-              hasValidRows: rows.length > 0,
-            });
 
             // If no valid columns, show appropriate message with Add button
             if (validColumns.length === 0) {
@@ -9200,7 +9153,7 @@ const BSDataGrid = forwardRef(
                     // Use the same primary key detection logic as handleRowSelectionChange
                     const primaryKey = getEffectivePrimaryKey(row);
 
-                    // Logger.log("🆔 getRowId called:", {
+                    // bsLog("🆔 getRowId called:", {
                     //   primaryKey,
                     //   rowPrimaryValue: row[primaryKey],
                     //   rowKeys: Object.keys(row),
@@ -9219,7 +9172,7 @@ const BSDataGrid = forwardRef(
                     const idFields = ["id", "Id", "ID", "_id"];
                     for (const field of idFields) {
                       if (row[field] != null) {
-                        // Logger.log("🆔 Using fallback ID field:", {
+                        // bsLog("🆔 Using fallback ID field:", {
                         //   field,
                         //   value: row[field],
                         //   stringValue: String(row[field]),
@@ -9236,11 +9189,11 @@ const BSDataGrid = forwardRef(
                     }, 0);
                     const generatedId = `generated-${Math.abs(hash)}`;
 
-                    Logger.log("🚨 Using generated ID:", {
-                      generatedId,
-                      rowData: row,
-                      reason: "No valid primary key or ID field found",
-                    });
+                    // bsLog("🚨 Using generated ID:", {
+                    //   generatedId,
+                    //   rowData: row,
+                    //   reason: "No valid primary key or ID field found",
+                    // });
 
                     return generatedId;
                   }}
@@ -9627,18 +9580,15 @@ const BSDataGrid = forwardRef(
                               resourceKey
                             );
 
-                            Logger.log(
-                              "🏷️ bsParentRecordLabel resource lookup:",
-                              {
-                                bsParentRecordLabel,
-                                resourceKey,
-                                resourceValue,
-                                resourceDataCount: resourceData?.length || 0,
-                                resourceDataSample: resourceData?.slice(0, 5),
-                                resourceGroup:
-                                  bsStoredProcedure || effectiveTableName,
-                              }
-                            );
+                            bsLog("🏷️ bsParentRecordLabel resource lookup:", {
+                              bsParentRecordLabel,
+                              resourceKey,
+                              resourceValue,
+                              resourceDataCount: resourceData?.length || 0,
+                              resourceDataSample: resourceData?.slice(0, 5),
+                              resourceGroup:
+                                bsStoredProcedure || effectiveTableName,
+                            });
 
                             return (
                               resourceValue ||
