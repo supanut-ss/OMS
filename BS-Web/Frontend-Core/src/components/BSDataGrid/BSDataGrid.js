@@ -2488,7 +2488,7 @@ const BSDataGrid = forwardRef(
 
     // Load ComboBox lookup data for grid display and editing
     useEffect(() => {
-      console.log("🚀 ComboBox useEffect triggered:", {
+      bsLog("🚀 ComboBox useEffect triggered:", {
         hasConfig: !!comboBoxConfig,
         configKeys: Object.keys(comboBoxConfig || {}),
         comboBoxConfigDetails: Object.entries(comboBoxConfig || {}).slice(0, 3),
@@ -2496,12 +2496,12 @@ const BSDataGrid = forwardRef(
       
       const loadComboBoxLookupData = async () => {
         if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) {
-          console.log("⚠️ ComboBox useEffect: No config, skipping load");
+          bsLog("⚠️ ComboBox useEffect: No config, skipping load");
           setComboBoxLoading(false);
           return;
         }
 
-        console.log("📥 Starting combobox data fetch...");
+        bsLog("📥 Starting combobox data fetch...");
         setComboBoxLoading(true);
 
         const lookupData = {};
@@ -2580,7 +2580,7 @@ const BSDataGrid = forwardRef(
               (k) =>
                 JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k])
             );
-          console.log("🔽 Setting comboBoxValueOptions:", {
+          bsLog("🔽 Setting comboBoxValueOptions:", {
             keys: newKeys,
             totalOptions: Object.entries(valueOptionsData).map(([k, v]) => ({
               column: k,
@@ -5390,7 +5390,7 @@ ${errorInfo.originalError}
         const emptyOption = { value: "", label: "-- เลือก --" };
         const valueOptions = [emptyOption, ...options];
         
-        console.log(`✏️ renderComboBoxEditCell for ${field}:`, {
+        bsLog(`✏️ renderComboBoxEditCell for ${field}:`, {
           currentValue: value,
           optionsCount: options.length,
           sampleOptions: options.slice(0, 3),
@@ -7168,7 +7168,7 @@ ${errorInfo.originalError}
     // Build columns from metadata - ONLY regenerate when columnsKey changes
     const columns = useMemo(() => {
       // Debug log for tracking column regeneration
-      console.log("🔄 columns useMemo triggered", {
+      bsLog("🔄 columns useMemo triggered", {
         columnsKey,
         previousKey: columnsKeyRef.current,
         keyChanged: columnsKeyRef.current !== columnsKey,
@@ -7187,7 +7187,7 @@ ${errorInfo.originalError}
         Object.values(comboBoxValueOptions).some(opts => opts && opts.length > 0);
       const shouldForceRebuild = hasComboBoxConfig && !hasComboBoxData;
       
-      console.log("🔍 Cache check:", {
+      bsLog("🔍 Cache check:", {
         hasComboBoxConfig,
         hasComboBoxData,
         shouldForceRebuild,
@@ -7205,12 +7205,12 @@ ${errorInfo.originalError}
         columnsRef.current.length > 0 &&
         !shouldForceRebuild
       ) {
-        console.log("📦 Returning cached columns (key unchanged)");
+        bsLog("📦 Returning cached columns (key unchanged)");
         return columnsRef.current;
       }
       
       if (shouldForceRebuild) {
-        console.log("🔄 Forcing column rebuild - waiting for combobox data");
+        bsLog("🔄 Forcing column rebuild - waiting for combobox data");
       }
       // For Enhanced Stored Procedure, try to create columns from data if no metadata
       if (
@@ -7810,7 +7810,7 @@ ${errorInfo.originalError}
             
             // Debug: Check if comboConfig is found for this column
             if (columnName === 'app_id' || columnName === 'platform') {
-              console.log(`🔎 Column ${columnName} comboConfig check:`, {
+              bsLog(`🔎 Column ${columnName} comboConfig check:`, {
                 comboConfig,
                 comboBoxConfigKeys: Object.keys(comboBoxConfig),
                 comboBoxValueOptions: comboBoxValueOptions[columnName],
@@ -7880,7 +7880,7 @@ ${errorInfo.originalError}
                   ? refOptions 
                   : [];
               
-              console.log(`📋 Building valueOptions for ${columnName}:`, {
+              bsLog(`📋 Building valueOptions for ${columnName}:`, {
                 fromState: stateOptions?.length || 0,
                 fromRef: refOptions?.length || 0,
                 finalOptionsLength: options.length,
@@ -7910,7 +7910,7 @@ ${errorInfo.originalError}
               // This reads options from ref at edit time, always getting current data
               baseColumn.renderEditCell = (params) =>
                 renderComboBoxEditCell(params, comboConfig);
-              console.log(`🔽 ComboBox column configured: ${columnName}`, {
+              bsLog(`🔽 ComboBox column configured: ${columnName}`, {
                 type: baseColumn.type,
                 editable: baseColumn.editable,
                 valueOptionsCount: valueOptions?.length || 0,
