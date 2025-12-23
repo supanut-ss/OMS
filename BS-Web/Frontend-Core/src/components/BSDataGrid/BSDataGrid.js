@@ -2433,6 +2433,7 @@ const BSDataGrid = forwardRef(
     const unsavedChangesRef = React.useRef({});
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const isBulkSavingRef = React.useRef(false); // Track if bulk save is in progress
+    const isDiscardingRef = React.useRef(false); // Track if discard is in progress
     const savedRowIdsRef = React.useRef(new Set()); // Track rows already saved in bulk save to prevent double-save
 
     // Inline Bulk Add states
@@ -6090,6 +6091,13 @@ const BSDataGrid = forwardRef(
             return newRow;
           }
 
+          // CRITICAL: Skip all processing if discard is in progress
+          // This prevents create API being called when user clicks Discard
+          if (isDiscardingRef.current) {
+            bsLog("⏭️ processRowUpdate skipped - discard in progress");
+            return newRow;
+          }
+
           // Validate the row data
           const validation = validateFormData(newRow);
           if (!validation.isValid) {
@@ -9099,6 +9107,9 @@ const BSDataGrid = forwardRef(
 
     const handleBulkDiscardChanges = useCallback(async () => {
       try {
+        // Set discard flag BEFORE any state changes to prevent processRowUpdate from firing
+        isDiscardingRef.current = true;
+
         setLoading(true); // Set loading state
         setBulkEditMode(false);
         unsavedChangesRef.current = {};
@@ -9145,6 +9156,8 @@ const BSDataGrid = forwardRef(
         setError(err.message || "Failed to discard changes");
       } finally {
         setLoading(false); // Always clear loading state
+        // Reset discard flag after all operations complete
+        isDiscardingRef.current = false;
       }
     }, [
       loadData,
