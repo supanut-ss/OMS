@@ -44,6 +44,7 @@ import {
   Tooltip,
   Avatar,
   AvatarGroup,
+  useTheme,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -1830,6 +1831,9 @@ const BSDataGrid = forwardRef(
     },
     ref
   ) => {
+    // Get theme for icon colors
+    const theme = useTheme();
+
     // Determine effective table name (bsObj takes priority over tableName)
     const effectiveTableName = bsObj || tableName;
 
@@ -2435,6 +2439,7 @@ const BSDataGrid = forwardRef(
     const isBulkSavingRef = React.useRef(false); // Track if bulk save is in progress
     const isDiscardingRef = React.useRef(false); // Track if discard is in progress
     const savedRowIdsRef = React.useRef(new Set()); // Track rows already saved in bulk save to prevent double-save
+    const isLoadingDataRef = React.useRef(false); // Track if data is currently being loaded to prevent duplicate calls
 
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModel] = useState({});
@@ -2460,11 +2465,21 @@ const BSDataGrid = forwardRef(
     const [comboBoxLookupData, setComboBoxLookupData] = useState({});
     // ComboBox Value Options state - stores dropdown options for inline editing
     const [comboBoxValueOptions, setComboBoxValueOptions] = useState({});
+    // ComboBox loading state - track if lookup data is being loaded
+    // Initialize as true if there's combobox config to prevent showing raw values before loading
+    const [comboBoxLoading, setComboBoxLoading] = useState(
+      () => Array.isArray(bsComboBox) && bsComboBox.length > 0
+    );
 
     // Load ComboBox lookup data for grid display and editing
     useEffect(() => {
       const loadComboBoxLookupData = async () => {
-        if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) return;
+        if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) {
+          setComboBoxLoading(false);
+          return;
+        }
+
+        setComboBoxLoading(true);
 
         const lookupData = {};
         const valueOptionsData = {};
@@ -2500,7 +2515,9 @@ const BSDataGrid = forwardRef(
                   (item.data && item.data[config.Display]) ||
                   item.value;
                 if (itemValue !== undefined) {
+                  // Store with both original and string key for type mismatch handling
                   lookupMap[itemValue] = itemDisplay;
+                  lookupMap[String(itemValue)] = itemDisplay;
                   options.push({ value: itemValue, label: itemDisplay });
                 }
               });
@@ -2541,6 +2558,7 @@ const BSDataGrid = forwardRef(
             );
           return isSame ? prev : valueOptionsData;
         });
+        setComboBoxLoading(false);
       };
 
       loadComboBoxLookupData();
@@ -2741,6 +2759,13 @@ const BSDataGrid = forwardRef(
           return;
         }
 
+        // Prevent duplicate concurrent loads (unless force refresh)
+        if (isLoadingDataRef.current && !forceRefresh) {
+          bsLog("⏳ Skipping duplicate load - already loading data");
+          return;
+        }
+
+        isLoadingDataRef.current = true;
         setLoading(true);
         setError(null);
 
@@ -2928,6 +2953,7 @@ const BSDataGrid = forwardRef(
           return [];
         } finally {
           setLoading(false);
+          isLoadingDataRef.current = false;
         }
       },
       [
@@ -2962,6 +2988,13 @@ const BSDataGrid = forwardRef(
           return;
         }
 
+        // Prevent duplicate concurrent loads (unless force refresh)
+        if (isLoadingDataRef.current && !forceRefresh) {
+          bsLog("⏳ Skipping duplicate load - already loading data");
+          return;
+        }
+
+        isLoadingDataRef.current = true;
         setLoading(true);
         setError(null);
 
@@ -3202,6 +3235,7 @@ const BSDataGrid = forwardRef(
           setRowCount(0);
         } finally {
           setLoading(false);
+          isLoadingDataRef.current = false;
         }
       },
       [
@@ -4996,18 +5030,54 @@ const BSDataGrid = forwardRef(
       (params, comboConfig) => {
         const { value, field } = params;
 
-        // First try to get display value from comboBoxLookupData
-        const lookupMap = comboBoxLookupData[field];
-        let displayText = lookupMap ? lookupMap[value] : null;
+        // If value is empty/null, show default or empty
+        if (value === null || value === undefined || value === "") {
+          return (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                color: "text.secondary",
+              }}
+            >
+              {comboConfig.Default || ""}
+            </Box>
+          );
+        }
 
-        // Fallback to valueOptions if no lookup data
+        // First try to get display value from comboBoxLookupData
+        // Try both original value and string version for type mismatch handling
+        const lookupMap = comboBoxLookupData[field];
+        let displayText = null;
+        if (lookupMap) {
+          displayText = lookupMap[value] || lookupMap[String(value)];
+        }
+
+        // Fallback to comboBoxValueOptions if no lookup data found
+        if (!displayText && comboBoxValueOptions[field]) {
+          const option = comboBoxValueOptions[field].find(
+            (opt) => opt.value === value || String(opt.value) === String(value)
+          );
+          if (option) {
+            displayText = option.label;
+          }
+        }
+
+        // Fallback to static valueOptions if provided in config
+        if (!displayText && comboConfig.valueOptions) {
+          const option = comboConfig.valueOptions.find(
+            (opt) => opt.value === value || String(opt.value) === String(value)
+          );
+          if (option) {
+            displayText = option.label;
+          }
+        }
+
+        // Final fallback - just show the raw value
+        // The loading indicator is already handled by comboBoxLoading state
         if (!displayText) {
-          displayText =
-            comboConfig.valueOptions?.find((opt) => opt.value === value)
-              ?.label ||
-            value ||
-            comboConfig.Default ||
-            "";
+          displayText = value; // Show raw value as last resort
         }
 
         return (
@@ -5016,7 +5086,7 @@ const BSDataGrid = forwardRef(
           </Box>
         );
       },
-      [comboBoxLookupData]
+      [comboBoxLookupData, comboBoxValueOptions]
     );
 
     // Helper: Get ComboBox value options for editing (uses pre-fetched data)
@@ -6752,8 +6822,10 @@ const BSDataGrid = forwardRef(
       const comboBoxDataKey = Object.entries(comboBoxValueOptions)
         .map(([k, v]) => `${k}:${v?.length || 0}`)
         .join("|");
+      // Include comboBoxLookupData keys to regenerate columns when lookup data loads
+      const lookupDataKey = Object.keys(comboBoxLookupData).sort().join(",");
 
-      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}`;
+      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}`;
     }, [
       stableMetadataKey,
       bsStoredProcedure,
@@ -6768,6 +6840,7 @@ const BSDataGrid = forwardRef(
       parsedCols,
       bsHiddenColumns,
       comboBoxValueOptions,
+      comboBoxLookupData,
     ]);
 
     // Build columns from metadata - ONLY regenerate when columnsKey changes
@@ -7045,10 +7118,26 @@ const BSDataGrid = forwardRef(
 
                 return (
                   <GridActionsCellItem
-                    icon={<Visibility />}
+                    icon={
+                      <Visibility
+                        htmlColor={
+                          theme.palette.mode === "dark"
+                            ? theme.palette.info.light
+                            : theme.palette.info.main
+                        }
+                      />
+                    }
                     label="View"
                     onClick={() => onView(params.row)}
                     disabled={rowConfig.disabled}
+                    sx={{
+                      "&:hover": {
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(41, 182, 246, 0.2)"
+                            : "rgba(2, 136, 209, 0.1)",
+                      },
+                    }}
                   />
                 );
               });
@@ -7069,17 +7158,47 @@ const BSDataGrid = forwardRef(
                   return [
                     <GridActionsCellItem
                       key="save"
-                      icon={<SaveIcon />}
+                      icon={
+                        <SaveIcon
+                          htmlColor={
+                            theme.palette.mode === "dark"
+                              ? theme.palette.success.light
+                              : theme.palette.success.main
+                          }
+                        />
+                      }
                       label={localeText.bsSave}
                       onClick={() => handleBulkRowSaveClick(params.id)}
-                      sx={{ color: "success.main" }}
+                      sx={{
+                        "&:hover": {
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(102, 187, 106, 0.2)"
+                              : "rgba(46, 125, 50, 0.1)",
+                        },
+                      }}
                     />,
                     <GridActionsCellItem
                       key="cancel"
-                      icon={<CancelIcon />}
+                      icon={
+                        <CancelIcon
+                          htmlColor={
+                            theme.palette.mode === "dark"
+                              ? theme.palette.error.light
+                              : theme.palette.error.main
+                          }
+                        />
+                      }
                       label={localeText.bsCancel}
                       onClick={() => handleBulkRowCancelClick(params.id)}
-                      sx={{ color: "error.main" }}
+                      sx={{
+                        "&:hover": {
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(244, 67, 54, 0.2)"
+                              : "rgba(211, 47, 47, 0.1)",
+                        },
+                      }}
                     />,
                   ];
                 } else {
@@ -7087,24 +7206,48 @@ const BSDataGrid = forwardRef(
                   const viewModeActions = [
                     <GridActionsCellItem
                       key="edit"
-                      icon={<Edit />}
+                      icon={
+                        <Edit
+                          htmlColor={
+                            theme.palette.mode === "dark"
+                              ? theme.palette.warning.light
+                              : theme.palette.warning.dark
+                          }
+                        />
+                      }
                       label={localeText.bsEdit}
                       onClick={() => handleBulkRowEditClick(params.id)}
-                      sx={{ color: "info.main" }}
+                      sx={{
+                        "&:hover": {
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(255, 183, 77, 0.2)"
+                              : "rgba(237, 108, 2, 0.1)",
+                        },
+                      }}
                     />,
                   ];
                   if (hasChanges) {
                     viewModeActions.push(
                       <GridActionsCellItem
                         key="restore"
-                        icon={<Restore />}
+                        icon={
+                          <Restore
+                            htmlColor={
+                              theme.palette.mode === "dark"
+                                ? theme.palette.warning.light
+                                : theme.palette.warning.main
+                            }
+                          />
+                        }
                         label={localeText.bsRestore || "Restore"}
                         onClick={() => handleRestoreRow(rowId)}
                         sx={{
-                          color: "warning.main",
                           "&:hover": {
-                            backgroundColor: "warning.light",
-                            color: "warning.dark",
+                            backgroundColor:
+                              theme.palette.mode === "dark"
+                                ? "rgba(255, 183, 77, 0.2)"
+                                : "rgba(237, 108, 2, 0.1)",
                           },
                         }}
                       />
@@ -7123,11 +7266,26 @@ const BSDataGrid = forwardRef(
 
                 return (
                   <GridActionsCellItem
-                    icon={<Edit />}
+                    icon={
+                      <Edit
+                        htmlColor={
+                          theme.palette.mode === "dark"
+                            ? theme.palette.warning.light
+                            : theme.palette.warning.dark
+                        }
+                      />
+                    }
                     label="Edit"
                     onClick={() => handleEditClick(params.row)}
                     disabled={rowConfig.disabled}
-                    sx={{ color: "info.main" }}
+                    sx={{
+                      "&:hover": {
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(255, 183, 77, 0.2)"
+                            : "rgba(237, 108, 2, 0.1)",
+                      },
+                    }}
                   />
                 );
               });
@@ -7147,14 +7305,29 @@ const BSDataGrid = forwardRef(
 
                 return (
                   <GridActionsCellItem
-                    icon={<Delete />}
+                    icon={
+                      <Delete
+                        htmlColor={
+                          theme.palette.mode === "dark"
+                            ? theme.palette.error.light
+                            : theme.palette.error.main
+                        }
+                      />
+                    }
                     label={localeText.bsDelete}
                     onClick={() => {
                       bsLog("🗑️ Delete button clicked for row:", params.row);
                       handleDeleteClick(params.row);
                     }}
                     disabled={rowConfig.disabled}
-                    sx={{ color: "error.main" }}
+                    sx={{
+                      "&:hover": {
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? "rgba(244, 67, 54, 0.2)"
+                            : "rgba(211, 47, 47, 0.1)",
+                      },
+                    }}
                   />
                 );
               });
@@ -9577,6 +9750,7 @@ const BSDataGrid = forwardRef(
                   loading={
                     loading ||
                     metadataLoading ||
+                    comboBoxLoading ||
                     (!Array.isArray(columns) && loading) ||
                     (columns.length === 0 && loading)
                   }
