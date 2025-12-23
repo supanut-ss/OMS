@@ -144,8 +144,8 @@ const AssignTeam = (props) => {
                         {renderInput({
                             item: {
                                 type: "decimal",
-                                field: getResource(resourceData, "manday"),
-                                headerName: "manday",
+                                field: "manday",
+                                headerName: getResource(resourceData, "manday"),
                                 component: "BSTextField",
                                 variant: "standard"
                             },

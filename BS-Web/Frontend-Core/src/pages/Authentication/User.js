@@ -166,6 +166,15 @@ const UserPage = (props) => {
       !form.locale_id ||
       !form.is_active
     ) {
+      console.log(
+        "Missing required fields:",
+        form.user_id,
+        form.user_group_id,
+        form.first_name,
+        form.last_name,
+        form.locale_id,
+        form.is_active
+      );
       BSAlertSwal2.show(
         "warning",
         getResource(resourceData, "FillRequiredFields") ||
@@ -389,9 +398,9 @@ const UserPage = (props) => {
                   cacheKey="group_name"
                   //bsLoadOnOpen={true}
                   bsOnChange={(val) => {
-                    handleGroupChange(val.user_group_id);
+                    handleGroupChange(val);
                   }}
-                  bsValue={selectedGroup}
+                  bsValue={form.user_group_id}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
@@ -418,8 +427,8 @@ const UserPage = (props) => {
                   bsObjWh="group_name='locale_id'"
                   cacheKey="locale_id"
                   //bsLoadOnOpen={frue}
-                  bsOnChange={(val) => handleLocaleChange(val.code)}
-                  bsValue={selectLocale}
+                  bsOnChange={(val) => handleLocaleChange(val)}
+                  bsValue={form.locale_id}
                 />
               </Box>
             </Box>
@@ -455,7 +464,7 @@ const UserPage = (props) => {
                   bsOnChange={(val) =>
                     handleSupervisorChange(val?.user_id ?? "")
                   }
-                  bsValue={selectSupervisor}
+                  bsValue={form.supervisor}
                 />
               </Box>
             </Box>
