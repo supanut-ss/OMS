@@ -126,6 +126,7 @@ const ProjectsDialog = (props) => {
   };
   const fetchformData = useCallback(async () => {
     if (formData.project_header_id || props.projectID) {
+      await getLang();
       await AxiosMaster.get(
         `/projects/${formData.project_header_id || props.projectID}`
       )
