@@ -62,7 +62,7 @@ const CustomerPage = (props) => {
           bsColumnDefs={[
             {
               field: "customer_code",
-              editable: false,
+              editable: true,
               readOnly: true,
             },
             {
