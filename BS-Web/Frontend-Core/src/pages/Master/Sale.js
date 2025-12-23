@@ -34,7 +34,6 @@ const SalePage = (props) => {
           bsObjBy="create_date desc"
           bsDialogSize="Large"
           bsDialogColumns={3}
-          bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           bsBulkMode={{
             enable: true, // Enable all bulk operations
             addInline: true, // Add new rows inline instead of dialog
