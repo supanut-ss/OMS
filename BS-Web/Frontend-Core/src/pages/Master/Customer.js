@@ -36,15 +36,15 @@ const CustomerPage = (props) => {
           bsUniqueFields={["customer_code"]}
           bsCols="customer_code,customer_name,description,addr_line_1,is_active,create_by,create_date,update_by,update_date"
           // ===== NEW: Consolidated Bulk Mode Configuration =====
-          // bsBulkMode={{
-          //   enable: true, // Enable all bulk operations
-          //   addInline: true, // Add new rows inline instead of dialog
-          //   // edit: true,      // Enabled by default when enable=true
-          //   // delete: true,    // Enabled by default when enable=true
-          //   // add: true,       // Enabled by default when enable=true
-          //   // showCheckbox: false,
-          //   // showSplitButton: false,
-          // }}
+          bsBulkMode={{
+            enable: true, // Enable all bulk operations
+            addInline: true, // Add new rows inline instead of dialog
+            // edit: true,      // Enabled by default when enable=true
+            // delete: true,    // Enabled by default when enable=true
+            // add: true,       // Enabled by default when enable=true
+            // showCheckbox: false,
+            // showSplitButton: false,
+          }}
           bsDialogSize="Large"
           bsDialogColumns={3}
           bsDialogTab={[
