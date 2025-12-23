@@ -1159,10 +1159,11 @@ const ComboBoxField = ({
         {options.map((option) => {
           // Handle both direct field access and nested data structure
           const valueData = option.data || option;
-          const displayData = option.data || option;
 
           const itemValue = valueData[config.Value] || option.value;
-          const itemDisplay = displayData[config.Display] || option.display;
+          // Prefer option.display (from API) over field lookup
+          const itemDisplay =
+            option.display || valueData[config.Display] || option.value;
 
           return (
             <MenuItem key={itemValue} value={itemValue}>
@@ -1264,9 +1265,10 @@ const BulkAddComboBoxField = ({
         )}
         {options.map((option) => {
           const valueData = option.data || option;
-          const displayData = option.data || option;
           const itemValue = valueData[config.Value] || option.value;
-          const itemDisplay = displayData[config.Display] || option.display;
+          // Prefer option.display (from API) over field lookup
+          const itemDisplay =
+            option.display || valueData[config.Display] || option.value;
 
           return (
             <MenuItem key={itemValue} value={itemValue}>
@@ -1795,6 +1797,7 @@ const BSDataGrid = forwardRef(
       bsStoredProcedure, // Enhanced stored procedure name
       bsStoredProcedureSchema = "dbo", // Schema for stored procedure
       bsStoredProcedureParams = {}, // Additional parameters for stored procedure
+      bsStoredProcedureCrud = false, // Use stored procedure for CRUD operations (INSERT/UPDATE/DELETE)
 
       // User lookup configuration for audit fields
       bsUserLookup, // User lookup configuration: { table: "sec.t_com_user", idField: "user_id", displayFields: ["first_name", "last_name"], separator: " " }
@@ -1942,6 +1945,8 @@ const BSDataGrid = forwardRef(
     }, [bsComboBox]);
 
     // Parse bsColumnDefs into a lookup object
+    // Supports both array format: [{ field: "name", ... }]
+    // and object format: { name: { ... }, age: { ... } }
     const columnDefsConfig = useMemo(() => {
       const config = {};
       if (Array.isArray(bsColumnDefs) && bsColumnDefs.length > 0) {
@@ -1950,20 +1955,30 @@ const BSDataGrid = forwardRef(
             config[colDef.field] = colDef;
           }
         });
+      } else if (bsColumnDefs && typeof bsColumnDefs === "object") {
+        // Object format: { fieldName: { headerName, width, ... } }
+        Object.entries(bsColumnDefs).forEach(([field, colDef]) => {
+          config[field] = { field, ...colDef };
+        });
       }
       return config;
     }, [bsColumnDefs]);
 
     // Build columnVisibilityModel from bsColumnDefs (hide: true)
     // CRITICAL: Create a stable key to track when visibility actually changes
+    // Supports both array and object formats
     const initialColumnVisibilityKey = useMemo(() => {
-      if (!Array.isArray(bsColumnDefs) || bsColumnDefs.length === 0) return "";
-      const hiddenFields = bsColumnDefs
-        .filter((col) => col.field && col.hide === true)
-        .map((col) => col.field)
-        .sort()
-        .join(",");
-      return hiddenFields;
+      let hiddenFields = [];
+      if (Array.isArray(bsColumnDefs) && bsColumnDefs.length > 0) {
+        hiddenFields = bsColumnDefs
+          .filter((col) => col.field && col.hide === true)
+          .map((col) => col.field);
+      } else if (bsColumnDefs && typeof bsColumnDefs === "object") {
+        hiddenFields = Object.entries(bsColumnDefs)
+          .filter(([, colDef]) => colDef.hide === true)
+          .map(([field]) => field);
+      }
+      return hiddenFields.sort().join(",");
     }, [bsColumnDefs]);
 
     const initialColumnVisibility = useMemo(() => {
@@ -1972,6 +1987,12 @@ const BSDataGrid = forwardRef(
         bsColumnDefs.forEach((colDef) => {
           if (colDef.field && colDef.hide === true) {
             visibility[colDef.field] = false;
+          }
+        });
+      } else if (bsColumnDefs && typeof bsColumnDefs === "object") {
+        Object.entries(bsColumnDefs).forEach(([field, colDef]) => {
+          if (colDef.hide === true) {
+            visibility[field] = false;
           }
         });
       }
@@ -2224,6 +2245,119 @@ const BSDataGrid = forwardRef(
     // Use Enhanced SP metadata if available, otherwise use original metadata
     const metadata = enhancedMetadata || originalMetadata;
 
+    // Helper: Convert camelCase to PascalCase for SP parameter names
+    const toPascalCase = useCallback((str) => {
+      if (!str) return str;
+      // Handle snake_case: project_task_id -> ProjectTaskId
+      if (str.includes("_")) {
+        return str
+          .split("_")
+          .map(
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          )
+          .join("");
+      }
+      // Handle camelCase: projectTaskId -> ProjectTaskId
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }, []);
+
+    // Helper: Execute CRUD operation via Stored Procedure
+    const executeSpCrud = useCallback(
+      async (operation, data, primaryKeyValue = null) => {
+        if (!bsStoredProcedure || !executeEnhancedStoredProcedure) {
+          throw new Error(
+            "Stored procedure not configured for CRUD operations"
+          );
+        }
+
+        // Start with additional stored procedure params (e.g., ProjectTaskId, ProjectHeaderId)
+        // These have lower priority and will be overwritten by actual data
+        const spParams = {};
+        if (bsStoredProcedureParams) {
+          Object.entries(bsStoredProcedureParams).forEach(([key, value]) => {
+            if (value != null) {
+              spParams[key] = value;
+            }
+          });
+        }
+
+        // Convert data keys to PascalCase for SP parameters
+        // This overwrites any params with same name from bsStoredProcedureParams
+        Object.entries(data).forEach(([key, value]) => {
+          const pascalKey = toPascalCase(key);
+          spParams[pascalKey] = value;
+        });
+
+        // Add primary key for UPDATE/DELETE
+        // Priority: bsKeyId > metadata.primaryKeys > auto-detect from data
+        if (primaryKeyValue != null) {
+          let primaryKeyName = bsKeyId || metadata?.primaryKeys?.[0];
+
+          // If no primary key found, try to detect from data keys
+          if (!primaryKeyName && data && Object.keys(data).length > 0) {
+            const dataKeys = Object.keys(data);
+            primaryKeyName = dataKeys.find(
+              (k) => k.toLowerCase().endsWith("_id") || k.toLowerCase() === "id"
+            );
+          }
+
+          // Fallback: use common patterns for SP primary key parameter
+          if (!primaryKeyName) {
+            // For DELETE operation with primaryKeyValue, we need to find a matching key
+            // Common patterns: project_task_member_id, Id, etc.
+            primaryKeyName = "Id"; // Default fallback
+            bsLog(`⚠️ No primary key found, using fallback: ${primaryKeyName}`);
+          }
+
+          const pascalPrimaryKey = toPascalCase(primaryKeyName);
+          spParams[pascalPrimaryKey] = primaryKeyValue;
+          bsLog(
+            `🔑 Added primary key param: ${pascalPrimaryKey} = ${primaryKeyValue}`
+          );
+        }
+
+        // Add LoginUserId for audit (only if not already set)
+        if (!spParams.LoginUserId) {
+          spParams.LoginUserId = getUserId();
+        }
+
+        bsLog(`📤 SP CRUD ${operation}:`, {
+          procedureName: bsStoredProcedure,
+          operation,
+          spParams,
+        });
+
+        const request = {
+          procedureName: bsStoredProcedure,
+          schemaName: bsStoredProcedureSchema,
+          operation: operation, // INSERT, UPDATE, DELETE
+          parameters: spParams,
+          userId: getUserId(),
+        };
+
+        const result = await executeEnhancedStoredProcedure(request);
+
+        if (!result.success) {
+          throw new Error(
+            result.message || `Failed to ${operation.toLowerCase()} record`
+          );
+        }
+
+        bsLog(`✅ SP CRUD ${operation} success:`, result);
+        return result;
+      },
+      [
+        bsStoredProcedure,
+        bsStoredProcedureSchema,
+        bsStoredProcedureParams,
+        executeEnhancedStoredProcedure,
+        metadata?.primaryKeys,
+        toPascalCase,
+        getUserId,
+        bsKeyId,
+      ]
+    );
+
     // DataGrid state
     const [rows, setRows] = useState([]);
     const [rowCount, setRowCount] = useState(0);
@@ -2251,8 +2385,11 @@ const BSDataGrid = forwardRef(
 
     // Ensure the active page size is included in pageSizeOptions to avoid MUI X warnings
     const effectivePageSizeOptions = useMemo(() => {
-      const currentPageSize = (paginationModel && paginationModel.pageSize) || bsRowPerPage || 20;
-      const baseOptions = Array.isArray(bsPageSizeOptions) ? bsPageSizeOptions.slice() : [];
+      const currentPageSize =
+        (paginationModel && paginationModel.pageSize) || bsRowPerPage || 20;
+      const baseOptions = Array.isArray(bsPageSizeOptions)
+        ? bsPageSizeOptions.slice()
+        : [];
 
       // Add current page size if missing
       if (!baseOptions.includes(currentPageSize)) {
@@ -2260,7 +2397,9 @@ const BSDataGrid = forwardRef(
       }
 
       // Ensure numeric, unique and sorted
-      const numericOptions = Array.from(new Set(baseOptions.map((v) => Number(v))))
+      const numericOptions = Array.from(
+        new Set(baseOptions.map((v) => Number(v)))
+      )
         .filter((v) => !Number.isNaN(v))
         .sort((a, b) => a - b);
 
@@ -2353,9 +2492,12 @@ const BSDataGrid = forwardRef(
               result.forEach((item) => {
                 const valueData =
                   item.value !== undefined ? item : item.data || item;
-                const displayData = item.data || item;
                 const itemValue = valueData[config.Value] || item.value;
-                const itemDisplay = displayData[config.Display] || item.display;
+                // Prefer item.display (from API) over field lookup
+                const itemDisplay =
+                  item.display ||
+                  (item.data && item.data[config.Display]) ||
+                  item.value;
                 if (itemValue !== undefined) {
                   lookupMap[itemValue] = itemDisplay;
                   options.push({ value: itemValue, label: itemDisplay });
@@ -2392,8 +2534,9 @@ const BSDataGrid = forwardRef(
           const newKeys = Object.keys(valueOptionsData || {});
           const isSame =
             prevKeys.length === newKeys.length &&
-            prevKeys.every((k) =>
-              JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k])
+            prevKeys.every(
+              (k) =>
+                JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k])
             );
           return isSame ? prev : valueOptionsData;
         });
@@ -2871,10 +3014,37 @@ const BSDataGrid = forwardRef(
           const result = await executeEnhancedStoredProcedure(request);
 
           if (result.success) {
-            let processedRows = (result.data || []).map((row, index) => ({
-              ...row,
-              id: row.id || row.ID || `sp_row_${index}`, // Ensure unique ID
-            }));
+            // Determine primary key from metadata or bsKeyId
+            const pkFromMetadata = result.metadata?.primaryKeys?.[0];
+            const effectivePk = bsKeyId || pkFromMetadata;
+
+            bsLog(
+              "🔑 loadStoredProcedureData - effectivePk:",
+              effectivePk,
+              "bsKeyId:",
+              bsKeyId,
+              "pkFromMetadata:",
+              pkFromMetadata
+            );
+
+            let processedRows = (result.data || []).map((row, index) => {
+              // Use primary key value as id if available, else fallback
+              const pkValue = effectivePk ? row[effectivePk] : null;
+              const rowId = pkValue ?? row.id ?? row.ID ?? `sp_row_${index}`;
+
+              bsLog("🔑 Row processing:", {
+                effectivePk,
+                pkValue,
+                rowId,
+                hasEffectivePkInRow: effectivePk ? effectivePk in row : "N/A",
+                rowKeys: Object.keys(row),
+              });
+
+              return {
+                ...row,
+                id: rowId, // Ensure unique ID using primary key
+              };
+            });
 
             // Apply custom filters if in client-side mode
             if (
@@ -2887,6 +3057,15 @@ const BSDataGrid = forwardRef(
                 bsCustomFilters
               );
             }
+
+            bsLog("🔄 loadStoredProcedureData - Setting rows:", {
+              count: processedRows.length,
+              rowIds: processedRows.map((r) => ({
+                id: r.id,
+                pk: r[effectivePk],
+                bsKeyId: bsKeyId,
+              })),
+            });
 
             setRows(processedRows);
             // For client-side mode: always use actual row count
@@ -4098,64 +4277,72 @@ const BSDataGrid = forwardRef(
         if (isConfirmed) {
           try {
             if (bsStoredProcedure) {
-              // Helper function to convert snake_case to PascalCase for SP parameters
-              const toPascalCase = (str) => {
-                return str
-                  .split("_")
-                  .map(
-                    (word) =>
-                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                  )
-                  .join("");
-              };
-
-              // Convert primary key to PascalCase
-              const pascalPrimaryKey = toPascalCase(primaryKey);
-
-              // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
-              const deviceCompatParams = {};
-
-              // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
-              if (primaryKey.startsWith("@")) {
-                // Add both variations for maximum compatibility
-                if (primaryKey === "@id") {
-                  deviceCompatParams["Id"] = id;
-                  deviceCompatParams["PartId"] = id; // Fallback for part_id devices
-                } else if (primaryKey === "@part_id") {
-                  deviceCompatParams["PartId"] = id;
-                  deviceCompatParams["Id"] = id; // Fallback for id devices
-                }
-              }
-
-              // Use Enhanced Stored Procedure for DELETE operation
-              const deleteRequest = {
-                procedureName: bsStoredProcedure,
-                schemaName: bsStoredProcedureSchema,
-                operation: "DELETE",
-                parameters: {
-                  [pascalPrimaryKey]: id,
-                  ...deviceCompatParams, // Add device compatibility parameters
-                  ...bsStoredProcedureParams,
-                },
-                userId: getUserId(),
-              };
-
-              const result = await executeEnhancedStoredProcedure(
-                deleteRequest
-              );
-
-              if (result.success) {
-                // Show success notification if message is not empty
-                if (result.message && result.message.trim() !== "") {
-                  BSAlertSwal2.show("success", result.message, {
-                    title: "Success",
-                  });
-                }
+              // Use executeSpCrud if bsStoredProcedureCrud is enabled for consistency
+              if (bsStoredProcedureCrud) {
+                bsLog("🗑️ Using executeSpCrud for DELETE");
+                await executeSpCrud("DELETE", {}, id);
                 await loadStoredProcedureData();
               } else {
-                const errorMsg = result.message || "Delete operation failed";
-                BSAlertSwal2.show("error", errorMsg, { title: "Error" });
-                throw new Error(errorMsg);
+                // Helper function to convert snake_case to PascalCase for SP parameters
+                const toPascalCase = (str) => {
+                  return str
+                    .split("_")
+                    .map(
+                      (word) =>
+                        word.charAt(0).toUpperCase() +
+                        word.slice(1).toLowerCase()
+                    )
+                    .join("");
+                };
+
+                // Convert primary key to PascalCase
+                const pascalPrimaryKey = toPascalCase(primaryKey);
+
+                // DEVICE COMPATIBILITY: Handle @id vs @part_id scenarios
+                const deviceCompatParams = {};
+
+                // If primary key is device-specific parameter (@id, @part_id), handle both scenarios
+                if (primaryKey.startsWith("@")) {
+                  // Add both variations for maximum compatibility
+                  if (primaryKey === "@id") {
+                    deviceCompatParams["Id"] = id;
+                    deviceCompatParams["PartId"] = id; // Fallback for part_id devices
+                  } else if (primaryKey === "@part_id") {
+                    deviceCompatParams["PartId"] = id;
+                    deviceCompatParams["Id"] = id; // Fallback for id devices
+                  }
+                }
+
+                // Use Enhanced Stored Procedure for DELETE operation
+                const deleteRequest = {
+                  procedureName: bsStoredProcedure,
+                  schemaName: bsStoredProcedureSchema,
+                  operation: "DELETE",
+                  parameters: {
+                    [pascalPrimaryKey]: id,
+                    ...deviceCompatParams, // Add device compatibility parameters
+                    ...bsStoredProcedureParams,
+                  },
+                  userId: getUserId(),
+                };
+
+                const result = await executeEnhancedStoredProcedure(
+                  deleteRequest
+                );
+
+                if (result.success) {
+                  // Show success notification if message is not empty
+                  if (result.message && result.message.trim() !== "") {
+                    BSAlertSwal2.show("success", result.message, {
+                      title: "Success",
+                    });
+                  }
+                  await loadStoredProcedureData();
+                } else {
+                  const errorMsg = result.message || "Delete operation failed";
+                  BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+                  throw new Error(errorMsg);
+                }
               }
             } else {
               // Use standard delete record
@@ -4181,6 +4368,8 @@ const BSDataGrid = forwardRef(
         getEffectivePrimaryKey,
         getUserId,
         getEffectiveLocale,
+        bsStoredProcedureCrud,
+        executeSpCrud,
       ]
     );
 
@@ -5009,6 +5198,13 @@ const BSDataGrid = forwardRef(
               return false;
             }
 
+            // Check if field is hidden via bsColumnDefs (hide: true)
+            const customDef = columnDefsConfig[key];
+            if (customDef?.hide === true) {
+              bsLog(`🙈 Excluding hidden field from form: ${key}`);
+              return false;
+            }
+
             // Check if field should be excluded (case-insensitive)
             const isExcluded = excludedFields.some(
               (excludedField) =>
@@ -5092,6 +5288,12 @@ const BSDataGrid = forwardRef(
         // Filter out hidden columns (used by child grids to hide FK columns)
         if (bsHiddenColumns && bsHiddenColumns.includes(c.columnName)) {
           bsLog(`🙈 Hiding column from form: ${c.columnName}`);
+          return false;
+        }
+        // Filter out columns hidden via bsColumnDefs (hide: true)
+        const customDef = columnDefsConfig[c.columnName];
+        if (customDef?.hide === true) {
+          bsLog(`🙈 Hiding column from form via bsColumnDefs: ${c.columnName}`);
           return false;
         }
         return isFieldInForm(
@@ -5750,29 +5952,54 @@ const BSDataGrid = forwardRef(
 
     const handleInlineDeleteClick = useCallback(
       (id) => async () => {
+        // Use apiRef to get the latest rows from DataGrid (avoids stale closure)
+        let currentRows = rows;
+        try {
+          if (apiRef?.current?.getRowModels) {
+            const rowModels = apiRef.current.getRowModels();
+            currentRows = Array.from(rowModels.values());
+            bsLog("🗑️ Got rows from apiRef:", currentRows.length);
+          }
+        } catch (e) {
+          bsLog("🗑️ Could not get rows from apiRef, using state:", e.message);
+        }
+
         bsLog("🗑️ handleInlineDeleteClick called", {
           id,
-          rowsCount: rows.length,
+          rowsCount: currentRows.length,
+          allRowIds: currentRows.map((r) => ({
+            id: r.id,
+            rowId: r.id,
+            pkField: bsKeyId,
+            pkValue: r[bsKeyId],
+          })),
+          bsKeyId,
         });
 
-        // Find the row to delete using the same logic as getRowId
-        // id from DataGrid params.id is the value returned by getRowId (primaryKey value as string)
-        const primaryKey = getEffectivePrimaryKey(rows[0]);
-        bsLog("🗑️ Using primaryKey:", primaryKey);
+        // Find the row to delete - id from DataGrid params.id is the value returned by getRowId
+        // getRowId returns String(row[primaryKey]) or String(row.id)
+        // So we need to match against BOTH primary key field AND id field
 
-        // Try to find by primary key first (matches getRowId logic)
-        let rowToDelete = rows.find(
-          (row) => String(row[primaryKey]) === String(id)
+        // First, determine primary key field
+        const primaryKey = bsKeyId || getEffectivePrimaryKey(currentRows[0]);
+        bsLog("🗑️ Using primaryKey:", primaryKey, "bsKeyId:", bsKeyId);
+
+        // Try multiple matching strategies:
+        // 1. Match by row.id (which is set to primaryKey value in loadStoredProcedureData)
+        let rowToDelete = currentRows.find(
+          (row) => String(row.id) === String(id)
         );
 
-        // Fallback: try common id fields
-        if (!rowToDelete) {
-          rowToDelete = rows.find(
-            (row) =>
-              String(row.id) === String(id) ||
-              String(row.Id) === String(id) ||
-              String(row.ID) === String(id)
+        // 2. Match by primary key field if different from id
+        if (!rowToDelete && primaryKey && primaryKey !== "id") {
+          rowToDelete = currentRows.find(
+            (row) => String(row[primaryKey]) === String(id)
           );
+        }
+
+        // 3. Fallback: try other common ID fields
+        if (!rowToDelete) {
+          rowToDelete = currentRows.find();
         }
 
         bsLog("🗑️ Row to delete:", {
@@ -5815,7 +6042,7 @@ const BSDataGrid = forwardRef(
           await handleDeleteClick(rowToDelete);
         }
       },
-      [rows, handleDeleteClick, getEffectivePrimaryKey]
+      [rows, handleDeleteClick, getEffectivePrimaryKey, bsKeyId, apiRef]
     );
 
     const handleInlineCancelClick = useCallback(
@@ -6084,10 +6311,11 @@ const BSDataGrid = forwardRef(
           const decimals = customDef.decimals ?? 2;
           const thousandSeparator = customDef.thousandSeparator !== false;
 
-          mergedColumn.valueFormatter = (params) => {
-            if (params.value == null) return "";
-            const num = Number(params.value);
-            if (isNaN(num)) return params.value;
+          // MUI X Data Grid v7+ signature: valueFormatter(value, row, column, apiRef)
+          mergedColumn.valueFormatter = (value) => {
+            if (value == null) return "";
+            const num = Number(value);
+            if (isNaN(num)) return value;
             const formatted = num.toFixed(decimals);
             const parts = formatted.split(".");
             if (thousandSeparator) {
@@ -6098,15 +6326,20 @@ const BSDataGrid = forwardRef(
           mergedColumn.align = mergedColumn.align || "right";
         } else if (
           customDef.format === "number" ||
-          customDef.type === "number"
+          customDef.type === "number" ||
+          customDef.type === "decimal"
         ) {
           const decimals = customDef.decimals ?? 2;
           const thousandSeparator = customDef.thousandSeparator !== false;
 
-          mergedColumn.valueFormatter = (params) => {
-            if (params.value == null) return "";
-            const num = Number(params.value);
-            if (isNaN(num)) return params.value;
+          // Set column type to "number" for proper DataGrid behavior
+          mergedColumn.type = "number";
+
+          // MUI X Data Grid v7+ signature: valueFormatter(value, row, column, apiRef)
+          mergedColumn.valueFormatter = (value) => {
+            if (value == null) return "";
+            const num = Number(value);
+            if (isNaN(num)) return value;
             const formatted = num.toFixed(decimals);
             const parts = formatted.split(".");
             if (thousandSeparator) {
@@ -6117,10 +6350,11 @@ const BSDataGrid = forwardRef(
           mergedColumn.align = mergedColumn.align || "right";
         } else if (customDef.format === "percent") {
           const decimals = customDef.decimals ?? 0;
-          mergedColumn.valueFormatter = (params) => {
-            if (params.value == null) return "";
-            const num = Number(params.value);
-            if (isNaN(num)) return params.value;
+          // MUI X Data Grid v7+ signature: valueFormatter(value, row, column, apiRef)
+          mergedColumn.valueFormatter = (value) => {
+            if (value == null) return "";
+            const num = Number(value);
+            if (isNaN(num)) return value;
             return `${(num * 100).toFixed(decimals)}%`;
           };
           mergedColumn.align = mergedColumn.align || "right";
@@ -6441,7 +6675,9 @@ const BSDataGrid = forwardRef(
     // We only want to regenerate columns when the STRUCTURE changes (different keys), not when values change
     const rowColumnStructureKey = useMemo(() => {
       if (!rows || rows.length === 0) return "";
-      const keys = Object.keys(rows[0] || {}).sort().join(",");
+      const keys = Object.keys(rows[0] || {})
+        .sort()
+        .join(",");
       return keys;
     }, [rows]);
 
@@ -6463,7 +6699,7 @@ const BSDataGrid = forwardRef(
     // This prevents metadata object reference changes from triggering column regeneration
     const metadataColumnsKeyRef = useRef("");
     const prevMetadataRef = useRef(null);
-    
+
     // Compute metadata key only when metadata actually changes content, not just reference
     const stableMetadataKey = useMemo(() => {
       if (!metadata?.columns || !Array.isArray(metadata.columns)) {
@@ -6472,16 +6708,18 @@ const BSDataGrid = forwardRef(
         }
         return "";
       }
-      
+
       // Generate a key from the actual column data
-      const newKey = metadata.columns.map((c) => `${c.columnName}:${c.dataType}`).join("|");
-      
+      const newKey = metadata.columns
+        .map((c) => `${c.columnName}:${c.dataType}`)
+        .join("|");
+
       // Only update if the content actually changed
       if (newKey !== metadataColumnsKeyRef.current) {
         metadataColumnsKeyRef.current = newKey;
         prevMetadataRef.current = metadata;
       }
-      
+
       return metadataColumnsKeyRef.current;
     }, [metadata]);
 
@@ -6494,8 +6732,13 @@ const BSDataGrid = forwardRef(
       const visibilityKey = `${effectiveVisibleView}-${effectiveVisibleEdit}-${effectiveVisibleDelete}`;
       const colsKey = parsedCols ? parsedCols.join(",") : "";
       const hiddenKey = bsHiddenColumns ? JSON.stringify(bsHiddenColumns) : "";
-      
-      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}`;
+      // Include comboBoxValueOptions keys to regenerate columns when dropdown data loads
+      const comboBoxKeys = Object.keys(comboBoxValueOptions).sort().join(",");
+      const comboBoxDataKey = Object.entries(comboBoxValueOptions)
+        .map(([k, v]) => `${k}:${v?.length || 0}`)
+        .join("|");
+
+      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}`;
     }, [
       stableMetadataKey,
       bsStoredProcedure,
@@ -6509,12 +6752,16 @@ const BSDataGrid = forwardRef(
       effectiveVisibleDelete,
       parsedCols,
       bsHiddenColumns,
+      comboBoxValueOptions,
     ]);
 
     // Build columns from metadata - ONLY regenerate when columnsKey changes
     const columns = useMemo(() => {
       // CRITICAL: Check if we can reuse cached columns
-      if (columnsKeyRef.current === columnsKey && columnsRef.current.length > 0) {
+      if (
+        columnsKeyRef.current === columnsKey &&
+        columnsRef.current.length > 0
+      ) {
         return columnsRef.current;
       }
       // For Enhanced Stored Procedure, try to create columns from data if no metadata
@@ -6525,7 +6772,8 @@ const BSDataGrid = forwardRef(
         // Use cached firstRowForColumns instead of rows[0] to prevent infinite re-renders
         if (firstRowForColumns) {
           // Detect primary key to exclude it from visible columns
-          const detectedPrimaryKey = detectPrimaryKeyFromData(firstRowForColumns);
+          const detectedPrimaryKey =
+            detectPrimaryKeyFromData(firstRowForColumns);
 
           // Also check metadata for primary keys if available
           const metadataPrimaryKeys = metadata?.primaryKeys || [];
@@ -7589,15 +7837,18 @@ const BSDataGrid = forwardRef(
     // Memoize validated columns to prevent infinite re-renders in DataGridPro
     const validatedColumns = useMemo(() => {
       const safeColumns = Array.isArray(columns) ? columns : [];
-      
+
       // Create a stable key from column fields
       const columnsFieldKey = safeColumns.map((c) => c?.field || "").join(",");
-      
+
       // Only recompute if the columns have actually changed
-      if (validatedColumnsKeyRef.current === columnsFieldKey && validatedColumnsRef.current.length > 0) {
+      if (
+        validatedColumnsKeyRef.current === columnsFieldKey &&
+        validatedColumnsRef.current.length > 0
+      ) {
         return validatedColumnsRef.current;
       }
-      
+
       const validated = safeColumns.filter(
         (col) =>
           col &&
@@ -7606,11 +7857,11 @@ const BSDataGrid = forwardRef(
           col.field.length > 0 &&
           typeof col.headerName === "string"
       );
-      
+
       // Cache the result
       validatedColumnsKeyRef.current = columnsFieldKey;
       validatedColumnsRef.current = validated;
-      
+
       return validated;
     }, [columns]);
 
@@ -7906,12 +8157,16 @@ const BSDataGrid = forwardRef(
 
       if (isConfirmed) {
         try {
-          // TODO: Implement bulk delete API call
+          // Bulk delete - use SP CRUD if configured
           for (const row of selectedRows) {
             const primaryKey = getEffectivePrimaryKey(row);
             const id = row[primaryKey];
             if (id) {
-              await deleteRecord(id, null, bsPreObj);
+              if (bsStoredProcedure && bsStoredProcedureCrud) {
+                await executeSpCrud("DELETE", {}, id);
+              } else {
+                await deleteRecord(id, null, bsPreObj);
+              }
             }
           }
 
@@ -7932,6 +8187,9 @@ const BSDataGrid = forwardRef(
       bsPreObj,
       getEffectivePrimaryKey,
       getEffectiveLocale,
+      bsStoredProcedure,
+      bsStoredProcedureCrud,
+      executeSpCrud,
     ]);
 
     // Custom Excel Export Handler
@@ -8726,20 +8984,27 @@ const BSDataGrid = forwardRef(
           }
 
           if (isNewRow) {
-            // New row - use createRecord instead of updateRecord
+            // New row - use createRecord or SP INSERT
             bsLog("📝 Bulk save NEW row:", {
               isNewRow,
               cleanData,
               bsPreObj,
+              useSpCrud: bsStoredProcedure && bsStoredProcedureCrud,
             });
             // Mark this row as saved to prevent double-save in processRowUpdate
             const originalRowId = row.id || row.Id || row.ID;
             if (originalRowId) {
               savedRowIdsRef.current.add(String(originalRowId));
             }
-            await createRecord(cleanData, bsPreObj);
+
+            // Use stored procedure CRUD if configured
+            if (bsStoredProcedure && bsStoredProcedureCrud) {
+              await executeSpCrud("INSERT", cleanData);
+            } else {
+              await createRecord(cleanData, bsPreObj);
+            }
           } else {
-            // Existing row - use updateRecord
+            // Existing row - use updateRecord or SP UPDATE
             // Validate that we have a real primary key value, not a generated one
             if (
               id == null ||
@@ -8755,8 +9020,15 @@ const BSDataGrid = forwardRef(
               id,
               cleanData,
               bsPreObj,
+              useSpCrud: bsStoredProcedure && bsStoredProcedureCrud,
             });
-            await updateRecord(id, cleanData, bsPreObj);
+
+            // Use stored procedure CRUD if configured
+            if (bsStoredProcedure && bsStoredProcedureCrud) {
+              await executeSpCrud("UPDATE", cleanData, id);
+            } else {
+              await updateRecord(id, cleanData, bsPreObj);
+            }
           }
         }
 
@@ -8781,7 +9053,17 @@ const BSDataGrid = forwardRef(
         }
 
         // Force reload data from server with cache buster
-        await loadData(true);
+        // Use loadStoredProcedureData for SP mode, otherwise use loadData
+        if (bsStoredProcedure) {
+          await loadStoredProcedureData(
+            paginationModel,
+            sortModel,
+            filterModel,
+            true // forceRefresh
+          );
+        } else {
+          await loadData(true);
+        }
         bsLog("✅ Bulk changes saved successfully and data refreshed");
       } catch (err) {
         Logger.error("❌ Bulk save failed:", err);
@@ -8806,6 +9088,13 @@ const BSDataGrid = forwardRef(
       rows,
       getEffectivePrimaryKey,
       apiRef,
+      bsStoredProcedure,
+      bsStoredProcedureCrud,
+      executeSpCrud,
+      loadStoredProcedureData,
+      paginationModel,
+      sortModel,
+      filterModel,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
@@ -8839,8 +9128,17 @@ const BSDataGrid = forwardRef(
         }
 
         // Force reload to discard changes with loading state
-        // Note: loadData has its own guard for metadata, so we wrap in try-finally
-        await loadData(true);
+        // Use loadStoredProcedureData for SP mode, otherwise use loadData
+        if (bsStoredProcedure) {
+          await loadStoredProcedureData(
+            paginationModel,
+            sortModel,
+            filterModel,
+            true // forceRefresh
+          );
+        } else {
+          await loadData(true);
+        }
         bsLog("🗑️ Bulk changes discarded");
       } catch (err) {
         Logger.error("❌ Failed to discard bulk changes:", err);
@@ -8848,7 +9146,18 @@ const BSDataGrid = forwardRef(
       } finally {
         setLoading(false); // Always clear loading state
       }
-    }, [loadData, metadata, loadMetadata, bsPreObj, getEffectivePrimaryKey]);
+    }, [
+      loadData,
+      metadata,
+      loadMetadata,
+      bsPreObj,
+      getEffectivePrimaryKey,
+      bsStoredProcedure,
+      loadStoredProcedureData,
+      paginationModel,
+      sortModel,
+      filterModel,
+    ]);
 
     const handleToggleHeaderFilters = useCallback(() => {
       setHeaderFiltersEnabled((prev) => {
