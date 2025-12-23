@@ -2461,6 +2461,7 @@ const BSDataGrid = forwardRef(
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
 
+
     // ComboBox Lookup Data state - stores fetched data from combobox configs for display in grid
     const [comboBoxLookupData, setComboBoxLookupData] = useState({});
     // ComboBox Value Options state - stores dropdown options for inline editing
@@ -2470,15 +2471,37 @@ const BSDataGrid = forwardRef(
     const [comboBoxLoading, setComboBoxLoading] = useState(
       () => Array.isArray(bsComboBox) && bsComboBox.length > 0
     );
+    
+    // Refs to hold the latest values of comboBoxLookupData and comboBoxValueOptions
+    // This solves the stale closure problem where renderComboBoxCell captures old values
+    const comboBoxLookupDataRef = useRef(comboBoxLookupData);
+    const comboBoxValueOptionsRef = useRef(comboBoxValueOptions);
+    
+    // Keep refs in sync with state
+    useEffect(() => {
+      comboBoxLookupDataRef.current = comboBoxLookupData;
+    }, [comboBoxLookupData]);
+    
+    useEffect(() => {
+      comboBoxValueOptionsRef.current = comboBoxValueOptions;
+    }, [comboBoxValueOptions]);
 
     // Load ComboBox lookup data for grid display and editing
     useEffect(() => {
+      console.log("🚀 ComboBox useEffect triggered:", {
+        hasConfig: !!comboBoxConfig,
+        configKeys: Object.keys(comboBoxConfig || {}),
+        comboBoxConfigDetails: Object.entries(comboBoxConfig || {}).slice(0, 3),
+      });
+      
       const loadComboBoxLookupData = async () => {
         if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) {
+          console.log("⚠️ ComboBox useEffect: No config, skipping load");
           setComboBoxLoading(false);
           return;
         }
 
+        console.log("📥 Starting combobox data fetch...");
         setComboBoxLoading(true);
 
         const lookupData = {};
@@ -2509,8 +2532,9 @@ const BSDataGrid = forwardRef(
                 const valueData =
                   item.value !== undefined ? item : item.data || item;
                 const itemValue = valueData[config.Value] || item.value;
-                // Prefer item.display (from API) over field lookup
+                // Prefer valueData[config.Display] (direct field lookup), then item.display (from API format)
                 const itemDisplay =
+                  valueData[config.Display] ||
                   item.display ||
                   (item.data && item.data[config.Display]) ||
                   item.value;
@@ -2556,6 +2580,14 @@ const BSDataGrid = forwardRef(
               (k) =>
                 JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k])
             );
+          console.log("🔽 Setting comboBoxValueOptions:", {
+            keys: newKeys,
+            totalOptions: Object.entries(valueOptionsData).map(([k, v]) => ({
+              column: k,
+              count: v?.length || 0,
+            })),
+            isSame,
+          });
           return isSame ? prev : valueOptionsData;
         });
         setComboBoxLoading(false);
@@ -3769,6 +3801,207 @@ const BSDataGrid = forwardRef(
       return null;
     }, []);
 
+    // Helper: Format SQL error message to be user-friendly with collapsible details
+    // Supports DELETE (FK constraint), INSERT (duplicate key, FK violation), UPDATE errors
+    const formatSqlErrorMessage = useCallback(
+      (errorMessage, operation = "save") => {
+        // Get locale text for error messages
+        const currentLocaleText = getLocaleText(getEffectiveLocale());
+
+        // Check for FK constraint error on DELETE (with optional prefix like "Error deleting record: ")
+        const fkDeleteMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?The DELETE statement conflicted with the REFERENCE constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i
+        );
+
+        if (fkDeleteMatch) {
+          const friendlyMessage =
+            currentLocaleText.bsCannotDeleteReferenced ||
+            "Cannot delete this record because it is being referenced by other data.";
+
+          return {
+            type: "fk_delete",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsDeleteError || "Delete Error",
+          };
+        }
+
+        // Check for FK constraint error on INSERT/UPDATE
+        const fkInsertMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?The INSERT statement conflicted with the FOREIGN KEY constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i
+        );
+
+        if (fkInsertMatch) {
+          const friendlyMessage =
+            currentLocaleText.bsForeignKeyViolation ||
+            "The referenced record does not exist. Please select a valid value.";
+
+          return {
+            type: "fk_insert",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsInsertError || "Insert Error",
+          };
+        }
+
+        // Check for FK constraint error on UPDATE
+        const fkUpdateMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?The UPDATE statement conflicted with the FOREIGN KEY constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i
+        );
+
+        if (fkUpdateMatch) {
+          const friendlyMessage =
+            currentLocaleText.bsForeignKeyViolation ||
+            "The referenced record does not exist. Please select a valid value.";
+
+          return {
+            type: "fk_update",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsUpdateError || "Update Error",
+          };
+        }
+
+        // Check for duplicate key / unique constraint violation
+        const duplicateKeyMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?(duplicate key|unique constraint|primary key violation|Cannot insert duplicate key|Violation of UNIQUE KEY constraint|Violation of PRIMARY KEY constraint)/i
+        );
+
+        if (duplicateKeyMatch) {
+          const friendlyMessage =
+            currentLocaleText.bsDuplicateKeyError ||
+            "This record already exists. Please use a different value.";
+
+          return {
+            type: "duplicate_key",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsSaveError || "Save Error",
+          };
+        }
+
+        // Check for NOT NULL constraint violation
+        const notNullMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?Cannot insert the value NULL into column '([^']+)'/i
+        );
+
+        if (notNullMatch) {
+          const columnName = notNullMatch[1];
+          const friendlyMessage = (
+            currentLocaleText.bsRequiredFieldError ||
+            "Required field '{field}' cannot be empty."
+          ).replace("{field}", columnName);
+
+          return {
+            type: "not_null",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsSaveError || "Save Error",
+          };
+        }
+
+        // Check for data type/conversion errors
+        const conversionMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?(Conversion failed|Error converting data type)/i
+        );
+
+        if (conversionMatch) {
+          const friendlyMessage =
+            currentLocaleText.bsDataTypeError ||
+            "Invalid data format. Please check your input values.";
+
+          return {
+            type: "conversion",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsSaveError || "Save Error",
+          };
+        }
+
+        // Check for string/binary data truncation
+        const truncationMatch = errorMessage.match(
+          /(?:Error\s+\w+\s+record:\s*)?(String or binary data would be truncated)/i
+        );
+
+        if (truncationMatch) {
+          const friendlyMessage =
+            currentLocaleText.bsDataTruncationError ||
+            "Input value is too long. Please shorten your text.";
+
+          return {
+            type: "truncation",
+            friendlyMessage,
+            detailMessage: "",
+            originalError: errorMessage,
+            title: currentLocaleText.bsSaveError || "Save Error",
+          };
+        }
+
+        // Default: determine title based on operation
+        let defaultTitle = currentLocaleText.bsSaveError || "Save Error";
+        if (operation === "delete") {
+          defaultTitle = currentLocaleText.bsDeleteError || "Delete Error";
+        } else if (operation === "insert") {
+          defaultTitle = currentLocaleText.bsInsertError || "Insert Error";
+        } else if (operation === "update") {
+          defaultTitle = currentLocaleText.bsUpdateError || "Update Error";
+        }
+
+        return {
+          type: "unknown",
+          friendlyMessage: errorMessage,
+          detailMessage: "",
+          originalError: errorMessage,
+          title: defaultTitle,
+        };
+      },
+      [getEffectiveLocale]
+    );
+
+    // Helper: Show error with collapsible details (for INSERT, UPDATE, DELETE)
+    const showErrorWithDetails = useCallback(
+      (errorInfo) => {
+        // Get locale text
+        const currentLocaleText = getLocaleText(getEffectiveLocale());
+
+        let htmlContent = `<p style="margin: 0 0 10px 0; font-size: 16px;">${errorInfo.friendlyMessage}</p>`;
+
+        if (errorInfo.detailMessage) {
+          htmlContent += `<p style="margin: 0 0 15px 0; font-size: 14px; color: #666;">${errorInfo.detailMessage}</p>`;
+        }
+
+        // Add collapsible exception details
+        htmlContent += `
+          <details style="text-align: left; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
+            <summary style="cursor: pointer; padding: 8px 12px; background: #f5f5f5; font-size: 13px; color: #666; user-select: none;">
+              ${
+                currentLocaleText.bsViewExceptionDetails ||
+                "View Exception Details"
+              }
+            </summary>
+            <div style="padding: 12px; background: #fafafa; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; color: #333;">
+${errorInfo.originalError}
+            </div>
+          </details>
+        `;
+
+        BSAlertSwal2.fire({
+          icon: "error",
+          title: errorInfo.title,
+          html: htmlContent,
+          width: 500,
+          confirmButtonText: currentLocaleText.bsOk || "OK",
+        });
+      },
+      [getEffectiveLocale]
+    );
+
     // Helper: Get effective primary key (from metadata or detected from data)
     const getEffectivePrimaryKey = useCallback(
       (rowData = null) => {
@@ -4375,7 +4608,8 @@ const BSDataGrid = forwardRef(
                   await loadStoredProcedureData();
                 } else {
                   const errorMsg = result.message || "Delete operation failed";
-                  BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+                  const errorInfo = formatSqlErrorMessage(errorMsg, "delete");
+                  showErrorWithDetails(errorInfo);
                   throw new Error(errorMsg);
                 }
               }
@@ -4386,7 +4620,11 @@ const BSDataGrid = forwardRef(
             }
           } catch (err) {
             Logger.error("❌ Failed to delete record:", err);
-            setError(err.message || "Failed to delete record");
+            const errorInfo = formatSqlErrorMessage(
+              err.message || "Failed to delete record",
+              "delete"
+            );
+            showErrorWithDetails(errorInfo);
           }
         }
       },
@@ -4405,6 +4643,8 @@ const BSDataGrid = forwardRef(
         getEffectiveLocale,
         bsStoredProcedureCrud,
         executeSpCrud,
+        formatSqlErrorMessage,
+        showErrorWithDetails,
       ]
     );
 
@@ -4720,7 +4960,8 @@ const BSDataGrid = forwardRef(
 
             if (!result.success) {
               const errorMsg = result.message || "Insert operation failed";
-              BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+              const errorInfo = formatSqlErrorMessage(errorMsg, "insert");
+              showErrorWithDetails(errorInfo);
               throw new Error(errorMsg);
             }
 
@@ -4860,7 +5101,8 @@ const BSDataGrid = forwardRef(
 
             if (!result.success) {
               const errorMsg = result.message || "Update operation failed";
-              BSAlertSwal2.show("error", errorMsg, { title: "Error" });
+              const errorInfo = formatSqlErrorMessage(errorMsg, "update");
+              showErrorWithDetails(errorInfo);
               throw new Error(errorMsg);
             }
 
@@ -4985,8 +5227,8 @@ const BSDataGrid = forwardRef(
       } catch (err) {
         Logger.error("❌ Save failed:", err);
         const errorMessage = err.message || "Failed to save record";
-        setError(errorMessage);
-        BSAlertSwal2.show("error", errorMessage, { title: "Save Failed" });
+        const errorInfo = formatSqlErrorMessage(errorMessage, "save");
+        showErrorWithDetails(errorInfo);
       } finally {
         setFormLoading(false);
       }
@@ -5011,6 +5253,8 @@ const BSDataGrid = forwardRef(
       bsChildGrids,
       bsPrimaryKeys,
       bsKeyId,
+      formatSqlErrorMessage,
+      showErrorWithDetails,
     ]);
 
     const handleDialogClose = useCallback(() => {
@@ -5026,9 +5270,26 @@ const BSDataGrid = forwardRef(
     }, []);
 
     // Helper: Render combobox for columns with ComboBox configuration
+    // Uses refs instead of state to avoid stale closure - refs always have the latest values
     const renderComboBoxCell = useCallback(
       (params, comboConfig) => {
         const { value, field } = params;
+        
+        // Access the latest values from refs (not from closure)
+        const currentLookupData = comboBoxLookupDataRef.current;
+        const currentValueOptions = comboBoxValueOptionsRef.current;
+        
+        // // Debug log to trace lookup
+        // if (field === 'app_id' || field === 'platform') {
+        //   console.log(`🔎 renderComboBoxCell called for ${field}:`, {
+        //     value,
+        //     comboConfig,
+        //     hasLookupData: !!currentLookupData[field],
+        //     lookupDataKeys: Object.keys(currentLookupData),
+        //     hasValueOptions: !!currentValueOptions[field],
+        //     valueOptionsCount: currentValueOptions[field]?.length || 0,
+        //   });
+        // }
 
         // If value is empty/null, show default or empty
         if (value === null || value === undefined || value === "") {
@@ -5048,15 +5309,15 @@ const BSDataGrid = forwardRef(
 
         // First try to get display value from comboBoxLookupData
         // Try both original value and string version for type mismatch handling
-        const lookupMap = comboBoxLookupData[field];
+        const lookupMap = currentLookupData[field];
         let displayText = null;
         if (lookupMap) {
           displayText = lookupMap[value] || lookupMap[String(value)];
         }
 
         // Fallback to comboBoxValueOptions if no lookup data found
-        if (!displayText && comboBoxValueOptions[field]) {
-          const option = comboBoxValueOptions[field].find(
+        if (!displayText && currentValueOptions[field]) {
+          const option = currentValueOptions[field].find(
             (opt) => opt.value === value || String(opt.value) === String(value)
           );
           if (option) {
@@ -5086,7 +5347,7 @@ const BSDataGrid = forwardRef(
           </Box>
         );
       },
-      [comboBoxLookupData, comboBoxValueOptions]
+      [] // No dependencies - uses refs instead to get latest values
     );
 
     // Helper: Get ComboBox value options for editing (uses pre-fetched data)
@@ -5106,6 +5367,53 @@ const BSDataGrid = forwardRef(
           : [emptyOption];
       },
       [comboBoxValueOptions]
+    );
+
+    // Custom Edit Cell for ComboBox columns - reads options from ref at edit time
+    // This bypasses MUI DataGrid's column caching by using useGridApiContext
+    const renderComboBoxEditCell = useCallback(
+      (params, comboConfig) => {
+        const { id, field, value, api } = params;
+        
+        // Get options from ref at edit time (always current)
+        const options = comboBoxValueOptionsRef.current[field] || [];
+        const emptyOption = { value: "", label: "-- เลือก --" };
+        const valueOptions = [emptyOption, ...options];
+        
+        console.log(`✏️ renderComboBoxEditCell for ${field}:`, {
+          currentValue: value,
+          optionsCount: options.length,
+          sampleOptions: options.slice(0, 3),
+        });
+        
+        const handleChange = (event) => {
+          const newValue = event.target.value;
+          api.setEditCellValue({ id, field, value: newValue });
+        };
+        
+        return (
+          <Select
+            value={value ?? ""}
+            onChange={handleChange}
+            autoFocus
+            fullWidth
+            size="small"
+            sx={{
+              height: "100%",
+              "& .MuiSelect-select": {
+                py: 0.5,
+              },
+            }}
+          >
+            {valueOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        );
+      },
+      [] // No dependencies - always read from ref
     );
 
     // Helper: Get is_active dropdown options
@@ -6333,9 +6641,11 @@ const BSDataGrid = forwardRef(
           return updatedRow;
         } catch (error) {
           Logger.error("❌ Failed to save record:", error);
-          BSAlertSwal2.show("error", error.message, {
-            title: "Failed to Save Record",
-          });
+          const errorInfo = formatSqlErrorMessage(
+            error.message || "Failed to save record",
+            "save"
+          );
+          showErrorWithDetails(errorInfo);
           return newRow; // Return unchanged to keep edit mode
         }
       },
@@ -6346,6 +6656,8 @@ const BSDataGrid = forwardRef(
         bsPreObj,
         loadData,
         getEffectivePrimaryKey,
+        formatSqlErrorMessage,
+        showErrorWithDetails,
       ]
     );
 
@@ -6845,12 +7157,50 @@ const BSDataGrid = forwardRef(
 
     // Build columns from metadata - ONLY regenerate when columnsKey changes
     const columns = useMemo(() => {
-      // CRITICAL: Check if we can reuse cached columns
+      // Debug log for tracking column regeneration
+      console.log("🔄 columns useMemo triggered", {
+        columnsKey,
+        previousKey: columnsKeyRef.current,
+        keyChanged: columnsKeyRef.current !== columnsKey,
+        cachedColumnsCount: columnsRef.current?.length || 0,
+        comboBoxValueOptionsKeys: Object.keys(comboBoxValueOptions),
+        comboBoxValueOptionsData: Object.entries(comboBoxValueOptions).map(([k, v]) => ({
+          column: k,
+          count: v?.length || 0,
+        })),
+      });
+      
+       // CRITICAL: Check if we can reuse cached columns
+      // BUT don't use cache if combobox config exists and data isn't loaded yet
+      const hasComboBoxConfig = Object.keys(comboBoxConfig).length > 0;
+      const hasComboBoxData = Object.keys(comboBoxValueOptions).length > 0 &&
+        Object.values(comboBoxValueOptions).some(opts => opts && opts.length > 0);
+      const shouldForceRebuild = hasComboBoxConfig && !hasComboBoxData;
+      
+      console.log("🔍 Cache check:", {
+        hasComboBoxConfig,
+        hasComboBoxData,
+        shouldForceRebuild,
+        comboBoxConfigKeys: Object.keys(comboBoxConfig),
+        comboBoxValueOptionsKeys: Object.keys(comboBoxValueOptions),
+        comboBoxValueOptionsDetails: Object.entries(comboBoxValueOptions).map(([k, v]) => ({
+          column: k,
+          optionsLength: v?.length || 0,
+          sample: v?.slice?.(0, 2)
+        })),
+      });
+      
       if (
         columnsKeyRef.current === columnsKey &&
-        columnsRef.current.length > 0
+        columnsRef.current.length > 0 &&
+        !shouldForceRebuild
       ) {
+        console.log("📦 Returning cached columns (key unchanged)");
         return columnsRef.current;
+      }
+      
+      if (shouldForceRebuild) {
+        console.log("🔄 Forcing column rebuild - waiting for combobox data");
       }
       // For Enhanced Stored Procedure, try to create columns from data if no metadata
       if (
@@ -7447,6 +7797,15 @@ const BSDataGrid = forwardRef(
             const columnName = col.columnName;
             //const isRequired = isFieldRequired(columnName, metadata);
             const comboConfig = comboBoxConfig[columnName];
+            
+            // Debug: Check if comboConfig is found for this column
+            if (columnName === 'app_id' || columnName === 'platform') {
+              console.log(`🔎 Column ${columnName} comboConfig check:`, {
+                comboConfig,
+                comboBoxConfigKeys: Object.keys(comboBoxConfig),
+                comboBoxValueOptions: comboBoxValueOptions[columnName],
+              });
+            }
 
             const baseColumn = {
               field: col.columnName,
@@ -7472,6 +7831,9 @@ const BSDataGrid = forwardRef(
             // is_active field configuration
             if (isActiveField(columnName)) {
               baseColumn.valueOptions = getIsActiveOptions();
+              // CRITICAL: MUI DataGrid needs getOptionValue and getOptionLabel
+              baseColumn.getOptionValue = (option) => option?.value ?? "";
+              baseColumn.getOptionLabel = (option) => option?.label ?? "";
               baseColumn.renderCell = (params) => {
                 const { value } = params;
                 const displayText = value || "YES"; // Default to YES if empty
@@ -7498,12 +7860,53 @@ const BSDataGrid = forwardRef(
             }
             // ComboBox configuration
             else if (comboConfig) {
-              baseColumn.valueOptions = getComboBoxOptions(
-                comboConfig,
-                columnName
-              );
+              // Read from state first (available during this render), fallback to ref
+              // Note: Check for array with length > 0, not just truthy, since [] is truthy
+              const stateOptions = comboBoxValueOptions[columnName];
+              const refOptions = comboBoxValueOptionsRef.current[columnName];
+              const options = (stateOptions && stateOptions.length > 0) 
+                ? stateOptions 
+                : (refOptions && refOptions.length > 0) 
+                  ? refOptions 
+                  : [];
+              
+              console.log(`📋 Building valueOptions for ${columnName}:`, {
+                fromState: stateOptions?.length || 0,
+                fromRef: refOptions?.length || 0,
+                finalOptionsLength: options.length,
+                sampleOptions: options.slice(0, 2),
+              });
+              
+              const emptyOption = { value: "", label: "-- เลือก --" };
+              let valueOptions;
+              if (options && options.length > 0) {
+                valueOptions = [emptyOption, ...options];
+              } else {
+                // Fallback to static valueOptions if provided in config
+                const staticOptions = comboConfig.valueOptions || [];
+                valueOptions =
+                  staticOptions.length > 0
+                    ? [emptyOption, ...staticOptions]
+                    : [emptyOption];
+              }
+              baseColumn.valueOptions = valueOptions;
+              // CRITICAL: MUI DataGrid needs getOptionValue and getOptionLabel
+              // when valueOptions is an array of objects with { value, label }
+              baseColumn.getOptionValue = (option) => option?.value ?? "";
+              baseColumn.getOptionLabel = (option) => option?.label ?? "";
               baseColumn.renderCell = (params) =>
                 renderComboBoxCell(params, comboConfig);
+              // CRITICAL FIX: Use custom renderEditCell to bypass MUI's column caching
+              // This reads options from ref at edit time, always getting current data
+              baseColumn.renderEditCell = (params) =>
+                renderComboBoxEditCell(params, comboConfig);
+              console.log(`🔽 ComboBox column configured: ${columnName}`, {
+                type: baseColumn.type,
+                editable: baseColumn.editable,
+                valueOptionsCount: valueOptions?.length || 0,
+                sampleOptions: valueOptions?.slice(0, 3),
+                hasOptions: options && options.length > 0,
+              });
             } else {
               // Standard cell rendering
               baseColumn.renderCell = (params) => {
@@ -7936,22 +8339,26 @@ const BSDataGrid = forwardRef(
           ...col, // Include any other properties
         }));
 
-        bsLog("🔍 Final columns check:", {
-          isArray: Array.isArray(finalColumns),
-          count: finalColumns.length,
-          type: typeof finalColumns,
-          allValid: finalColumns.every(
-            (c) =>
-              c &&
-              typeof c.field === "string" &&
-              typeof c.headerName === "string"
-          ),
-          sample: finalColumns.slice(0, 2).map((c) => ({
-            field: c.field,
-            headerName: c.headerName,
-            type: c.type,
-          })),
-        });
+        // console.log("🔍 Final columns check:", {
+        //   isArray: Array.isArray(finalColumns),
+        //   count: finalColumns.length,
+        //   type: typeof finalColumns,
+        //   allValid: finalColumns.every(
+        //     (c) =>
+        //       c &&
+        //       typeof c.field === "string" &&
+        //       typeof c.headerName === "string"
+        //   ),
+        //   comboboxColumns: finalColumns.filter(c => 
+        //     c.field === 'app_id' || c.field === 'platform'
+        //   ).map((c) => ({
+        //     field: c.field,
+        //     type: c.type,
+        //     hasValueOptions: !!c.valueOptions,
+        //     valueOptionsCount: c.valueOptions?.length || 0,
+        //     sampleOptions: c.valueOptions?.slice(0, 3),
+        //   })),
+        // });
 
         // Cache the columns before returning
         columnsKeyRef.current = columnsKey;
@@ -7961,10 +8368,10 @@ const BSDataGrid = forwardRef(
         Logger.error("❌ Error building columns:", error);
         return columnsRef.current.length > 0 ? columnsRef.current : []; // Return cached or empty on error
       }
-      // CRITICAL: Only depend on columnsKey to prevent infinite re-renders
-      // The columnsKey already encapsulates all the essential dependencies
+      // CRITICAL: columnsKey encapsulates most dependencies, but we need comboBoxValueOptions
+      // to be directly referenced to avoid stale closure when building dropdown options
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [columnsKey]);
+    }, [columnsKey, comboBoxValueOptions]);
 
     // Generate custom row styles from bsRowConfig
     const customRowStyles = useMemo(() => {
@@ -8748,8 +9155,11 @@ const BSDataGrid = forwardRef(
             })
             .catch((error) => {
               Logger.error("❌ Normal mode update failed:", error);
-              // Set error state to show user
-              setError(`Failed to update record: ${error.message || error}`);
+              const errorInfo = formatSqlErrorMessage(
+                error.message || "Failed to update record",
+                "update"
+              );
+              showErrorWithDetails(errorInfo);
               throw error;
             });
         }
@@ -8860,10 +9270,8 @@ const BSDataGrid = forwardRef(
             .catch((error) => {
               Logger.error("❌ Failed to create new row:", error);
               const errorMessage = error.message || "Failed to create record";
-              setError(errorMessage);
-              BSAlertSwal2.show("error", errorMessage, {
-                title: localeText.bsError || "Error",
-              });
+              const errorInfo = formatSqlErrorMessage(errorMessage, "insert");
+              showErrorWithDetails(errorInfo);
               throw error;
             });
         }
@@ -8910,6 +9318,8 @@ const BSDataGrid = forwardRef(
         effectiveTableName,
         loadMetadata,
         localeText,
+        formatSqlErrorMessage,
+        showErrorWithDetails,
       ]
     );
 
@@ -9755,8 +10165,9 @@ const BSDataGrid = forwardRef(
                     (columns.length === 0 && loading)
                   }
                   // Ensure we don't render until we have valid data structure
-                  // Use stable key to prevent unnecessary re-renders
-                  key={`datagrid-${effectiveTableName}`}
+                  // Use stable key that forces re-mount when combobox data loads
+                  // This ensures columns are rebuilt with correct valueOptions
+                  key={`datagrid-${effectiveTableName}-comboReady-${!comboBoxLoading && Object.keys(comboBoxValueOptions).length > 0}`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={

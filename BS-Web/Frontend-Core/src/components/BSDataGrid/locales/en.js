@@ -329,4 +329,22 @@ export const englishLocaleText = {
   bsCancel: "Cancel",
   bsSuccess: "Success",
   bsError: "Error",
+  bsOk: "OK",
+
+  // BSDataGrid Error Messages (INSERT, UPDATE, DELETE)
+  bsDeleteError: "Delete Error",
+  bsInsertError: "Insert Error",
+  bsUpdateError: "Update Error",
+  bsSaveError: "Save Error",
+  bsViewExceptionDetails: "View Exception Details",
+  bsCannotDeleteReferenced:
+    "Cannot delete this record because it is being referenced by other data.",
+  bsReferencedBy: "Referenced by",
+  bsForeignKeyViolation:
+    "The referenced record does not exist. Please select a valid value.",
+  bsDuplicateKeyError:
+    "This record already exists. Please use a different value.",
+  bsRequiredFieldError: "Required field '{field}' cannot be empty.",
+  bsDataTypeError: "Invalid data format. Please check your input values.",
+  bsDataTruncationError: "Input value is too long. Please shorten your text.",
 };

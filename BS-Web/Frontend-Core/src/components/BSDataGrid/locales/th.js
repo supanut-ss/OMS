@@ -328,4 +328,20 @@ export const thaiLocaleText = {
   bsCancel: "ยกเลิก",
   bsSuccess: "สำเร็จ",
   bsError: "เกิดข้อผิดพลาด",
+  bsOk: "ตกลง",
+
+  // BSDataGrid Error Messages (INSERT, UPDATE, DELETE)
+  bsDeleteError: "ไม่สามารถลบได้",
+  bsInsertError: "ไม่สามารถเพิ่มข้อมูลได้",
+  bsUpdateError: "ไม่สามารถแก้ไขข้อมูลได้",
+  bsSaveError: "ไม่สามารถบันทึกได้",
+  bsViewExceptionDetails: "ดูรายละเอียดข้อผิดพลาด",
+  bsCannotDeleteReferenced:
+    "ไม่สามารถลบข้อมูลนี้ได้เนื่องจากมีการอ้างอิงจากข้อมูลอื่น",
+  bsReferencedBy: "อ้างอิงโดย",
+  bsForeignKeyViolation: "ข้อมูลอ้างอิงไม่มีอยู่ในระบบ กรุณาเลือกค่าที่ถูกต้อง",
+  bsDuplicateKeyError: "ข้อมูลนี้มีอยู่แล้ว กรุณาใช้ค่าอื่น",
+  bsRequiredFieldError: "ฟิลด์ '{field}' จำเป็นต้องกรอก",
+  bsDataTypeError: "รูปแบบข้อมูลไม่ถูกต้อง กรุณาตรวจสอบค่าที่กรอก",
+  bsDataTruncationError: "ข้อมูลยาวเกินไป กรุณาลดความยาวของข้อความ",
 };
