@@ -68,7 +68,7 @@ const AssignTeam = (props) => {
         Value: "user_id",
         Default: "--- Select Member ---",
         PreObj: "tmt",
-        Obj: "t_tmt_project_member",
+        Obj: "v_tmt_project_member",
         ObjWh: `project_header_id = '${project_header_id}'`,
         ObjBy: "first_name asc",
       },
