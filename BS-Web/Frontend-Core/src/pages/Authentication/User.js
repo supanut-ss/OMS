@@ -166,15 +166,6 @@ const UserPage = (props) => {
       !form.locale_id ||
       !form.is_active
     ) {
-      console.log(
-        "Missing required fields:",
-        form.user_id,
-        form.user_group_id,
-        form.first_name,
-        form.last_name,
-        form.locale_id,
-        form.is_active
-      );
       BSAlertSwal2.show(
         "warning",
         getResource(resourceData, "FillRequiredFields") ||
@@ -281,13 +272,13 @@ const UserPage = (props) => {
           email_address,
           supervisor,
           locale_id,
+          domain,
           is_active,
           create_by,
           create_date,
           update_by,
           update_date,
-          user_group_id,
-          domain"
+          user_group_id"
           bsObjBy="user_id asc"
           bsComboBox={[
             {
@@ -308,6 +299,10 @@ const UserPage = (props) => {
           onAdd={handleOpenAdd}
           onDelete={handleOpenDelete}
           bsKeyId="user_id"
+          bsColumnDefs={{
+            field: "user_group_id",
+            hide: true,
+          }}
         />
       </Paper>
 
@@ -401,6 +396,7 @@ const UserPage = (props) => {
                     handleGroupChange(val);
                   }}
                   bsValue={form.user_group_id}
+                  required={true}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
@@ -429,6 +425,7 @@ const UserPage = (props) => {
                   //bsLoadOnOpen={frue}
                   bsOnChange={(val) => handleLocaleChange(val)}
                   bsValue={form.locale_id}
+                  required={true}
                 />
               </Box>
             </Box>
@@ -459,7 +456,7 @@ const UserPage = (props) => {
                   ]}
                   bsObjBy=""
                   bsObjWh={`user_id<>'${form.user_id}'`}
-                  cacheKey="supervisor"
+                  bsCacheKey="supervisor"
                   //bsLoadOnOpen={frue}
                   bsOnChange={(val) =>
                     handleSupervisorChange(val?.user_id ?? "")
