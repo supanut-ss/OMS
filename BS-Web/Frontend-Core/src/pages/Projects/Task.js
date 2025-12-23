@@ -134,7 +134,7 @@ const ProjectTask = (props) => {
                             bsLocale={lang}
                             bsStoredProcedure="usp_tmt_project_task"
                             bsStoredProcedureSchema="tmt"
-                            bsCols="task_name,assignee,due_date,priority,manday,task_status"
+                            bsCols={projectHeader.record_type === "MA" ? "task_no,task_name,assignee,due_date,priority,manday,task_status" : "task_name,assignee,due_date,priority,manday,task_status"}
                             bsStoredProcedureParams={{
                                 ProjectTaskPhaseId: phase.project_task_phase_id,
                             }}

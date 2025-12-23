@@ -123,14 +123,14 @@ const AssignTeam = (props) => {
                                 component: 'BSAutoComplete',
                                 bsMode: "single",
                                 bsTitle: "user_id",
-                                bsPreObj: "tmt.t_tmt_",
+                                bsPreObj: "tmt.v_tmt_",
                                 bsObj: "project_member",
                                 bsColumes: [
                                     { field: "user_id", display: false, key: true },
                                     { field: "first_name", display: true },
                                     { field: "last_name", display: true }
                                 ],
-                                bsObjBy: "role asc",
+                                bsObjBy: "user_id asc",
                                 bsObjWh: `project_header_id = '${project_header_id}' `,
                                 variant: "standard",
                                 required: true

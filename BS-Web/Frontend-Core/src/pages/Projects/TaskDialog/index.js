@@ -48,25 +48,25 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   const requiredFields =
     projectHeader.record_type === "PROJECT"
       ? [
-          "task_status",
-          "task_name",
-          "priority",
-          "issue_type",
-          "manday",
-          "task_description",
-          "start_date",
-          "end_date",
-        ]
+        "task_status",
+        "task_name",
+        "priority",
+        "issue_type",
+        "manday",
+        "task_description",
+        "start_date",
+        "end_date",
+      ]
       : [
-          "task_name",
-          "priority",
-          "issue_type",
-          "start_date",
-          "end_date",
-          "manday",
-          "start_incident_date",
-          "task_description",
-        ];
+        "task_name",
+        "priority",
+        "issue_type",
+        "start_date",
+        "end_date",
+        "manday",
+        "start_incident_date",
+        "task_description",
+      ];
   const { formData, errors, updateField, validate, setFormData } = useForm(
     defaultData,
     requiredFields
@@ -124,7 +124,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   }, [phases]);
   const fetchData = useCallback(() => {
     if (!phases.project_task_id) return;
-
+    getLang();
     AxiosMaster.get("/projects/task/" + phases.project_task_id).then((res) => {
       if (res.data.message_code === 0) {
         setFormData((prev) => ({
@@ -216,23 +216,23 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
                 />
               )}
               {tap === 2 && projectHeader.record_type === "MA" && (
-                  <BSFileUpload
-                        attachConfig={{
-                            preObj: "tmt",
-                            attachTable: "t_tmt_project_task_tracking_attach_file",
-                            foreignKey: "project_task_id",
-                            foreignKeyValue: formData?.project_task_id,
-                            fileNameColumn: "file_name",
-                            pathColumn: "path_file",
-                            primaryKey: "tracking_file_id",
-                            maxFiles: 10,
-                            maxFileSize: 1024 * 1024 * 10,
-                            additionalData: {
-                                project_task_id: formData?.project_task_id,
-                            },
-                        }}
-                        locale={lang}
-                    />
+                <BSFileUpload
+                  attachConfig={{
+                    preObj: "tmt",
+                    attachTable: "t_tmt_project_task_tracking_attach_file",
+                    foreignKey: "project_task_id",
+                    foreignKeyValue: formData?.project_task_id,
+                    fileNameColumn: "file_name",
+                    pathColumn: "path_file",
+                    primaryKey: "tracking_file_id",
+                    maxFiles: 10,
+                    maxFileSize: 1024 * 1024 * 10,
+                    additionalData: {
+                      project_task_id: formData?.project_task_id,
+                    },
+                  }}
+                  locale={lang}
+                />
               )}
             </Box>
           </Box>

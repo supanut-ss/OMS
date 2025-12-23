@@ -63,7 +63,7 @@ const FormProject = (props) => {
                         },
                     ],
                     bsObjBy: "project_no asc",
-                    bsObjWh: "is_active='YES' AND project_type='PROJECT'",
+                    bsObjWh: "is_active='YES' AND project_type='PROJECT' AND isnull(master_project_id,'') = '' AND project_header_id <> " + (formData.project_header_id || 0),
                     variant: "standard",
                     required: true,
                 },

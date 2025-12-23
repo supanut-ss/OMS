@@ -56,7 +56,7 @@ const FormProjectMa = (props) => {
                     {field: "application_type", display: false, filter: false, key: false}
                 ]}
                 bsObjBy="project_no asc"
-                bsObjWh="is_active='YES' AND project_type='PROJECT'"
+                bsObjWh={"is_active='YES' AND project_type='PROJECT' AND isnull(master_project_id,'') = '' AND project_header_id <> " + (formData.project_header_id || 0)}  
                 variant="standard"
                 error={!!errors["master_project_id"]}
                 helperText={errors["master_project_id"] || ""}
