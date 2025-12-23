@@ -43,6 +43,17 @@ const IsoPage = (props) => {
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
+      // bsBulkMode: true, // Enable bulk edit mode
+      // bsBulkAddInline: true, // Enable inline add new row
+      bsBulkMode: {
+        enable: true, // Enable all bulk operations
+        addInline: true, // Add new rows inline instead of dialog
+        // edit: true,      // Enabled by default when enable=true
+        // delete: true,    // Enabled by default when enable=true
+        // add: true,       // Enabled by default when enable=true
+        // showCheckbox: false,
+        // showSplitButton: false,
+      },
       // bsRowPerPage: 10,
       // bsPageSizeOptions: [10, 25, 50],
       // height: 350,
@@ -66,6 +77,15 @@ const IsoPage = (props) => {
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
+      bsBulkMode: {
+        enable: true, // Enable all bulk operations
+        addInline: true, // Add new rows inline instead of dialog
+        // edit: true,      // Enabled by default when enable=true
+        // delete: true,    // Enabled by default when enable=true
+        // add: true,       // Enabled by default when enable=true
+        // showCheckbox: false,
+        // showSplitButton: false,
+      },
       bsDialogColumns: 2,
       bsUniqueFields: [
         {

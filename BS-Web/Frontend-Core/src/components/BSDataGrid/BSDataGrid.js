@@ -10110,6 +10110,9 @@ const BSDataGrid = forwardRef(
                             }
                             height={childConfig.height}
                             bsUniqueFields={childConfig.bsUniqueFields}
+                            // Bulk mode props
+                            bsBulkMode={childConfig.bsBulkMode}
+                            bsBulkAddInline={childConfig.bsBulkAddInline}
                           />
                         )}
                       </Box>
