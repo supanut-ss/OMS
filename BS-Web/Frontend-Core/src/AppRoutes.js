@@ -95,7 +95,7 @@ export default function AppRoutes() {
         <Route path="authentication">
           <Route path="user_group" element={<UserGroupPage lang={lang} />} />
           <Route path="user" element={<UserPage lang={lang} />} />
-          <Route path="assign_menu" element={<AssignMenu />} />
+          <Route path="assign_menu" element={<AssignMenu lang={lang} />} />
           <Route path="menu" element={<MenuPage lang={lang} />} />
           <Route path="user_logon" element={<UserLogOnPage lang={lang} />} />
         </Route>
@@ -110,7 +110,7 @@ export default function AppRoutes() {
           <Route path="customer" element={<CustomerPage lang={lang} />} />
           <Route path="iso" element={<IsoPage lang={lang} />} />
         </Route>
-        <Route path="projects" >
+        <Route path="projects">
           <Route path="" element={<Projects lang={lang} />} />
           <Route path="ma" element={<Projects lang={lang} ma={true} />} />
         </Route>
