@@ -24,6 +24,7 @@ import { useResource } from "../../../hooks/useResource";
 import Selector from "../../../components/Selector";
 import TaskProject from "./TaskProject";
 import TaskMa from "./TaskMa";
+import BSFileUpload from "../../../components/BSFileUpload";
 
 const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   const defaultData = {
@@ -215,9 +216,23 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
                 />
               )}
               {tap === 2 && projectHeader.record_type === "MA" && (
-                <Box>
-                  <h3>Upload Image Section</h3>
-                </Box>
+                  <BSFileUpload
+                        attachConfig={{
+                            preObj: "tmt",
+                            attachTable: "t_tmt_project_task_tracking_attach_file",
+                            foreignKey: "project_task_id",
+                            foreignKeyValue: formData?.project_task_id,
+                            fileNameColumn: "file_name",
+                            pathColumn: "path_file",
+                            primaryKey: "tracking_file_id",
+                            maxFiles: 10,
+                            maxFileSize: 1024 * 1024 * 10,
+                            additionalData: {
+                                project_task_id: formData?.project_task_id,
+                            },
+                        }}
+                        locale={lang}
+                    />
               )}
             </Box>
           </Box>

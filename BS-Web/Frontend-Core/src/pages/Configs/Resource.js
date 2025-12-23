@@ -141,7 +141,8 @@ const Resource = ({ lang }) => {
                     bsPreObj="sec"
                     bsObj="t_com_resource"
                     bsCols="
-                    platform
+                    app_id
+                    ,platform
                     ,resource_group
                     ,resource_name
                     ,resource_en
@@ -173,7 +174,16 @@ const Resource = ({ lang }) => {
                             ObjWh: "group_name = 'platform' AND is_active='YES'",
                             ObjBy: "display_member asc",
                         },
-                    ]} 
+                    ]}
+                    bsBulkMode={{
+                        enable: true, // Enable all bulk operations
+                        addInline: true, // Add new rows inline instead of dialog
+                        // edit: true,      // Enabled by default when enable=true
+                        // delete: true,    // Enabled by default when enable=true
+                        // add: true,       // Enabled by default when enable=true
+                        // showCheckbox: false,
+                        // showSplitButton: false,
+                    }}
                     bsShowDescColumn={false}
                     // onEdit={handleOpenEdit}
                     // onAdd={handleOpenAdd}
