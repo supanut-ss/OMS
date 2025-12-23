@@ -38,7 +38,7 @@ const UserGroupPage = (props) => {
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="t_com_user_group"
-          bsCols="user_group_id,app_id,name,description,is_active,create_by,create_date,update_by,update_date"
+          bsCols="app_id,name,description,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="name asc"
           bsShowDescColumn={false}
           bsComboBox={[
