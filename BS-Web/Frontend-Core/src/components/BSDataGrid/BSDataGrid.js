@@ -2438,11 +2438,27 @@ const BSDataGrid = forwardRef(
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const isBulkSavingRef = React.useRef(false); // Track if bulk save is in progress
     const isDiscardingRef = React.useRef(false); // Track if discard is in progress
+    const isCancellingRef = React.useRef(false); // Track if cancel is in progress (to skip validation)
     const savedRowIdsRef = React.useRef(new Set()); // Track rows already saved in bulk save to prevent double-save
     const isLoadingDataRef = React.useRef(false); // Track if data is currently being loaded to prevent duplicate calls
 
     // Inline Bulk Add states
-    const [rowModesModel, setRowModesModel] = useState({});
+    const [rowModesModel, setRowModesModelState] = useState({});
+    const rowModesModelRef = useRef({}); // Ref to avoid stale closure in action column
+    
+    // Wrapper function to update both state and ref synchronously
+    // This prevents the one-render delay that occurs with useEffect sync
+    const setRowModesModel = useCallback((updaterOrValue) => {
+      setRowModesModelState((prevModel) => {
+        const newModel = typeof updaterOrValue === 'function' 
+          ? updaterOrValue(prevModel) 
+          : updaterOrValue;
+        // CRITICAL: Update ref synchronously before React batches the state update
+        rowModesModelRef.current = newModel;
+        return newModel;
+      });
+    }, []);
+    
     const newRowIdCounter = useRef(0);
 
     // Hierarchical Data states
@@ -2485,6 +2501,11 @@ const BSDataGrid = forwardRef(
     useEffect(() => {
       comboBoxValueOptionsRef.current = comboBoxValueOptions;
     }, [comboBoxValueOptions]);
+    
+    // Keep rowModesModelRef in sync with state to avoid stale closure in action column
+    useEffect(() => {
+      rowModesModelRef.current = rowModesModel;
+    }, [rowModesModel]);
 
     // Load ComboBox lookup data for grid display and editing
     useEffect(() => {
@@ -6443,37 +6464,86 @@ ${errorInfo.originalError}
 
     const handleInlineCancelClick = useCallback(
       (id) => () => {
-        setRowModesModel((oldModel) => ({
-          ...oldModel,
-          [id]: { mode: GridRowModes.View, ignoreModifications: true },
-        }));
-
+        // CRITICAL: Set flag to prevent validation popup
+        isCancellingRef.current = true;
+        
+        // First, check if this is a new row by ID pattern
+        const isNewRowById = typeof id === "string" && id.startsWith("new-");
+        
+        // Find the row by id
         const editedRow = rows.find((row) => row.id === id);
-        if (editedRow?.isNew) {
-          setRows((oldRows) => {
-            const remainingRows = oldRows.filter((row) => row.id !== id);
-
-            // Check if there are any remaining new rows
-            const hasRemainingNewRows = remainingRows.some(
-              (row) => row.isNew || String(row.id).startsWith("new-")
-            );
-            const hasUnsavedEdits =
-              Object.keys(unsavedChangesRef.current).length > 0;
-
-            // If no more new rows and no unsaved changes, exit bulk edit mode
-            if (!hasRemainingNewRows && !hasUnsavedEdits) {
-              setTimeout(() => {
-                setBulkEditMode(false);
-                setHasUnsavedChanges(false);
-                setRowModesModel({});
-              }, 0);
+        
+        const isNewRow = isNewRowById || editedRow?.isNew;
+        
+        bsLog("🚫 handleInlineCancelClick:", {
+          id,
+          isNewRowById,
+          editedRowFound: !!editedRow,
+          editedRowIsNew: editedRow?.isNew,
+          isNewRow,
+        });
+        
+        // For NEW rows, we need to:
+        // 1. Stop edit mode first (with ignoreModifications)
+        // 2. Then delete the row from React state
+        if (isNewRow) {
+          // Stop row edit mode with ignoreModifications to prevent processRowUpdate
+          if (apiRef.current?.stopRowEditMode) {
+            try {
+              apiRef.current.stopRowEditMode({ id, ignoreModifications: true });
+            } catch (e) {
+              bsLog("stopRowEditMode error:", e);
             }
-
-            return remainingRows;
+          }
+          
+          // Remove from rowModesModel
+          setRowModesModel((oldModel) => {
+            const newModel = { ...oldModel };
+            delete newModel[id];
+            return newModel;
           });
+          
+          // Use setTimeout to delete row AFTER DataGrid processes the stopRowEditMode
+          setTimeout(() => {
+            setRows((oldRows) => {
+              const remainingRows = oldRows.filter((row) => row.id !== id);
+
+              // Check if there are any remaining new rows
+              const hasRemainingNewRows = remainingRows.some(
+                (row) => row.isNew || String(row.id).startsWith("new-")
+              );
+              const hasUnsavedEdits =
+                Object.keys(unsavedChangesRef.current).length > 0;
+
+              // If no more new rows and no unsaved changes, exit bulk edit mode
+              if (!hasRemainingNewRows && !hasUnsavedEdits) {
+                setTimeout(() => {
+                  setBulkEditMode(false);
+                  setHasUnsavedChanges(false);
+                  setRowModesModel({});
+                }, 0);
+              }
+
+              return remainingRows;
+            });
+            
+            // Reset cancelling flag
+            isCancellingRef.current = false;
+          }, 50);
+        } else {
+          // For EXISTING rows, just exit edit mode without saving
+          setRowModesModel((oldModel) => ({
+            ...oldModel,
+            [id]: { mode: GridRowModes.View, ignoreModifications: true },
+          }));
+          
+          // Reset cancelling flag after a short delay
+          setTimeout(() => {
+            isCancellingRef.current = false;
+          }, 100);
         }
       },
-      [rows]
+      [rows, apiRef]
     );
 
     const processRowUpdate = useCallback(
@@ -6491,6 +6561,14 @@ ${errorInfo.originalError}
           if (isDiscardingRef.current) {
             bsLog("⏭️ processRowUpdate skipped - discard in progress");
             return newRow;
+          }
+          
+          // CRITICAL: Skip all processing if cancel is in progress
+          // This prevents validation popup when user clicks Cancel on a new row
+          // Throwing error prevents DataGrid from updating rows with cancelled row
+          if (isCancellingRef.current) {
+            bsLog("⏭️ processRowUpdate skipped - cancel in progress");
+            throw new Error("Row cancelled");
           }
 
           // Validate the row data
@@ -6650,6 +6728,12 @@ ${errorInfo.originalError}
           });
           return updatedRow;
         } catch (error) {
+          // Skip showing error popup for cancelled rows (user clicked Cancel button)
+          if (error?.message === "Row cancelled" || isCancellingRef.current) {
+            bsLog("⏭️ processRowUpdate error skipped - row cancelled");
+            throw error; // Re-throw to prevent DataGrid from updating
+          }
+          
           Logger.error("❌ Failed to save record:", error);
           const errorInfo = formatSqlErrorMessage(
             error.message || "Failed to save record",
@@ -7146,8 +7230,12 @@ ${errorInfo.originalError}
         .join("|");
       // Include comboBoxLookupData keys to regenerate columns when lookup data loads
       const lookupDataKey = Object.keys(comboBoxLookupData).sort().join(",");
+      // CRITICAL: Include rowModesModel key to regenerate action column when rows enter/exit edit mode
+      const rowModesModelKey = Object.entries(rowModesModel)
+        .map(([id, model]) => `${id}:${model?.mode}`)
+        .join("|");
 
-      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}`;
+      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}::${rowModesModelKey}`;
     }, [
       stableMetadataKey,
       bsStoredProcedure,
@@ -7163,6 +7251,7 @@ ${errorInfo.originalError}
       bsHiddenColumns,
       comboBoxValueOptions,
       comboBoxLookupData,
+      rowModesModel,
     ]);
 
     // Build columns from metadata - ONLY regenerate when columnsKey changes
@@ -7996,46 +8085,114 @@ ${errorInfo.originalError}
             });
           }
 
-          // In bulk edit mode, show Save/Cancel buttons for editing rows, or Edit/Delete for non-editing rows
-          if (bulkEditMode) {
+          // ========================================================
+          // BULK MODE ACTION BUTTONS
+          // Priority: effectiveBulkAddInline > bulkEditMode > normal mode
+          // ========================================================
+          
+          if (effectiveBulkAddInline || bulkEditMode) {
+            // Combined logic for both inline add and bulk edit modes
             actions.push((params) => {
-              const isInEditMode =
-                rowModesModel[params.id]?.mode === GridRowModes.Edit;
+              // CRITICAL: Use ref instead of state to avoid stale closure when columns are cached
+              const isInEditModeFromModel =
+                rowModesModelRef.current[params.id]?.mode === GridRowModes.Edit;
               const primaryKey = metadata?.primaryKeys?.[0] || bsKeyId || "id";
               const rowId =
                 params.row[primaryKey] || params.row.id || params.row.Id;
+              
+              // Check if this is a new row (Add mode) or existing row (Edit mode)
+              const isNewRow =
+                params.row?.isNew ||
+                (typeof params.id === "string" && params.id.startsWith("new-"));
+              
+              // CRITICAL FIX: For new rows that just got added, rowModesModel may not 
+              // have updated yet due to React state batching. Treat new rows with isNew=true
+              // as being in edit mode by default.
+              const isInEditMode = isInEditModeFromModel || (isNewRow && params.row?.isNew);
+              
+              // Check for unsaved changes (for Restore button in view mode)
               const hasChanges = !!unsavedChangesRef.current[rowId];
+              
+              // Debug: Log action button state
+              bsLog(`🎯 Action buttons for row ${params.id}:`, {
+                isInEditModeFromModel,
+                isInEditMode,
+                isNewRow,
+                hasChanges,
+                rowModesModelForId: rowModesModelRef.current[params.id],
+                rowModesModelKeys: Object.keys(rowModesModelRef.current),
+                effectiveBulkAddInline,
+                bulkEditMode,
+              });
 
               if (isInEditMode) {
-                // Row is in edit mode - show Save and Cancel buttons
-                return [
-                  <GridActionsCellItem
-                    key="save"
-                    icon={<SaveIcon />}
-                    label={localeText.bsSave}
-                    onClick={() => handleBulkRowSaveClick(params.id)}
-                    sx={{ color: "primary.main" }}
-                  />,
-                  <GridActionsCellItem
-                    key="cancel"
-                    icon={<CancelIcon />}
-                    label={localeText.bsCancel}
-                    onClick={() => handleBulkRowCancelClick(params.id)}
-                    color="inherit"
-                  />,
-                ];
+                // Row is in edit mode
+                if (isNewRow) {
+                  // NEW ROW (Inline Add) - show Save and Cancel buttons
+                  return [
+                    <GridActionsCellItem
+                      key="save"
+                      icon={<SaveIcon />}
+                      label={localeText.bsSave}
+                      onClick={effectiveBulkAddInline 
+                        ? handleInlineSaveClick(params.id) 
+                        : () => handleBulkRowSaveClick(params.id)}
+                      sx={{ color: "primary.main" }}
+                    />,
+                    <GridActionsCellItem
+                      key="cancel"
+                      icon={<CancelIcon />}
+                      label={localeText.bsCancel}
+                      onClick={effectiveBulkAddInline
+                        ? handleInlineCancelClick(params.id)
+                        : () => handleBulkRowCancelClick(params.id)}
+                      color="inherit"
+                    />,
+                  ];
+                } else {
+                  // EXISTING ROW in edit mode - show Restore button to cancel editing
+                  return [
+                    <GridActionsCellItem
+                      key="restore"
+                      icon={<Restore />}
+                      label={localeText.bsCancel || "ยกเลิก"}
+                      onClick={effectiveBulkAddInline
+                        ? handleInlineCancelClick(params.id)
+                        : () => handleBulkRowCancelClick(params.id)}
+                      sx={{ color: "warning.main" }}
+                    />,
+                  ];
+                }
               } else {
-                // Row is in view mode - show Edit button (and Restore if has changes)
-                const viewModeActions = [
+                // Row is in view mode
+                const viewModeActions = [];  
+                // Edit button
+                viewModeActions.push(
                   <GridActionsCellItem
                     key="edit"
                     icon={<Edit />}
                     label={localeText.bsEdit}
-                    onClick={() => handleBulkRowEditClick(params.id)}
+                    onClick={effectiveBulkAddInline
+                      ? handleInlineEditClick(params.id)
+                      : () => handleBulkRowEditClick(params.id)}
                     color="inherit"
-                  />,
-                ];
-                if (hasChanges) {
+                  />
+                ); 
+                
+                // For new rows in view mode, show Delete button
+                if (isNewRow || bsVisibleDelete) {
+                  viewModeActions.push(
+                    <GridActionsCellItem
+                      key="delete"
+                      icon={<Delete />}
+                      label={localeText.bsDelete}
+                      onClick={handleInlineDeleteClick(params.id)}
+                      // sx={{ color: "error.main" }}
+                      sx={{ color: "inherit" }}
+                    />
+                  );
+                } else if (hasChanges) {
+                  // For existing rows with changes, show Restore button
                   viewModeActions.push(
                     <GridActionsCellItem
                       key="restore"
@@ -8052,75 +8209,12 @@ ${errorInfo.originalError}
                     />
                   );
                 }
+                
                 return viewModeActions;
               }
             });
-
-            // // Add Delete button separately for bulk edit mode (so it always shows)
-            // if (effectiveVisibleDelete) {
-            //   actions.push((params) => {
-            //     // Get row-specific config
-            //     const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
-            //     const showDelete = rowConfig.showDelete !== false;
-
-            //     if (!showDelete) return null;
-
-            //     return (
-            //       <GridActionsCellItem
-            //         key="delete"
-            //         icon={<Delete />}
-            //         label={localeText.bsDelete}
-            //         onClick={() => handleDeleteClick(params.row)}
-            //         disabled={rowConfig.disabled}
-            //         sx={{ color: "error.main" }}
-            //       />
-            //     );
-            //   });
-            // }
-          } else if (effectiveBulkAddInline) {
-            // Inline bulk add actions
-            actions.push((params) => {
-              const isInEditMode =
-                rowModesModel[params.id]?.mode === GridRowModes.Edit;
-
-              if (isInEditMode) {
-                return [
-                  <GridActionsCellItem
-                    key="save"
-                    icon={<SaveIcon />}
-                    label={localeText.bsSave}
-                    onClick={handleInlineSaveClick(params.id)}
-                    sx={{ color: "primary.main" }}
-                  />,
-                  <GridActionsCellItem
-                    key="cancel"
-                    icon={<CancelIcon />}
-                    label={localeText.bsCancel}
-                    onClick={handleInlineCancelClick(params.id)}
-                    color="inherit"
-                  />,
-                ];
-              } else {
-                // In bulk edit/add mode - only show edit button, no delete
-                return [
-                  <GridActionsCellItem
-                    key="edit"
-                    icon={<Edit />}
-                    label={localeText.bsEdit}
-                    onClick={handleInlineEditClick(params.id)}
-                    color="inherit"
-                  />,
-                  <GridActionsCellItem
-                    key="delete"
-                    icon={<Delete />}
-                    label={localeText.bsDelete}
-                    onClick={handleInlineDeleteClick(params.id)}
-                    color="inherit"
-                  />,
-                ];
-              }
-            });
           } else {
+            
             // Regular edit/delete actions (only in normal mode)
             if (effectiveVisibleEdit) {
               actions.push((params) => {
@@ -8128,7 +8222,7 @@ ${errorInfo.originalError}
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
                 const showEdit = rowConfig.showEdit !== false;
 
-                if (!showEdit) return null;
+                if (!showEdit) return null; 
 
                 return (
                   <GridActionsCellItem
@@ -10187,6 +10281,14 @@ ${errorInfo.originalError}
                         : processBulkRowUpdate
                       : undefined
                   }
+                  onProcessRowUpdateError={(error) => {
+                    // Silently ignore cancel errors, only log others
+                    if (error?.message === "Row cancelled") {
+                      bsLog("Row cancel completed silently");
+                    } else {
+                      console.error("Row update error:", error);
+                    }
+                  }}
                   onRowEditStart={handleRowEditStart}
                   onRowEditStop={
                     effectiveBulkAddInline
