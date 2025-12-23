@@ -71,13 +71,9 @@ const InvoiceHistory = (props) => {
     });
   }, []);
 
-
-
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        
-
         <BSDataGrid
           ref={gridRef}
           bsLocale={locale_id}
@@ -108,6 +104,15 @@ const InvoiceHistory = (props) => {
               ObjBy: "display_sequence asc",
             },
           ]}
+          bsBulkMode={{
+            enable: true, // Enable all bulk operations
+            addInline: true, // Add new rows inline instead of dialog
+            // edit: true,      // Enabled by default when enable=true
+            // delete: true,    // Enabled by default when enable=true
+            // add: true,       // Enabled by default when enable=true
+            // showCheckbox: false,
+            // showSplitButton: false,
+          }}
           bsShowDescColumn={false}
           bsDefaultFormValues={defaultFormValues}
           bsUniqueFields={["document_no"]}
@@ -115,8 +120,8 @@ const InvoiceHistory = (props) => {
           bsKeyId="project_invoice_id"
           onFilteredDataChange={handleFilteredDataChange}
         />
-        
-{/* สรุปผลรวม Total PO Amount*/}
+
+        {/* สรุปผลรวม Total PO Amount*/}
         <Box
           sx={{
             display: "flex",
@@ -128,18 +133,24 @@ const InvoiceHistory = (props) => {
             <Stack spacing={0.5}>
               <Box>
                 <strong>
-                  {getResource(resourceData, "Total PO Amount") || "Total PO Amount"}
+                  {getResource(resourceData, "Total PO Amount") ||
+                    "Total PO Amount"}
                 </strong>
                 &nbsp;&nbsp;
-                {totals.po.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {totals.po.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </Box>
 
               <Box>
                 <strong>
-                  {getResource(resourceData, "Total Invoice Amount") || "Total Invoice Amount"}
+                  {getResource(resourceData, "Total Invoice Amount") ||
+                    "Total Invoice Amount"}
                 </strong>
                 &nbsp;&nbsp;
-                {totals.invoice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {totals.invoice.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </Box>
 
               <Box
@@ -148,14 +159,17 @@ const InvoiceHistory = (props) => {
                   color: totals.remain < 0 ? "error.main" : "text.primary",
                 }}
               >
-                <strong>{getResource(resourceData, "Remain") || "Remain"}</strong>
+                <strong>
+                  {getResource(resourceData, "Remain") || "Remain"}
+                </strong>
                 &nbsp;&nbsp;
-                {totals.remain.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {totals.remain.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </Box>
             </Stack>
           </Box>
         </Box>
-
       </Paper>
     </>
   );
