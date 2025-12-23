@@ -7,10 +7,9 @@ import {
   Grid,
   IconButton,
   Paper,
-  Typography,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useResource } from "../../hooks/useResource";
 import CloseIcon from "@mui/icons-material/Close";
 import { renderInput } from "../../components/FormRenderer";
@@ -57,7 +56,9 @@ const ProjectsTeams = (props) => {
       dataGridRef.current.refreshData();
     });
   };
-  const handleDelete = (id) => {
+
+  // Memoize callbacks to prevent infinite re-renders
+  const handleDelete = useCallback((id) => {
     BSAlertSwal2.fire({
       title: "ลบข้อมูล?",
       text: "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
@@ -75,18 +76,25 @@ const ProjectsTeams = (props) => {
         });
       }
     });
-  };
-  const handleAdd = () => {
+  }, []);
+
+  const handleAdd = useCallback(() => {
     setFormData({ ...defaultData, project_header_id: props.projectID });
     setOpen(true);
-  };
-  const handleEdit = (row) => {
-    setFormData((prev) => ({ ...prev, ...row }));
-    setOpen(true);
-  };
-  const handleClose = () => {
+  }, [props.projectID, setFormData]);
+
+  const handleEdit = useCallback(
+    (row) => {
+      setFormData((prev) => ({ ...prev, ...row }));
+      setOpen(true);
+    },
+    [setFormData]
+  );
+
+  const handleClose = useCallback(() => {
     setOpen(false);
-  };
+  }, []);
+
   const handleSave = () => {
     callAddOrEdit();
     setOpen(false);
@@ -104,11 +112,7 @@ const ProjectsTeams = (props) => {
           bsLocale={props.lang}
           bsCols="Assignee,role,description"
           bsStoredProcedureSchema="tmt"
-          bsStoredProcedure="usp_project_teams" // ✔ ชื่อ stored ถูกต้อง
-          bsPageSizeOptions={[20, 100, 200, 500, 1000]}
-          showAdd={true}
-          bsShowRowNumber={true}
-          bsRowPerPage={20}
+          bsStoredProcedure="usp_project_teams"
           onAdd={handleAdd}
           onEdit={handleEdit}
           onDelete={handleDelete}
