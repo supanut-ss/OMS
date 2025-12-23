@@ -74,6 +74,23 @@ const UserPage = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
+  // Helper to produce a readable label for a field key.
+  const humanize = (key) => {
+    if (!key) return "";
+    return key
+      .replace(/_/g, " ")
+      .split(" ")
+      .map((w) => {
+        if (!w) return "";
+        const up = w.toUpperCase();
+        if (up === "ID") return "ID";
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      })
+      .join(" ");
+  };
+
+  const getLabelText = (key) => getResource(resourceData, key) || humanize(key);
+
   const handleOpenAdd = () => {
     setForm(initialForm);
     setSelectedGroup("");
@@ -158,19 +175,27 @@ const UserPage = (props) => {
   };
 
   const handleSave = async () => {
-    if (
-      !form.user_id ||
-      !form.user_group_id ||
-      !form.first_name ||
-      !form.last_name ||
-      !form.locale_id ||
-      !form.is_active
-    ) {
-      BSAlertSwal2.show(
-        "warning",
+    // Validate required fields and collect any missing ones
+    const requiredKeys = [
+      "user_id",
+      "user_group_id",
+      "first_name",
+      "last_name",
+      "locale_id",
+      "is_active",
+    ];
+
+    const missing = requiredKeys.filter((k) => {
+      const v = form[k];
+      return v === null || v === undefined || String(v).trim() === "";
+    });
+
+    if (missing.length > 0) {
+      const labels = missing.map((k) => getLabelText(k));
+      const baseMsg =
         getResource(resourceData, "FillRequiredFields") ||
-          "Please fill all required fields."
-      );
+        "Please fill all required fields.";
+      BSAlertSwal2.show("warning", `${baseMsg} (${labels.join(", ")})`);
       return;
     }
 
