@@ -2445,20 +2445,21 @@ const BSDataGrid = forwardRef(
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModelState] = useState({});
     const rowModesModelRef = useRef({}); // Ref to avoid stale closure in action column
-    
+
     // Wrapper function to update both state and ref synchronously
     // This prevents the one-render delay that occurs with useEffect sync
     const setRowModesModel = useCallback((updaterOrValue) => {
       setRowModesModelState((prevModel) => {
-        const newModel = typeof updaterOrValue === 'function' 
-          ? updaterOrValue(prevModel) 
-          : updaterOrValue;
+        const newModel =
+          typeof updaterOrValue === "function"
+            ? updaterOrValue(prevModel)
+            : updaterOrValue;
         // CRITICAL: Update ref synchronously before React batches the state update
         rowModesModelRef.current = newModel;
         return newModel;
       });
     }, []);
-    
+
     const newRowIdCounter = useRef(0);
 
     // Hierarchical Data states
@@ -2477,7 +2478,6 @@ const BSDataGrid = forwardRef(
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
 
-
     // ComboBox Lookup Data state - stores fetched data from combobox configs for display in grid
     const [comboBoxLookupData, setComboBoxLookupData] = useState({});
     // ComboBox Value Options state - stores dropdown options for inline editing
@@ -2487,21 +2487,21 @@ const BSDataGrid = forwardRef(
     const [comboBoxLoading, setComboBoxLoading] = useState(
       () => Array.isArray(bsComboBox) && bsComboBox.length > 0
     );
-    
+
     // Refs to hold the latest values of comboBoxLookupData and comboBoxValueOptions
     // This solves the stale closure problem where renderComboBoxCell captures old values
     const comboBoxLookupDataRef = useRef(comboBoxLookupData);
     const comboBoxValueOptionsRef = useRef(comboBoxValueOptions);
-    
+
     // Keep refs in sync with state
     useEffect(() => {
       comboBoxLookupDataRef.current = comboBoxLookupData;
     }, [comboBoxLookupData]);
-    
+
     useEffect(() => {
       comboBoxValueOptionsRef.current = comboBoxValueOptions;
     }, [comboBoxValueOptions]);
-    
+
     // Keep rowModesModelRef in sync with state to avoid stale closure in action column
     useEffect(() => {
       rowModesModelRef.current = rowModesModel;
@@ -2514,7 +2514,7 @@ const BSDataGrid = forwardRef(
         configKeys: Object.keys(comboBoxConfig || {}),
         comboBoxConfigDetails: Object.entries(comboBoxConfig || {}).slice(0, 3),
       });
-      
+
       const loadComboBoxLookupData = async () => {
         if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) {
           bsLog("⚠️ ComboBox useEffect: No config, skipping load");
@@ -4172,7 +4172,10 @@ ${errorInfo.originalError}
                 if (options.length === 1) {
                   // Auto-select the only option
                   init[c.columnName] = options[0].value;
-                  bsLog(`🎯 Auto-selected single option for ${c.columnName}:`, options[0].value);
+                  bsLog(
+                    `🎯 Auto-selected single option for ${c.columnName}:`,
+                    options[0].value
+                  );
                 } else {
                   init[c.columnName] = ""; // Empty string matches the empty option in dropdown
                 }
@@ -4345,6 +4348,7 @@ ${errorInfo.originalError}
       rows.length,
       bsColumnDefs,
       bsCols,
+      setRowModesModel,
     ]);
 
     // Dialog Add - force open dialog mode (bypass effectiveBulkAddInline)
@@ -4478,7 +4482,14 @@ ${errorInfo.originalError}
           }
         }, 50);
       });
-    }, [initializeFormData, metadata, bsStoredProcedure, bulkEditMode, apiRef]);
+    }, [
+      initializeFormData,
+      metadata,
+      bsStoredProcedure,
+      bulkEditMode,
+      apiRef,
+      setRowModesModel,
+    ]);
 
     // Open Edit dialog or delegate
     const handleEditClick = useCallback(
@@ -4676,6 +4687,7 @@ ${errorInfo.originalError}
         executeSpCrud,
         formatSqlErrorMessage,
         showErrorWithDetails,
+        metadata?.primaryKeys,
       ]
     );
 
@@ -5305,11 +5317,11 @@ ${errorInfo.originalError}
     const renderComboBoxCell = useCallback(
       (params, comboConfig) => {
         const { value, field } = params;
-        
+
         // Access the latest values from refs (not from closure)
         const currentLookupData = comboBoxLookupDataRef.current;
         const currentValueOptions = comboBoxValueOptionsRef.current;
-        
+
         // // Debug log to trace lookup
         // if (field === 'app_id' || field === 'platform') {
         //   console.log(`🔎 renderComboBoxCell called for ${field}:`, {
@@ -5382,6 +5394,7 @@ ${errorInfo.originalError}
     );
 
     // Helper: Get ComboBox value options for editing (uses pre-fetched data)
+    // eslint-disable-next-line no-unused-vars
     const getComboBoxOptions = useCallback(
       (comboConfig, columnName) => {
         // Use pre-fetched valueOptions from comboBoxValueOptions state
@@ -5405,23 +5418,23 @@ ${errorInfo.originalError}
     const renderComboBoxEditCell = useCallback(
       (params, comboConfig) => {
         const { id, field, value, api } = params;
-        
+
         // Get options from ref at edit time (always current)
         const options = comboBoxValueOptionsRef.current[field] || [];
         const emptyOption = { value: "", label: "-- เลือก --" };
         const valueOptions = [emptyOption, ...options];
-        
+
         bsLog(`✏️ renderComboBoxEditCell for ${field}:`, {
           currentValue: value,
           optionsCount: options.length,
           sampleOptions: options.slice(0, 3),
         });
-        
+
         const handleChange = (event) => {
           const newValue = event.target.value;
           api.setEditCellValue({ id, field, value: newValue });
         };
-        
+
         return (
           <Select
             value={value ?? ""}
@@ -6247,20 +6260,26 @@ ${errorInfo.originalError}
     );
 
     // Bulk Edit Mode row-level handlers (Save/Cancel per row)
-    const handleBulkRowEditClick = useCallback((id) => {
-      setRowModesModel((oldModel) => ({
-        ...oldModel,
-        [id]: { mode: GridRowModes.Edit },
-      }));
-    }, []);
+    const handleBulkRowEditClick = useCallback(
+      (id) => {
+        setRowModesModel((oldModel) => ({
+          ...oldModel,
+          [id]: { mode: GridRowModes.Edit },
+        }));
+      },
+      [setRowModesModel]
+    );
 
-    const handleBulkRowSaveClick = useCallback((id) => {
-      // Exit edit mode - processRowUpdate will handle the actual save tracking
-      setRowModesModel((oldModel) => ({
-        ...oldModel,
-        [id]: { mode: GridRowModes.View },
-      }));
-    }, []);
+    const handleBulkRowSaveClick = useCallback(
+      (id) => {
+        // Exit edit mode - processRowUpdate will handle the actual save tracking
+        setRowModesModel((oldModel) => ({
+          ...oldModel,
+          [id]: { mode: GridRowModes.View },
+        }));
+      },
+      [setRowModesModel]
+    );
 
     const handleBulkRowCancelClick = useCallback(
       (id) => {
@@ -6335,7 +6354,7 @@ ${errorInfo.originalError}
           }
         }
       },
-      [rows, getEffectivePrimaryKey]
+      [rows, getEffectivePrimaryKey, setRowModesModel]
     );
 
     const handleInlineEditClick = useCallback(
@@ -6354,7 +6373,12 @@ ${errorInfo.originalError}
           }
         }
       },
-      [effectiveBulkAddInline, effectiveBulkEdit, bulkEditMode]
+      [
+        effectiveBulkAddInline,
+        effectiveBulkEdit,
+        bulkEditMode,
+        setRowModesModel,
+      ]
     );
 
     const handleInlineSaveClick = useCallback(
@@ -6364,7 +6388,7 @@ ${errorInfo.originalError}
           [id]: { mode: GridRowModes.View },
         }));
       },
-      []
+      [setRowModesModel]
     );
 
     const handleInlineDeleteClick = useCallback(
@@ -6459,22 +6483,29 @@ ${errorInfo.originalError}
           await handleDeleteClick(rowToDelete);
         }
       },
-      [rows, handleDeleteClick, getEffectivePrimaryKey, bsKeyId, apiRef]
+      [
+        rows,
+        handleDeleteClick,
+        getEffectivePrimaryKey,
+        bsKeyId,
+        apiRef,
+        setRowModesModel,
+      ]
     );
 
     const handleInlineCancelClick = useCallback(
       (id) => () => {
         // CRITICAL: Set flag to prevent validation popup
         isCancellingRef.current = true;
-        
+
         // First, check if this is a new row by ID pattern
         const isNewRowById = typeof id === "string" && id.startsWith("new-");
-        
+
         // Find the row by id
         const editedRow = rows.find((row) => row.id === id);
-        
+
         const isNewRow = isNewRowById || editedRow?.isNew;
-        
+
         bsLog("🚫 handleInlineCancelClick:", {
           id,
           isNewRowById,
@@ -6482,7 +6513,7 @@ ${errorInfo.originalError}
           editedRowIsNew: editedRow?.isNew,
           isNewRow,
         });
-        
+
         // For NEW rows, we need to:
         // 1. Stop edit mode first (with ignoreModifications)
         // 2. Then delete the row from React state
@@ -6495,14 +6526,14 @@ ${errorInfo.originalError}
               bsLog("stopRowEditMode error:", e);
             }
           }
-          
+
           // Remove from rowModesModel
           setRowModesModel((oldModel) => {
             const newModel = { ...oldModel };
             delete newModel[id];
             return newModel;
           });
-          
+
           // Use setTimeout to delete row AFTER DataGrid processes the stopRowEditMode
           setTimeout(() => {
             setRows((oldRows) => {
@@ -6526,7 +6557,7 @@ ${errorInfo.originalError}
 
               return remainingRows;
             });
-            
+
             // Reset cancelling flag
             isCancellingRef.current = false;
           }, 50);
@@ -6536,14 +6567,14 @@ ${errorInfo.originalError}
             ...oldModel,
             [id]: { mode: GridRowModes.View, ignoreModifications: true },
           }));
-          
+
           // Reset cancelling flag after a short delay
           setTimeout(() => {
             isCancellingRef.current = false;
           }, 100);
         }
       },
-      [rows, apiRef]
+      [rows, apiRef, setRowModesModel]
     );
 
     const processRowUpdate = useCallback(
@@ -6562,7 +6593,7 @@ ${errorInfo.originalError}
             bsLog("⏭️ processRowUpdate skipped - discard in progress");
             return newRow;
           }
-          
+
           // CRITICAL: Skip all processing if cancel is in progress
           // This prevents validation popup when user clicks Cancel on a new row
           // Throwing error prevents DataGrid from updating rows with cancelled row
@@ -6661,6 +6692,47 @@ ${errorInfo.originalError}
           const primaryKey = getEffectivePrimaryKey(newRow);
           const id = newRow[primaryKey];
 
+          // CRITICAL: In bulk edit mode, store changes instead of saving immediately
+          // This allows user to use "Save All" / "Discard All" buttons
+          if (bulkEditMode) {
+            // Get original row data
+            const originalRow = rows.find((row) => {
+              const rowId = row[primaryKey] || row.id || row.Id || row.ID;
+              return String(rowId) === String(id);
+            });
+
+            // Store changes for bulk save
+            unsavedChangesRef.current[id] = {
+              newData: newRow,
+              originalData: originalRow || newRow,
+            };
+            setHasUnsavedChanges(true);
+
+            bsLog("📝 Bulk edit mode - row change stored (not saved):", {
+              primaryKey,
+              rowId: id,
+              newData: newRow,
+              originalData: originalRow,
+            });
+
+            // Update rows state to reflect the changes in UI immediately
+            setRows((prevRows) =>
+              prevRows.map((row) => {
+                const currentRowId =
+                  row[primaryKey] || row.id || row.Id || row.ID;
+                if (String(currentRowId) === String(id)) {
+                  return { ...row, ...newRow };
+                }
+                return row;
+              })
+            );
+
+            // Return newRow to update the grid display but don't save to backend
+            return newRow;
+          }
+
+          // Normal mode - save immediately
+
           // Remove invalid id fields from data before sending to backend
           const cleanData = { ...newRow };
           if (primaryKey !== "id") delete cleanData.id;
@@ -6733,7 +6805,7 @@ ${errorInfo.originalError}
             bsLog("⏭️ processRowUpdate error skipped - row cancelled");
             throw error; // Re-throw to prevent DataGrid from updating
           }
-          
+
           Logger.error("❌ Failed to save record:", error);
           const errorInfo = formatSqlErrorMessage(
             error.message || "Failed to save record",
@@ -6745,19 +6817,25 @@ ${errorInfo.originalError}
       },
       [
         validateFormData,
-        createRecord,
+        getEffectivePrimaryKey,
+        bulkEditMode,
+        metadata.columns,
         updateRecord,
         bsPreObj,
+        createRecord,
         loadData,
-        getEffectivePrimaryKey,
+        rows,
         formatSqlErrorMessage,
         showErrorWithDetails,
       ]
     );
 
-    const handleRowModesModelChange = useCallback((newRowModesModel) => {
-      setRowModesModel(newRowModesModel);
-    }, []);
+    const handleRowModesModelChange = useCallback(
+      (newRowModesModel) => {
+        setRowModesModel(newRowModesModel);
+      },
+      [setRowModesModel]
+    );
 
     /**
      * Helper: Apply custom column definitions from bsColumnDefs
@@ -7263,32 +7341,39 @@ ${errorInfo.originalError}
         keyChanged: columnsKeyRef.current !== columnsKey,
         cachedColumnsCount: columnsRef.current?.length || 0,
         comboBoxValueOptionsKeys: Object.keys(comboBoxValueOptions),
-        comboBoxValueOptionsData: Object.entries(comboBoxValueOptions).map(([k, v]) => ({
-          column: k,
-          count: v?.length || 0,
-        })),
+        comboBoxValueOptionsData: Object.entries(comboBoxValueOptions).map(
+          ([k, v]) => ({
+            column: k,
+            count: v?.length || 0,
+          })
+        ),
       });
-      
-       // CRITICAL: Check if we can reuse cached columns
+
+      // CRITICAL: Check if we can reuse cached columns
       // BUT don't use cache if combobox config exists and data isn't loaded yet
       const hasComboBoxConfig = Object.keys(comboBoxConfig).length > 0;
-      const hasComboBoxData = Object.keys(comboBoxValueOptions).length > 0 &&
-        Object.values(comboBoxValueOptions).some(opts => opts && opts.length > 0);
+      const hasComboBoxData =
+        Object.keys(comboBoxValueOptions).length > 0 &&
+        Object.values(comboBoxValueOptions).some(
+          (opts) => opts && opts.length > 0
+        );
       const shouldForceRebuild = hasComboBoxConfig && !hasComboBoxData;
-      
+
       bsLog("🔍 Cache check:", {
         hasComboBoxConfig,
         hasComboBoxData,
         shouldForceRebuild,
         comboBoxConfigKeys: Object.keys(comboBoxConfig),
         comboBoxValueOptionsKeys: Object.keys(comboBoxValueOptions),
-        comboBoxValueOptionsDetails: Object.entries(comboBoxValueOptions).map(([k, v]) => ({
-          column: k,
-          optionsLength: v?.length || 0,
-          sample: v?.slice?.(0, 2)
-        })),
+        comboBoxValueOptionsDetails: Object.entries(comboBoxValueOptions).map(
+          ([k, v]) => ({
+            column: k,
+            optionsLength: v?.length || 0,
+            sample: v?.slice?.(0, 2),
+          })
+        ),
       });
-      
+
       if (
         columnsKeyRef.current === columnsKey &&
         columnsRef.current.length > 0 &&
@@ -7297,7 +7382,7 @@ ${errorInfo.originalError}
         bsLog("📦 Returning cached columns (key unchanged)");
         return columnsRef.current;
       }
-      
+
       if (shouldForceRebuild) {
         bsLog("🔄 Forcing column rebuild - waiting for combobox data");
       }
@@ -7446,6 +7531,10 @@ ${errorInfo.originalError}
                   }
                 }
               }
+
+              // Note: 'width' is calculated above but not used in columnConfig
+              // to let DataGrid auto-calculate from content. Keep for future use.
+              void width; // Suppress unused variable warning
 
               // Create column configuration with proper formatting
               // Use 'string' type for all columns to avoid MUI X Date object requirements
@@ -7896,9 +7985,9 @@ ${errorInfo.originalError}
             const columnName = col.columnName;
             //const isRequired = isFieldRequired(columnName, metadata);
             const comboConfig = comboBoxConfig[columnName];
-            
+
             // Debug: Check if comboConfig is found for this column
-            if (columnName === 'app_id' || columnName === 'platform') {
+            if (columnName === "app_id" || columnName === "platform") {
               bsLog(`🔎 Column ${columnName} comboConfig check:`, {
                 comboConfig,
                 comboBoxConfigKeys: Object.keys(comboBoxConfig),
@@ -7963,19 +8052,20 @@ ${errorInfo.originalError}
               // Note: Check for array with length > 0, not just truthy, since [] is truthy
               const stateOptions = comboBoxValueOptions[columnName];
               const refOptions = comboBoxValueOptionsRef.current[columnName];
-              const options = (stateOptions && stateOptions.length > 0) 
-                ? stateOptions 
-                : (refOptions && refOptions.length > 0) 
-                  ? refOptions 
+              const options =
+                stateOptions && stateOptions.length > 0
+                  ? stateOptions
+                  : refOptions && refOptions.length > 0
+                  ? refOptions
                   : [];
-              
+
               bsLog(`📋 Building valueOptions for ${columnName}:`, {
                 fromState: stateOptions?.length || 0,
                 fromRef: refOptions?.length || 0,
                 finalOptionsLength: options.length,
                 sampleOptions: options.slice(0, 2),
               });
-              
+
               const emptyOption = { value: "", label: "-- เลือก --" };
               let valueOptions;
               if (options && options.length > 0) {
@@ -8089,7 +8179,7 @@ ${errorInfo.originalError}
           // BULK MODE ACTION BUTTONS
           // Priority: effectiveBulkAddInline > bulkEditMode > normal mode
           // ========================================================
-          
+
           if (effectiveBulkAddInline || bulkEditMode) {
             // Combined logic for both inline add and bulk edit modes
             actions.push((params) => {
@@ -8099,20 +8189,21 @@ ${errorInfo.originalError}
               const primaryKey = metadata?.primaryKeys?.[0] || bsKeyId || "id";
               const rowId =
                 params.row[primaryKey] || params.row.id || params.row.Id;
-              
+
               // Check if this is a new row (Add mode) or existing row (Edit mode)
               const isNewRow =
                 params.row?.isNew ||
                 (typeof params.id === "string" && params.id.startsWith("new-"));
-              
-              // CRITICAL FIX: For new rows that just got added, rowModesModel may not 
+
+              // CRITICAL FIX: For new rows that just got added, rowModesModel may not
               // have updated yet due to React state batching. Treat new rows with isNew=true
               // as being in edit mode by default.
-              const isInEditMode = isInEditModeFromModel || (isNewRow && params.row?.isNew);
-              
+              const isInEditMode =
+                isInEditModeFromModel || (isNewRow && params.row?.isNew);
+
               // Check for unsaved changes (for Restore button in view mode)
               const hasChanges = !!unsavedChangesRef.current[rowId];
-              
+
               // Debug: Log action button state
               bsLog(`🎯 Action buttons for row ${params.id}:`, {
                 isInEditModeFromModel,
@@ -8134,18 +8225,22 @@ ${errorInfo.originalError}
                       key="save"
                       icon={<SaveIcon />}
                       label={localeText.bsSave}
-                      onClick={effectiveBulkAddInline 
-                        ? handleInlineSaveClick(params.id) 
-                        : () => handleBulkRowSaveClick(params.id)}
+                      onClick={
+                        effectiveBulkAddInline
+                          ? handleInlineSaveClick(params.id)
+                          : () => handleBulkRowSaveClick(params.id)
+                      }
                       sx={{ color: "primary.main" }}
                     />,
                     <GridActionsCellItem
                       key="cancel"
                       icon={<CancelIcon />}
                       label={localeText.bsCancel}
-                      onClick={effectiveBulkAddInline
-                        ? handleInlineCancelClick(params.id)
-                        : () => handleBulkRowCancelClick(params.id)}
+                      onClick={
+                        effectiveBulkAddInline
+                          ? handleInlineCancelClick(params.id)
+                          : () => handleBulkRowCancelClick(params.id)
+                      }
                       color="inherit"
                     />,
                   ];
@@ -8156,29 +8251,33 @@ ${errorInfo.originalError}
                       key="restore"
                       icon={<Restore />}
                       label={localeText.bsCancel || "ยกเลิก"}
-                      onClick={effectiveBulkAddInline
-                        ? handleInlineCancelClick(params.id)
-                        : () => handleBulkRowCancelClick(params.id)}
+                      onClick={
+                        effectiveBulkAddInline
+                          ? handleInlineCancelClick(params.id)
+                          : () => handleBulkRowCancelClick(params.id)
+                      }
                       sx={{ color: "warning.main" }}
                     />,
                   ];
                 }
               } else {
                 // Row is in view mode
-                const viewModeActions = [];  
+                const viewModeActions = [];
                 // Edit button
                 viewModeActions.push(
                   <GridActionsCellItem
                     key="edit"
                     icon={<Edit />}
                     label={localeText.bsEdit}
-                    onClick={effectiveBulkAddInline
-                      ? handleInlineEditClick(params.id)
-                      : () => handleBulkRowEditClick(params.id)}
+                    onClick={
+                      effectiveBulkAddInline
+                        ? handleInlineEditClick(params.id)
+                        : () => handleBulkRowEditClick(params.id)
+                    }
                     color="inherit"
                   />
-                ); 
-                
+                );
+
                 // For new rows in view mode, show Delete button
                 if (isNewRow || bsVisibleDelete) {
                   viewModeActions.push(
@@ -8209,12 +8308,11 @@ ${errorInfo.originalError}
                     />
                   );
                 }
-                
+
                 return viewModeActions;
               }
             });
           } else {
-            
             // Regular edit/delete actions (only in normal mode)
             if (effectiveVisibleEdit) {
               actions.push((params) => {
@@ -8222,7 +8320,7 @@ ${errorInfo.originalError}
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
                 const showEdit = rowConfig.showEdit !== false;
 
-                if (!showEdit) return null; 
+                if (!showEdit) return null;
 
                 return (
                   <GridActionsCellItem
@@ -8453,7 +8551,7 @@ ${errorInfo.originalError}
         //       typeof c.field === "string" &&
         //       typeof c.headerName === "string"
         //   ),
-        //   comboboxColumns: finalColumns.filter(c => 
+        //   comboboxColumns: finalColumns.filter(c =>
         //     c.field === 'app_id' || c.field === 'platform'
         //   ).map((c) => ({
         //     field: c.field,
@@ -9114,7 +9212,15 @@ ${errorInfo.originalError}
       } finally {
         setFormLoading(false);
       }
-    }, [bulkAddRows, createRecord, loadData, bsPreObj, validateFormData]);
+    }, [
+      bulkAddRows,
+      createRecord,
+      loadData,
+      bsPreObj,
+      validateFormData,
+      localeText.bsRow,
+      localeText.bsValidationError,
+    ]);
 
     const handleBulkDialogClose = useCallback(() => {
       setBulkAddDialogOpen(false);
@@ -9579,6 +9685,8 @@ ${errorInfo.originalError}
           if (!validation.isValid) {
             // Build friendly error message for each row
             const rowNumber = index + 1;
+            // Note: errorList built for logging/debugging but validationErrors uses structured format
+            // eslint-disable-next-line no-unused-vars
             const errorList = validation.errors
               .map((err) => `  • ${err}`)
               .join("\n");
@@ -9797,6 +9905,9 @@ ${errorInfo.originalError}
       paginationModel,
       sortModel,
       filterModel,
+      localeText.bsRow,
+      localeText.bsValidationError,
+      setRowModesModel,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
@@ -9864,6 +9975,7 @@ ${errorInfo.originalError}
       paginationModel,
       sortModel,
       filterModel,
+      setRowModesModel,
     ]);
 
     const handleToggleHeaderFilters = useCallback(() => {
@@ -10271,7 +10383,10 @@ ${errorInfo.originalError}
                   // Ensure we don't render until we have valid data structure
                   // Use stable key that forces re-mount when combobox data loads
                   // This ensures columns are rebuilt with correct valueOptions
-                  key={`datagrid-${effectiveTableName}-comboReady-${!comboBoxLoading && Object.keys(comboBoxValueOptions).length > 0}`}
+                  key={`datagrid-${effectiveTableName}-comboReady-${
+                    !comboBoxLoading &&
+                    Object.keys(comboBoxValueOptions).length > 0
+                  }`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
