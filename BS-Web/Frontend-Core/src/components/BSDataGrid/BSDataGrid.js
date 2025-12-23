@@ -4142,10 +4142,19 @@ ${errorInfo.originalError}
                 return;
               }
 
-              // For ComboBox fields, default to empty string (will show "-- เลือก --" placeholder)
+              // For ComboBox fields, check if there's only 1 option - auto-select it
+              // Otherwise default to empty string (will show "-- เลือก --" placeholder)
               const comboConfig = comboBoxConfig[c.columnName];
               if (comboConfig) {
-                init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                // Check if there's only 1 option in the combobox
+                const options = comboBoxValueOptions[c.columnName] || [];
+                if (options.length === 1) {
+                  // Auto-select the only option
+                  init[c.columnName] = options[0].value;
+                  bsLog(`🎯 Auto-selected single option for ${c.columnName}:`, options[0].value);
+                } else {
+                  init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                }
                 return; // Skip default value assignment
               }
 
@@ -4224,6 +4233,7 @@ ${errorInfo.originalError}
         isFieldInForm,
         isActiveField,
         comboBoxConfig,
+        comboBoxValueOptions,
         bsStoredProcedure,
         detectPrimaryKeyFromData,
         bsDefaultFormValues,
