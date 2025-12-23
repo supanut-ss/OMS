@@ -43,6 +43,13 @@ const SalePage = (props) => {
             // showCheckbox: false,
             // showSplitButton: false,
           }}
+          // bsColumnDefs={[
+          //   {
+          //     field: "sale_empolyee_code",
+          //     editable: true,
+          //     readOnly: true,
+          //   }, 
+          // ]}
         />
       </Paper>
     </Box>
