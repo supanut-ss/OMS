@@ -71,7 +71,7 @@ export const EnhancedStoredProcedureExamples = () => {
           <BSDataGrid
             bsStoredProcedure="sp_enhanced_product_management"
             bsStoredProcedureSchema="dbo"
-            bsRowPerPage={20}
+            bsRowPerPage={25}
             bsShowDescColumn={true}
             bsVisibleEdit={true}
             bsVisibleDelete={true}

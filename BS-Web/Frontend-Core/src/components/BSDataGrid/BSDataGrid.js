@@ -1778,7 +1778,7 @@ const BSDataGrid = forwardRef(
       bsVisibleDelete = true, // Show delete button
       bsPinColsLeft,
       bsPinColsRight,
-      bsRowPerPage = 25,
+      bsRowPerPage = 20,
       bsComboBox = [],
       bsFilterMode = "server", // "server" | "client"
       bsShowCharacterCount = false, // Show character count in helper text
@@ -1955,6 +1955,17 @@ const BSDataGrid = forwardRef(
     }, [bsColumnDefs]);
 
     // Build columnVisibilityModel from bsColumnDefs (hide: true)
+    // CRITICAL: Create a stable key to track when visibility actually changes
+    const initialColumnVisibilityKey = useMemo(() => {
+      if (!Array.isArray(bsColumnDefs) || bsColumnDefs.length === 0) return "";
+      const hiddenFields = bsColumnDefs
+        .filter((col) => col.field && col.hide === true)
+        .map((col) => col.field)
+        .sort()
+        .join(",");
+      return hiddenFields;
+    }, [bsColumnDefs]);
+
     const initialColumnVisibility = useMemo(() => {
       const visibility = {};
       if (Array.isArray(bsColumnDefs) && bsColumnDefs.length > 0) {
@@ -1965,30 +1976,28 @@ const BSDataGrid = forwardRef(
         });
       }
       return visibility;
-    }, [bsColumnDefs]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialColumnVisibilityKey]);
 
     // State for column visibility (allow user to toggle)
     const [columnVisibilityModel, setColumnVisibilityModel] = useState(
       initialColumnVisibility
     );
 
-    // Update column visibility when bsColumnDefs changes
+    // CRITICAL: Track the last applied visibility key to prevent infinite loops
+    const lastVisibilityKeyRef = useRef(initialColumnVisibilityKey);
+
+    // Update column visibility ONLY when the actual hidden fields change
     useEffect(() => {
-      setColumnVisibilityModel((prev) => {
-        // If there's no initial visibility settings, keep previous model
-        if (!initialColumnVisibility || Object.keys(initialColumnVisibility).length === 0) {
-          return prev;
-        }
-        const merged = { ...prev, ...initialColumnVisibility };
-        // Shallow compare to avoid no-op state updates that cause re-renders
-        const prevKeys = Object.keys(prev);
-        const mergedKeys = Object.keys(merged);
-        const isSame =
-          prevKeys.length === mergedKeys.length &&
-          prevKeys.every((k) => prev[k] === merged[k]);
-        return isSame ? prev : merged;
-      });
-    }, [initialColumnVisibility]);
+      // Only update if the visibility key has actually changed
+      if (lastVisibilityKeyRef.current !== initialColumnVisibilityKey) {
+        lastVisibilityKeyRef.current = initialColumnVisibilityKey;
+        setColumnVisibilityModel((prev) => ({
+          ...prev,
+          ...initialColumnVisibility,
+        }));
+      }
+    }, [initialColumnVisibilityKey, initialColumnVisibility]);
 
     // Parse bsDialogSize to MUI Dialog maxWidth
     const dialogMaxWidth = useMemo(() => {
@@ -6424,23 +6433,104 @@ const BSDataGrid = forwardRef(
     }, [getEffectiveLocale]);
 
     // Get current locale text for custom UI elements
-    const localeText = getLocalization();
+    // IMPORTANT: Memoize to prevent infinite re-renders in columns useMemo
+    const localeText = useMemo(() => getLocalization(), [getLocalization]);
 
-    // Build columns from metadata
+    // IMPORTANT: Create a stable key for the column structure based on the keys of the first row
+    // This prevents the columns useMemo from recalculating every time rows data changes
+    // We only want to regenerate columns when the STRUCTURE changes (different keys), not when values change
+    const rowColumnStructureKey = useMemo(() => {
+      if (!rows || rows.length === 0) return "";
+      const keys = Object.keys(rows[0] || {}).sort().join(",");
+      return keys;
+    }, [rows]);
+
+    // Cache the first row for column generation to prevent infinite re-renders
+    // We use the structure key to only update when column structure actually changes
+    const firstRowForColumns = useMemo(() => {
+      if (!rows || rows.length === 0) return null;
+      return rows[0];
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rowColumnStructureKey]);
+
+    // CRITICAL FIX: Use ref to cache columns and prevent infinite re-renders
+    // DataGrid's useGridColumns hook causes state updates when columns prop changes
+    // This ref-based approach ensures columns only truly change when structure changes
+    const columnsRef = useRef([]);
+    const columnsKeyRef = useRef("");
+
+    // CRITICAL FIX: Create truly stable metadata key using ref-based approach
+    // This prevents metadata object reference changes from triggering column regeneration
+    const metadataColumnsKeyRef = useRef("");
+    const prevMetadataRef = useRef(null);
+    
+    // Compute metadata key only when metadata actually changes content, not just reference
+    const stableMetadataKey = useMemo(() => {
+      if (!metadata?.columns || !Array.isArray(metadata.columns)) {
+        if (metadataColumnsKeyRef.current !== "") {
+          metadataColumnsKeyRef.current = "";
+        }
+        return "";
+      }
+      
+      // Generate a key from the actual column data
+      const newKey = metadata.columns.map((c) => `${c.columnName}:${c.dataType}`).join("|");
+      
+      // Only update if the content actually changed
+      if (newKey !== metadataColumnsKeyRef.current) {
+        metadataColumnsKeyRef.current = newKey;
+        prevMetadataRef.current = metadata;
+      }
+      
+      return metadataColumnsKeyRef.current;
+    }, [metadata]);
+
+    // Create a stable key for when columns should actually regenerate
+    // Only include properties that affect column STRUCTURE, not render-time state
+    const columnsKey = useMemo(() => {
+      const storedProcKey = bsStoredProcedure || "";
+      const firstRowKey = rowColumnStructureKey;
+      const configKey = `${readOnly}-${bulkEditMode}-${effectiveBulkAddInline}-${bsShowRowNumber}`;
+      const visibilityKey = `${effectiveVisibleView}-${effectiveVisibleEdit}-${effectiveVisibleDelete}`;
+      const colsKey = parsedCols ? parsedCols.join(",") : "";
+      const hiddenKey = bsHiddenColumns ? JSON.stringify(bsHiddenColumns) : "";
+      
+      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}`;
+    }, [
+      stableMetadataKey,
+      bsStoredProcedure,
+      rowColumnStructureKey,
+      readOnly,
+      bulkEditMode,
+      effectiveBulkAddInline,
+      bsShowRowNumber,
+      effectiveVisibleView,
+      effectiveVisibleEdit,
+      effectiveVisibleDelete,
+      parsedCols,
+      bsHiddenColumns,
+    ]);
+
+    // Build columns from metadata - ONLY regenerate when columnsKey changes
     const columns = useMemo(() => {
+      // CRITICAL: Check if we can reuse cached columns
+      if (columnsKeyRef.current === columnsKey && columnsRef.current.length > 0) {
+        return columnsRef.current;
+      }
       // For Enhanced Stored Procedure, try to create columns from data if no metadata
       if (
         bsStoredProcedure &&
         (!metadata?.columns || !Array.isArray(metadata.columns))
       ) {
-        if (rows && rows.length > 0) {
+        // Use cached firstRowForColumns instead of rows[0] to prevent infinite re-renders
+        if (firstRowForColumns) {
           // Detect primary key to exclude it from visible columns
-          const detectedPrimaryKey = detectPrimaryKeyFromData(rows[0]);
+          const detectedPrimaryKey = detectPrimaryKeyFromData(firstRowForColumns);
 
           // Also check metadata for primary keys if available
           const metadataPrimaryKeys = metadata?.primaryKeys || [];
 
-          const dataColumns = Object.keys(rows[0] || {})
+          const dataColumns = Object.keys(firstRowForColumns || {})
             .filter((key) => {
               // Skip special fields
               if (key === "__rowNumber") {
@@ -6464,8 +6554,8 @@ const BSDataGrid = forwardRef(
 
               // Use the comprehensive primary key detection instead of hardcoded values
               const isPrimaryKey = detectPrimaryKeyFromData({
-                [key]: rows[0][key],
-                ...rows[0],
+                [key]: firstRowForColumns[key],
+                ...firstRowForColumns,
               });
               if (isPrimaryKey === key) {
                 // bsLog(
@@ -6490,7 +6580,7 @@ const BSDataGrid = forwardRef(
             })
             .map((key) => {
               // Detect data type from the first row value
-              const firstValue = rows[0][key];
+              const firstValue = firstRowForColumns[key];
               let columnType = "string";
               let width = 150;
 
@@ -7427,54 +7517,18 @@ const BSDataGrid = forwardRef(
           })),
         });
 
+        // Cache the columns before returning
+        columnsKeyRef.current = columnsKey;
+        columnsRef.current = finalColumns;
         return finalColumns;
       } catch (error) {
         Logger.error("❌ Error building columns:", error);
-        return []; // Always return empty array on error
+        return columnsRef.current.length > 0 ? columnsRef.current : []; // Return cached or empty on error
       }
-    }, [
-      metadata,
-      readOnly,
-      bulkEditMode,
-      effectiveBulkAddInline,
-      bsShowRowNumber,
-      bsRowPerPage,
-      paginationModel,
-      effectiveVisibleView,
-      effectiveVisibleEdit,
-      effectiveVisibleDelete,
-      parsedCols,
-      comboBoxConfig,
-      onView,
-      handleEditClick,
-      handleDeleteClick,
-      bsStoredProcedure,
-      rows,
-      handleRestoreRow,
-      formatColumnName,
-      getGridColumnType,
-      formatCellValue,
-      isColumnHidden,
-      renderComboBoxCell,
-      getComboBoxOptions,
-      isActiveField,
-      isAuditField,
-      getIsActiveOptions,
-      rowModesModel,
-      handleBulkRowEditClick,
-      handleBulkRowSaveClick,
-      handleBulkRowCancelClick,
-      handleInlineEditClick,
-      handleInlineSaveClick,
-      handleInlineCancelClick,
-      handleInlineDeleteClick,
-      detectPrimaryKeyFromData,
-      applyColumnDefs,
-      localeText,
-      bsRowConfig,
-      bsHiddenColumns,
-      bsKeyId,
-    ]);
+      // CRITICAL: Only depend on columnsKey to prevent infinite re-renders
+      // The columnsKey already encapsulates all the essential dependencies
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [columnsKey]);
 
     // Generate custom row styles from bsRowConfig
     const customRowStyles = useMemo(() => {
@@ -7527,6 +7581,139 @@ const BSDataGrid = forwardRef(
       });
       return styles;
     }, [bsRowConfig, rows, getEffectivePrimaryKey]);
+
+    // CRITICAL: Use ref to cache validatedColumns and prevent new array references
+    const validatedColumnsRef = useRef([]);
+    const validatedColumnsKeyRef = useRef("");
+
+    // Memoize validated columns to prevent infinite re-renders in DataGridPro
+    const validatedColumns = useMemo(() => {
+      const safeColumns = Array.isArray(columns) ? columns : [];
+      
+      // Create a stable key from column fields
+      const columnsFieldKey = safeColumns.map((c) => c?.field || "").join(",");
+      
+      // Only recompute if the columns have actually changed
+      if (validatedColumnsKeyRef.current === columnsFieldKey && validatedColumnsRef.current.length > 0) {
+        return validatedColumnsRef.current;
+      }
+      
+      const validated = safeColumns.filter(
+        (col) =>
+          col &&
+          typeof col === "object" &&
+          typeof col.field === "string" &&
+          col.field.length > 0 &&
+          typeof col.headerName === "string"
+      );
+      
+      // Cache the result
+      validatedColumnsKeyRef.current = columnsFieldKey;
+      validatedColumnsRef.current = validated;
+      
+      return validated;
+    }, [columns]);
+
+    // Memoize filtered rows to prevent new array reference on every render
+    const filteredRows = useMemo(() => {
+      return rows.filter(
+        (row) => row && typeof row === "object" && Object.keys(row).length > 0
+      );
+    }, [rows]);
+
+    // Memoize autosizeOptions to prevent infinite re-renders
+    const autosizeOptions = useMemo(() => {
+      const columnsToAutosize = validatedColumns
+        .filter((col) => {
+          const customDef = columnDefsConfig[col.field];
+          return !customDef?.width;
+        })
+        .map((col) => col.field);
+      return {
+        columns: columnsToAutosize,
+        includeHeaders: true,
+        includeOutliers: false,
+        expand: true,
+      };
+    }, [validatedColumns, columnDefsConfig]);
+
+    // Memoize getRowId callback to prevent infinite re-renders
+    const getRowId = useCallback(
+      (row) => {
+        const primaryKey = getEffectivePrimaryKey(row);
+
+        if (primaryKey && row[primaryKey] != null) {
+          return String(row[primaryKey]);
+        }
+
+        // Fallback to common ID fields
+        const idFields = ["id", "Id", "ID", "_id"];
+        for (const field of idFields) {
+          if (row[field] != null) {
+            return String(row[field]);
+          }
+        }
+
+        // Last resort: generate a stable ID based on row content hash
+        const rowString = JSON.stringify(row);
+        const hash = rowString.split("").reduce((a, b) => {
+          a = (a << 5) - a + b.charCodeAt(0);
+          return a & a;
+        }, 0);
+        return `generated-${Math.abs(hash)}`;
+      },
+      [getEffectivePrimaryKey]
+    );
+
+    // Memoize getRowClassName callback to prevent re-renders
+    const getRowClassName = useCallback(
+      (params) => {
+        const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+        const rowId = params.row[primaryKey] || params.row.id || params.row.Id;
+
+        const classes = [];
+
+        // Add striped styling
+        if (params.indexRelativeToCurrentPage % 2 === 0) {
+          classes.push("even");
+        }
+
+        // Add unsaved changes styling
+        if (unsavedChangesRef.current[rowId]) {
+          classes.push("unsaved-changes");
+        }
+
+        // Add custom row class from bsRowConfig
+        if (bsRowConfig) {
+          const rowConfig = bsRowConfig(params.row);
+          if (rowConfig.className) {
+            classes.push(rowConfig.className);
+          }
+          // Add custom-styled class if backgroundColor or textColor is set
+          if (rowConfig.backgroundColor || rowConfig.textColor) {
+            classes.push(`custom-row-${params.id}`);
+          }
+        }
+
+        return classes.join(" ");
+      },
+      [metadata?.primaryKeys, bsRowConfig]
+    );
+
+    // Memoize isRowSelectable callback to prevent re-renders
+    const isRowSelectable = useCallback(
+      (params) => {
+        if (bsRowConfig) {
+          const rowConfig = bsRowConfig(params.row);
+          // If showCheckbox is explicitly false, row is not selectable
+          if (rowConfig.showCheckbox === false) {
+            return false;
+          }
+        }
+        return true;
+      },
+      [bsRowConfig]
+    );
 
     // Handle row selection changes for checkbox selection
     const handleRowSelectionChange = useCallback(
@@ -8924,18 +9111,8 @@ const BSDataGrid = forwardRef(
               effectiveTableName,
             });
 
-            // Final validation before render
-            const safeColumns = Array.isArray(columns) ? columns : [];
-            const validColumns = safeColumns.filter(
-              (col) =>
-                col &&
-                typeof col === "object" &&
-                typeof col.field === "string" &&
-                col.field.length > 0
-            );
-
             // If no valid columns, show appropriate message with Add button
-            if (validColumns.length === 0) {
+            if (validatedColumns.length === 0) {
               // Check if we're still loading data
               const isStillLoading = loading || metadataLoading;
 
@@ -9063,27 +9240,8 @@ const BSDataGrid = forwardRef(
               >
                 <DataGridPro
                   apiRef={apiRef}
-                  rows={rows.filter(
-                    (row) =>
-                      row &&
-                      typeof row === "object" &&
-                      Object.keys(row).length > 0
-                  )}
-                  columns={(() => {
-                    // Final validation and cleaning of columns before passing to MUI
-                    const safeColumns = Array.isArray(columns) ? columns : [];
-                    const validColumns = safeColumns.filter(
-                      (col) =>
-                        col &&
-                        typeof col === "object" &&
-                        typeof col.field === "string" &&
-                        col.field.length > 0 &&
-                        typeof col.headerName === "string"
-                    );
-
-                    // Return empty array if no valid columns to prevent MUI errors
-                    return validColumns.length > 0 ? validColumns : [];
-                  })()}
+                  rows={filteredRows}
+                  columns={validatedColumns}
                   // Only set rowCount for server-side pagination
                   {...(bsFilterMode === "server" && { rowCount })}
                   loading={
@@ -9093,12 +9251,8 @@ const BSDataGrid = forwardRef(
                     (columns.length === 0 && loading)
                   }
                   // Ensure we don't render until we have valid data structure
-                  // Include rowCount and content hash in key to force re-render when data changes
-                  key={`datagrid-${effectiveTableName}-${rowCount}-${
-                    rows.length
-                  }-${JSON.stringify(rows.slice(0, 1))?.length || 0}-${
-                    Array.isArray(columns) ? columns.length : 0
-                  }`}
+                  // Use stable key to prevent unnecessary re-renders
+                  key={`datagrid-${effectiveTableName}`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
@@ -9162,18 +9316,7 @@ const BSDataGrid = forwardRef(
                   headerFilterHeight={48}
                   // Auto-sizing columns (exclude columns with custom width in bsColumnDefs)
                   autosizeOnMount
-                  autosizeOptions={{
-                    columns: columns
-                      .filter((col) => {
-                        // Skip columns that have custom width defined in bsColumnDefs
-                        const customDef = columnDefsConfig[col.field];
-                        return !customDef?.width;
-                      })
-                      .map((col) => col.field),
-                    includeHeaders: true,
-                    includeOutliers: false,
-                    expand: true,
-                  }}
+                  autosizeOptions={autosizeOptions}
                   // Row Heights
                   rowHeight={40} //{() => "auto"}
                   // showToolbar={showToolbar && !bulkEditMode}
@@ -9201,100 +9344,13 @@ const BSDataGrid = forwardRef(
                   pinnedColumns={pinnedColumns}
                   onPinnedColumnsChange={setPinnedColumns}
                   // UI Settings
-                  getRowId={(row) => {
-                    // Use the same primary key detection logic as handleRowSelectionChange
-                    const primaryKey = getEffectivePrimaryKey(row);
-
-                    // bsLog("🆔 getRowId called:", {
-                    //   primaryKey,
-                    //   rowPrimaryValue: row[primaryKey],
-                    //   rowKeys: Object.keys(row),
-                    //   hasValue: row[primaryKey] != null,
-                    //   actualRowData: row,
-                    //   idField: row.id,
-                    //   IdField: row.Id,
-                    //   countTagIdField: row.count_tag_id,
-                    // });
-
-                    if (primaryKey && row[primaryKey] != null) {
-                      return String(row[primaryKey]);
-                    }
-
-                    // Fallback to common ID fields - prioritize 'id' field
-                    const idFields = ["id", "Id", "ID", "_id"];
-                    for (const field of idFields) {
-                      if (row[field] != null) {
-                        // bsLog("🆔 Using fallback ID field:", {
-                        //   field,
-                        //   value: row[field],
-                        //   stringValue: String(row[field]),
-                        // });
-                        return String(row[field]);
-                      }
-                    }
-
-                    // Last resort: generate a stable ID based on row content hash
-                    const rowString = JSON.stringify(row);
-                    const hash = rowString.split("").reduce((a, b) => {
-                      a = (a << 5) - a + b.charCodeAt(0);
-                      return a & a;
-                    }, 0);
-                    const generatedId = `generated-${Math.abs(hash)}`;
-
-                    // bsLog("🚨 Using generated ID:", {
-                    //   generatedId,
-                    //   rowData: row,
-                    //   reason: "No valid primary key or ID field found",
-                    // });
-
-                    return generatedId;
-                  }}
+                  getRowId={getRowId}
                   // Localization
                   localeText={getLocalization()}
                   // Row styling for unsaved changes, striped rows, and custom row config
-                  getRowClassName={(params) => {
-                    const primaryKey =
-                      metadata?.primaryKeys?.[0] || "Id" || "id";
-                    const rowId =
-                      params.row[primaryKey] || params.row.id || params.row.Id;
-
-                    const classes = [];
-
-                    // Add striped styling
-                    if (params.indexRelativeToCurrentPage % 2 === 0) {
-                      classes.push("even");
-                    }
-
-                    // Add unsaved changes styling
-                    if (unsavedChangesRef.current[rowId]) {
-                      classes.push("unsaved-changes");
-                    }
-
-                    // Add custom row class from bsRowConfig
-                    if (bsRowConfig) {
-                      const rowConfig = bsRowConfig(params.row);
-                      if (rowConfig.className) {
-                        classes.push(rowConfig.className);
-                      }
-                      // Add custom-styled class if backgroundColor or textColor is set
-                      if (rowConfig.backgroundColor || rowConfig.textColor) {
-                        classes.push(`custom-row-${params.id}`);
-                      }
-                    }
-
-                    return classes.join(" ");
-                  }}
+                  getRowClassName={getRowClassName}
                   // Control row selectability (checkbox) based on bsRowConfig
-                  isRowSelectable={(params) => {
-                    if (bsRowConfig) {
-                      const rowConfig = bsRowConfig(params.row);
-                      // If showCheckbox is explicitly false, row is not selectable
-                      if (rowConfig.showCheckbox === false) {
-                        return false;
-                      }
-                    }
-                    return true;
-                  }}
+                  isRowSelectable={isRowSelectable}
                   // Custom Toolbar (use slots + slotProps for better compatibility)
                   // Show toolbar when showToolbar is true (including bulk edit mode)
                   slots={
@@ -9325,10 +9381,8 @@ const BSDataGrid = forwardRef(
                             onPrint: handlePrint,
                             localeText,
                             apiRef,
-                            // Quick Filter props
                             quickFilterValue: quickFilterInputValue,
                             onQuickFilterChange: setQuickFilterInputValue,
-                            // Bulk Edit Mode props
                             bulkEditMode,
                             onBulkSave: handleBulkSaveChanges,
                             onBulkDiscard: handleBulkDiscardChanges,
@@ -9337,11 +9391,9 @@ const BSDataGrid = forwardRef(
                             changesCount: Object.keys(unsavedChangesRef.current)
                               .length,
                           },
-                          // Header filter cell props to show inline clear button
                           headerFilterCell: {
                             showClearIcon: true,
                           },
-                          // Pagination props to show first/last page buttons
                           pagination: {
                             showFirstButton: true,
                             showLastButton: true,
@@ -9349,18 +9401,15 @@ const BSDataGrid = forwardRef(
                         }
                       : headerFiltersEnabled
                       ? {
-                          // Header filter cell props when toolbar is disabled but header filters are enabled
                           headerFilterCell: {
                             showClearIcon: true,
                           },
-                          // Pagination props
                           pagination: {
                             showFirstButton: true,
                             showLastButton: true,
                           },
                         }
                       : {
-                          // Always show pagination buttons
                           pagination: {
                             showFirstButton: true,
                             showLastButton: true,
@@ -9735,7 +9784,7 @@ const BSDataGrid = forwardRef(
                             }
                             bsRowPerPage={childConfig.bsRowPerPage || 10}
                             bsPageSizeOptions={
-                              childConfig.bsPageSizeOptions || [10, 25, 50]
+                              childConfig.bsPageSizeOptions || [10, 20, 50]
                             }
                             height={childConfig.height}
                             bsUniqueFields={childConfig.bsUniqueFields}
