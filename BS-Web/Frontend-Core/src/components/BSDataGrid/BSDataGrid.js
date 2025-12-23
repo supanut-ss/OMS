@@ -5931,14 +5931,21 @@ const BSDataGrid = forwardRef(
 
     const handleInlineEditClick = useCallback(
       (id) => () => {
-        if (effectiveBulkAddInline) {
+        if (effectiveBulkAddInline || effectiveBulkEdit) {
           setRowModesModel((oldModel) => ({
             ...oldModel,
             [id]: { mode: GridRowModes.Edit },
           }));
+          // Enable bulk edit mode to show Save All / Discard All toolbar
+          if (!bulkEditMode) {
+            setBulkEditMode(true);
+            unsavedChangesRef.current = {};
+            setHasUnsavedChanges(false);
+            bsLog("📝 Bulk Edit mode enabled via edit button click");
+          }
         }
       },
-      [effectiveBulkAddInline]
+      [effectiveBulkAddInline, effectiveBulkEdit, bulkEditMode]
     );
 
     const handleInlineSaveClick = useCallback(
@@ -9195,8 +9202,9 @@ const BSDataGrid = forwardRef(
           return; // Stop execution here
         }
 
-        // Only enable bulk edit mode if effectiveBulkEdit is true
-        if (!bulkEditMode && effectiveBulkEdit) {
+        // Enable bulk edit mode if effectiveBulkEdit OR effectiveBulkAddInline is true
+        // This shows the Save All / Discard All toolbar
+        if (!bulkEditMode && (effectiveBulkEdit || effectiveBulkAddInline)) {
           setBulkEditMode(true);
           unsavedChangesRef.current = {};
           setHasUnsavedChanges(false);
