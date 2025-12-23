@@ -28,10 +28,6 @@ const MenuPage = (props) => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          {getResource(resourceData, "Menu") || "Menu"}
-        </Typography>
-
         <BSDataGrid
           bsLocale={locale_id}
           bsPreObj="sec"
