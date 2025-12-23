@@ -1974,10 +1974,20 @@ const BSDataGrid = forwardRef(
 
     // Update column visibility when bsColumnDefs changes
     useEffect(() => {
-      setColumnVisibilityModel((prev) => ({
-        ...prev,
-        ...initialColumnVisibility,
-      }));
+      setColumnVisibilityModel((prev) => {
+        // If there's no initial visibility settings, keep previous model
+        if (!initialColumnVisibility || Object.keys(initialColumnVisibility).length === 0) {
+          return prev;
+        }
+        const merged = { ...prev, ...initialColumnVisibility };
+        // Shallow compare to avoid no-op state updates that cause re-renders
+        const prevKeys = Object.keys(prev);
+        const mergedKeys = Object.keys(merged);
+        const isSame =
+          prevKeys.length === mergedKeys.length &&
+          prevKeys.every((k) => prev[k] === merged[k]);
+        return isSame ? prev : merged;
+      });
     }, [initialColumnVisibility]);
 
     // Parse bsDialogSize to MUI Dialog maxWidth
@@ -2230,6 +2240,25 @@ const BSDataGrid = forwardRef(
         : [],
     }));
 
+    // Ensure the active page size is included in pageSizeOptions to avoid MUI X warnings
+    const effectivePageSizeOptions = useMemo(() => {
+      const currentPageSize = (paginationModel && paginationModel.pageSize) || bsRowPerPage || 20;
+      const baseOptions = Array.isArray(bsPageSizeOptions) ? bsPageSizeOptions.slice() : [];
+
+      // Add current page size if missing
+      if (!baseOptions.includes(currentPageSize)) {
+        baseOptions.push(currentPageSize);
+      }
+
+      // Ensure numeric, unique and sorted
+      const numericOptions = Array.from(new Set(baseOptions.map((v) => Number(v))))
+        .filter((v) => !Number.isNaN(v))
+        .sort((a, b) => a - b);
+
+      return numericOptions;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bsPageSizeOptions, paginationModel?.pageSize, bsRowPerPage]);
+
     // Row selection state for checkbox selection
     const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
@@ -2341,8 +2370,24 @@ const BSDataGrid = forwardRef(
           }
         }
 
-        setComboBoxLookupData(lookupData);
-        setComboBoxValueOptions(valueOptionsData);
+        setComboBoxLookupData((prev) => {
+          const prevKeys = Object.keys(prev || {});
+          const newKeys = Object.keys(lookupData || {});
+          const isSame =
+            prevKeys.length === newKeys.length &&
+            prevKeys.every((k) => prev[k] === lookupData[k]);
+          return isSame ? prev : lookupData;
+        });
+        setComboBoxValueOptions((prev) => {
+          const prevKeys = Object.keys(prev || {});
+          const newKeys = Object.keys(valueOptionsData || {});
+          const isSame =
+            prevKeys.length === newKeys.length &&
+            prevKeys.every((k) =>
+              JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k])
+            );
+          return isSame ? prev : valueOptionsData;
+        });
       };
 
       loadComboBoxLookupData();
@@ -2355,7 +2400,14 @@ const BSDataGrid = forwardRef(
         if (effectiveTableName || bsStoredProcedure) {
           const resourceGroup = bsStoredProcedure || effectiveTableName;
           const res = await getResources(resourceGroup);
-          setResourceData(res);
+          setResourceData((prev) => {
+            try {
+              if (JSON.stringify(prev) === JSON.stringify(res)) return prev;
+            } catch (e) {
+              // If stringify fails for any reason, fall through and update
+            }
+            return res;
+          });
         }
       };
       loadResourceData();
@@ -9094,7 +9146,7 @@ const BSDataGrid = forwardRef(
                   }
                   paginationModel={paginationModel}
                   onPaginationModelChange={setPaginationModel}
-                  pageSizeOptions={bsPageSizeOptions}
+                  pageSizeOptions={effectivePageSizeOptions}
                   // Sorting
                   sortingMode={bsFilterMode === "client" ? "client" : "server"}
                   sortModel={sortModel}
