@@ -316,7 +316,8 @@ namespace ApiCore.Models.Dynamic
         public string ValueField { get; set; } = string.Empty;
 
         /// <summary>
-        /// Field name to use as display text
+        /// Field name(s) to use as display text.
+        /// Supports comma-separated fields (e.g., "first_name,last_name") which will be concatenated with space.
         /// </summary>
         [Required]
         public string DisplayField { get; set; } = string.Empty;

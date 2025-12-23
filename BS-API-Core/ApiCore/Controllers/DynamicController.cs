@@ -595,15 +595,25 @@ namespace ApiCore.Controllers
                     return BadRequest(new { message = $"Table '{request.SchemaName ?? "dbo"}.{request.TableName}' not found" });
                 }
 
+                // Parse display fields (supports comma-separated for multiple fields)
+                var displayFields = request.DisplayField
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(f => f.Trim())
+                    .ToArray();
+
+                // Build columns list including all display fields
+                var allColumns = new List<string> { request.ValueField };
+                allColumns.AddRange(displayFields);
+
                 // Build DataGrid request for ComboBox data
                 var dataGridRequest = new DynamicDataGridRequest
                 {
                     TableName = request.TableName,
                     SchemaName = request.SchemaName,
                     PreObj = request.PreObj,
-                    Columns = string.Join(",", new[] { request.ValueField, request.DisplayField }.Distinct()),
+                    Columns = string.Join(",", allColumns.Distinct()),
                     CustomWhere = request.CustomWhere,
-                    CustomOrderBy = request.CustomOrderBy ?? $"{request.DisplayField} asc",
+                    CustomOrderBy = request.CustomOrderBy ?? $"{displayFields[0]} asc",
                     GroupBy = request.GroupBy, // Pass GROUP BY clause
                     Page = 1,
                     PageSize = request.MaxItems ?? 1000, // Default limit for dropdown
@@ -613,14 +623,21 @@ namespace ApiCore.Controllers
 
                 var result = await _dynamicService.GetDataGridAsync(dataGridRequest);
 
-                // Transform data to ComboBox format
+                // Transform data to ComboBox format with support for multiple display fields
                 var comboBoxData = result.Rows.Select(row =>
                 {
                     var data = row.Data ?? new Dictionary<string, object>();
+
+                    // Concatenate multiple display fields with space
+                    var displayValue = string.Join(" ", displayFields
+                        .Where(f => data.ContainsKey(f) && data[f] != null)
+                        .Select(f => data[f]?.ToString() ?? "")
+                        .Where(v => !string.IsNullOrWhiteSpace(v)));
+
                     return new Dictionary<string, object>
                     {
                         ["value"] = data.ContainsKey(request.ValueField) ? data[request.ValueField] : null,
-                        ["display"] = data.ContainsKey(request.DisplayField) ? data[request.DisplayField] : null,
+                        ["display"] = displayValue,
                         ["data"] = data // Include full row data for reference
                     };
                 }).ToList();
