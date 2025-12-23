@@ -260,8 +260,22 @@ const TaskStatusSection = ({
       sx={{
         mb: 2,
         "&:before": { display: "none" },
-        borderRadius: 2,
+        // Force consistent border-radius for all accordions
+        borderRadius: "12px !important",
         overflow: "hidden",
+        // Override MUI's automatic first/last item border-radius adjustments
+        "&:first-of-type": {
+          borderTopLeftRadius: "12px !important",
+          borderTopRightRadius: "12px !important",
+        },
+        "&:last-of-type": {
+          borderBottomLeftRadius: "12px !important",
+          borderBottomRightRadius: "12px !important",
+        },
+        // Ensure all corners are consistent when collapsed
+        "&.Mui-expanded": {
+          borderRadius: "12px !important",
+        },
       }}
     >
       <AccordionSummary
@@ -269,6 +283,9 @@ const TaskStatusSection = ({
         sx={{
           backgroundColor: color,
           "&:hover": { backgroundColor: color, filter: "brightness(0.95)" },
+          // Ensure AccordionSummary has consistent border-radius
+          borderRadius: expanded ? "12px 12px 0 0" : "12px",
+          transition: "border-radius 0.15s ease",
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
