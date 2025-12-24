@@ -129,7 +129,7 @@ const InvoiceHistory = (props) => {
         <Box
           sx={{
             display: "flex",
-            justifyContent: "center",
+            justifyContent: "right",
             mt: 3,
           }}
         >
