@@ -52,8 +52,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { styled } from "@mui/material/styles";
 //import logoMiniSvg from "../assets/logo.jpg";
 import logoHorizontalSvg from "../assets/logo.svg";
-
-import { useAlive } from "../contexts/AliveContext";
 import SidebarMenu from "./SidebarMenu";
 import TopLinearProgress from "../components/TopLinearProgress";
 import SecureStorage from "../utils/SecureStorage";
@@ -429,10 +427,6 @@ export default function MainLayout({ lang, onChangeLang }) {
       .join("")
       .toUpperCase();
   };
-  useAlive({
-    endpoint: "/alive/status",
-    intervalMs: 120000, // 2 นาที
-  });
   useEffect(() => {
     if (
       SecureStorage.get("userInfo") !== null &&

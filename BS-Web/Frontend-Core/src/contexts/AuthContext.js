@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import SecureStorage from "../utils/SecureStorage";
 import { jwtDecode } from "jwt-decode";
 import AxiosMaster from "../utils/AxiosMaster";
 import Config from "../utils/Config";
+import { useAlive } from "./AliveContext";
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -17,7 +18,13 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const { sendLocation, startLocationTracking, stopLocationTracking } = useAlive(
+    {
+      endpoint: "/alive/status",
+      intervalMs: 120000, // 2 นาที
+      enabled: isAuthenticated,
+    }
+  );
   useEffect(() => {
     // Check authentication status on app load
     const checkAuth = () => {
@@ -51,6 +58,12 @@ export const AuthProvider = ({ children }) => {
         SecureStorage.set("userInfo", JSON.parse(userinfo));
         SecureStorage.set("lang", JSON.parse(userinfo).LocaleId ?? "en")
         setUser(userinfo);
+        try {
+          // Start location tracking upon successful login
+          startLocationTracking();
+        } catch (e) {
+          console.error("Error starting location tracking on login:", e);
+        }
         json.status = true;
         json.message = res.data.message_text;
         json.lang = SecureStorage.get("lang");
@@ -70,6 +83,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     try {
+      // Stop any active location tracking before logging out
+      try {
+        stopLocationTracking();
+      } catch (e) {
+        console.error("Error stopping location tracking during logout:", e);
+      }
+
       await AxiosMaster.post("/logout", {
         refresh_token: SecureStorage.get("refresh_token") ?? ""
       }).then((res) => {
@@ -84,6 +104,13 @@ export const AuthProvider = ({ children }) => {
       });
     } catch (err) {
       // ถ้าเจอ 401 จะเข้ามาที่นี่
+      // Ensure tracking is stopped even on error
+      try {
+        stopLocationTracking();
+      } catch (e) {
+        console.error("Error stopping location tracking after logout failure:", e);
+      }
+
       SecureStorage.clearLogout(); // อาจจะเคลียร์ token แล้วบังคับ logout
       json.status = false;
       json.message = err?.Message || "Unauthorized";
@@ -130,7 +157,7 @@ export const AuthProvider = ({ children }) => {
               }
               acc[key].submenu.push({
                 menu_id: item.menu_id,
-                favorite:item.menu_favorite_id !== 0,
+                favorite: item.menu_favorite_id !== 0,
                 parent_menu_id: item.parent_menu_id,
                 menu_sequence: item.menu_sequence,
                 menu_name: item.menu_name,
@@ -195,6 +222,8 @@ export const AuthProvider = ({ children }) => {
       return "";
     }
   }
+
+
   const value = {
     isAuthenticated,
     user,

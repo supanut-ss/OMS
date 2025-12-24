@@ -18,6 +18,7 @@ const storedProcedure = {
     }
 }
 const Projects = (props) => {
+    const { lang } = props;
     const [openDialog, setOpenDialog] = useState(false);
     const [projectHeaderID, setProjectHeaderID] = useState("");
     const dataGridRef = useRef();
@@ -53,6 +54,7 @@ const Projects = (props) => {
     }, [props.ma]);
     return (<Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
+            bsLocale={lang}
             ref={dataGridRef}
             bsStoredProcedure={storedProcedure[props?.ma ? "ma" : "project"].bsStoredProcedure}
             bsStoredProcedureSchema={storedProcedure[props?.ma ? "ma" : "project"].bsStoredProcedureSchema}
@@ -60,7 +62,6 @@ const Projects = (props) => {
             bsShowRowNumber={true}
             showAdd={true}
             bsVisibleDelete={true}
-            bsLocale={props.lang}
             bsAllowAdd={false}
             bsAllowEdit={true}
             bsAllowDelete={true}
