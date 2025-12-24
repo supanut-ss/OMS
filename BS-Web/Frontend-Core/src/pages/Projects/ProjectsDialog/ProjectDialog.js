@@ -69,6 +69,8 @@ const ProjectsDialog = (props) => {
     "customer_id",
     "plan_project_start",
     "plan_project_end",
+    "manday",
+    "po_number"
   ];
   const { formData, errors, updateField, validate, setFormData } = useForm(
     { ...defaultData },
