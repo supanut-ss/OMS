@@ -4825,15 +4825,18 @@ ${errorInfo.originalError}
                 response?.rowCount || response?.data?.length || 0;
 
               if (existingCount > 0) {
-                const displayNames = fields
+                // Filter out hidden columns from display
+                const visibleFields = fields.filter(
+                  (f) => !bsHiddenColumns?.includes(f)
+                );
+                const displayNames = visibleFields
                   .map((f) => formatColumnName(f))
                   .join(" + ");
-                const displayValues = fields
+                const displayValues = visibleFields
                   .map((f) => `"${mergedData[f]}"`)
                   .join(", ");
                 const errorMessage =
                   customMessage ||
-                  //`${displayNames}: The combination ${displayValues} already exists. Please use different values.`;
                   `${displayNames}: The combination ${displayValues} already exists. Please use different values.`;
                 errors.push(errorMessage);
               }
@@ -4992,6 +4995,7 @@ ${errorInfo.originalError}
         getTableData,
         formatColumnName,
         bsDefaultFormValues,
+        bsHiddenColumns,
       ]
     );
 
@@ -5034,7 +5038,13 @@ ${errorInfo.originalError}
           }
 
           // Check required fields
-          if (!isNullable && (value == null || value === "")) {
+          // Skip required validation for fields with default values (database will use default)
+          const hasDefaultValue = column.hasDefault || !!column.defaultValue;
+          if (
+            !isNullable &&
+            !hasDefaultValue &&
+            (value == null || value === "")
+          ) {
             errors.push(
               `${formatColumnName(columnName)}: This field is required`
             );
