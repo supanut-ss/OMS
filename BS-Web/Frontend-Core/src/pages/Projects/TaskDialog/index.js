@@ -30,7 +30,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   const defaultData = {
     project_task_id: "",
     project_task_phase_id: null,
-    task_status: "In Process",
+    task_status: "Open",
     task_name: null,
     priority: null,
     issue_type: null,
