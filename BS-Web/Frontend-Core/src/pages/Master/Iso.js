@@ -39,7 +39,7 @@ const IsoPage = (props) => {
       foreignKeys: ["iso_type_id"], // FK linking to parent
       bsObjBy: "sequence asc",
       bsCols:
-        "phase_name,description,sequence,is_active,create_by,create_date,update_by,update_date",
+        "iso_type_id,phase_name,description,sequence,is_active,create_by,create_date,update_by,update_date",
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
@@ -73,7 +73,7 @@ const IsoPage = (props) => {
       foreignKeys: ["iso_type_id"], // FK linking to parent
       bsObjBy: "sequence asc",
       bsCols:
-        "document_name,document_control,description,sequence,is_require_attach_file,is_active,create_by,create_date,update_by,update_date",
+        "iso_type_id,document_name,document_control,description,sequence,is_require_attach_file,is_active,create_by,create_date,update_by,update_date",
       bsVisibleEdit: true,
       bsVisibleDelete: true,
       bsShowRowNumber: true,
