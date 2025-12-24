@@ -103,6 +103,7 @@ import BSFileUploadDialog from "../BSFileUploadDialog";
 import { BSSwitchField } from "../BSSwitch";
 import BSSaveOutlinedButton from "../Button/BSSaveOutlinedButton";
 import BSCloseOutlinedButton from "../Button/BSCloseOutlinedButton";
+import secureStorage from "../../utils/SecureStorage";
 
 // BSDataGrid verbose logging (disabled by default)
 // Enable by setting REACT_APP_BSDATAGRID_VERBOSE_LOG=true and rebuilding the frontend.
@@ -2131,6 +2132,51 @@ const BSDataGrid = forwardRef(
     // Get resource hook for multi-language support
     const { getResource, getResources } = useResource();
     const [resourceData, setResourceData] = useState(null);
+    
+    // Internal lang state that syncs with secureStorage to detect language changes
+    // This is needed because bsLocale prop may not update when React Router caches route elements
+    const [internalLang, setInternalLang] = useState(secureStorage.get("lang") || "en");
+    const bsLocaleRef = useRef(bsLocale);
+    
+    // Keep ref in sync with prop
+    useEffect(() => {
+      bsLocaleRef.current = bsLocale;
+      // Also update internalLang when bsLocale prop changes
+      if (bsLocale && bsLocale !== "default") {
+        setInternalLang((prev) => {
+          if (prev !== bsLocale) {
+            Logger.log(`🌐 bsLocale prop changed: ${prev} -> ${bsLocale}`);
+            return bsLocale;
+          }
+          return prev;
+        });
+      }
+    }, [bsLocale]);
+    
+    // Listen for custom language change event (dispatched by AppRoutes when language changes)
+    // This is more reliable than polling secureStorage which has caching issues with secure-ls
+    useEffect(() => {
+      const handleLangChange = (event) => {
+        const newLang = event.detail?.lang;
+        if (newLang) {
+          setInternalLang((prevLang) => {
+            if (prevLang !== newLang) {
+              return newLang;
+            }
+            return prevLang;
+          });
+        }
+      };
+      
+      window.addEventListener('bsLangChange', handleLangChange);
+      
+      return () => {
+        window.removeEventListener('bsLangChange', handleLangChange);
+      };
+    }, []);
+    
+    // Use internalLang instead of bsLocale for more reliable language detection
+    const effectiveLang = internalLang || bsLocale || "en";
 
     // Helper: Get effective locale for date formatting
     const getEffectiveLocale = useCallback(() => {
@@ -2623,8 +2669,9 @@ const BSDataGrid = forwardRef(
       const loadResourceData = async () => {
         if (effectiveTableName || bsStoredProcedure) {
           const resourceGroup = bsStoredProcedure || effectiveTableName;
-          // Pass bsLocale to getResources to ensure correct language is used immediately
-          const res = await getResources(resourceGroup, bsLocale);
+          // Pass effectiveLang to getResources to ensure correct language is used immediately
+          // effectiveLang syncs with bsLangChange event to detect external language changes
+          const res = await getResources(resourceGroup, effectiveLang);
           setResourceData((prev) => {
             try {
               if (JSON.stringify(prev) === JSON.stringify(res)) return prev;
@@ -2637,7 +2684,7 @@ const BSDataGrid = forwardRef(
       };
       loadResourceData();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveTableName, bsStoredProcedure, bsLocale]);
+    }, [effectiveTableName, bsStoredProcedure, effectiveLang]);
 
     // Load metadata when table name changes or for Enhanced Stored Procedure
     useEffect(() => {
@@ -7279,12 +7326,12 @@ ${errorInfo.originalError}
     // This ensures columns are rebuilt with localized headers when language changes
     useEffect(() => {
       bsLog("🌐 Locale or resourceData changed, resetting column cache", {
-        bsLocale,
+        effectiveLang,
         resourceDataLength: resourceData?.length || 0,
       });
       columnsKeyRef.current = "";
       columnsRef.current = [];
-    }, [bsLocale, resourceData]);
+    }, [effectiveLang, resourceData]);
 
     // CRITICAL FIX: Create truly stable metadata key using ref-based approach
     // This prevents metadata object reference changes from triggering column regeneration
@@ -7334,9 +7381,9 @@ ${errorInfo.originalError}
       const rowModesModelKey = Object.entries(rowModesModel)
         .map(([id, model]) => `${id}:${model?.mode}`)
         .join("|");
-      // Include bsLocale to regenerate columns when language changes
+      // Include effectiveLang to regenerate columns when language changes
       // Also create a simple hash from resourceData to detect content changes
-      const localeKey = bsLocale || "en";
+      const localeKey = effectiveLang || "en";
       // Create a hash from all resourceData to detect any content changes
       // Note: getResources returns { resource_name, resource_value, resource_description }
       const resourceContentKey =
@@ -7365,7 +7412,7 @@ ${errorInfo.originalError}
       comboBoxValueOptions,
       comboBoxLookupData,
       rowModesModel,
-      bsLocale,
+      effectiveLang,
       resourceData,
     ]);
 
@@ -8618,9 +8665,9 @@ ${errorInfo.originalError}
       }
       // CRITICAL: columnsKey encapsulates most dependencies, but we need comboBoxValueOptions
       // to be directly referenced to avoid stale closure when building dropdown options
-      // Also include formatColumnName to ensure columns regenerate when language changes
+      // Also include formatColumnName, resourceData, and effectiveLang to ensure columns regenerate when language changes
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [columnsKey, comboBoxValueOptions, formatColumnName]);
+    }, [columnsKey, comboBoxValueOptions, formatColumnName, resourceData, effectiveLang]);
 
     // Generate custom row styles from bsRowConfig
     const customRowStyles = useMemo(() => {
@@ -8682,8 +8729,9 @@ ${errorInfo.originalError}
     const validatedColumns = useMemo(() => {
       const safeColumns = Array.isArray(columns) ? columns : [];
 
-      // Create a stable key from column fields
-      const columnsFieldKey = safeColumns.map((c) => c?.field || "").join(",");
+      // Create a stable key from column fields AND headerNames
+      // CRITICAL: Include headerName in key so columns rebuild when language changes
+      const columnsFieldKey = safeColumns.map((c) => `${c?.field || ""}:${c?.headerName || ""}`).join(",");
 
       // Only recompute if the columns have actually changed
       if (
@@ -10454,10 +10502,11 @@ ${errorInfo.originalError}
                   // Ensure we don't render until we have valid data structure
                   // Use stable key that forces re-mount when combobox data loads or language changes
                   // This ensures columns are rebuilt with correct valueOptions and localized headers
-                  key={`datagrid-${effectiveTableName}-${bsLocale}-comboReady-${
+                  // Also include resourceData hash to force re-mount when translations load
+                  key={`datagrid-${effectiveTableName}-${effectiveLang}-comboReady-${
                     !comboBoxLoading &&
                     Object.keys(comboBoxValueOptions).length > 0
-                  }`}
+                  }-res-${resourceData?.length || 0}-${resourceData?.[0]?.resource_value || ''}`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={

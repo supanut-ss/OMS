@@ -42,6 +42,8 @@ export default function AppRoutes() {
       if (await switchLang(lang)) {
         setLang(lang);
         secureStorage.set("lang", lang);
+        // Dispatch custom event so all components (including BSDataGrid) can detect language change
+        window.dispatchEvent(new CustomEvent('bsLangChange', { detail: { lang } }));
       }
     }
   };
