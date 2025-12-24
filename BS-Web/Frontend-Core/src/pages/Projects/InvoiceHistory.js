@@ -117,7 +117,9 @@ const InvoiceHistory = (props) => {
           }}
           bsShowDescColumn={false}
           bsDefaultFormValues={defaultFormValues}
-          bsUniqueFields={[{ fields: ["document_type", "document_no"] }]}
+          bsUniqueFields={[
+            { fields: ["project_header_id", "document_type", "document_no"] },
+          ]}
           bsHiddenColumns={["project_header_id"]}
           bsKeyId="project_invoice_id"
           onFilteredDataChange={handleFilteredDataChange}
