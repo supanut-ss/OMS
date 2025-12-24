@@ -33,6 +33,7 @@ const UserGroupPage = (props) => {
           bsCols="app_id,name,description,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="name asc"
           bsShowDescColumn={false}
+          bsUniqueFields={["name"]}
           bsComboBox={[
             {
               Column: "app_id",
