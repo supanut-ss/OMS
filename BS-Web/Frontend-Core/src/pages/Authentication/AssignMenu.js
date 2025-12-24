@@ -66,22 +66,23 @@ const MenuTreeView = (props) => {
       const perms = [
         {
           id: `add-${id}`,
-          label: getResource(resourceData, "is_add_view") || "Add",
+          label: "➕ " + getResource(resourceData, "is_add_view") || "Add",
           isCheck: toBool(r.is_add_view),
         },
         {
           id: `edit-${id}`,
-          label: getResource(resourceData, "is_edit_view") || "Edit",
+          label: "✏️ " + getResource(resourceData, "is_edit_view") || "Edit",
           isCheck: toBool(r.is_edit_view),
         },
         {
           id: `delete-${id}`,
-          label: getResource(resourceData, "is_delete_view") || "Delete",
+          label:
+            "🗑️ " + getResource(resourceData, "is_delete_view") || "Delete",
           isCheck: toBool(r.is_delete_view),
         },
         {
           id: `view-${id}`,
-          label: getResource(resourceData, "is_view") || "View",
+          label: "👁️ " + getResource(resourceData, "is_view") || "View",
           isCheck: toBool(r.is_view),
         },
       ];
