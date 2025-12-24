@@ -18,6 +18,8 @@ import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useResource } from "../../hooks/useResource";
+import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
+import BSSaveOutlinedButton from "../../components/Button/BSSaveOutlinedButton";
 
 const activeOptions = [
   { value: "YES", label: "YES" },
@@ -331,7 +333,15 @@ const UserPage = (props) => {
         />
       </Paper>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <Dialog
+        open={open}
+        onClose={(e, reason) => {
+          if (reason === "backdropClick") return;
+          handleClose();
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
           {editMode
             ? getResource(resourceData, "EditUser") || "Edit User"
@@ -538,14 +548,15 @@ const UserPage = (props) => {
             </Button>
           )}
           <Box>
-            <Button onClick={handleClose} sx={{ mr: 1 }}>
+            <BSCloseOutlinedButton onClick={handleClose}>
               {getResource(resourceData, "Cancel") || "Cancel"}
-            </Button>
-            <Button onClick={handleSave} variant="contained" color="primary">
+            </BSCloseOutlinedButton>
+
+            <BSSaveOutlinedButton onClick={handleSave}>
               {editMode
                 ? getResource(resourceData, "SaveChanges") || "Save Changes"
                 : getResource(resourceData, "Add") || "Add"}
-            </Button>
+            </BSSaveOutlinedButton>
           </Box>
         </DialogActions>
       </Dialog>
@@ -553,7 +564,10 @@ const UserPage = (props) => {
       {/* Reset Password Popup */}
       <Dialog
         open={isPopupResetPasswordOpen}
-        onClose={() => setIsPopupResetPasswordOpen(false)}
+        onClose={(e, reason) => {
+          if (reason === "backdropClick") return;
+          setIsPopupResetPasswordOpen(false);
+        }}
         maxWidth="sm"
         fullWidth
       >
@@ -586,7 +600,10 @@ const UserPage = (props) => {
       {/* New Password Popup */}
       <Dialog
         open={openPwDialog}
-        onClose={() => setOpenPwDialog(false)}
+        onClose={(e, reason) => {
+          if (reason === "backdropClick") return;
+          setOpenPwDialog(false);
+        }}
         PaperProps={{ sx: { borderRadius: 3, padding: 2, minWidth: 350 } }}
       >
         <DialogTitle

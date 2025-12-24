@@ -31,6 +31,7 @@ const MenuTreeView = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [resourceMenuData, setResourceMenuData] = useState([]);
+  const [localeId, setLocaleId] = useState(props.lang || "en");
 
   const getLang = async () => {
     try {
@@ -38,6 +39,7 @@ const MenuTreeView = (props) => {
       const resMenu = await getResources("Menu");
       setResourceData(res);
       setResourceMenuData(resMenu);
+      setLocaleId(props.lang || "en");
     } catch (error) {
       console.error("getResources(AssignMenu) error:", error);
     }
@@ -179,7 +181,7 @@ const MenuTreeView = (props) => {
       }
     };
     fetchMenuRows();
-  }, [selectedGroup, selectedPlatform]);
+  }, [selectedGroup, selectedPlatform, localeId]);
 
   const updateParentChildren = (parentId, newChildren) => {
     setMenuData((prev) =>
