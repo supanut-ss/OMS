@@ -34,6 +34,7 @@ const SalePage = (props) => {
           bsObjBy="create_date desc"
           bsDialogSize="Large"
           bsDialogColumns={3}
+          bsUniqueFields={["sale_empolyee_code"]}
           bsBulkMode={{
             enable: true, // Enable all bulk operations
             addInline: true, // Add new rows inline instead of dialog
@@ -43,13 +44,13 @@ const SalePage = (props) => {
             // showCheckbox: false,
             // showSplitButton: false,
           }}
-          // bsColumnDefs={[
-          //   {
-          //     field: "sale_empolyee_code",
-          //     editable: true,
-          //     readOnly: true,
-          //   }, 
-          // ]}
+        // bsColumnDefs={[
+        //   {
+        //     field: "sale_empolyee_code",
+        //     editable: true,
+        //     readOnly: true,
+        //   }, 
+        // ]}
         />
       </Paper>
     </Box>
