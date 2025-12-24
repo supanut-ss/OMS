@@ -2132,12 +2132,14 @@ const BSDataGrid = forwardRef(
     // Get resource hook for multi-language support
     const { getResource, getResources } = useResource();
     const [resourceData, setResourceData] = useState(null);
-    
+
     // Internal lang state that syncs with secureStorage to detect language changes
     // This is needed because bsLocale prop may not update when React Router caches route elements
-    const [internalLang, setInternalLang] = useState(secureStorage.get("lang") || "en");
+    const [internalLang, setInternalLang] = useState(
+      secureStorage.get("lang") || "en"
+    );
     const bsLocaleRef = useRef(bsLocale);
-    
+
     // Keep ref in sync with prop
     useEffect(() => {
       bsLocaleRef.current = bsLocale;
@@ -2152,7 +2154,7 @@ const BSDataGrid = forwardRef(
         });
       }
     }, [bsLocale]);
-    
+
     // Listen for custom language change event (dispatched by AppRoutes when language changes)
     // This is more reliable than polling secureStorage which has caching issues with secure-ls
     useEffect(() => {
@@ -2167,14 +2169,14 @@ const BSDataGrid = forwardRef(
           });
         }
       };
-      
-      window.addEventListener('bsLangChange', handleLangChange);
-      
+
+      window.addEventListener("bsLangChange", handleLangChange);
+
       return () => {
-        window.removeEventListener('bsLangChange', handleLangChange);
+        window.removeEventListener("bsLangChange", handleLangChange);
       };
     }, []);
-    
+
     // Use internalLang instead of bsLocale for more reliable language detection
     const effectiveLang = internalLang || bsLocale || "en";
 
@@ -4855,11 +4857,91 @@ ${errorInfo.originalError}
             }
 
             try {
+              // Format value for SQL query based on type
+              let formattedValue = value;
+
+              bsLog(
+                `🔍 Unique validation - field: ${fieldName}, value:`,
+                value,
+                `type: ${typeof value}`,
+                `isDate: ${value instanceof Date}`
+              );
+
+              // Helper function to format date to YYYY-MM-DD using LOCAL timezone (not UTC)
+              const formatDateToLocal = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+              };
+
+              // Check if value is a Date object or date string
+              if (value instanceof Date) {
+                // Format Date object to local date string for SQL (NOT UTC!)
+                formattedValue = formatDateToLocal(value);
+                bsLog(`🔍 Formatted Date object to: ${formattedValue}`);
+              } else if (typeof value === "string") {
+                // Check if it's a date-like string (contains date patterns)
+                const datePatterns = [
+                  /^\d{4}-\d{2}-\d{2}/, // YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss
+                  /^\d{2}\/\d{2}\/\d{4}/, // DD/MM/YYYY or MM/DD/YYYY
+                ];
+                const isDateString = datePatterns.some((p) => p.test(value));
+
+                bsLog(
+                  `🔍 String value patterns check - isDateString: ${isDateString}`
+                );
+
+                if (isDateString) {
+                  // Try to parse and reformat to local date
+                  const parsedDate = new Date(value);
+                  if (!isNaN(parsedDate.getTime())) {
+                    formattedValue = formatDateToLocal(parsedDate);
+                    bsLog(`🔍 Formatted date string to: ${formattedValue}`);
+                  }
+                }
+              }
+
+              // Also check column metadata for date type
+              const columnMeta = metadata?.columns?.find(
+                (c) => c.columnName === fieldName
+              );
+              const isDateTypeFromMeta = columnMeta?.dataType
+                ?.toLowerCase()
+                ?.includes("date");
+
+              bsLog(
+                `🔍 Column meta - dataType: ${columnMeta?.dataType}, isDateType: ${isDateTypeFromMeta}`
+              );
+
+              // If column is date type but value wasn't reformatted, try to reformat now
+              if (isDateTypeFromMeta && formattedValue === value && value) {
+                const parsedDate = new Date(value);
+                if (!isNaN(parsedDate.getTime())) {
+                  formattedValue = formatDateToLocal(parsedDate);
+                  bsLog(
+                    `🔍 Reformatted based on column meta: ${formattedValue}`
+                  );
+                }
+              }
+
               // Build WHERE condition to check for existing record
-              let whereCondition = `${fieldName} = '${String(value).replace(
-                /'/g,
-                "''"
-              )}' `;
+              // For date fields, use CONVERT to compare date part only
+              const isDateType = isDateTypeFromMeta || formattedValue !== value;
+
+              let whereCondition;
+              if (isDateType) {
+                // Use CAST/CONVERT for date comparison to handle time component
+                whereCondition = `CAST(${fieldName} AS DATE) = '${String(
+                  formattedValue
+                ).replace(/'/g, "''")}'`;
+              } else {
+                whereCondition = `${fieldName} = '${String(
+                  formattedValue
+                ).replace(/'/g, "''")}'`;
+              }
+
+              bsLog(`🔍 WHERE condition: ${whereCondition}`);
 
               // In edit mode, exclude current record from check
               if (mode === "edit" && currentPrimaryKeyValue != null) {
@@ -8667,7 +8749,13 @@ ${errorInfo.originalError}
       // to be directly referenced to avoid stale closure when building dropdown options
       // Also include formatColumnName, resourceData, and effectiveLang to ensure columns regenerate when language changes
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [columnsKey, comboBoxValueOptions, formatColumnName, resourceData, effectiveLang]);
+    }, [
+      columnsKey,
+      comboBoxValueOptions,
+      formatColumnName,
+      resourceData,
+      effectiveLang,
+    ]);
 
     // Generate custom row styles from bsRowConfig
     const customRowStyles = useMemo(() => {
@@ -8731,7 +8819,9 @@ ${errorInfo.originalError}
 
       // Create a stable key from column fields AND headerNames
       // CRITICAL: Include headerName in key so columns rebuild when language changes
-      const columnsFieldKey = safeColumns.map((c) => `${c?.field || ""}:${c?.headerName || ""}`).join(",");
+      const columnsFieldKey = safeColumns
+        .map((c) => `${c?.field || ""}:${c?.headerName || ""}`)
+        .join(",");
 
       // Only recompute if the columns have actually changed
       if (
@@ -9820,6 +9910,65 @@ ${errorInfo.originalError}
           return;
         }
 
+        // Validate unique fields if bsUniqueFields is configured
+        if (bsUniqueFields && bsUniqueFields.length > 0) {
+          const uniqueValidationErrors = [];
+          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+
+          for (let index = 0; index < changes.length; index++) {
+            const row = changes[index];
+            const rowNumber = index + 1;
+            const isNewRow =
+              row.isNew ||
+              (typeof row.id === "string" && row.id.startsWith("new-"));
+            const mode = isNewRow ? "add" : "edit";
+            const currentPrimaryKeyValue = isNewRow ? null : row[primaryKey];
+
+            // Validate unique fields for this row
+            const uniqueResult = await validateUniqueFields(
+              row, // formData
+              row, // rowData (same as formData in bulk mode)
+              mode,
+              currentPrimaryKeyValue
+            );
+
+            if (!uniqueResult.isValid) {
+              uniqueValidationErrors.push({
+                rowNumber,
+                errors: uniqueResult.errors,
+              });
+            }
+          }
+
+          if (uniqueValidationErrors.length > 0) {
+            // Build user-friendly HTML message for unique field errors
+            const uniqueErrorHtml = uniqueValidationErrors
+              .map((item) => {
+                const errorItems = item.errors
+                  .map(
+                    (err) =>
+                      `<li style="margin: 2px 0; color: #666;">${err}</li>`
+                  )
+                  .join("");
+                return `
+                  <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
+                    <strong style="color: #c0392b;">📋 ${
+                      localeText.bsRow || "Row"
+                    } ${item.rowNumber}</strong>
+                    <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
+                  </div>`;
+              })
+              .join("");
+
+            BSAlertSwal2.show("error", "", {
+              title: localeText.bsDuplicateValue || "Duplicate value found",
+              html: `<div style="max-height: 300px; overflow-y: auto;">${uniqueErrorHtml}</div>`,
+              width: 450,
+            });
+            return;
+          }
+        }
+
         bsLog("💾 Saving bulk changes:", changes.length, "rows");
 
         // Save each changed row
@@ -10024,9 +10173,12 @@ ${errorInfo.originalError}
       filterModel,
       localeText.bsRow,
       localeText.bsValidationError,
+      localeText.bsDuplicateValue,
       setRowModesModel,
       parsedCols,
       bsKeyId,
+      bsUniqueFields,
+      validateUniqueFields,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
@@ -10506,7 +10658,9 @@ ${errorInfo.originalError}
                   key={`datagrid-${effectiveTableName}-${effectiveLang}-comboReady-${
                     !comboBoxLoading &&
                     Object.keys(comboBoxValueOptions).length > 0
-                  }-res-${resourceData?.length || 0}-${resourceData?.[0]?.resource_value || ''}`}
+                  }-res-${resourceData?.length || 0}-${
+                    resourceData?.[0]?.resource_value || ""
+                  }`}
                   // Editing - only enable if bulk edit mode is enabled
                   editMode="row"
                   processRowUpdate={
