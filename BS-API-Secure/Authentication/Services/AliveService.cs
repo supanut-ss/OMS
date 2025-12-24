@@ -67,6 +67,10 @@ namespace Authentication.Services
                 cmd.Parameters.AddWithValue("@in_vchRefreshToken", request.refresh_token);
                 cmd.Parameters.AddWithValue("@in_vchDeviceInfo", _clientInfo.GetClientDeviceInfo()); // Optional, can be set to empty string if not used
                 cmd.Parameters.AddWithValue("@in_vchIpAddress", _clientInfo.GetClientIpAddress());
+                cmd.Parameters.AddWithValue("@in_delLatitude", request.location?.latitude ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_delLongitude", request.location?.longitude ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_delAccuracy", request.location?.accuracy ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_bigTimestamp", request.location != null ? DateTimeOffset.FromUnixTimeMilliseconds(request.location.timestamp).DateTime : (object)DBNull.Value);
                 var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
                 {
                     Direction = ParameterDirection.Output

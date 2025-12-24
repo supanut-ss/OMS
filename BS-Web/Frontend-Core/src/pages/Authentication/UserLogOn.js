@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Paper, Button } from "@mui/material";
+import { Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
@@ -13,6 +13,10 @@ const UserLogOnPage = (props) => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
   const gridRef = useRef();
+
+  // State for map dialog
+  const [mapOpen, setMapOpen] = useState(false);
+  const [mapPoint, setMapPoint] = useState(null);
 
   const getLang = async () => {
     setResourceData(await getResources("v_com_user_alive")); // backend group ชื่อ "t_com_user_logon"
@@ -29,7 +33,7 @@ const UserLogOnPage = (props) => {
       BSAlertSwal2.show(
         "error",
         getResource(resourceData, "please_select_user") ||
-          "Please select at least one logged on user to clear."
+        "Please select at least one logged on user to clear."
       );
       return;
     }
@@ -48,6 +52,20 @@ const UserLogOnPage = (props) => {
           BSAlertSwal2.show("error", error.message || "An error occurred.");
         });
     }
+  };
+  const handleViewLogonDetails = (row) => {
+    // Expecting row.latitude, row.longitude, row.accuracy
+    const lat = row?.latitude !== undefined && row.latitude !== null ? parseFloat(row.latitude) : NaN;
+    const lon = row?.longitude !== undefined && row.longitude !== null ? parseFloat(row.longitude) : NaN;
+    const acc = row?.accuracy !== undefined && row.accuracy !== null ? row.accuracy : null;
+
+    if (!isFinite(lat) || !isFinite(lon)) {
+      BSAlertSwal2.show("info", getResource(resourceData, "no_gps_available") || "No GPS coordinates available for this user.");
+      return;
+    }
+
+    setMapPoint({ lat, lon, acc, last_alive_time: row.last_alive_time || null });
+    setMapOpen(true);
   };
 
   return (
@@ -71,14 +89,21 @@ const UserLogOnPage = (props) => {
           bsLocale={locale_id}
           bsPreObj="sec"
           bsObj="v_com_user_alive"
-          bsCols="user_id,status,first_name,last_name,ip_address,refresh_token_expiry,device_info"
+          bsCols="user_id,status,first_name,last_name,ip_address,refresh_token_expiry,device_info,latitude,longitude,accuracy,last_alive_time"
           bsObjBy="status DESC, user_id ASC"
           // bsBulkEdit={false}
           // bsBulkAdd={false}
           // bsBulkDelete={false}
           bsShowDescColumn={false}
           showAdd={false}
-          readOnly={true}
+          readOnly={false}
+          bsVisibleEdit={false}
+          bsVisibleDelete={false}
+          bsAllowDelete={false}
+          bsVisibleView={true}
+          onView={(row) => {
+            handleViewLogonDetails(row);
+          }}
           onCheckBoxSelected={(rows) => {
             setSelectedRows(rows);
           }}
@@ -92,6 +117,40 @@ const UserLogOnPage = (props) => {
           }}
         />
       </Paper>
+      <Dialog
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>GPS Location</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" gutterBottom>
+            {mapPoint ? `Latitude: ${mapPoint.lat.toFixed(6)}, Longitude: ${mapPoint.lon.toFixed(6)}` : ""}
+          </Typography>
+          <Typography variant="body2" gutterBottom>
+            {mapPoint && mapPoint.acc !== null ? `Accuracy: ${mapPoint.acc}` : ""} {mapPoint && mapPoint.last_alive_time !== null ? `| Last Alive Time: ${mapPoint.last_alive_time}` : ""}
+          </Typography>
+          <Box style={{ height: 420, width: "100%" }}>
+            {mapPoint ? (
+              <iframe
+                title="user-gps-map"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${(mapPoint.lon -
+                  0.01)},${(mapPoint.lat - 0.01)},${(mapPoint.lon + 0.01)},${(mapPoint.lat + 0.01)}&layer=mapnik&marker=${mapPoint.lat},${mapPoint.lon}`}
+                style={{ border: 0 }}
+              />
+            ) : (
+              <Typography variant="body2">No GPS data</Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMapOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

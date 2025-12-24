@@ -14,8 +14,9 @@ import {
 } from "@mui/material";
 import CustomTreeView from "../../components/CustomTreeView";
 import Logger from "../../utils/logger";
+import { useResource } from "../../hooks/useResource";
 
-const MenuTreeView = () => {
+const MenuTreeView = (props) => {
   const { getMenuAssign, saveMenuAssign } = useMenuContext();
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");
@@ -27,6 +28,27 @@ const MenuTreeView = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState([]);
+  const [resourceMenuData, setResourceMenuData] = useState([]);
+  const [localeId, setLocaleId] = useState(props.lang || "en");
+
+  const getLang = async () => {
+    try {
+      const res = await getResources("AssignMenu");
+      const resMenu = await getResources("Menu");
+      setResourceData(res);
+      setResourceMenuData(resMenu);
+      setLocaleId(props.lang || "en");
+    } catch (error) {
+      console.error("getResources(AssignMenu) error:", error);
+    }
+  };
+
+  // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน — ตอนนี้จะรีโหลด resource และ rebuild menu tree หากมีการเลือก group+platform อยู่
+  useEffect(() => {
+    getLang();
+  }, [props.lang]);
 
   const toBool = (v) =>
     v === true || v === 1 || String(v).toUpperCase() === "YES";
@@ -42,19 +64,34 @@ const MenuTreeView = () => {
       const groupName = r.menu_group || "Ungrouped";
 
       const perms = [
-        { id: `add-${id}`, label: "Add", isCheck: toBool(r.is_add_view) },
-        { id: `edit-${id}`, label: "Edit", isCheck: toBool(r.is_edit_view) },
+        {
+          id: `add-${id}`,
+          label: getResource(resourceData, "is_add_view") || "Add",
+          isCheck: toBool(r.is_add_view),
+        },
+        {
+          id: `edit-${id}`,
+          label: getResource(resourceData, "is_edit_view") || "Edit",
+          isCheck: toBool(r.is_edit_view),
+        },
         {
           id: `delete-${id}`,
-          label: "Delete",
+          label: getResource(resourceData, "is_delete_view") || "Delete",
           isCheck: toBool(r.is_delete_view),
         },
-        { id: `view-${id}`, label: "View", isCheck: toBool(r.is_view) },
+        {
+          id: `view-${id}`,
+          label: getResource(resourceData, "is_view") || "View",
+          isCheck: toBool(r.is_view),
+        },
       ];
 
       nodes[id] = {
         id,
-        label: r.menu_name ?? `menu-${id}`,
+        label:
+          getResource(resourceMenuData, r.menu_name) ||
+          r.menu_name ||
+          `menu-${id}`,
         isCheck: toBool(r.is_view),
         parentId,
         groupName,
@@ -144,7 +181,7 @@ const MenuTreeView = () => {
       }
     };
     fetchMenuRows();
-  }, [selectedGroup, selectedPlatform]);
+  }, [selectedGroup, selectedPlatform, localeId]);
 
   const updateParentChildren = (parentId, newChildren) => {
     setMenuData((prev) =>
@@ -194,7 +231,6 @@ const MenuTreeView = () => {
   };
 
   const handleSave = async () => {
-    Logger.log(selectedGroup);
     setSaving(true);
     setLoading(true);
     try {
@@ -228,7 +264,7 @@ const MenuTreeView = () => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsMode="single"
-              bsTitle="เลือก Group"
+              bsTitle={getResource(resourceData, "user_group_id")}
               bsPreObj="sec.t_com_"
               bsObj="user_group"
               bsColumes={[
@@ -243,7 +279,7 @@ const MenuTreeView = () => {
               bsObjBy="name asc"
               bsObjWh=""
               bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
-              cacheKey="group"
+              bsCacheKey="group"
               bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedGroup(val?.user_group_id ?? "")}
               required={true}
@@ -252,7 +288,7 @@ const MenuTreeView = () => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsMode="single"
-              bsTitle="เลือก Platform"
+              bsTitle={getResource(resourceData, "platform")}
               bsPreObj="sec.t_com_"
               bsObj="combobox_item"
               bsColumes={[
@@ -272,7 +308,7 @@ const MenuTreeView = () => {
               bsObjBy=""
               bsObjWh="group_name='platform' AND is_active='YES'"
               bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-              cacheKey="platform"
+              bsCacheKey="platform"
               bsLoadOnOpen={true}
               bsOnChange={(val) =>
                 setSelectedPlatform(val?.display_member ?? "")
@@ -297,7 +333,7 @@ const MenuTreeView = () => {
                   Saving...
                 </Box>
               ) : (
-                "Save"
+                getResource(resourceData, "save") || "Save"
               )}
             </Button>
           </Box>
@@ -313,7 +349,10 @@ const MenuTreeView = () => {
               aria-label="menu parents"
             >
               {menuData.map((parent) => (
-                <Tab key={parent.id} label={parent.label} />
+                <Tab
+                  key={parent.id}
+                  label={getResource(resourceMenuData, parent.label)}
+                />
               ))}
             </Tabs>
 
