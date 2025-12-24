@@ -79,7 +79,8 @@ const InvoiceHistory = (props) => {
           bsLocale={locale_id}
           bsPreObj="tmt"
           bsObj="t_tmt_project_invoice"
-          bsCols="project_invoice_id,
+          bsCols="project_header_id,
+          project_invoice_id,
           document_type,
           document_no,
           document_date,
