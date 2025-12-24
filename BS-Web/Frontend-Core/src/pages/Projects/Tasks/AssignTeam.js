@@ -36,7 +36,7 @@ const AssignTeam = (props) => {
       project_task_member_id: { hide: true },
       project_task_id: { hide: true },
       project_header_id: { hide: true },
-      user_id: {
+      task_member_user_id: {
         headerName: "Assignee",
         required: true,
       },
@@ -63,7 +63,7 @@ const AssignTeam = (props) => {
   const comboBoxConfig = useMemo(
     () => [
       {
-        Column: "user_id",
+        Column: "task_member_user_id",
         Display: "first_name,last_name", // รองรับ multiple fields แล้ว
         Value: "user_id",
         Default: "--- Select Member ---",
@@ -104,7 +104,7 @@ const AssignTeam = (props) => {
         bsStoredProcedureSchema="tmt"
         bsStoredProcedureCrud={true}
         bsKeyId="project_task_member_id"
-        bsCols="user_id,manday"
+        bsCols="task_member_user_id,manday"
         bsStoredProcedureParams={storedProcedureParams}
         bsColumnDefs={columnDefs}
         bsComboBox={comboBoxConfig}
