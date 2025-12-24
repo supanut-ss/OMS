@@ -217,7 +217,7 @@ const ProjectClose = (props) => {
           create_date,
           update_by,
           update_date"
-          bsObjBy="document_name asc"
+          bsObjBy="sequence asc"
           bsObjWh={bsObjWh}
           bsShowDescColumn={false}
           bsDefaultFormValues={defaultFormValues}
