@@ -3596,8 +3596,9 @@ const BSDataGrid = forwardRef(
           return "boolean";
         case "datetime":
         case "datetime2":
-        case "date":
           return "dateTime";
+        case "date":
+          return "date";
         case "time":
           return "time";
         default:
