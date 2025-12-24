@@ -169,6 +169,38 @@ export const useDynamicCrud = (tableName) => {
     [tableName]
   );
 
+  // Helper function to convert Date objects to local date strings to prevent timezone issues
+  // When Date objects are serialized to JSON, they get converted to UTC which can shift the date
+  // by -1 day in positive timezone regions (like Thailand UTC+7)
+  const convertDatesToLocalStrings = useCallback((data) => {
+    if (!data || typeof data !== "object") return data;
+
+    const result = { ...data };
+    for (const key in result) {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
+        const value = result[key];
+        if (value instanceof Date && !isNaN(value.getTime())) {
+          // Format as local datetime: YYYY-MM-DDTHH:mm:ss
+          const year = value.getFullYear();
+          const month = String(value.getMonth() + 1).padStart(2, "0");
+          const day = String(value.getDate()).padStart(2, "0");
+          const hours = String(value.getHours()).padStart(2, "0");
+          const minutes = String(value.getMinutes()).padStart(2, "0");
+          const seconds = String(value.getSeconds()).padStart(2, "0");
+
+          // If time is 00:00:00, it's likely a date-only field, use YYYY-MM-DD format
+          if (hours === "00" && minutes === "00" && seconds === "00") {
+            result[key] = `${year}-${month}-${day}`;
+          } else {
+            result[key] = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+          }
+          Logger.log(`📅 Converted Date field "${key}" to local string:`, result[key]);
+        }
+      }
+    }
+    return result;
+  }, []);
+
   // Create new record
   const createRecord = useCallback(
     async (recordData, preObj = null) => {
@@ -228,10 +260,13 @@ export const useDynamicCrud = (tableName) => {
           Logger.log("🔧 Using fallback userId for testing:", userId);
         }
 
+        // Convert Date objects to local strings to prevent timezone issues
+        const processedData = convertDatesToLocalStrings(recordData);
+
         const response = await AxiosMaster.post("/dynamic/create", {
           tableName: table,
           schemaName: schema,
-          data: recordData,
+          data: processedData,
           userId: userId, // Add userId for audit fields
         });
 
@@ -254,7 +289,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, user]
+    [tableName, user, convertDatesToLocalStrings]
   );
 
   // Update existing record
@@ -339,10 +374,13 @@ export const useDynamicCrud = (tableName) => {
           Logger.log("🔧 Using fallback userId for testing:", userId);
         }
 
+        // Convert Date objects to local strings to prevent timezone issues
+        const processedData = convertDatesToLocalStrings(recordData);
+
         const requestPayload = {
           tableName: table,
           schemaName: schema,
-          data: recordData,
+          data: processedData,
           whereConditions: conditions,
           userId: userId, // Add userId for audit fields
         };
@@ -371,7 +409,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, metadata, user]
+    [tableName, metadata, user, convertDatesToLocalStrings]
   );
 
   // Delete record

@@ -80,6 +80,7 @@ const InvoiceHistory = (props) => {
           bsPreObj="tmt"
           bsObj="t_tmt_project_invoice"
           bsCols="project_invoice_id,
+          project_header_id,
           document_type,
           document_no,
           document_date,
@@ -87,7 +88,8 @@ const InvoiceHistory = (props) => {
           amount,
           description,
           is_incentive_requested,
-          is_cancel"
+          is_cancel,
+          project_header_id"
           bsObjBy="document_no asc"
           bsObjWh={bsObjWh}
           bsComboBox={[
