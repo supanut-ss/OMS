@@ -11,6 +11,11 @@ import {
   InputAdornment,
   Divider,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
 } from "@mui/material";
 import {
   Visibility,
@@ -32,7 +37,7 @@ export default function LoginPage({ setLang }) {
   const location = useLocation();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState();
-  const { login, resource, menu, role, version } = useAuth();
+  const { login, resource, menu, role, version, resetLocationPermission, startLocationTracking, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState({
     usersname: "",
@@ -114,6 +119,129 @@ export default function LoginPage({ setLang }) {
   useEffect(() => {
     getVersion();
   }, [getVersion]);
+
+  // Geolocation permission request: auto-prompt once on page load.
+  const [geoPrompted, setGeoPrompted] = useState(false);
+  const [geoErrorMessage, setGeoErrorMessage] = useState("");
+  const [showGeoSettingsDialog, setShowGeoSettingsDialog] = useState(false);
+
+  const openBrowserLocationSettings = () => {
+    try {
+      const ua = navigator.userAgent || "";
+      // Many browsers block opening internal chrome:// or edge:// pages from regular pages.
+      // Instead, open a help article with step-by-step instructions as the safe fallback.
+      if (ua.includes("Firefox")) {
+        // Firefox sometimes allows about: preferences to open; try it, fallback to support page
+        const win = window.open("about:preferences#privacy");
+        if (!win) {
+          window.open("https://support.mozilla.org/th/kb/firefox-and-location");
+        }
+        return;
+      }
+
+      // For Chrome / Edge / Chromium-based browsers, opening chrome:// or edge:// is blocked.
+      // So open a trusted help article that describes how to change Location permission instead.
+      window.open("https://support.google.com/chrome/answer/142065?hl=th");
+    } catch (e) {
+      // ignore failures and show manual instructions in dialog
+      console.error("Failed to open browser settings page:", e);
+      window.open("https://support.google.com/chrome/answer/142065?hl=th");
+    }
+  };
+
+  const requestGeolocationPermission = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!("geolocation" in navigator)) {
+      setGeoErrorMessage("เบราว์เซอร์นี้ไม่รองรับ Geolocation");
+      return;
+    }
+    // Avoid re-prompting automatically more than once
+    if (geoPrompted) return;
+    setGeoPrompted(true);
+
+    const handleError = (err) => {
+      // Permission denied / blocked
+      if (err && err.code === 1) {
+        setGeoErrorMessage("ตำแหน่งถูกบล็อกเพื่อปกป้องความเป็นส่วนตัว — หากต้องการให้ทำงานให้เปิดการอนุญาตในตั้งค่าเบราว์เซอร์");
+        // Show dialog to instruct user how to re-enable permissions
+        setShowGeoSettingsDialog(true);
+      } else if (err && err.message && err.message.includes("Only secure origins")) {
+        setGeoErrorMessage("Geolocation ต้องการ origin ที่ปลอดภัย (HTTPS) หรือ localhost");
+      } else {
+        setGeoErrorMessage("ไม่สามารถเข้าถึงตำแหน่ง: " + (err?.message || "ไม่ทราบสาเหตุ"));
+      }
+    };
+
+    // Use Permissions API when available to check state first
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions
+          .query({ name: "geolocation" })
+          .then((res) => {
+            if (res.state === "granted" || res.state === "prompt") {
+              navigator.geolocation.getCurrentPosition(
+                () => {
+                  setGeoErrorMessage("");
+                  // Reset AliveContext permission flag so it can start sending again
+                  try {
+                    if (typeof resetLocationPermission === "function") resetLocationPermission();
+                    if (isAuthenticated && typeof startLocationTracking === "function") {
+                      startLocationTracking();
+                    }
+                  } catch (e) {
+                    console.error("Error while reenabling location tracking:", e);
+                  }
+                },
+                handleError
+              );
+            } else if (res.state === "denied") {
+              setGeoErrorMessage("ตำแหน่งถูกบล็อกเพื่อปกป้องความเป็นส่วนตัว — หากต้องการให้ทำงานให้เปิดการอนุญาตในตั้งค่าเบราว์เซอร์");
+              setShowGeoSettingsDialog(true);
+            }
+          })
+          .catch(() => {
+            // Fallback: try to request position which should trigger prompt
+            navigator.geolocation.getCurrentPosition(
+              () => {
+                setGeoErrorMessage("");
+                try {
+                  if (typeof resetLocationPermission === "function") resetLocationPermission();
+                  if (isAuthenticated && typeof startLocationTracking === "function") {
+                    startLocationTracking();
+                  }
+                } catch (e) {
+                  console.error("Error while reenabling location tracking:", e);
+                }
+              },
+              handleError
+            );
+          });
+      } else {
+        // No Permissions API: request directly to trigger prompt
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            setGeoErrorMessage("");
+            try {
+              if (typeof resetLocationPermission === "function") resetLocationPermission();
+              if (isAuthenticated && typeof startLocationTracking === "function") {
+                startLocationTracking();
+              }
+            } catch (e) {
+              console.error("Error while reenabling location tracking:", e);
+            }
+          },
+          handleError
+        );
+      }
+    } catch (err) {
+      handleError(err);
+    }
+  }, [geoPrompted]);
+
+  useEffect(() => {
+    requestGeolocationPermission();
+  }, [requestGeolocationPermission]);
+
   return (<>
     {loading && <LinearProgress />}
     <Box
@@ -185,6 +313,32 @@ export default function LoginPage({ setLang }) {
               {error}
             </Alert>
           )}
+
+          {/* Geolocation permission warning / retry or settings */}
+          {/* {geoErrorMessage && (
+            <Box sx={{ mb: 3, display: "flex", gap: 1, alignItems: "center" }}>
+              <Alert severity="warning" sx={{ flex: 1, borderRadius: 2 }}>
+                {geoErrorMessage}
+              </Alert>
+
+              {showGeoSettingsDialog ? (
+                <Button variant="outlined" onClick={() => openBrowserLocationSettings()}>
+                  เปิดการตั้งค่าเบราว์เซอร์
+                </Button>
+              ) : (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setGeoPrompted(false);
+                    setGeoErrorMessage("");
+                    requestGeolocationPermission();
+                  }}
+                >
+                  ขอสิทธิ์อีกครั้ง
+                </Button>
+              )}
+            </Box>
+          )} */}
 
           {/* Login Form */}
           <Box component="form" onSubmit={handleSubmit}>
@@ -291,6 +445,33 @@ export default function LoginPage({ setLang }) {
               </Link>
             </Box> */}
           </Box>
+
+          {/* Dialog: Guide to re-enable Location permission */}
+          {/* <Dialog open={showGeoSettingsDialog} onClose={() => setShowGeoSettingsDialog(false)}>
+            <DialogTitle>การอนุญาตตำแหน่งถูกปฏิเสธ</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                เบราว์เซอร์ของคุณปฏิเสธการเข้าถึงตำแหน่งสำหรับไซต์นี้ จึงไม่สามารถแสดง popup ขอสิทธิ์ได้อีกจนกว่าจะเปลี่ยนการตั้งค่าของไซต์
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                วิธีแก้ไข: ไปที่การตั้งค่าของเบราว์เซอร์ → การตั้งค่าไซต์ (Site settings) → ตำแหน่ง (Location) → ตั้งค่าสิทธิ์ให้เป็น "อนุญาต" สำหรับเว็บไซต์นี้ แล้วกลับมาหน้าแอปและรีเฟรช
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                หมายเหตุ: เบราว์เซอร์บางตัวไม่อนุญาตให้หน้าเว็บเปิดหน้าการตั้งค่า (เช่น chrome:// หรือ edge://) โดยตรงจากสคริปต์ — หากปุ่มด้านล่างไม่สามารถเปิดหน้าการตั้งค่าได้ ให้คลิกปุ่มเพื่อดูคำแนะนำการตั้งค่าแบบขั้นตอนหรือทำตามคำแนะนำด้วยตนเอง
+              </Typography>
+              <Typography variant="body2">
+                ถ้าคุณกำลังพัฒนาในเครื่อง ให้เปิดผ่าน <strong>localhost</strong> หรือใช้ <em>HTTPS</em> (หรือใช้ ngrok) เพื่อให้เบราว์เซอร์อนุญาตใช้งาน Geolocation
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => { setShowGeoSettingsDialog(false); }}>
+                ปิด
+              </Button>
+              <Button variant="contained" onClick={() => openBrowserLocationSettings()}>
+                เปิดการตั้งค่าเบราว์เซอร์
+              </Button>
+            </DialogActions>
+          </Dialog> */}
 
           {/* Demo Info */}
           <Box

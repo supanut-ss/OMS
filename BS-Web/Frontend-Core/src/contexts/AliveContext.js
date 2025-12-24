@@ -13,15 +13,29 @@ export function useAlive({
   // Cache for last known location to avoid calling geolocation every ping
   const lastLocationRef = useRef(null);
   const lastGetPositionAttemptRef = useRef(0);
+  // If the user denies geolocation permission, we set this flag to avoid further attempts
+  const permissionDeniedRef = useRef(false);
   //const MIN_GET_POSITION_INTERVAL_MS = 30 * 1000; // only try getCurrentPosition once every 30s at most
 
   // Helper: get current position once (promise). Returns Position or null
   const getCurrentPositionOnce = (opts = { enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 }) =>
     new Promise((resolve) => {
       if (!navigator?.geolocation) return resolve(null);
+      // If the user already denied permission, skip trying
+      if (permissionDeniedRef.current) return resolve(null);
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve(pos),
-        () => resolve(null),
+        (err) => {
+          // If permission denied, mark it so we don't keep prompting
+          try {
+            if (err && err.code === 1) {
+              permissionDeniedRef.current = true;
+            }
+          } catch (e) {
+            // ignore
+          }
+          resolve(null);
+        },
         opts
       );
     });
@@ -90,6 +104,10 @@ export function useAlive({
       return { status: false, message: "Geolocation not supported" };
     }
 
+    if (permissionDeniedRef.current) {
+      return { status: false, message: "Permission denied" };
+    }
+
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(async (position) => {
         const payload = {
@@ -130,6 +148,11 @@ export function useAlive({
     if (!navigator?.geolocation) {
       return { status: false, message: "Geolocation not supported" };
     }
+
+    if (permissionDeniedRef.current) {
+      return { status: false, message: "Permission denied" };
+    }
+
     if (locationWatchIdRef.current != null) {
       return { status: false, message: "Tracking already started" };
     }
@@ -163,9 +186,15 @@ export function useAlive({
     },
       (err) => {
         console.error("Location watch error:", err);
+        // If permission denied, mark and do not restart
+        if (err && err.code === 1) {
+          permissionDeniedRef.current = true;
+          stopLocationTracking();
+          return;
+        }
         stopLocationTracking();
         if (SecureStorage.get("refresh_token") != null) {
-          // Stop tracking if no refresh_token (logged out)
+          // Restart tracking for transient errors only
           startLocationTracking();
         }
       },
@@ -190,6 +219,13 @@ export function useAlive({
 
   const getLastLocation = () => lastLocationRef.current || null;
 
+  // Reset the internal permission-denied flag so the context will try again
+  // (call this after you re-request permission successfully)
+  const resetLocationPermission = () => {
+    permissionDeniedRef.current = false;
+    return { status: true };
+  };
+
   return {
     lastPingAt,
     sendPing,
@@ -198,5 +234,6 @@ export function useAlive({
     startLocationTracking,
     stopLocationTracking,
     getLastLocation,
+    resetLocationPermission,
   };
 }

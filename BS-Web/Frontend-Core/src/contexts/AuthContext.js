@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { sendLocation, startLocationTracking, stopLocationTracking } = useAlive(
+  const { sendLocation, startLocationTracking, stopLocationTracking, resetLocationPermission } = useAlive(
     {
       endpoint: "/alive/status",
       intervalMs: 120000, // 2 นาที
@@ -234,7 +234,11 @@ export const AuthProvider = ({ children }) => {
     role,
     switchLang,
     loading,
-    version
+    version,
+    // Location controls
+    startLocationTracking,
+    stopLocationTracking,
+    resetLocationPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
