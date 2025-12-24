@@ -2623,7 +2623,8 @@ const BSDataGrid = forwardRef(
       const loadResourceData = async () => {
         if (effectiveTableName || bsStoredProcedure) {
           const resourceGroup = bsStoredProcedure || effectiveTableName;
-          const res = await getResources(resourceGroup);
+          // Pass bsLocale to getResources to ensure correct language is used immediately
+          const res = await getResources(resourceGroup, bsLocale);
           setResourceData((prev) => {
             try {
               if (JSON.stringify(prev) === JSON.stringify(res)) return prev;
@@ -3453,10 +3454,20 @@ const BSDataGrid = forwardRef(
         // Try to get resource first
         if (resourceData) {
           const resourceText = getResource(resourceData, columnName);
+          // Debug: Log resource lookup
+          Logger.log(
+            `🌐 formatColumnName: columnName="${columnName}", resourceText="${resourceText}", resourceDataLength=${
+              resourceData?.length || 0
+            }`
+          );
           // If resource found and different from original, use it
           if (resourceText && resourceText !== columnName) {
             return resourceText;
           }
+        } else {
+          Logger.log(
+            `🌐 formatColumnName: No resourceData available for "${columnName}"`
+          );
         }
 
         // Fallback: Format column name (underscore to space + title case)
@@ -7264,6 +7275,17 @@ ${errorInfo.originalError}
     const columnsRef = useRef([]);
     const columnsKeyRef = useRef("");
 
+    // CRITICAL: Reset column cache when locale or resource data changes
+    // This ensures columns are rebuilt with localized headers when language changes
+    useEffect(() => {
+      bsLog("🌐 Locale or resourceData changed, resetting column cache", {
+        bsLocale,
+        resourceDataLength: resourceData?.length || 0,
+      });
+      columnsKeyRef.current = "";
+      columnsRef.current = [];
+    }, [bsLocale, resourceData]);
+
     // CRITICAL FIX: Create truly stable metadata key using ref-based approach
     // This prevents metadata object reference changes from triggering column regeneration
     const metadataColumnsKeyRef = useRef("");
@@ -7312,8 +7334,21 @@ ${errorInfo.originalError}
       const rowModesModelKey = Object.entries(rowModesModel)
         .map(([id, model]) => `${id}:${model?.mode}`)
         .join("|");
+      // Include bsLocale to regenerate columns when language changes
+      // Also create a simple hash from resourceData to detect content changes
+      const localeKey = bsLocale || "en";
+      // Create a hash from all resourceData to detect any content changes
+      // Note: getResources returns { resource_name, resource_value, resource_description }
+      const resourceContentKey =
+        resourceData && Array.isArray(resourceData)
+          ? resourceData.length +
+            "-" +
+            resourceData
+              .map((r) => `${r.resource_name || ""}:${r.resource_value || ""}`)
+              .join("|")
+          : "";
 
-      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}::${rowModesModelKey}`;
+      return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}::${rowModesModelKey}::${localeKey}::${resourceContentKey}`;
     }, [
       stableMetadataKey,
       bsStoredProcedure,
@@ -7330,6 +7365,8 @@ ${errorInfo.originalError}
       comboBoxValueOptions,
       comboBoxLookupData,
       rowModesModel,
+      bsLocale,
+      resourceData,
     ]);
 
     // Build columns from metadata - ONLY regenerate when columnsKey changes
@@ -7374,7 +7411,11 @@ ${errorInfo.originalError}
         ),
       });
 
+      // CRITICAL: Never use cache - always rebuild columns since dependencies changed
+      // The useMemo itself handles caching via its dependencies array
+      // This removes the ref-based cache which was causing stale columns when language changes
       if (
+        false && // Disabled ref-based cache - let useMemo handle it
         columnsKeyRef.current === columnsKey &&
         columnsRef.current.length > 0 &&
         !shouldForceRebuild
@@ -7997,7 +8038,12 @@ ${errorInfo.originalError}
 
             const baseColumn = {
               field: col.columnName,
-              headerName: col.displayName || formatColumnName(col.columnName),
+              // Always use formatColumnName first for localization
+              // formatColumnName will use resourceData for translations, or return formatted column name
+              headerName:
+                formatColumnName(col.columnName) ||
+                col.displayName ||
+                col.columnName,
               // Removed width - let DataGrid auto-calculate from content
               type:
                 comboConfig || isActiveField(columnName)
@@ -8572,8 +8618,9 @@ ${errorInfo.originalError}
       }
       // CRITICAL: columnsKey encapsulates most dependencies, but we need comboBoxValueOptions
       // to be directly referenced to avoid stale closure when building dropdown options
+      // Also include formatColumnName to ensure columns regenerate when language changes
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [columnsKey, comboBoxValueOptions]);
+    }, [columnsKey, comboBoxValueOptions, formatColumnName]);
 
     // Generate custom row styles from bsRowConfig
     const customRowStyles = useMemo(() => {
@@ -9793,6 +9840,28 @@ ${errorInfo.originalError}
             });
           }
 
+          // For Stored Procedure CRUD: filter to only include columns specified in bsCols
+          // This prevents sending display-only columns (like fullname) that aren't SP parameters
+          if (
+            bsStoredProcedure &&
+            bsStoredProcedureCrud &&
+            parsedCols &&
+            parsedCols.length > 0
+          ) {
+            // Create a set of allowed columns from bsCols + primary key + bsKeyId
+            const allowedColumns = new Set(parsedCols);
+            // Always include primary key
+            if (primaryKey) allowedColumns.add(primaryKey);
+            if (bsKeyId) allowedColumns.add(bsKeyId);
+
+            Object.keys(cleanData).forEach((key) => {
+              if (!allowedColumns.has(key)) {
+                bsLog(`🔍 SP CRUD: Removing non-bsCols field: ${key}`);
+                delete cleanData[key];
+              }
+            });
+          }
+
           if (isNewRow) {
             // New row - use createRecord or SP INSERT
             bsLog("📝 Bulk save NEW row:", {
@@ -9908,6 +9977,8 @@ ${errorInfo.originalError}
       localeText.bsRow,
       localeText.bsValidationError,
       setRowModesModel,
+      parsedCols,
+      bsKeyId,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
@@ -10381,9 +10452,9 @@ ${errorInfo.originalError}
                     (columns.length === 0 && loading)
                   }
                   // Ensure we don't render until we have valid data structure
-                  // Use stable key that forces re-mount when combobox data loads
-                  // This ensures columns are rebuilt with correct valueOptions
-                  key={`datagrid-${effectiveTableName}-comboReady-${
+                  // Use stable key that forces re-mount when combobox data loads or language changes
+                  // This ensures columns are rebuilt with correct valueOptions and localized headers
+                  key={`datagrid-${effectiveTableName}-${bsLocale}-comboReady-${
                     !comboBoxLoading &&
                     Object.keys(comboBoxValueOptions).length > 0
                   }`}

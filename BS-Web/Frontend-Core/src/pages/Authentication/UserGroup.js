@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Paper } from "@mui/material";
+import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 
 const UserGroupPage = (props) => {
-  const { getResource, getResources } = useResource();
+  const { getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
-  const [locale_id, setLocale_id] = useState(props.lang || "en");
-  const [selectedRows, setSelectedRows] = useState([]);
 
   // ฟังก์ชันโหลด resource ของ group "UserGroup"
   const getLang = async () => {
@@ -21,7 +19,6 @@ const UserGroupPage = (props) => {
 
   // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน
   useEffect(() => {
-    setLocale_id(props.lang || "en");
     getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
@@ -30,7 +27,7 @@ const UserGroupPage = (props) => {
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
-          bsLocale={locale_id}
+          bsLocale={props.lang}
           bsPreObj="sec"
           bsObj="t_com_user_group"
           bsCols="app_id,name,description,is_active,create_by,create_date,update_by,update_date"
