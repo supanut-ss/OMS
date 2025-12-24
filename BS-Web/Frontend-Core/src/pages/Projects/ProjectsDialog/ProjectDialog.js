@@ -103,9 +103,9 @@ const ProjectsDialog = (props) => {
   };
   const handleSave = async () => {
     if (!validate()) return;
-
+    let body = { ...formData, master_project_id: formData.master_project_id !== "" ? formData.master_project_id : null }
     try {
-      await AxiosMaster.post("/projects", formData)
+      await AxiosMaster.post("/projects", body)
         .then((response) => {
           console.log(response);
           if (response.data.message_code === 0) {

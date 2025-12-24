@@ -29,6 +29,8 @@ const FormProjectMa = (props) => {
                     updateField("master_project_id", e?.code || "");
                     updateField("project_name", e?.project_name || "");
                     updateField("application_type", e?.application_type || "");
+                    updateField("customer_id", e?.customer_id || "");
+                    updateField("sale_id", e?.sale_id || "");
                 }}
                 bsMode="single"
                 bsTitle={getResource(resourceData, "parent_project_id")}
@@ -53,10 +55,12 @@ const FormProjectMa = (props) => {
                         filter: true,
                         key: false,
                     },
-                    {field: "application_type", display: false, filter: false, key: false}
+                    { field: "application_type", display: false, filter: false, key: false },
+                    { field: "customer_id", display: false, filter: false, key: false },
+                    { field: "sale_id", display: false, filter: false, key: false }
                 ]}
                 bsObjBy="project_no asc"
-                bsObjWh={"is_active='YES' AND project_type='PROJECT' AND isnull(master_project_id,'') = '' AND project_header_id <> " + (formData.project_header_id || 0)}  
+                bsObjWh={"is_active='YES' AND project_type='PROJECT' AND isnull(master_project_id,'') = '' AND project_header_id <> " + (formData.project_header_id || 0)}
                 variant="standard"
                 error={!!errors["master_project_id"]}
                 helperText={errors["master_project_id"] || ""}
