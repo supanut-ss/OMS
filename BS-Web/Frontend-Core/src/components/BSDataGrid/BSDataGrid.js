@@ -9936,9 +9936,9 @@ ${errorInfo.originalError}
             const currentPrimaryKeyValue = isNewRow ? null : row[primaryKey];
 
             // Validate unique fields for this row
+            // validateUniqueFields(data, mode, currentPrimaryKeyValue)
             const uniqueResult = await validateUniqueFields(
-              row, // formData
-              row, // rowData (same as formData in bulk mode)
+              row, // formData/data
               mode,
               currentPrimaryKeyValue
             );
@@ -11041,7 +11041,11 @@ ${errorInfo.originalError}
         {/* Built-in CRUD Dialog */}
         <Dialog
           open={dialogOpen}
-          onClose={handleDialogClose}
+          onClose={(event, reason) => {
+            // Prevent closing dialog by clicking backdrop
+            if (reason === "backdropClick") return;
+            handleDialogClose();
+          }}
           maxWidth={
             bsChildGrids && bsChildGrids.length > 0 ? "lg" : dialogMaxWidth
           }
@@ -11263,7 +11267,11 @@ ${errorInfo.originalError}
         {/* Bulk Add Dialog */}
         <Dialog
           open={bulkAddDialogOpen}
-          onClose={handleBulkDialogClose}
+          onClose={(event, reason) => {
+            // Prevent closing dialog by clicking backdrop
+            if (reason === "backdropClick") return;
+            handleBulkDialogClose();
+          }}
           maxWidth="lg"
           fullWidth
           PaperProps={{
