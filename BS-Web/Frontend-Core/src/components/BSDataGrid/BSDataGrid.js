@@ -9936,9 +9936,9 @@ ${errorInfo.originalError}
             const currentPrimaryKeyValue = isNewRow ? null : row[primaryKey];
 
             // Validate unique fields for this row
+            // validateUniqueFields(data, mode, currentPrimaryKeyValue)
             const uniqueResult = await validateUniqueFields(
-              row, // formData
-              row, // rowData (same as formData in bulk mode)
+              row, // formData/data
               mode,
               currentPrimaryKeyValue
             );
