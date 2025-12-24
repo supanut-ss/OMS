@@ -14,7 +14,6 @@ const UserGroupPage = (props) => {
     try {
       const res = await getResources("UserGroup"); // ตั้งชื่อ group ตามที่ backend กำหนด
       setResourceData(res);
-      console.log("Loaded User resources:", res);
     } catch (error) {
       console.error("getResources(UserGroup) error:", error);
     }
@@ -30,7 +29,6 @@ const UserGroupPage = (props) => {
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
-
         <BSDataGrid
           bsLocale={locale_id}
           bsPreObj="sec"
