@@ -80,6 +80,7 @@ const InvoiceHistory = (props) => {
           bsPreObj="tmt"
           bsObj="t_tmt_project_invoice"
           bsCols="project_invoice_id,
+          project_header_id,
           document_type,
           document_no,
           document_date,
