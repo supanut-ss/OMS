@@ -43,7 +43,7 @@ const MenuTreeView = (props) => {
     }
   };
 
-  // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน
+  // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน — ตอนนี้จะรีโหลด resource และ rebuild menu tree หากมีการเลือก group+platform อยู่
   useEffect(() => {
     getLang();
   }, [props.lang]);
@@ -277,7 +277,7 @@ const MenuTreeView = (props) => {
               bsObjBy="name asc"
               bsObjWh=""
               bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
-              cacheKey="group"
+              bsCacheKey="group"
               bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedGroup(val?.user_group_id ?? "")}
               required={true}
@@ -306,7 +306,7 @@ const MenuTreeView = (props) => {
               bsObjBy=""
               bsObjWh="group_name='platform' AND is_active='YES'"
               bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-              cacheKey="platform"
+              bsCacheKey="platform"
               bsLoadOnOpen={true}
               bsOnChange={(val) =>
                 setSelectedPlatform(val?.display_member ?? "")
