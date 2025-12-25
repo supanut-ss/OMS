@@ -125,6 +125,118 @@ if (!licenseStatus.hasLicenseKey) {
 }
 
 /**
+ * Format date value for SQL Server compatibility
+ * Handles Date objects, ISO strings with problematic milliseconds, dayjs objects, etc.
+ * Returns date in YYYY-MM-DD format for date-only fields, or YYYY-MM-DDTHH:mm:ss for datetime
+ *
+ * @param {any} value - Date value to format
+ * @param {boolean} includeTime - Whether to include time portion (default: false)
+ * @returns {string|null} - Formatted date string or null
+ */
+const formatDateForSql = (value, includeTime = false) => {
+  if (value == null || value === "") return null;
+
+  let date;
+
+  // Handle dayjs objects
+  if (value && typeof value === "object" && value.$isDayjsObject) {
+    date = value.toDate();
+  }
+  // Handle Date objects
+  else if (value instanceof Date) {
+    date = value;
+  }
+  // Handle string values
+  else if (typeof value === "string") {
+    // Check if it looks like a date string
+    if (
+      value.match(/^\d{4}-\d{2}-\d{2}/) ||
+      value.match(/^\d{2}\/\d{2}\/\d{4}/)
+    ) {
+      date = new Date(value);
+    } else {
+      return value; // Return as-is if not a date string
+    }
+  } else {
+    return value; // Return as-is for non-date values
+  }
+
+  // Check if date is valid
+  if (!date || isNaN(date.getTime())) return value;
+
+  // Format to local date components
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  if (includeTime) {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  }
+
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * Sanitize form data before sending to API
+ * Converts date values to SQL Server compatible format
+ *
+ * @param {object} data - Form data to sanitize
+ * @param {array} columns - Metadata columns to determine date fields
+ * @returns {object} - Sanitized data
+ */
+const sanitizeDataForApi = (data, columns = []) => {
+  if (!data || typeof data !== "object") return data;
+
+  const sanitized = { ...data };
+
+  // Get date column names from metadata
+  const dateColumns = new Set(
+    columns
+      .filter((col) => {
+        const dataType = col.dataType?.toLowerCase() || "";
+        return (
+          dataType.includes("date") ||
+          dataType.includes("datetime") ||
+          dataType.includes("datetime2") ||
+          dataType.includes("smalldatetime")
+        );
+      })
+      .map((col) => col.columnName)
+  );
+
+  Object.keys(sanitized).forEach((key) => {
+    const value = sanitized[key];
+
+    // Check if this is a date column by metadata
+    const isDateColumn = dateColumns.has(key);
+
+    // Check if value looks like a date (dayjs object, Date object, or date-like string)
+    const isDayjsObject =
+      value && typeof value === "object" && value.$isDayjsObject;
+    const isDateObject = value instanceof Date;
+    const isDateString =
+      typeof value === "string" &&
+      (value.match(/^\d{4}-\d{2}-\d{2}/) ||
+        value.match(/^\d{2}\/\d{2}\/\d{4}/));
+
+    if (isDateColumn || isDayjsObject || isDateObject || isDateString) {
+      // Determine if datetime or date-only based on metadata
+      const columnMeta = columns.find((c) => c.columnName === key);
+      const dataType = columnMeta?.dataType?.toLowerCase() || "";
+      const includeTime =
+        dataType.includes("datetime") || dataType.includes("smalldatetime");
+
+      sanitized[key] = formatDateForSql(value, includeTime);
+    }
+  });
+
+  return sanitized;
+};
+
+/**
  * Generate Avatar props from a name string
  * Creates background color based on name hash and extracts initials
  * Reference: https://mui.com/material-ui/react-avatar/
@@ -5095,7 +5207,11 @@ ${errorInfo.originalError}
 
         if (dialogMode === "add") {
           // For add mode, prepare form data with auto-generated values
-          const saveData = { ...formData };
+          // Sanitize date values for SQL Server compatibility
+          const saveData = sanitizeDataForApi(
+            { ...formData },
+            metadata?.columns || []
+          );
 
           // Add auto-generated values for fields not shown in form
           if (metadata?.columns) {
@@ -5225,6 +5341,12 @@ ${errorInfo.originalError}
           const id = selectedRow?.[primaryKey];
           if (!id) throw new Error("No primary key for update");
 
+          // Sanitize date values for SQL Server compatibility
+          const sanitizedFormData = sanitizeDataForApi(
+            formData,
+            metadata?.columns || []
+          );
+
           ///
           if (bsStoredProcedure) {
             // Helper function to convert snake_case to PascalCase for SP parameters
@@ -5240,9 +5362,9 @@ ${errorInfo.originalError}
 
             // Convert formData keys from snake_case to PascalCase for SP parameters
             const spFormData = {};
-            Object.keys(formData).forEach((key) => {
+            Object.keys(sanitizedFormData).forEach((key) => {
               const pascalKey = toPascalCase(key);
-              spFormData[pascalKey] = formData[key];
+              spFormData[pascalKey] = sanitizedFormData[key];
             });
 
             // Convert primary key to PascalCase
@@ -5312,7 +5434,7 @@ ${errorInfo.originalError}
               result.message
             );
           } else {
-            await updateRecord(id, formData, bsPreObj);
+            await updateRecord(id, sanitizedFormData, bsPreObj);
           }
         }
 
@@ -9999,7 +10121,11 @@ ${errorInfo.originalError}
             row.isNew || (typeof id === "string" && id.startsWith("new-"));
 
           // Remove invalid id fields from data before sending to backend
-          const cleanData = { ...row };
+          // Sanitize date values for SQL Server compatibility
+          const cleanData = sanitizeDataForApi(
+            { ...row },
+            metadata?.columns || []
+          );
 
           // Remove isNew flag before saving
           delete cleanData.isNew;
