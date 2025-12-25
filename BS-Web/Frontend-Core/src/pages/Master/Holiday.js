@@ -34,6 +34,7 @@ const HolidayPage = (props) => {
           bsObjBy="create_date desc"
           bsDialogSize="Large"
           bsDialogColumns={3}
+          bsCols="holiday_date,holiday_name,description,is_active,create_by,create_date,update_by,update_date"
           bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           bsBulkMode={{
             enable: true, // Enable all bulk operations
