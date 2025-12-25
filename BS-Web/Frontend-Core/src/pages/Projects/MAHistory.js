@@ -66,7 +66,7 @@ const MAHistory = (props) => {
           actual_project_start,
           actual_project_end,
           ma_status,related_project_header_id"
-          bsObjBy="project_no asc"
+          bsObjBy="ma_no asc"
           bsObjWh={bsObjWh}
           bsShowDescColumn={false}
           bsDefaultFormValues={defaultFormValues}
@@ -87,6 +87,10 @@ const MAHistory = (props) => {
               field: "actual_project_end",
               type: "date",
               dateFormat: "dd/MM/yyyy",
+            },
+            {
+              field: "year",
+              renderCell: (params) => params.value,
             },
           ]}
         />
