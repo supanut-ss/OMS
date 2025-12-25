@@ -6,6 +6,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers-pro/AdapterDayjs";
 // import Logger from "../utils/logger";
 import {
   DateRangePicker,
+  DatePicker,
   DateTimePicker,
   DateTimeRangePicker,
   SingleInputDateTimeRangeField,

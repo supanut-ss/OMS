@@ -26,6 +26,34 @@ import dayjs from "dayjs";
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayDate = () => dayjs().format("YYYY-MM-DD");
 
+// Helper function to format date for SQL (prevents milliseconds issue)
+const formatDateForSql = (dateValue) => {
+  if (!dateValue) return null;
+
+  // Handle dayjs object
+  if (dayjs.isDayjs(dateValue)) {
+    return dateValue.format("YYYY-MM-DD");
+  }
+
+  // Handle Date object
+  if (dateValue instanceof Date) {
+    const year = dateValue.getFullYear();
+    const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+    const day = String(dateValue.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  // Handle string - try to parse and format
+  if (typeof dateValue === "string") {
+    const parsed = dayjs(dateValue);
+    if (parsed.isValid()) {
+      return parsed.format("YYYY-MM-DD");
+    }
+  }
+
+  return dateValue;
+};
+
 // Default form data for tracking
 const defaultTrackingData = {
   project_task_tracking_id: null,
@@ -113,7 +141,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       ProjectTaskId: projectTaskId,
       IssueType: formData.issue_type,
       ActualWork: formData.actual_work,
-      ActualDate: formData.actual_date,
+      ActualDate: formatDateForSql(formData.actual_date),
       ProcessUpdate: formData.process_update,
       AssigneeUserId: assigneeUserId,
     };
