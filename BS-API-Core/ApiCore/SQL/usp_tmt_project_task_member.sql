@@ -11,6 +11,7 @@ ALTER PROCEDURE [tmt].[usp_tmt_project_task_member]
     @Page INT = 1,
     @PageSize INT = 25,
     @OrderBy NVARCHAR(500) = 'project_task_member_id ASC',
+    @SortModel NVARCHAR(MAX) = NULL,
     @FilterModel NVARCHAR(MAX) = NULL,
     @QuickFilter NVARCHAR(255) = NULL,
 

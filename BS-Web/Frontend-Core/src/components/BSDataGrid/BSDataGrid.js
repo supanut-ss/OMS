@@ -6940,7 +6940,30 @@ ${errorInfo.originalError}
               });
             }
 
-            const savedRecord = await createRecord(cleanData, bsPreObj);
+            // For SP CRUD: filter to only include columns specified in bsCols
+            if (
+              bsStoredProcedure &&
+              bsStoredProcedureCrud &&
+              parsedCols &&
+              parsedCols.length > 0
+            ) {
+              const allowedColumns = new Set(parsedCols);
+              if (bsKeyId) allowedColumns.add(bsKeyId);
+              Object.keys(cleanData).forEach((key) => {
+                if (!allowedColumns.has(key)) {
+                  delete cleanData[key];
+                }
+              });
+            }
+
+            let savedRecord;
+            // Use stored procedure CRUD if configured
+            if (bsStoredProcedure && bsStoredProcedureCrud) {
+              const result = await executeSpCrud("INSERT", cleanData);
+              savedRecord = result.data?.[0] || result;
+            } else {
+              savedRecord = await createRecord(cleanData, bsPreObj);
+            }
 
             // Merge original row data with saved record to preserve all fields
             // savedRecord only contains the fields that were sent to the API
@@ -6956,6 +6979,24 @@ ${errorInfo.originalError}
 
             // Refresh data to get the latest from server
             await loadData(true);
+
+            // After successful save, check if we should exit bulk edit mode
+            // Since loadData refreshes all rows from server, new rows are replaced with real data
+            // Check unsavedChangesRef for any remaining unsaved edits
+            const hasUnsavedEdits =
+              Object.keys(unsavedChangesRef.current).length > 0;
+
+            if (!hasUnsavedEdits) {
+              // Use setTimeout to ensure state updates are processed
+              setTimeout(() => {
+                setBulkEditMode(false);
+                setHasUnsavedChanges(false);
+                setRowModesModel({});
+                bsLog(
+                  "📝 Bulk edit mode disabled - no remaining changes after save"
+                );
+              }, 50);
+            }
 
             bsLog("✅ New record created successfully:", savedRecord);
             return updatedRow;
@@ -7051,7 +7092,32 @@ ${errorInfo.originalError}
             });
           }
 
-          const savedRecord = await updateRecord(id, cleanData, bsPreObj);
+          // For SP CRUD: filter to only include columns specified in bsCols
+          if (
+            bsStoredProcedure &&
+            bsStoredProcedureCrud &&
+            parsedCols &&
+            parsedCols.length > 0
+          ) {
+            const allowedColumns = new Set(parsedCols);
+            const primaryKey = getEffectivePrimaryKey(newRow);
+            if (primaryKey) allowedColumns.add(primaryKey);
+            if (bsKeyId) allowedColumns.add(bsKeyId);
+            Object.keys(cleanData).forEach((key) => {
+              if (!allowedColumns.has(key)) {
+                delete cleanData[key];
+              }
+            });
+          }
+
+          let savedRecord;
+          // Use stored procedure CRUD if configured
+          if (bsStoredProcedure && bsStoredProcedureCrud) {
+            const result = await executeSpCrud("UPDATE", cleanData, id);
+            savedRecord = result.data?.[0] || result;
+          } else {
+            savedRecord = await updateRecord(id, cleanData, bsPreObj);
+          }
 
           // Merge original row data with saved record to preserve all fields
           // savedRecord only contains the fields that were sent to the API
@@ -7100,6 +7166,11 @@ ${errorInfo.originalError}
         rows,
         formatSqlErrorMessage,
         showErrorWithDetails,
+        bsStoredProcedure,
+        bsStoredProcedureCrud,
+        executeSpCrud,
+        parsedCols,
+        bsKeyId,
       ]
     );
 
