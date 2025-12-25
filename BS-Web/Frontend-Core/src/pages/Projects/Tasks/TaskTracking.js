@@ -109,7 +109,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   // Load resources on mount
   useEffect(() => {
     const loadResources = async () => {
-      const data = await getResources("TaskTracking", lang);
+      const data = await getResources("usp_tmt_project_task_tracking", lang);
       setResourceData(data);
     };
     loadResources();
@@ -222,7 +222,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       {/* Task Tracking Grid */}
       <Paper elevation={2} sx={{ p: 2 }}>
         <Typography variant="subtitle2" color="primary" gutterBottom>
-          {getResource(resourceData, "Header") || "Task Tracking"}
+          {getResource(resourceData, "task_tracking") || "Task Tracking"}
         </Typography>
         <BSDataGrid
           ref={trackingGridRef}
@@ -300,13 +300,11 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     item: {
                       field: "assignee_user_id",
                       headerName:
-                        getResource(resourceData, "assignee_user_id") ||
-                        "Assignee",
+                        getResource(resourceData, "assignee") || "Assignee",
                       component: "BSAutoComplete",
                       bsMode: "single",
                       bsTitle:
-                        getResource(resourceData, "assignee_user_id") ||
-                        "Assignee",
+                        getResource(resourceData, "assignee") || "Assignee",
                       bsPreObj: "tmt.",
                       bsObj: "t_tmt_project_task_member",
                       bsColumes: [
