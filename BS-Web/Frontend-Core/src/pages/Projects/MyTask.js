@@ -135,15 +135,25 @@ const InfoField = ({ label, value, children, fullWidth = false, theme }) => (
 );
 
 // ============ Task Detail Dialog ============
-const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
+const TaskDetailDialog = ({
+  open,
+  onClose,
+  taskData,
+  lang,
+  resourceData,
+  getResource,
+}) => {
   const theme = useTheme();
+
+  // Helper function to get resource with fallback
+  const r = (key, fallback) => getResource(resourceData, key) || fallback;
 
   return (
     <>
       <Dialog open={open} onClose={onClose} fullScreen>
         <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <AssignmentIcon />
-          Task Details
+          {r("Header", "Task Details")}
           {taskData?.task_status && (
             <Chip
               label={taskData.task_status}
@@ -176,7 +186,7 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
               }}
             >
               <Typography variant="subtitle1" color="primary" fontWeight="bold">
-                Task Information
+                {r("task_information", "Task Information")}
               </Typography>
             </AccordionSummary>
             <AccordionDetails
@@ -190,28 +200,28 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
             >
               <Grid container spacing={1.2} rowSpacing={0.5}>
                 <InfoField
-                  label="Project No"
+                  label={r("project_no", "Project No")}
                   value={taskData?.project_no}
                   theme={theme}
                 />
                 <InfoField
-                  label="Project Name"
+                  label={r("project_name", "Project Name")}
                   value={taskData?.project_name}
                   theme={theme}
                 />
                 <InfoField
-                  label="Project Type"
+                  label={r("project_type", "Project Type")}
                   value={taskData?.project_type}
                   theme={theme}
                 />
                 <InfoField
-                  label="Task Name"
+                  label={r("task_name", "Task Name")}
                   value={taskData?.task_name}
                   theme={theme}
                 />
 
                 {/* Priority with icon */}
-                <InfoField label="Priority" theme={theme}>
+                <InfoField label={r("priority", "Priority")} theme={theme}>
                   <PriorityDisplay
                     priority={taskData?.priority}
                     theme={theme}
@@ -219,31 +229,39 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
                 </InfoField>
 
                 <InfoField
-                  label="Issue Type"
+                  label={r("issue_type", "Issue Type")}
                   value={taskData?.issue_type}
                   theme={theme}
                 />
                 <InfoField
-                  label="Due Date"
+                  label={r("due_date", "Due Date")}
                   value={`${formatDate(taskData?.start_date)} - ${formatDate(
                     taskData?.end_date
                   )}`}
                   theme={theme}
                 />
                 <InfoField
-                  label="Manday (Hour)"
+                  label={r("manday", "Manday (Hour)")}
                   value={taskData?.manday}
                   theme={theme}
                 />
 
                 {/* Full width fields */}
-                <InfoField label="Task Description" fullWidth theme={theme}>
+                <InfoField
+                  label={r("task_description", "Task Description")}
+                  fullWidth
+                  theme={theme}
+                >
                   <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                     {taskData?.task_description || "-"}
                   </Typography>
                 </InfoField>
 
-                <InfoField label="Remark" fullWidth theme={theme}>
+                <InfoField
+                  label={r("remark", "Remark")}
+                  fullWidth
+                  theme={theme}
+                >
                   <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                     {taskData?.remark || "-"}
                   </Typography>
@@ -262,7 +280,7 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
 
         <DialogActions>
           <BSCloseOutlinedButton onClick={onClose} variant="outlined">
-            Close
+            {r("close", "Close")}
           </BSCloseOutlinedButton>
         </DialogActions>
       </Dialog>
@@ -470,7 +488,7 @@ const MyTaskPage = (props) => {
   // Load resources on mount
   useEffect(() => {
     const loadResources = async () => {
-      const data = await getResources("Menu", lang);
+      const data = await getResources("usp_tmt_my_task", lang);
       setResourceData(data);
     };
     loadResources();
@@ -525,7 +543,7 @@ const MyTaskPage = (props) => {
           color: t.palette.mode === "dark" ? "transparent" : "inherit",
         })}
       >
-        {getResource(resourceData, "My Task") || "My Tasks"}
+        {getResource(resourceData, "my_tasks") || "My Tasks"}
       </Typography>
 
       {sections.map((section) => (
@@ -548,6 +566,8 @@ const MyTaskPage = (props) => {
           onClose={handleCloseTaskDialog}
           taskData={selectedTask}
           lang={lang}
+          resourceData={resourceData}
+          getResource={getResource}
         />
       )}
     </Paper>
