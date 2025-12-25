@@ -32,7 +32,7 @@ const BSDatepicker = ({
   // } else {
   //   Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
   // }
-  return isRange ? (
+  return isRange ===true? (
     <FormControl fullWidth error={error} sx={{ mb: 2 }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         {isDateOnly ? (
@@ -78,7 +78,7 @@ const BSDatepicker = ({
   ) : (
     <FormControl fullWidth error={error}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        {isDateOnly ? (
+        {isDateOnly === true ? (
           <DatePicker
             label={label}
             value={value}
