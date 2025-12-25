@@ -22,7 +22,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
           minRows={item.minRows || 1}
           error={!!errors[item.field]}
           helperText={errors[item.field] || ""}
-          disabled={item.disabled}
+          disabled={item.readOnly || item.disabled}
         />
       );
 
@@ -70,11 +70,11 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
             onChange={(val) => {
               updateField(
                 item.start,
-                val[0] ? val[0].format(item.format || "DD/MM/YYYY") : null
+                val[0] ? val[0].format("YYYY-MM-DD") : null
               );
               updateField(
                 item.end,
-                val[1] ? val[1].format(item.format || "DD/MM/YYYY") : null
+                val[1] ? val[1].format("YYYY-MM-DD") : null
               );
             }}
             readOnly={item.readOnly || false}
@@ -94,7 +94,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
             isDateOnly={item.isDateOnly !== false}
             format={item.format || "DD/MM/YYYY"}
             onChange={(val) => {
-              updateField(item.field, val ? val.format(item.format || "DD/MM/YYYY") : null);
+              updateField(item.field, val ? val : null);
             }}
             error={!!errors[item.field]}
             helperText={errors[item.field] || ""}

@@ -178,7 +178,6 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "incident_no"),
                     component: "BSTextField",
                     variant: "filled",
-                    readOnly: true,
                     value: formData.incident_no || ""
                 },
                 formData,
@@ -194,7 +193,6 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "response_time"),
                     component: "BSTextField",
                     variant: "filled",
-                    readOnly: true,
                     value: formData.response_time || ""
                 },
                 formData,
@@ -210,8 +208,43 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "resolve_duration"),
                     component: "BSTextField",
                     variant: "filled",
-                    readOnly: true,
                     value: formData.resolve_duration || ""
+                },
+                formData,
+                errors,
+                updateField
+            }
+            )}
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}></Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            {renderInput({
+                item: {
+                    field: "plan_response_date",
+                    headerName: getResource(resourceData, "plan_response_date"),
+                    component: "BSDatePicker",
+                    isRange: false,
+                    isDateOnly: true,
+                    format: "DD/MM/YYYY HH:mm:ss",
+                    readOnly: true,
+                },
+                formData,
+                errors,
+                updateField
+            }
+            )}
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            {renderInput({
+                item: {
+                    field: "plan_resolve_duration_date",
+                    headerName: getResource(resourceData, "plan_resolve_duration_date"),
+                    component: "BSDatePicker",
+                    isRange: false,
+                    isDateOnly: true,
+                    format: "DD/MM/YYYY HH:mm:ss",
+                    readOnly: true,
                 },
                 formData,
                 errors,
@@ -260,40 +293,6 @@ const TaskMa = (props) => {
                     isRange: false,
                     isDateOnly: true,
                     format: "DD/MM/YYYY",
-                },
-                formData,
-                errors,
-                updateField
-            }
-            )}
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            {renderInput({
-                item: {
-                    field: "plan_response_date",
-                    headerName: getResource(resourceData, "plan_response_date"),
-                    component: "BSDatePicker",
-                    isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY HH:mm:ss",
-                    readOnly: true,
-                },
-                formData,
-                errors,
-                updateField
-            }
-            )}
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            {renderInput({
-                item: {
-                    field: "plan_resolve_duration_date",
-                    headerName: getResource(resourceData, "plan_resolve_duration_date"),
-                    component: "BSDatePicker",
-                    isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY HH:mm:ss",
-                    readOnly: true,
                 },
                 formData,
                 errors,

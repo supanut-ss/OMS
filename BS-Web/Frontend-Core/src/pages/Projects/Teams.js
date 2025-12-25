@@ -118,7 +118,7 @@ const ProjectsTeams = (props) => {
           onDelete={handleDelete}
           // bsAllowAdd={true}
           // bsAllowEdit={true}
-          //  bsAllowDelete={true}
+          //  bsAllowDelete={true}  
           bsFilterMode="client"
           bsStoredProcedureParams={storedProcedureParams}
         />
