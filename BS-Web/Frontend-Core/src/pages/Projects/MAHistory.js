@@ -38,7 +38,11 @@ const MAHistory = (props) => {
       "";
 
     if (id && props.onChangeProjectHeaderID) {
-      props.onChangeProjectHeaderID({ id: id, newtab: true, path: "projects/ma" });
+      props.onChangeProjectHeaderID({
+        id: id,
+        newtab: true,
+        path: "projects/ma",
+      });
     }
   };
   useEffect(() => {
@@ -73,6 +77,18 @@ const MAHistory = (props) => {
           bsVisibleEdit={false}
           bsVisibleDelete={false}
           onView={onViewChick}
+          bsColumnDefs={[
+            {
+              field: "actual_project_start",
+              type: "date",
+              dateFormat: "dd/MM/yyyy",
+            },
+            {
+              field: "actual_project_end",
+              type: "date",
+              dateFormat: "dd/MM/yyyy",
+            },
+          ]}
         />
       </Paper>
     </>
