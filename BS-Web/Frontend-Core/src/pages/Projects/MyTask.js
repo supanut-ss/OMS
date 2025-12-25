@@ -15,7 +15,8 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useResource } from "../../hooks/useResource";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -88,7 +89,10 @@ const getPriorityColor = (priority, theme) => {
 // ============ Priority Icon Component ============
 const PriorityDisplay = ({ priority, showLabel = true, theme }) => (
   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-    <FlagIcon fontSize="small" sx={{ color: getPriorityColor(priority, theme) }} />
+    <FlagIcon
+      fontSize="small"
+      sx={{ color: getPriorityColor(priority, theme) }}
+    />
     {showLabel && (
       <Typography variant="body2" fontWeight="medium">
         {priority || "-"}
@@ -133,7 +137,7 @@ const InfoField = ({ label, value, children, fullWidth = false, theme }) => (
 // ============ Task Detail Dialog ============
 const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
   const theme = useTheme();
-  
+
   return (
     <>
       <Dialog open={open} onClose={onClose} fullScreen>
@@ -164,15 +168,32 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
           >
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
-              sx={{ backgroundColor: theme.palette.custom?.accordionContent || theme.palette.grey[100], borderRadius: 2 }}
+              sx={{
+                backgroundColor:
+                  theme.palette.custom?.accordionContent ||
+                  theme.palette.grey[100],
+                borderRadius: 2,
+              }}
             >
               <Typography variant="subtitle1" color="primary" fontWeight="bold">
                 Task Information
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ backgroundColor: theme.palette.custom?.accordionContent || theme.palette.grey[100], pt: 0, pb: 1 }}>
+            <AccordionDetails
+              sx={{
+                backgroundColor:
+                  theme.palette.custom?.accordionContent ||
+                  theme.palette.grey[100],
+                pt: 0,
+                pb: 1,
+              }}
+            >
               <Grid container spacing={1.2} rowSpacing={0.5}>
-                <InfoField label="Project No" value={taskData?.project_no} theme={theme} />
+                <InfoField
+                  label="Project No"
+                  value={taskData?.project_no}
+                  theme={theme}
+                />
                 <InfoField
                   label="Project Name"
                   value={taskData?.project_name}
@@ -183,14 +204,25 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
                   value={taskData?.project_type}
                   theme={theme}
                 />
-                <InfoField label="Task Name" value={taskData?.task_name} theme={theme} />
+                <InfoField
+                  label="Task Name"
+                  value={taskData?.task_name}
+                  theme={theme}
+                />
 
                 {/* Priority with icon */}
                 <InfoField label="Priority" theme={theme}>
-                  <PriorityDisplay priority={taskData?.priority} theme={theme} />
+                  <PriorityDisplay
+                    priority={taskData?.priority}
+                    theme={theme}
+                  />
                 </InfoField>
 
-                <InfoField label="Issue Type" value={taskData?.issue_type} theme={theme} />
+                <InfoField
+                  label="Issue Type"
+                  value={taskData?.issue_type}
+                  theme={theme}
+                />
                 <InfoField
                   label="Due Date"
                   value={`${formatDate(taskData?.start_date)} - ${formatDate(
@@ -198,7 +230,11 @@ const TaskDetailDialog = ({ open, onClose, taskData, lang }) => {
                   )}`}
                   theme={theme}
                 />
-                <InfoField label="Manday (Hour)" value={taskData?.manday} theme={theme} />
+                <InfoField
+                  label="Manday (Hour)"
+                  value={taskData?.manday}
+                  theme={theme}
+                />
 
                 {/* Full width fields */}
                 <InfoField label="Task Description" fullWidth theme={theme}>
@@ -321,28 +357,30 @@ const TaskStatusSection = ({
               {
                 field: "assignee_list",
                 type: "stringAvatar",
-                headerName: "Assignee",
+                //headerName: "Assignee",
                 showTooltip: true,
               },
               {
                 field: "start_date",
-                headerName: "Start Date",
+                //headerName: "Start Date",
                 type: "date",
                 dateFormat: "dd/MM/yyyy",
               },
               {
                 field: "end_date",
-                headerName: "Due Date",
+                //headerName: "Due Date",
                 type: "date",
                 dateFormat: "dd/MM/yyyy",
               },
               {
                 field: "priority",
-                headerName: "Priority",
+                //headerName: "Priority",
                 width: 120,
                 renderCell: (params) => (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <FlagIcon sx={{ color: getPriorityColor(params.value, theme) }} />
+                    <FlagIcon
+                      sx={{ color: getPriorityColor(params.value, theme) }}
+                    />
                     <span>{params.value || "-"}</span>
                   </Box>
                 ),
@@ -357,29 +395,35 @@ const TaskStatusSection = ({
 
 // ============ Section Configurations with Glassmorphism ============
 const getSectionConfigs = (theme) => {
-  const isDark = theme.palette.mode === 'dark';
+  const isDark = theme.palette.mode === "dark";
   const glass = theme.palette.custom?.glass;
-  
+
   return [
     {
       status: TASK_STATUS.OPEN,
       icon: <AssignmentIcon sx={{ color: isDark ? "#00D4FF" : "#1976d2" }} />,
-      color: isDark 
-        ? theme.palette.custom?.sectionOpen || "rgba(0, 212, 255, 0.12)" 
+      color: isDark
+        ? theme.palette.custom?.sectionOpen || "rgba(0, 212, 255, 0.12)"
         : "#e3f2fd",
     },
     {
       status: TASK_STATUS.IN_PROCESS,
-      icon: <AssignmentLateIcon sx={{ color: isDark ? "#FFD93D" : "#ed6c02" }} />,
-      color: isDark 
-        ? theme.palette.custom?.sectionInProcess || "rgba(255, 217, 61, 0.12)" 
+      icon: (
+        <AssignmentLateIcon sx={{ color: isDark ? "#FFD93D" : "#ed6c02" }} />
+      ),
+      color: isDark
+        ? theme.palette.custom?.sectionInProcess || "rgba(255, 217, 61, 0.12)"
         : "#FFD8B3FF",
     },
     {
       status: TASK_STATUS.CLOSE,
-      icon: <AssignmentTurnedInIcon sx={{ color: isDark ? "#6BCB77" : "#2e7d32" }} />,
-      color: isDark 
-        ? theme.palette.custom?.sectionClose || "rgba(107, 203, 119, 0.12)" 
+      icon: (
+        <AssignmentTurnedInIcon
+          sx={{ color: isDark ? "#6BCB77" : "#2e7d32" }}
+        />
+      ),
+      color: isDark
+        ? theme.palette.custom?.sectionClose || "rgba(107, 203, 119, 0.12)"
         : "#D5F5E1FF",
     },
   ];
@@ -389,6 +433,8 @@ const getSectionConfigs = (theme) => {
 const MyTaskPage = (props) => {
   const { lang = "th" } = props;
   const theme = useTheme();
+  const { getResource, getResources } = useResource();
+  const [resourceData, setResourceData] = useState([]);
 
   // State for expanded sections
   const [expandedSections, setExpandedSections] = useState({
@@ -421,50 +467,65 @@ const MyTaskPage = (props) => {
     setSelectedTask(null);
   };
 
+  // Load resources on mount
+  useEffect(() => {
+    const loadResources = async () => {
+      const data = await getResources("Menu", lang);
+      setResourceData(data);
+    };
+    loadResources();
+  }, [lang]);
+
   // Get theme-aware section configurations
   const sections = getSectionConfigs(theme);
 
   return (
     <Paper
       elevation={0}
-      sx={(t) => ({ 
-        p: 3, 
+      sx={(t) => ({
+        p: 3,
         // Glassmorphism background
-        backgroundColor: t.palette.mode === 'dark' 
-          ? t.palette.custom?.glass?.background || 'rgba(20, 20, 25, 0.6)' 
-          : t.palette.custom?.paperBackground || t.palette.background.paper,
+        backgroundColor:
+          t.palette.mode === "dark"
+            ? t.palette.custom?.glass?.background || "rgba(20, 20, 25, 0.6)"
+            : t.palette.custom?.paperBackground || t.palette.background.paper,
         // Backdrop blur for glass effect
-        backdropFilter: t.palette.mode === 'dark' ? 'blur(20px)' : 'none',
+        backdropFilter: t.palette.mode === "dark" ? "blur(20px)" : "none",
         // Subtle glass border
-        border: t.palette.mode === 'dark' 
-          ? `1px solid ${t.palette.custom?.glass?.border || 'rgba(255, 255, 255, 0.08)'}` 
-          : 'none',
+        border:
+          t.palette.mode === "dark"
+            ? `1px solid ${
+                t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
+              }`
+            : "none",
         // Rounded corners
         borderRadius: 3,
         // Glass shadow
-        boxShadow: t.palette.mode === 'dark' 
-          ? t.palette.custom?.glass?.shadow || '0 8px 32px rgba(0, 0, 0, 0.4)'
-          : undefined,
+        boxShadow:
+          t.palette.mode === "dark"
+            ? t.palette.custom?.glass?.shadow || "0 8px 32px rgba(0, 0, 0, 0.4)"
+            : undefined,
         // Smooth transition
-        transition: 'all 0.3s ease',
+        transition: "all 0.3s ease",
       })}
     >
-      <Typography 
-        variant="h5" 
-        fontWeight="bold" 
-        gutterBottom 
-        sx={(t) => ({ 
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        gutterBottom
+        sx={(t) => ({
           mb: 3,
           // Gradient text in dark mode
-          background: t.palette.mode === 'dark' 
-            ? 'linear-gradient(135deg, #00D4FF 0%, #A855F7 100%)' 
-            : 'inherit',
-          backgroundClip: t.palette.mode === 'dark' ? 'text' : 'unset',
-          WebkitBackgroundClip: t.palette.mode === 'dark' ? 'text' : 'unset',
-          color: t.palette.mode === 'dark' ? 'transparent' : 'inherit',
+          background:
+            t.palette.mode === "dark"
+              ? "linear-gradient(135deg, #00D4FF 0%, #A855F7 100%)"
+              : "inherit",
+          backgroundClip: t.palette.mode === "dark" ? "text" : "unset",
+          WebkitBackgroundClip: t.palette.mode === "dark" ? "text" : "unset",
+          color: t.palette.mode === "dark" ? "transparent" : "inherit",
         })}
       >
-        My Tasks
+        {getResource(resourceData, "My Task") || "My Tasks"}
       </Typography>
 
       {sections.map((section) => (
