@@ -191,7 +191,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
         {/* Tabs */}
         {formData.project_task_id && (
           <Box>
-            <Tabs value={tap} onChange={(e, v) => setTap(v)} sx={{ mt: 3 }}>
+            <Tabs label={getResource(resourceData, "task")} value={tap} onChange={(e, v) => setTap(v)} sx={{ mt: 3 }}>
               <Tab label={getResource(resourceData, "assign_team")} />
               <Tab label={getResource(resourceData, "task_tracking")} />
               {projectHeader.record_type === "MA" && (

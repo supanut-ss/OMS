@@ -2,6 +2,7 @@ import { Grid } from "@mui/material";
 import BSAutoComplete from "../../../components/BSAutoComplete";
 import BSSwitchField from "../../../components/BSSwitch";
 import { read } from "xlsx";
+import { DisabledByDefault } from "@mui/icons-material";
 
 const TaskMa = (props) => {
     const { formData, projectHeader, resourceData, resourceDataProject, getResource, errors, updateField, renderInput } = props;
@@ -228,6 +229,7 @@ const TaskMa = (props) => {
                     isDateOnly: false,
                     format: "DD/MM/YYYY HH:mm:ss",
                     readOnly: true,
+                    disabled: true,
                 },
                 formData,
                 errors,
@@ -245,6 +247,7 @@ const TaskMa = (props) => {
                     isDateOnly: false,
                     format: "DD/MM/YYYY HH:mm:ss",
                     readOnly: true,
+                    disabled: true,
                 },
                 formData,
                 errors,

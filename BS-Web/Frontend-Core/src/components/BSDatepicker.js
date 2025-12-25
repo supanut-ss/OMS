@@ -84,9 +84,13 @@ const BSDatepicker = ({
             value={value}
             onChange={onChange}
             format={format}
+            readOnly={props.readOnly}
+            disabled={props.disabled}
             slotProps={{
               textField: {
                 required,
+                readOnly: props.readOnly,
+                disabled: props.disabled,
                 error: error,
                 helperText: helperText,
                 fullWidth: true,
@@ -113,11 +117,15 @@ const BSDatepicker = ({
             value={value}
             onChange={onChange}
             format={format}
+            readOnly={props.readOnly}
+            disabled={props.disabled}
             slotProps={{
               textField: {
                 required,
+                readOnly: props.readOnly,
                 error: error,
                 helperText: helperText,
+                disabled: props.disabled,
                 fullWidth: true,
                 sx: {
                   ...(borderLeftRadius && {
