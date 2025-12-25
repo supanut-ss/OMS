@@ -34,6 +34,7 @@ const SalePage = (props) => {
           bsObjBy="create_date desc"
           bsDialogSize="Large"
           bsDialogColumns={3}
+          bsCols="sale_empolyee_code,sale_name,email,is_active,create_by,create_date,update_by,update_date"
           bsUniqueFields={["sale_empolyee_code"]}
           bsBulkMode={{
             enable: true, // Enable all bulk operations

@@ -38,6 +38,18 @@ const ProjectsHistory = (props) => {
           bsKeyId="project_header_id"
           bsFilterMode="client"
           onView={handleViewTask}
+          bsColumnDefs={[
+            {
+              field: "actual_project_start",
+              type: "date",
+              dateFormat: "dd/MM/yyyy",
+            },
+            {
+              field: "actual_project_end",
+              type: "date",
+              dateFormat: "dd/MM/yyyy",
+            },
+          ]}
         />
       </Paper>
     </Box>
