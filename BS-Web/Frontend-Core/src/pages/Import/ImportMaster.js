@@ -49,6 +49,12 @@ const ImportMaster = (props) => {
               field: "is_active",
               defaultValue: "YES",
             },
+            ,
+            {
+              field: "create_date",
+              type: "date",
+              dateFormat: "dd/MM/yyyy",
+            },
           ]}
         />
       </Paper>
