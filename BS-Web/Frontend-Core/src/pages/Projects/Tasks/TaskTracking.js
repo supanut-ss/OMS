@@ -247,12 +247,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             {
               field: "assignee_list",
               type: "stringAvatar",
-              headerName: "Assignee",
+              // headerName: "Assignee",
               showTooltip: true,
             },
             {
               field: "actual_date",
-              headerName: "Actual Date",
+              // headerName: "Actual Date",
               renderCell: (params) => {
                 if (!params.value) return "-";
                 try {
