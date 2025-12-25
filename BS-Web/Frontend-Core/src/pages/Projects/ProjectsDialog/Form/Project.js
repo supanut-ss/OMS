@@ -362,46 +362,48 @@ const FormProject = (props) => {
                 updateField,
             })}
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            {renderInput({
-                item: {
-                    field: "revise_project_date",
-                    headerName: getResource(
-                        resourceData,
-                        "revise_project_date"
-                    ),
-                    component: "BSDatePicker",
-                    isRange: true,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY",
-                    start: "revise_project_start",
-                    end: "revise_project_end",
-                },
-                formData,
-                errors,
-                updateField,
-            })}
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            {renderInput({
-                item: {
-                    field: "actual_project_date",
-                    headerName: getResource(
-                        resourceData,
-                        "actual_project_date"
-                    ),
-                    component: "BSDatePicker",
-                    isRange: true,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY",
-                    start: "actual_project_start",
-                    end: "actual_project_end",
-                },
-                formData,
-                errors,
-                updateField,
-            })}
-        </Grid>
+        {formData.project_header_id && (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                {renderInput({
+                    item: {
+                        field: "revise_project_date",
+                        headerName: getResource(
+                            resourceData,
+                            "revise_project_date"
+                        ),
+                        component: "BSDatePicker",
+                        isRange: true,
+                        isDateOnly: true,
+                        format: "DD/MM/YYYY",
+                        start: "revise_project_start",
+                        end: "revise_project_end",
+                    },
+                    formData,
+                    errors,
+                    updateField,
+                })}
+            </Grid>)}
+        {formData.project_header_id && (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                {renderInput({
+                    item: {
+                        field: "actual_project_date",
+                        headerName: getResource(
+                            resourceData,
+                            "actual_project_date"
+                        ),
+                        component: "BSDatePicker",
+                        isRange: true,
+                        isDateOnly: true,
+                        format: "DD/MM/YYYY",
+                        start: "actual_project_start",
+                        end: "actual_project_end",
+                    },
+                    formData,
+                    errors,
+                    updateField,
+                })}
+            </Grid>)}
         <Grid size={12}>
             {renderInput({
                 item: {
