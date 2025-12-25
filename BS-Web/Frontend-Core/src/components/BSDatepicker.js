@@ -78,33 +78,65 @@ const BSDatepicker = ({
   ) : (
     <FormControl fullWidth error={error}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <DateTimePicker
-          label={label}
-          value={value}
-          onChange={onChange}
-          format={format}
-          slotProps={{
-            textField: {
-              required,
-              error: error,
-              helperText: helperText,
-              fullWidth: true,
-              sx: {
-                ...(borderLeftRadius && {
-                  "& .MuiPickersInputBase-root": {
-                    borderTopLeftRadius: borderLeftRadius,
-                    borderBottomLeftRadius: borderLeftRadius,
-                    "& .MuiOutlinedInput-root": {
-                      "& fieldset": {
-                        borderColor: error ? "red" : undefined,
+        {isDateOnly ? (
+          <DatePicker
+            label={label}
+            value={value}
+            onChange={onChange}
+            format={format}
+            slotProps={{
+              textField: {
+                required,
+                error: error,
+                helperText: helperText,
+                fullWidth: true,
+                sx: {
+                  ...(borderLeftRadius && {
+                    "& .MuiPickersInputBase-root": {
+                      borderTopLeftRadius: borderLeftRadius,
+                      borderBottomLeftRadius: borderLeftRadius,
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": {
+                          borderColor: error ? "red" : undefined,
+                        },
                       },
                     },
-                  },
-                }),
+                  }),
+                },
               },
-            },
-          }}
-        />
+            }}
+            {...props}
+          />
+        ) : (
+          <DateTimePicker
+            label={label}
+            value={value}
+            onChange={onChange}
+            format={format}
+            slotProps={{
+              textField: {
+                required,
+                error: error,
+                helperText: helperText,
+                fullWidth: true,
+                sx: {
+                  ...(borderLeftRadius && {
+                    "& .MuiPickersInputBase-root": {
+                      borderTopLeftRadius: borderLeftRadius,
+                      borderBottomLeftRadius: borderLeftRadius,
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": {
+                          borderColor: error ? "red" : undefined,
+                        },
+                      },
+                    },
+                  }),
+                },
+              },
+            }}
+            {...props}
+          />
+        )}
       </LocalizationProvider>
     </FormControl>
   );
