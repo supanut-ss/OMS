@@ -325,10 +325,10 @@ export default function MainLayout({ lang, onChangeLang }) {
         confirm_password: validateConfirmPassword.status
           ? validateConfirmPassword
           : {
-              status: true,
-              message:
-                lang === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match.",
-            },
+            status: true,
+            message:
+              lang === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match.",
+          },
       });
     }
     if (
@@ -407,7 +407,7 @@ export default function MainLayout({ lang, onChangeLang }) {
         title: "Logout Success",
         confirmButtonText: "OK",
       }).then((result) => {
-        navigate("/login");
+        window.location.href = Config.BASE_URL + "/login";
       });
     } else {
       BSAlertSwal2.fire({
@@ -466,13 +466,13 @@ export default function MainLayout({ lang, onChangeLang }) {
           }),
           ...(open &&
             !isMobile && {
-              marginLeft: drawerWidth,
-              width: `calc(100% - ${drawerWidth}px)`,
-              transition: theme.transitions.create(["width", "margin"], {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
+            marginLeft: drawerWidth,
+            width: `calc(100% - ${drawerWidth}px)`,
+            transition: theme.transitions.create(["width", "margin"], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
             }),
+          }),
           borderRadius: "unset",
         }}
       >

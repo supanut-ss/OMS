@@ -125,7 +125,7 @@ const ProjectsTeams = (props) => {
       </Paper>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth={"lg"}>
         <DialogTitle>
-          {formData.project_task_member_id ? "Edit" : "Add"} {props.title}
+          {formData.project_member_id ?  getResource(resourceData, "Edit_From") : getResource(resourceData, "Add_From")} {props.title}
         </DialogTitle>
         <IconButton
           aria-label="close"
@@ -145,7 +145,7 @@ const ProjectsTeams = (props) => {
               {renderInput({
                 item: {
                   field: "user_id",
-                  headerName: "user_id",
+                  headerName: getResource(resourceData, "user_id"),
                   component: "BSAutoComplete",
                   bsMode: "single",
                   bsTitle: "user_id",
@@ -169,7 +169,7 @@ const ProjectsTeams = (props) => {
               {renderInput({
                 item: {
                   field: "role",
-                  headerName: "role",
+                  headerName: getResource(resourceData, "role"),
                   component: "BSAutoComplete",
                   bsMode: "single",
                   bsTitle: "role",
@@ -193,7 +193,7 @@ const ProjectsTeams = (props) => {
               {renderInput({
                 item: {
                   field: "description",
-                  headerName: "description",
+                  headerName: getResource(resourceData, "description"),
                   component: "BSTextField",
                   variant: "standard",
                 },
@@ -211,14 +211,14 @@ const ProjectsTeams = (props) => {
             variant="outlined"
             className="btn-close-outlined"
           >
-            Close
+            {getResource(resourceData, "Close")}
           </BSCloseOutlinedButton>
           <BSSaveOutlinedButton
             onClick={handleSave}
             autoFocus
             variant="outlined"
           >
-            Save
+            {getResource(resourceData, "Save")}
           </BSSaveOutlinedButton>
         </DialogActions>
       </Dialog>
