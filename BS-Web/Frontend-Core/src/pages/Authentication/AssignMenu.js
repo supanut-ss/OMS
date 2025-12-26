@@ -280,7 +280,7 @@ const MenuTreeView = (props) => {
               bsObjBy="name asc"
               bsObjWh=""
               bsValue={selectedGroup} // ค่าเริ่มต้น = code ของ option
-              bsCacheKey="group"
+              //bsCacheKey="group"
               bsLoadOnOpen={true}
               bsOnChange={(val) => setSelectedGroup(val?.user_group_id ?? "")}
               required={true}
@@ -309,7 +309,7 @@ const MenuTreeView = (props) => {
               bsObjBy=""
               bsObjWh="group_name='platform' AND is_active='YES'"
               bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
-              bsCacheKey="platform"
+              //bsCacheKey="platform"
               bsLoadOnOpen={true}
               bsOnChange={(val) =>
                 setSelectedPlatform(val?.display_member ?? "")
