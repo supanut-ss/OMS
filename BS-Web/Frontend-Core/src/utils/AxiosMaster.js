@@ -2,6 +2,7 @@ import axios from "axios";
 import SecureStorage from "./SecureStorage";
 import Config from "./Config";
 import StorageRecovery from "./StorageRecovery";
+import signalrService from "../services/signalrService";
 
 const AxiosMaster = axios.create({
   baseURL: Config.API_URL,
@@ -171,6 +172,7 @@ AxiosMaster.interceptors.response.use(
       if (originalRequest._retry) {
         console.error("🚫 Token refresh retry already attempted, redirecting to login");
         clearCorruptedTokens();
+        await signalrService.stop();
         window.location.href = Config.BASE_URL + "/login";
         return Promise.reject(error);
       }
@@ -186,6 +188,7 @@ AxiosMaster.interceptors.response.use(
       if (!refreshToken) {
         console.error("❌ No refresh token found - redirecting to login");
         clearCorruptedTokens();
+        await signalrService.stop();
         window.location.href = Config.BASE_URL + "/login";
         return Promise.reject(error);
       }
@@ -223,7 +226,7 @@ AxiosMaster.interceptors.response.use(
           const refreshResponse = await axios.post(
             Config.API_URL + "/refresh",
             { refresh_token: refreshToken },
-            { headers: { "Content-Type": "application/json" ,"X-Client-IP": originalRequest.headers["X-Client-IP"] || ""} }
+            { headers: { "Content-Type": "application/json", "X-Client-IP": originalRequest.headers["X-Client-IP"] || "" } }
           );
 
           if (refreshResponse.data.message_code === "0") {
@@ -252,6 +255,7 @@ AxiosMaster.interceptors.response.use(
           console.error("❌ Token refresh failed:", refreshError);
           onRefreshFailed(refreshError);
           clearCorruptedTokens();
+          await signalrService.stop();
           window.location.href = Config.BASE_URL + "/login";
           reject(refreshError);
         } finally {

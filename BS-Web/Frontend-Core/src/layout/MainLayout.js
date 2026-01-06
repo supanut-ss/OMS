@@ -449,7 +449,6 @@ export default function MainLayout({ lang, onChangeLang }) {
       }}
     >
       <CssBaseline />
-
       {/* AppBar */}
       <AppBar
         position="fixed"

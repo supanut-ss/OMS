@@ -4,6 +4,7 @@ import { jwtDecode } from "jwt-decode";
 import AxiosMaster from "../utils/AxiosMaster";
 import Config from "../utils/Config";
 import { useAlive } from "./AliveContext";
+import signalrService from "../services/signalrService";
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isConnectNoti, setIsConnectNoti] = useState(false);
   const { sendLocation, startLocationTracking, stopLocationTracking, resetLocationPermission } = useAlive(
     {
       endpoint: "/alive/status",
@@ -48,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     await AxiosMaster.post("/login", {
       application_license: Config.LICENSE_KEY,
       ...userData
-    }).then((res) => {
+    }).then(async (res) => {
       if (res.data.message_code === "0") {
         let userinfo = JSON.stringify(jwtDecode(res.data.data.access_token ?? ""));
         setIsAuthenticated(true);
@@ -85,6 +87,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Stop any active location tracking before logging out
       try {
+        await signalrService.stop();
         stopLocationTracking();
       } catch (e) {
         console.error("Error stopping location tracking during logout:", e);
@@ -222,7 +225,23 @@ export const AuthProvider = ({ children }) => {
       return "";
     }
   }
+  useEffect(() => {
+    const connectNoti = async () => {
 
+      if (!user && isConnectNoti) {
+        return;   // ยังไม่ต่อจนกว่าจะมี user id
+      }
+
+      try {
+        await signalrService.start(JSON.parse(user)?.UserId ?? "");
+        setIsConnectNoti(true);
+      } catch (e) {
+        console.error("Error starting noti:", e);
+        setIsConnectNoti(false);
+      }
+    };
+    connectNoti();
+  }, [user]);
 
   const value = {
     isAuthenticated,
