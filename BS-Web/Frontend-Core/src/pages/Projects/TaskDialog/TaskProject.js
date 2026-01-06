@@ -112,7 +112,7 @@ const TaskProject = (props) => {
                         { field: "display_member", display: true, filter: true, key: false },
                     ],
                     bsObjBy: "display_sequence asc",
-                    bsObjWh: "is_active='YES' and group_name ='issue_type'",
+                    bsObjWh: "is_active='YES' and group_name ='task_type'",
                     variant: "standard"
                 },
                 formData,
