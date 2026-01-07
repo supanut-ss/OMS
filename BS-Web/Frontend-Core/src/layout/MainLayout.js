@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 import CustomBreadcrumbs from "../components/CustomBreadcrumbs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Box,
   CssBaseline,
@@ -129,7 +129,7 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   // const navigate = useNavigate();
   //const apiUrl = Config.API_URL;
-  const apiUrl = Config.API_NOTIFY;
+   const apiUrl = Config.API_NOTIFY;
   const { enqueue } = useNotifications();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
@@ -155,6 +155,7 @@ export default function MainLayout({ lang, onChangeLang }) {
   // Mock user data - ในอนาคตใช้ข้อมูลจาก useAuth แทน
   const [role, setRole] = useState("User");
   const [currentUser, setCurrentUser] = useState(null);
+  const connectionRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
     useState(false);
@@ -402,6 +403,19 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   const handleLogout = async () => {
     handleUserMenuClose();
+
+    // Ensure SignalR connection is stopped on logout
+    if (connectionRef.current) {
+      try {
+        await connectionRef.current.stop();
+        console.info("SignalR disconnected on logout");
+      } catch (err) {
+        console.error("SignalR disconnect error on logout:", err);
+      } finally {
+        connectionRef.current = null;
+      }
+    }
+
     // เรียกใช้ logout function จาก AuthContext
     let data = await logout();
     // Navigate ไปหน้า login
@@ -446,13 +460,21 @@ export default function MainLayout({ lang, onChangeLang }) {
   useEffect(() => {
     if (!currentUser?.UserId) return;
 
+    // If an existing connection is present, stop and clear it before creating a new one
+    if (connectionRef.current) {
+      connectionRef.current.stop().catch(() => {});
+      connectionRef.current = null;
+    }
+
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${apiUrl}/notificationHub?userId=${encodeURIComponent(currentUser.UserId)}`, {
         accessTokenFactory: () => SecureStorage.get("token") || ""
       })
-     // .configureLogging(signalR.LogLevel.Debug)
+      .configureLogging(signalR.LogLevel.Debug)
       .withAutomaticReconnect()
       .build();
+
+    connectionRef.current = connection;
 
     connection.on("ReceiveAll", (msg) => {
       enqueue({ message: msg, severity: "info", duration: 3000 });
@@ -469,8 +491,12 @@ export default function MainLayout({ lang, onChangeLang }) {
     connection.onreconnected((connId) => console.info("SignalR reconnected", connId));
 
     return () => {
-      connection.onclose(err => console.error("SignalR closed:", err));
-      connection.stop().catch((err) => console.error("SignalR disconnect error:", err));
+      const conn = connectionRef.current;
+      if (conn) {
+        conn.onclose(err => console.error("SignalR closed:", err));
+        conn.stop().catch((err) => console.error("SignalR disconnect error:", err));
+        connectionRef.current = null;
+      }
     };
   }, [currentUser]);
   return (
@@ -861,7 +887,7 @@ export default function MainLayout({ lang, onChangeLang }) {
         }}
       >
         {/* <Button onClick={async () => {
-          await AxiosMaster.post(`${Config.API_URL}/notify/all`, { message: "Hello from React" });
+          await AxiosMaster.post(`${Config.API_URL}/notify/all`, { message: "พักเที่ยง" });
         }}>send noti</Button> */}
         <Outlet />
       </Box>

@@ -57,6 +57,8 @@ builder.Services.AddSignalR(options =>
     options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
 });
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
 builder.Services.AddScoped<NotificationService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -89,7 +91,7 @@ try
         }
     });
 
-
+    app.UseMiddleware<JwtBlacklistMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
 
