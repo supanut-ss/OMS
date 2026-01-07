@@ -13,9 +13,11 @@ export const useNotifications = () => useContext(NotificationsContext);
  */
 export function NotificationsProvider({ children, maxSnack = 5 }) {
   const [snacks, setSnacks] = useState([]); // newest first - index 0 is top
-
   const enqueue = useCallback(({ message, severity = "info", duration = 5000 }) => {
     const item = { key: Date.now() + Math.random(), message, severity, duration, open: true };
+    new Notification("แจ้งเตือนใหม่", {
+      body: message
+    });
     setSnacks(prev => {
       const next = [item, ...prev];
       return next.slice(0, maxSnack);

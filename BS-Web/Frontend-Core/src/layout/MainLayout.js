@@ -129,7 +129,7 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   // const navigate = useNavigate();
   //const apiUrl = Config.API_URL;
-   const apiUrl = Config.API_NOTIFY;
+  const apiUrl = Config.API_NOTIFY;
   const { enqueue } = useNotifications();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
@@ -408,9 +408,13 @@ export default function MainLayout({ lang, onChangeLang }) {
     if (connectionRef.current) {
       try {
         await connectionRef.current.stop();
-        console.info("SignalR disconnected on logout");
+        if (process.env.NODE_ENV !== "production") {
+          console.info("SignalR disconnected on logout");
+        }
       } catch (err) {
-        console.error("SignalR disconnect error on logout:", err);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("SignalR disconnect error on logout:", err);
+        }
       } finally {
         connectionRef.current = null;
       }
@@ -462,43 +466,66 @@ export default function MainLayout({ lang, onChangeLang }) {
 
     // If an existing connection is present, stop and clear it before creating a new one
     if (connectionRef.current) {
-      connectionRef.current.stop().catch(() => {});
+      connectionRef.current.stop().catch(() => { });
       connectionRef.current = null;
     }
+    try {
+      let builder = new signalR.HubConnectionBuilder()
+        .withUrl(`${apiUrl}/notificationHub?userId=${encodeURIComponent(currentUser.UserId)}`, {
+          accessTokenFactory: () => SecureStorage.get("token") || ""
+        })
+        .withAutomaticReconnect();
 
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${apiUrl}/notificationHub?userId=${encodeURIComponent(currentUser.UserId)}`, {
-        accessTokenFactory: () => SecureStorage.get("token") || ""
-      })
-      .configureLogging(signalR.LogLevel.Debug)
-      .withAutomaticReconnect()
-      .build();
+      // Disable SignalR logs in production, keep informative logs in development
+      builder = builder.configureLogging(
+        process.env.NODE_ENV === "production"
+          ? signalR.LogLevel.None
+          : signalR.LogLevel.Information
+      );
 
-    connectionRef.current = connection;
+      const connection = builder.build();
 
-    connection.on("ReceiveAll", (msg) => {
-      enqueue({ message: msg, severity: "info", duration: 3000 });
-    });
-    connection.on("ReceiveUser", (msg) => {
-      enqueue({ message: msg, severity: "info", duration: 3000 });
-    });
-    connection.serverTimeoutInMilliseconds = 60000;
-    connection.start()
-      .then(() => console.info("SignalR connected"))
-      .catch((err) => console.error("SignalR connection error:", err));
+      connectionRef.current = connection;
 
-    connection.onreconnecting((err) => console.warn("SignalR reconnecting", err));
-    connection.onreconnected((connId) => console.info("SignalR reconnected", connId));
+      connection.on("ReceiveAll", (msg) => {
+        enqueue({ message: msg, severity: "info", duration: 3000 });
+      });
+      connection.on("ReceiveUser", (msg) => {
+        enqueue({ message: msg, severity: "info", duration: 3000 });
+      });
+      connection.serverTimeoutInMilliseconds = 60000;
+      connection.start().catch((err) => {
+        // Only log start errors in non-production environments
+        if (process.env.NODE_ENV !== "production") {
+          console.error("SignalR connection error:", err);
+        }
+      });
 
+      // Attach reconnect handlers but avoid logging in production
+      connection.onreconnecting((err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("SignalR reconnecting:", err);
+        }
+      });
+      connection.onreconnected(() => {
+        if (process.env.NODE_ENV !== "production") {
+          console.info("SignalR reconnected");
+        }
+      });
+    } catch (ex) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error(ex);
+      }
+    }
     return () => {
       const conn = connectionRef.current;
       if (conn) {
-        conn.onclose(err => console.error("SignalR closed:", err));
-        conn.stop().catch((err) => console.error("SignalR disconnect error:", err));
+        conn.onclose();
+        conn.stop();
         connectionRef.current = null;
       }
     };
-  }, [currentUser]);
+  }, [apiUrl, currentUser, enqueue]);
   return (
     <Box
       sx={{

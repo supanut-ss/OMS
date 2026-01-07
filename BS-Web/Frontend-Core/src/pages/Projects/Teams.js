@@ -27,6 +27,7 @@ const defaultData = {
 };
 const requiredFields = ["user_id", "role"];
 const ProjectsTeams = (props) => {
+  const { project_header_id } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [open, setOpen] = useState(false);
@@ -38,7 +39,7 @@ const ProjectsTeams = (props) => {
 
   // Memoize stored procedure params to prevent infinite re-renders
   const storedProcedureParams = useMemo(
-    () => ({ project_id: props.projectID }),
+    () => ({ ProjectId: props.projectID }),
     [props.projectID]
   );
 
@@ -103,29 +104,80 @@ const ProjectsTeams = (props) => {
     getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
-
+  // Memoize comboBox configuration
+  const comboBoxConfig = useMemo(
+    () => [
+      {
+        Column: "assign_user_id",
+        Display: "first_name,last_name", // รองรับ multiple fields แล้ว
+        Value: "user_id",
+        Default: "--- Select Assignee ---",
+        PreObj: "sec",
+        Obj: "t_com_user",
+        ObjWh: `is_active='YES'`,
+        ObjBy: "first_name asc",
+      },
+      {
+        Column: "role",
+        Display: "display_member", // รองรับ multiple fields แล้ว
+        Value: "value_member",
+        Default: "--- Select Role ---",
+        PreObj: "sec",
+        Obj: "t_com_combobox_item",
+        ObjWh: `is_active='YES' and group_name ='role'`,
+        ObjBy: "display_sequence asc",
+      },
+    ],
+    [project_header_id]
+  );
+  // Memoize column definitions
+  const columnDefs = useMemo(
+    () => ({
+      project_header_id: { hide: true },
+      create_by: { hide: true },
+      create_date: { hide: true },
+      update_by: { hide: true },
+      update_date: { hide: true },
+    }),
+    []
+  );
+  // Memoize bulk mode configuration
+  const bulkModeConfig = useMemo(
+    () => ({
+      enable: true,
+      addInline: true, // Add new rows inline
+      //   showCheckbox: true,
+      //   showSplitButton: true,
+    }),
+    []
+  );
   return (
     <Box>
       <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
           ref={dataGridRef}
           bsLocale={props.lang}
-          bsCols="Assignee,role,description"
+          bsStoredProcedureCrud={true}
+          bsCols="assign_user_id,role,description"
           bsStoredProcedureSchema="tmt"
           bsStoredProcedure="usp_project_teams"
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          // onAdd={handleAdd}
+          // onEdit={handleEdit}
+          //  onDelete={handleDelete}
           // bsAllowAdd={true}
           // bsAllowEdit={true}
-          //  bsAllowDelete={true}  
+          //  bsAllowDelete={true} 
+          bsColumnDefs={columnDefs}
+          bsComboBox={comboBoxConfig}
           bsFilterMode="client"
           bsStoredProcedureParams={storedProcedureParams}
+          bsBulkMode={bulkModeConfig}
+          showAdd={true}
         />
       </Paper>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth={"lg"}>
         <DialogTitle>
-          {formData.project_member_id ?  getResource(resourceData, "Edit_From") : getResource(resourceData, "Add_From")} {props.title}
+          {formData.project_member_id ? getResource(resourceData, "Edit_From") : getResource(resourceData, "Add_From")} {props.title}
         </DialogTitle>
         <IconButton
           aria-label="close"
