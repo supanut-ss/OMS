@@ -30,6 +30,7 @@ import logoSvg from "../assets/logo.svg";
 import Config from "../utils/Config";
 import secureStorage from "../utils/SecureStorage";
 import { useResource } from "../hooks/useResource";
+import { requestNotificationPermission } from "../utils/requestNotificationPermission";
 
 export default function LoginPage({ setLang }) {
   const theme = useTheme();
@@ -241,7 +242,9 @@ export default function LoginPage({ setLang }) {
   useEffect(() => {
     requestGeolocationPermission();
   }, [requestGeolocationPermission]);
-
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
   return (<>
     {loading && <LinearProgress />}
     <Box

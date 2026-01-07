@@ -179,7 +179,7 @@ namespace Authentication.Services.Auth
 
         private  bool AuthenticateWithDatabase(string encrypt_password, string password)
         {
-            return encrypt_password == Encryption.Encrypt(password);
+            return Encryption.Decrypt(encrypt_password) == password;
         }
 
         private async Task<TComUser> GetUserFromDatabase(string username)

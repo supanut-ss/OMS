@@ -17,12 +17,17 @@ string KEY = Environment.GetEnvironmentVariable("API_KEY_WEB") ?? "";
 //    .Select(a => a.Trim())
 //    .ToList();
 builder.Services.AddCors(options => {
-    options.AddPolicy(name: KEY,
-        builder =>
+    options.AddPolicy("SignalRCors",
+        policy =>
         {
-            builder.WithOrigins("*")
-                               .AllowAnyHeader()
-                               .AllowAnyMethod();
+            policy.WithOrigins(
+        "http://localhost:3000",
+        "http://10.10.60.66",
+        "https://10.10.60.66"
+     )
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 
@@ -38,7 +43,7 @@ var app = builder.Build();
 
 
 app.UseRouting();
-app.UseCors(KEY);
+app.UseCors("SignalRCors");
 app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();

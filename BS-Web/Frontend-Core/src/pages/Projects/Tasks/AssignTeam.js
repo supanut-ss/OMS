@@ -47,6 +47,8 @@ const AssignTeam = (props) => {
       manday: {
         headerName: "Manday (Hours)",
         type: "decimal",
+        allowNegative: false,
+        min: 0,
       },
       description: {
         hide: true,

@@ -6304,6 +6304,28 @@ ${errorInfo.originalError}
           );
         }
 
+        // Get min/max/allowNegative from customDef for number fields
+        const numMin = customDef?.min;
+        const numMax = customDef?.max;
+        const allowNegative = customDef?.allowNegative !== false; // default true
+
+        // Build inputProps for number fields
+        const buildNumberInputProps = () => {
+          if (inputType !== "number") return {};
+          const props = {};
+          // If allowNegative is false, set min to 0 (unless min is explicitly set)
+          if (!allowNegative && numMin === undefined) {
+            props.min = 0;
+          }
+          if (numMin !== undefined) props.min = numMin;
+          if (numMax !== undefined) props.max = numMax;
+          // Add step for decimal types
+          if (customDef?.type === "decimal" || customDef?.decimals) {
+            props.step = "any";
+          }
+          return props;
+        };
+
         const textFieldContent = (
           <TextField
             fullWidth
@@ -6311,9 +6333,26 @@ ${errorInfo.originalError}
             label={formatColumnName(columnName)}
             type={inputType}
             value={displayVal}
-            onChange={(e) =>
-              setFormData((p) => ({ ...p, [columnName]: e.target.value }))
-            }
+            onChange={(e) => {
+              let newValue = e.target.value;
+              // For number inputs, enforce min/max constraints
+              if (inputType === "number" && newValue !== "") {
+                const numValue = Number(newValue);
+                // Check allowNegative
+                if (!allowNegative && numValue < 0) {
+                  newValue = "0";
+                }
+                // Check min constraint
+                if (numMin !== undefined && numValue < numMin) {
+                  newValue = String(numMin);
+                }
+                // Check max constraint
+                if (numMax !== undefined && numValue > numMax) {
+                  newValue = String(numMax);
+                }
+              }
+              setFormData((p) => ({ ...p, [columnName]: newValue }));
+            }}
             required={isRequired}
             disabled={isReadOnly}
             multiline={multiline}
@@ -6330,6 +6369,7 @@ ${errorInfo.originalError}
                 (inputType === "text" || multiline) && {
                   maxLength: maxLength,
                 }),
+              ...buildNumberInputProps(),
             }}
             error={maxLength > 0 && String(displayVal).length > maxLength}
           />
@@ -7244,9 +7284,68 @@ ${errorInfo.originalError}
         ) {
           const decimals = customDef.decimals ?? 2;
           const thousandSeparator = customDef.thousandSeparator !== false;
+          const numMin = customDef.min;
+          const numMax = customDef.max;
+          const allowNegative = customDef.allowNegative !== false; // default true
 
           // Set column type to "number" for proper DataGrid behavior
           mergedColumn.type = "number";
+
+          // Add custom renderEditCell for min/max/allowNegative constraints
+          if (numMin !== undefined || numMax !== undefined || !allowNegative) {
+            mergedColumn.renderEditCell = (params) => {
+              const handleChange = (event) => {
+                let value = event.target.value;
+                if (value !== "") {
+                  const numValue = Number(value);
+                  // Check allowNegative
+                  if (!allowNegative && numValue < 0) {
+                    value = numMin !== undefined ? String(numMin) : "0";
+                  }
+                  // Check min constraint
+                  if (numMin !== undefined && numValue < numMin) {
+                    value = String(numMin);
+                  }
+                  // Check max constraint
+                  if (numMax !== undefined && numValue > numMax) {
+                    value = String(numMax);
+                  }
+                }
+                params.api.setEditCellValue({
+                  id: params.id,
+                  field: params.field,
+                  value: value === "" ? null : Number(value),
+                });
+              };
+
+              // Build input props
+              const inputProps = {};
+              if (!allowNegative && numMin === undefined) {
+                inputProps.min = 0;
+              }
+              if (numMin !== undefined) inputProps.min = numMin;
+              if (numMax !== undefined) inputProps.max = numMax;
+              if (customDef.decimals) inputProps.step = "any";
+
+              return (
+                <TextField
+                  type="number"
+                  value={params.value ?? ""}
+                  onChange={handleChange}
+                  variant="standard"
+                  fullWidth
+                  autoFocus
+                  inputProps={inputProps}
+                  sx={{
+                    "& .MuiInput-input": {
+                      textAlign: "right",
+                      padding: "0 8px",
+                    },
+                  }}
+                />
+              );
+            };
+          }
 
           // MUI X Data Grid v7+ signature: valueFormatter(value, row, column, apiRef)
           mergedColumn.valueFormatter = (value) => {

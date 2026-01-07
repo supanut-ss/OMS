@@ -2,6 +2,7 @@ import { Grid } from "@mui/material";
 import BSAutoComplete from "../../../components/BSAutoComplete";
 import BSSwitchField from "../../../components/BSSwitch";
 import { read } from "xlsx";
+import { DisabledByDefault } from "@mui/icons-material";
 
 const TaskMa = (props) => {
     const { formData, projectHeader, resourceData, resourceDataProject, getResource, errors, updateField, renderInput } = props;
@@ -225,9 +226,10 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "plan_response_date"),
                     component: "BSDatePicker",
                     isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY HH:mm:ss",
+                    isDateOnly: false,
+                    format: "DD/MM/YYYY HH:mm",
                     readOnly: true,
+                    disabled: true,
                 },
                 formData,
                 errors,
@@ -242,9 +244,10 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "plan_resolve_duration_date"),
                     component: "BSDatePicker",
                     isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY HH:mm:ss",
+                    isDateOnly: false,
+                    format: "DD/MM/YYYY HH:mm",
                     readOnly: true,
+                    disabled: true,
                 },
                 formData,
                 errors,
@@ -259,8 +262,8 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "start_incident_date"),
                     component: "BSDatePicker",
                     isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY HH:mm:ss",
+                    isDateOnly: false,
+                    format: "DD/MM/YYYY HH:mm",
                 },
                 formData,
                 errors,
@@ -275,8 +278,8 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "response_date"),
                     component: "BSDatePicker",
                     isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY HH:mm:ss",
+                    isDateOnly: false,
+                    format: "DD/MM/YYYY HH:mm",
                 },
                 formData,
                 errors,
@@ -291,8 +294,8 @@ const TaskMa = (props) => {
                     headerName: getResource(resourceData, "resolve_duration_date"),
                     component: "BSDatePicker",
                     isRange: false,
-                    isDateOnly: true,
-                    format: "DD/MM/YYYY",
+                    isDateOnly: false,
+                    format: "DD/MM/YYYY HH:mm",
                 },
                 formData,
                 errors,

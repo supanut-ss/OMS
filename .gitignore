@@ -103,3 +103,7 @@ nunit-*.xml
 /BS-API-Core/ApiCore/.vs/
 /BS-API-Core/ApiCore/publish/
 /BS-Web/Frontend-Core/public/excels
+/BS-Notification/Notification/publish
+/BS-Notification/Notification/.vs/
+/BS-Notification/Notification/obj/
+/BS-Notification/Notification/bin/

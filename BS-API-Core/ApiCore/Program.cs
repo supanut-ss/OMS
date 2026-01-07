@@ -22,8 +22,8 @@ builder.Services.AddCors(options =>
         builder =>
         {
             builder.WithOrigins("*")
-                               .AllowAnyHeader()
-                               .AllowAnyMethod();
+                                .AllowAnyHeader()
+                     .AllowAnyMethod();
         });
 });
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);

@@ -101,6 +101,7 @@ export const renderInput = ({ item, formData, errors, updateField }) => {
             minDate={item.minDate ? dayjs(item.minDate) : undefined}
             maxDate={item.maxDate ? dayjs(item.maxDate) : undefined}
             required={item.required}
+            disabled={item.disabled}
           />
         );
       }

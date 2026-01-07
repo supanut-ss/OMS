@@ -14,6 +14,8 @@ const BSAlertSnackbar = ({
     autoHideDuration = 5000,
     severity = "info",
     onClose,
+    vertical = "center",
+    horizontal = "center"
 }) => {
     const handleClose = (_, reason) => {
         if (reason === "clickaway") return;
@@ -25,7 +27,7 @@ const BSAlertSnackbar = ({
             open={open}
             autoHideDuration={autoHideDuration}
             onClose={handleClose}
-            anchorOrigin={{ vertical: "center", horizontal: "center" }}
+            anchorOrigin={{ vertical: vertical, horizontal: horizontal }}
         >
             <Alert
                 onClose={handleClose}

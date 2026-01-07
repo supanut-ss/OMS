@@ -25,6 +25,7 @@ import Selector from "../../../components/Selector";
 import TaskProject from "./TaskProject";
 import TaskMa from "./TaskMa";
 import BSFileUpload from "../../../components/BSFileUpload";
+import dayjs from "dayjs";
 
 const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   const defaultData = {
@@ -102,7 +103,15 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   const handleSave = async () => {
     if (!validate()) return;
 
-    const res = await AxiosMaster.post("/projects/task", formData);
+    let body = {
+      ...formData,
+      start_incident_date: formData.start_incident_date ? dayjs(formData.start_incident_date).format("YYYY-MM-DDTHH:mm:ss") : formData.start_incident_date,
+      response_date: formData.response_date ? dayjs(formData.response_date).format("YYYY-MM-DDTHH:mm:ss") : formData.response_date,
+      resolve_duration_date: formData.resolve_duration_date ? dayjs(formData.resolve_duration_date).format("YYYY-MM-DDTHH:mm:ss") : formData.resolve_duration_date,
+      plan_response_date: formData.plan_response_date ? dayjs(formData.plan_response_date).format("YYYY-MM-DDTHH:mm:ss") : formData.plan_response_date,
+      plan_resolve_duration_date: formData.plan_resolve_duration_date ? dayjs(formData.plan_resolve_duration_date).format("YYYY-MM-DDTHH:mm:ss") : formData.plan_resolve_duration_date
+    }
+    const res = await AxiosMaster.post("/projects/task", body);
     BSAlertSwal2.show(
       res.data.message_code === 0 ? "success" : "warning",
       res.data.message_code === 0 ? "บันทึกสำเร็จ" : "บันทึกไม่สำเร็จ"
@@ -191,7 +200,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
         {/* Tabs */}
         {formData.project_task_id && (
           <Box>
-            <Tabs value={tap} onChange={(e, v) => setTap(v)} sx={{ mt: 3 }}>
+            <Tabs label={getResource(resourceData, "task")} value={tap} onChange={(e, v) => setTap(v)} sx={{ mt: 3 }}>
               <Tab label={getResource(resourceData, "assign_team")} />
               <Tab label={getResource(resourceData, "task_tracking")} />
               {projectHeader.record_type === "MA" && (

@@ -223,7 +223,7 @@ AxiosMaster.interceptors.response.use(
           const refreshResponse = await axios.post(
             Config.API_URL + "/refresh",
             { refresh_token: refreshToken },
-            { headers: { "Content-Type": "application/json" ,"X-Client-IP": originalRequest.headers["X-Client-IP"] || ""} }
+            { headers: { "Content-Type": "application/json", "X-Client-IP": originalRequest.headers["X-Client-IP"] || "" } }
           );
 
           if (refreshResponse.data.message_code === "0") {

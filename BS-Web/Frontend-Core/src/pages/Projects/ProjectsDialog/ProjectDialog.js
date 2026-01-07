@@ -25,7 +25,7 @@ const ProjectsDialog = (props) => {
     project_name: "-",
     project_status: "Open",
     master_project_id: null,
-    application_type: "WM3",
+    application_type: null,
     customer_id: null,
     sale_id: null,
     actual_project_start: "",
