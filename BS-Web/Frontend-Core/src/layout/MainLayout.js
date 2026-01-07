@@ -19,7 +19,6 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  ListItemAvatar,
   Chip,
   Dialog,
   DialogTitle,
@@ -31,6 +30,7 @@ import {
   FormHelperText,
   Input,
   InputAdornment,
+  ListItemAvatar,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -45,7 +45,7 @@ import {
   VisibilityOff,
 } from "@mui/icons-material";
 
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useColorMode } from "../themes/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -59,7 +59,8 @@ import BSAlertSwal2 from "../components/BSAlertSwal2";
 import Config from "../utils/Config";
 import AxiosMaster from "../utils/AxiosMaster";
 import LanguageSwitch from "../components/LanguageSwitch";
-
+import * as signalR from "@microsoft/signalr";
+import { useNotifications } from "../contexts/NotificationsProvider";
 const drawerWidth = 280;
 const collapsedWidth = 72;
 
@@ -126,7 +127,10 @@ export default function MainLayout({ lang, onChangeLang }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
+  //const apiUrl = Config.API_URL;
+  const apiUrl = Config.API_NOTIFY;
+  const { enqueue } = useNotifications();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
     location.pathname === "/" || location.pathname === "/home";
@@ -439,7 +443,36 @@ export default function MainLayout({ lang, onChangeLang }) {
       setRole("User");
     }
   }, [location]);
+  useEffect(() => {
+    if (!currentUser?.UserId) return;
 
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(`${apiUrl}/notificationHub?userId=${encodeURIComponent(currentUser.UserId)}`, {
+        accessTokenFactory: () => SecureStorage.get("token") || ""
+      })
+     // .configureLogging(signalR.LogLevel.Debug)
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("ReceiveAll", (msg) => {
+      enqueue({ message: msg, severity: "info", duration: 3000 });
+    });
+    connection.on("ReceiveUser", (msg) => {
+      enqueue({ message: msg, severity: "info", duration: 3000 });
+    });
+    connection.serverTimeoutInMilliseconds = 60000;
+    connection.start()
+      .then(() => console.info("SignalR connected"))
+      .catch((err) => console.error("SignalR connection error:", err));
+
+    connection.onreconnecting((err) => console.warn("SignalR reconnecting", err));
+    connection.onreconnected((connId) => console.info("SignalR reconnected", connId));
+
+    return () => {
+      connection.onclose(err => console.error("SignalR closed:", err));
+      connection.stop().catch((err) => console.error("SignalR disconnect error:", err));
+    };
+  }, [currentUser]);
   return (
     <Box
       sx={{
@@ -827,6 +860,9 @@ export default function MainLayout({ lang, onChangeLang }) {
           overflow: "auto",
         }}
       >
+        {/* <Button onClick={async () => {
+          await AxiosMaster.post(`${Config.API_URL}/notify/all`, { message: "Hello from React" });
+        }}>send noti</Button> */}
         <Outlet />
       </Box>
       {/* Reset Password Popup */}
@@ -920,6 +956,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           </Button>
         </DialogActions>
       </Dialog>
+
     </Box>
   );
 }

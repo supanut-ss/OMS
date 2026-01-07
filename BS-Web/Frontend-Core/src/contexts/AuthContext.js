@@ -4,7 +4,6 @@ import { jwtDecode } from "jwt-decode";
 import AxiosMaster from "../utils/AxiosMaster";
 import Config from "../utils/Config";
 import { useAlive } from "./AliveContext";
-import signalrService from "../services/signalrService";
 const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -87,7 +86,6 @@ export const AuthProvider = ({ children }) => {
     try {
       // Stop any active location tracking before logging out
       try {
-        await signalrService.stop();
         stopLocationTracking();
       } catch (e) {
         console.error("Error stopping location tracking during logout:", e);
@@ -225,23 +223,6 @@ export const AuthProvider = ({ children }) => {
       return "";
     }
   }
-  useEffect(() => {
-    const connectNoti = async () => {
-
-      if (!user && isConnectNoti) {
-        return;   // ยังไม่ต่อจนกว่าจะมี user id
-      }
-
-      try {
-        await signalrService.start(JSON.parse(user)?.UserId ?? "");
-        setIsConnectNoti(true);
-      } catch (e) {
-        console.error("Error starting noti:", e);
-        setIsConnectNoti(false);
-      }
-    };
-    connectNoti();
-  }, [user]);
 
   const value = {
     isAuthenticated,
@@ -260,5 +241,8 @@ export const AuthProvider = ({ children }) => {
     resetLocationPermission,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>);
 };

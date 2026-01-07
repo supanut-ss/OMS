@@ -27,9 +27,9 @@ builder.Services.AddCors(options => {
     options.AddPolicy(name: KEY,
         builder =>
         {
-        builder.WithOrigins("*")
-                           .AllowAnyHeader()
-                           .AllowAnyMethod();
+            builder.WithOrigins("*")
+                            .AllowAnyHeader()
+                             .AllowAnyMethod();
         });
 });
 var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB") ?? throw new ArgumentNullException("Environment.GetEnvironmentVariable(SERVERDB) ");
