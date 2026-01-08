@@ -1389,6 +1389,95 @@ namespace ApiCore.Services.Implementation
         }
 
         /// <summary>
+        /// Get stored procedure parameter names from database for dynamic mapping
+        /// </summary>
+        private async Task<Dictionary<string, string>> GetSpParameterMappingAsync(SqlConnection connection, string schemaName, string procedureName)
+        {
+            var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            var query = @"
+                SELECT 
+                    p.name AS PARAMETER_NAME
+                FROM sys.parameters p
+                INNER JOIN sys.procedures sp ON p.object_id = sp.object_id
+                INNER JOIN sys.schemas s ON sp.schema_id = s.schema_id
+                WHERE s.name = @SchemaName 
+                    AND sp.name = @ProcedureName
+                    AND p.name IS NOT NULL
+                ORDER BY p.parameter_id";
+
+            using var command = new SqlCommand(query, connection);
+            command.Parameters.Add(new SqlParameter("@SchemaName", schemaName));
+            command.Parameters.Add(new SqlParameter("@ProcedureName", procedureName));
+
+            using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var spParamName = reader.GetString(0); // e.g., "@in_vchTaskStatus"
+
+                // Extract the logical name by removing prefix pattern: @in_xxx, @out_xxx
+                // Pattern: @in_vchTaskStatus -> TaskStatus, @in_intProjectId -> ProjectId
+                var logicalName = ExtractLogicalParameterName(spParamName);
+
+                if (!string.IsNullOrEmpty(logicalName) && !mapping.ContainsKey(logicalName))
+                {
+                    mapping[logicalName] = spParamName;
+                }
+            }
+
+            _logger.LogDebug("📋 Dynamic parameter mapping for [{Schema}].[{Procedure}]: {Count} parameters",
+                schemaName, procedureName, mapping.Count);
+
+            return mapping;
+        }
+
+        /// <summary>
+        /// Extract logical parameter name from SP parameter name
+        /// Examples: @in_vchTaskStatus -> TaskStatus, @in_intProjectId -> ProjectId, @out_intRowCount -> RowCount
+        /// </summary>
+        private string ExtractLogicalParameterName(string spParamName)
+        {
+            if (string.IsNullOrEmpty(spParamName))
+                return null;
+
+            // Remove @ prefix
+            var name = spParamName.TrimStart('@');
+
+            // Pattern: prefix_typePrefix_LogicalName
+            // Examples: in_vchTaskStatus, out_intRowCount, in_intPage
+            // Type prefixes: int, vch, nch, ch, dt, flt, rea, dec, bit, bn, vbn, img, tbl
+
+            // Check for @in_ or @out_ prefix
+            string[] directionPrefixes = { "in_", "out_", "v_" };
+            foreach (var prefix in directionPrefixes)
+            {
+                if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = name.Substring(prefix.Length);
+                    break;
+                }
+            }
+
+            // Type prefixes to remove (order matters - longer prefixes first)
+            string[] typePrefixes = { "vch", "nch", "int", "dec", "flt", "rea", "bit", "vbn", "img", "tbl", "bn", "ch", "dt" };
+            foreach (var typePrefix in typePrefixes)
+            {
+                if (name.StartsWith(typePrefix, StringComparison.OrdinalIgnoreCase) && name.Length > typePrefix.Length)
+                {
+                    // Check if next char is uppercase (indicates start of logical name)
+                    var nextChar = name[typePrefix.Length];
+                    if (char.IsUpper(nextChar))
+                    {
+                        return name.Substring(typePrefix.Length); // Return the logical name
+                    }
+                }
+            }
+
+            // If no type prefix found, return original name (without direction prefix)
+            return name;
+        }
+
+        /// <summary>
         /// Execute Enhanced Stored Procedure with full CRUD operations
         /// </summary>
         public async Task<EnhancedStoredProcedureResponse> ExecuteEnhancedStoredProcedureAsync(EnhancedStoredProcedureRequest request)
@@ -1403,6 +1492,12 @@ namespace ApiCore.Services.Implementation
 
                 using var connection = _connectionFactory.CreateConnection();
                 await connection.OpenAsync();
+
+                // Get dynamic parameter mapping from SP metadata
+                var parameterMapping = await GetSpParameterMappingAsync(connection, request.SchemaName, request.ProcedureName);
+                _logger.LogDebug("🔄 Loaded {Count} parameter mappings for {Schema}.{Procedure}",
+                    parameterMapping.Count, request.SchemaName, request.ProcedureName);
+
                 using var command = connection.CreateCommand();
 
                 // Build stored procedure call
@@ -1411,41 +1506,67 @@ namespace ApiCore.Services.Implementation
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandTimeout = 120; // 2 minutes timeout
 
-                // Add standard parameters - ตาม Coding Standards
-                command.Parameters.Add(new SqlParameter("@in_vchOperation", request.Operation ?? "SELECT"));
-                command.Parameters.Add(new SqlParameter("@in_intPage", request.Page ?? 1));
-                command.Parameters.Add(new SqlParameter("@in_intPageSize", request.PageSize ?? 25));
+                // Helper function to find SP parameter name
+                string FindSpParamName(string logicalName, string fallback)
+                {
+                    return parameterMapping.TryGetValue(logicalName, out var spName) ? spName : fallback;
+                }
 
-                // Only add @in_vchUserId if not already provided in custom parameters
-                // This prevents duplicate parameter error when data contains user_id field
+                // Add standard parameters - dynamically mapped
+                command.Parameters.Add(new SqlParameter(FindSpParamName("Operation", "@in_vchOperation"), request.Operation ?? "SELECT"));
+                command.Parameters.Add(new SqlParameter(FindSpParamName("Page", "@in_intPage"), request.Page ?? 1));
+                command.Parameters.Add(new SqlParameter(FindSpParamName("PageSize", "@in_intPageSize"), request.PageSize ?? 25));
+
+                // Only add UserId if not already provided in custom parameters
                 bool hasUserIdInParams = request.Parameters?.ContainsKey("UserId") == true ||
                                          request.Parameters?.ContainsKey("userId") == true ||
                                          request.Parameters?.ContainsKey("User_Id") == true;
                 if (!hasUserIdInParams)
                 {
-                    command.Parameters.Add(new SqlParameter("@in_vchUserId", request.UserId ?? "system"));
+                    command.Parameters.Add(new SqlParameter(FindSpParamName("UserId", "@in_vchUserId"), request.UserId ?? "system"));
                 }
 
-                // Add sort model as JSON
+                // Add sort model as JSON if SP has SortModel parameter
                 if (request.SortModel != null && request.SortModel.Any())
                 {
-                    var sortJson = JsonSerializer.Serialize(request.SortModel);
-                    command.Parameters.Add(new SqlParameter("@in_vchSortModel", sortJson));
+                    var sortParamName = FindSpParamName("SortModel", "@in_vchSortModel");
+                    if (parameterMapping.ContainsKey("SortModel") || !parameterMapping.Any())
+                    {
+                        var sortJson = JsonSerializer.Serialize(request.SortModel);
+                        command.Parameters.Add(new SqlParameter(sortParamName, sortJson));
+                    }
                 }
 
-                // Add filter model as JSON
+                // Add filter model as JSON if SP has FilterModel parameter
                 if (request.FilterModel != null)
                 {
-                    var filterJson = JsonSerializer.Serialize(request.FilterModel);
-                    command.Parameters.Add(new SqlParameter("@in_vchFilterModel", filterJson));
+                    var filterParamName = FindSpParamName("FilterModel", "@in_vchFilterModel");
+                    if (parameterMapping.ContainsKey("FilterModel") || !parameterMapping.Any())
+                    {
+                        var filterJson = JsonSerializer.Serialize(request.FilterModel);
+                        command.Parameters.Add(new SqlParameter(filterParamName, filterJson));
+                    }
                 }
 
-                // Add custom parameters
+                // Add custom parameters with dynamic name mapping
                 if (request.Parameters != null)
                 {
                     foreach (var param in request.Parameters)
                     {
-                        command.Parameters.Add(new SqlParameter($"@{param.Key}", ConvertJsonElementValue(param.Value)));
+                        // Find SP parameter name from dynamic mapping
+                        var spParamName = parameterMapping.TryGetValue(param.Key, out var mappedName)
+                            ? mappedName
+                            : $"@{param.Key}"; // Fallback to original name if not found
+
+                        // Skip if already added as standard parameter
+                        if (command.Parameters.Contains(spParamName))
+                        {
+                            _logger.LogDebug("Skipping duplicate parameter: {ParamKey} -> {SpParamName}", param.Key, spParamName);
+                            continue;
+                        }
+
+                        command.Parameters.Add(new SqlParameter(spParamName, ConvertJsonElementValue(param.Value)));
+                        _logger.LogDebug("Added parameter: {ParamKey} -> {SpParamName} (dynamic)", param.Key, spParamName);
                     }
                 }
 
