@@ -136,7 +136,7 @@ const ProjectTask = (props) => {
                             bsStoredProcedureSchema="tmt"
                             bsCols={projectHeader.record_type === "MA" ? "task_no,task_name,assignee,due_date,priority,manday,task_status" : "task_name,assignee,due_date,priority,manday,task_status"}
                             bsStoredProcedureParams={{
-                                ProjectTaskPhaseId: phase.project_task_phase_id,
+                                in_intProjectTaskPhaseId: phase.project_task_phase_id,
                             }}
                             bsShowRowNumber={true}
                             showAdd={true}

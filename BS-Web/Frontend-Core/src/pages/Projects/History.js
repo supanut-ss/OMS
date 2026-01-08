@@ -29,7 +29,7 @@ const ProjectsHistory = (props) => {
           bsStoredProcedure="usp_project_history" // ✔ ชื่อ stored ถูกต้อง
           bsCols="project_no, project_name,project_type,iso_type_name,actual_project_start,actual_project_end,create_date"
           bsStoredProcedureParams={{
-            ProjectHeaderId: props.projectID || null,
+            in_intProjectHeaderId: props.projectID || null,
           }}
           showAdd={false}
           bsVisibleView={true}

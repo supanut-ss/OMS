@@ -24,8 +24,8 @@ const AssignTeam = (props) => {
   // Memoize stored procedure params to prevent infinite re-renders
   const storedProcedureParams = useMemo(
     () => ({
-      ProjectTaskId: project_task_id,
-      ProjectHeaderId: project_header_id,
+      in_intProjectTaskId: project_task_id,
+      in_intProjectHeaderId: project_header_id,
     }),
     [project_task_id, project_header_id]
   );
