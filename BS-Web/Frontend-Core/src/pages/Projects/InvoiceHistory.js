@@ -90,7 +90,7 @@ const InvoiceHistory = (props) => {
           is_incentive_requested,
           is_cancel,
           project_header_id"
-          bsObjBy="document_type desc"
+          bsObjBy="document_type desc, document_no asc"
           bsObjWh={bsObjWh}
           bsComboBox={[
             {
