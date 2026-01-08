@@ -32,7 +32,7 @@ const ProjectsTeams = (props) => {
   const [resourceData, setResourceData] = useState([]);
   const [open, setOpen] = useState(false);
   const dataGridRef = useRef(null);
-  const { formData, errors, updateField, validate, setFormData } = useForm(
+  const { formData, errors, updateField, validate } = useForm(
     defaultData,
     requiredFields
   );
@@ -59,38 +59,38 @@ const ProjectsTeams = (props) => {
   };
 
   // Memoize callbacks to prevent infinite re-renders
-  const handleDelete = useCallback((id) => {
-    BSAlertSwal2.fire({
-      title: "ลบข้อมูล?",
-      text: "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "ใช่, ลบเลย",
-    }).then(async (conf) => {
-      if (conf.isConfirmed) {
-        await AxiosMaster.post("/projects/team/delete/" + id).then((res) => {
-          BSAlertSwal2.show(
-            res?.data?.message_code === "0" ? "success" : "warning",
-            res?.data?.message_text ?? "error"
-          );
-          dataGridRef.current.refreshData();
-        });
-      }
-    });
-  }, []);
+  // const handleDelete = useCallback((id) => {
+  //   BSAlertSwal2.fire({
+  //     title: "ลบข้อมูล?",
+  //     text: "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //     confirmButtonText: "ใช่, ลบเลย",
+  //   }).then(async (conf) => {
+  //     if (conf.isConfirmed) {
+  //       await AxiosMaster.post("/projects/team/delete/" + id).then((res) => {
+  //         BSAlertSwal2.show(
+  //           res?.data?.message_code === "0" ? "success" : "warning",
+  //           res?.data?.message_text ?? "error"
+  //         );
+  //         dataGridRef.current.refreshData();
+  //       });
+  //     }
+  //   });
+  // }, []);
 
-  const handleAdd = useCallback(() => {
-    setFormData({ ...defaultData, project_header_id: props.projectID });
-    setOpen(true);
-  }, [props.projectID, setFormData]);
+  // const handleAdd = useCallback(() => {
+  //   setFormData({ ...defaultData, project_header_id: props.projectID });
+  //   setOpen(true);
+  // }, [props.projectID, setFormData]);
 
-  const handleEdit = useCallback(
-    (row) => {
-      setFormData((prev) => ({ ...prev, ...row }));
-      setOpen(true);
-    },
-    [setFormData]
-  );
+  // const handleEdit = useCallback(
+  //   (row) => {
+  //     setFormData((prev) => ({ ...prev, ...row }));
+  //     setOpen(true);
+  //   },
+  //   [setFormData]
+  // );
 
   const handleClose = useCallback(() => {
     setOpen(false);
@@ -167,6 +167,8 @@ const ProjectsTeams = (props) => {
           // bsAllowAdd={true}
           // bsAllowEdit={true}
           //  bsAllowDelete={true} 
+          bsVisibleEdit={true}
+          bsVisibleDelete={true}
           bsColumnDefs={columnDefs}
           bsComboBox={comboBoxConfig}
           bsFilterMode="client"
