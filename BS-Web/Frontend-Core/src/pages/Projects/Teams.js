@@ -39,7 +39,7 @@ const ProjectsTeams = (props) => {
 
   // Memoize stored procedure params to prevent infinite re-renders
   const storedProcedureParams = useMemo(
-    () => ({ ProjectId: props.projectID }),
+    () => ({ in_intProjectId: props.projectID }),
     [props.projectID]
   );
 

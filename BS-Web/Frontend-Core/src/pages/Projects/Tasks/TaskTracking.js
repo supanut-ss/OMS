@@ -231,7 +231,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsStoredProcedureSchema="tmt"
           bsCols="process_update,actual_date,actual_work,issue_type,assignee_list,create_date,create_by,update_date,update_by"
           bsStoredProcedureParams={{
-            ProjectTaskId: projectTaskId,
+            in_intProjectTaskId: projectTaskId,
           }}
           showAdd={true}
           bsAllowAdd={true}
