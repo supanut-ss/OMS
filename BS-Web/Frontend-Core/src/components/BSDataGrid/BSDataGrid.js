@@ -6827,6 +6827,50 @@ ${errorInfo.originalError}
           isNewRow,
         });
 
+        // CRITICAL: Before cancelling, preserve edit values from OTHER rows
+        // DataGrid keeps edit values in internal state, not in rows state
+        // When we modify rows state, other rows' edit values can be lost
+        let editRowsState = {};
+        if (apiRef.current?.state?.editRows) {
+          try {
+            editRowsState = { ...apiRef.current.state.editRows };
+            bsLog("📝 Preserving editRows state before cancel:", editRowsState);
+          } catch (e) {
+            bsLog("⚠️ Could not get editRows state:", e);
+          }
+        }
+
+        // Merge edit values into rows state for OTHER rows (not the one being cancelled)
+        if (Object.keys(editRowsState).length > 0) {
+          setRows((prevRows) => {
+            return prevRows.map((row) => {
+              const rowId = String(row.id);
+              // Skip the row being cancelled
+              if (rowId === String(id)) {
+                return row;
+              }
+              // Merge edit values for other rows
+              const editingFields = editRowsState[rowId];
+              if (editingFields) {
+                const updatedRow = { ...row };
+                Object.entries(editingFields).forEach(
+                  ([fieldName, fieldData]) => {
+                    if (fieldData && fieldData.value !== undefined) {
+                      updatedRow[fieldName] = fieldData.value;
+                      bsLog(
+                        `📝 Preserved edit value for ${rowId}.${fieldName}:`,
+                        fieldData.value
+                      );
+                    }
+                  }
+                );
+                return updatedRow;
+              }
+              return row;
+            });
+          });
+        }
+
         // For NEW rows, we need to:
         // 1. Stop edit mode first (with ignoreModifications)
         // 2. Then delete the row from React state
@@ -6853,11 +6897,25 @@ ${errorInfo.originalError}
               const remainingRows = oldRows.filter((row) => row.id !== id);
 
               // Check if there are any remaining new rows
+              // IMPORTANT: Check isNew flag FIRST, then fall back to id pattern
+              // After a row is saved, isNew becomes false even if id still starts with "new-"
               const hasRemainingNewRows = remainingRows.some(
-                (row) => row.isNew || String(row.id).startsWith("new-")
+                (row) =>
+                  row.isNew === true ||
+                  (row.isNew !== false && String(row.id).startsWith("new-"))
               );
               const hasUnsavedEdits =
                 Object.keys(unsavedChangesRef.current).length > 0;
+
+              bsLog("🚫 Cancel check - remaining state:", {
+                remainingRowsCount: remainingRows.length,
+                hasRemainingNewRows,
+                hasUnsavedEdits,
+                remainingRowIds: remainingRows.map((r) => ({
+                  id: r.id,
+                  isNew: r.isNew,
+                })),
+              });
 
               // If no more new rows and no unsaved changes, exit bulk edit mode
               if (!hasRemainingNewRows && !hasUnsavedEdits) {
@@ -6865,6 +6923,9 @@ ${errorInfo.originalError}
                   setBulkEditMode(false);
                   setHasUnsavedChanges(false);
                   setRowModesModel({});
+                  bsLog(
+                    "📝 Bulk edit mode disabled after cancel - no remaining new rows or unsaved changes"
+                  );
                 }, 0);
               }
 
@@ -7013,20 +7074,100 @@ ${errorInfo.originalError}
               isNew: false,
             };
 
+            // CRITICAL: Before refreshing, preserve other new rows that haven't been saved yet
+            // This prevents losing data when user saves one row while other rows are still being edited
+            const currentRows = apiRef.current?.getAllRowIds
+              ? apiRef.current
+                  .getAllRowIds()
+                  .map((id) => apiRef.current.getRow(id))
+                  .filter(Boolean)
+              : rows;
+
+            // Get edit values from DataGrid internal state for other rows
+            let editRowsState = {};
+            if (apiRef.current?.state?.editRows) {
+              editRowsState = { ...apiRef.current.state.editRows };
+            }
+
+            // Find other new rows (not the one we just saved)
+            const otherNewRows = currentRows
+              .filter((row) => {
+                const rowId = String(
+                  row.id || row[getEffectivePrimaryKey()] || ""
+                );
+                return (
+                  (rowId.startsWith("new-") || row.isNew) &&
+                  row.id !== newRow.id
+                );
+              })
+              .map((row) => {
+                // Merge any edit values from DataGrid state
+                const rowId = String(row.id);
+                const editingFields = editRowsState[rowId];
+                if (editingFields) {
+                  const mergedRow = { ...row };
+                  Object.entries(editingFields).forEach(
+                    ([fieldName, fieldData]) => {
+                      if (fieldData && fieldData.value !== undefined) {
+                        mergedRow[fieldName] = fieldData.value;
+                      }
+                    }
+                  );
+                  return mergedRow;
+                }
+                return row;
+              });
+
+            // Preserve rowModesModel for other new rows
+            const currentRowModesModel = { ...rowModesModelRef.current };
+            const preservedRowModes = {};
+            otherNewRows.forEach((row) => {
+              const rowId = row.id;
+              if (currentRowModesModel[rowId]) {
+                preservedRowModes[rowId] = currentRowModesModel[rowId];
+              }
+            });
+
+            bsLog("📝 Preserving other new rows before refresh:", {
+              otherNewRowsCount: otherNewRows.length,
+              preservedRowModes,
+            });
+
+            // Update the saved row in state immediately
             setRows((oldRows) =>
               oldRows.map((row) => (row.id === newRow.id ? updatedRow : row))
             );
 
-            // Refresh data to get the latest from server
-            await loadData(true);
+            // Only refresh if there are no other unsaved new rows
+            // Otherwise, just update the current row without full refresh
+            if (otherNewRows.length === 0) {
+              // No other new rows, safe to refresh
+              await loadData(true);
+            } else {
+              // There are other new rows - don't do full refresh
+              // Just remove the saved row's isNew flag and let it stay in the grid
+              bsLog("📝 Skipping full refresh - other new rows exist");
+
+              // Update rows to reflect the saved row with its new data
+              setRows((oldRows) => {
+                // Replace the saved row with updated data
+                const updatedRows = oldRows.map((row) => {
+                  if (row.id === newRow.id) {
+                    return updatedRow;
+                  }
+                  return row;
+                });
+                return updatedRows;
+              });
+            }
 
             // After successful save, check if we should exit bulk edit mode
-            // Since loadData refreshes all rows from server, new rows are replaced with real data
-            // Check unsavedChangesRef for any remaining unsaved edits
+            // Check for remaining unsaved edits AND other new rows
             const hasUnsavedEdits =
               Object.keys(unsavedChangesRef.current).length > 0;
+            const hasRemainingNewRows = otherNewRows.length > 0;
 
-            if (!hasUnsavedEdits) {
+            if (!hasUnsavedEdits && !hasRemainingNewRows) {
               // Use setTimeout to ensure state updates are processed
               setTimeout(() => {
                 setBulkEditMode(false);
@@ -7036,6 +7177,13 @@ ${errorInfo.originalError}
                   "📝 Bulk edit mode disabled - no remaining changes after save"
                 );
               }, 50);
+            } else if (hasRemainingNewRows) {
+              // Keep bulk mode and hasUnsavedChanges active for remaining new rows
+              setHasUnsavedChanges(true);
+              bsLog(
+                "📝 Keeping bulk edit mode - still have new rows:",
+                otherNewRows.length
+              );
             }
 
             bsLog("✅ New record created successfully:", savedRecord);
@@ -7211,6 +7359,8 @@ ${errorInfo.originalError}
         executeSpCrud,
         parsedCols,
         bsKeyId,
+        setRowModesModel,
+        apiRef,
       ]
     );
 
@@ -9638,6 +9788,7 @@ ${errorInfo.originalError}
 
         if (validRows.length === 0) {
           Logger.warn("⚠️ No valid data to save");
+          setFormLoading(false);
           return;
         }
 
@@ -9679,6 +9830,8 @@ ${errorInfo.originalError}
             html: `<div style="max-height: 300px; overflow-y: auto;">${errorHtml}</div>`,
             width: 450,
           });
+          // CRITICAL: Reset loading state when returning early due to validation error
+          setFormLoading(false);
           return;
         }
 
@@ -10163,6 +10316,10 @@ ${errorInfo.originalError}
           BSAlertSwal2.show("info", "No changes to save", {
             title: "Information",
           });
+          // CRITICAL: Reset loading states when returning early
+          setFormLoading(false);
+          setLoading(false);
+          isBulkSavingRef.current = false;
           return;
         }
 
@@ -10210,6 +10367,10 @@ ${errorInfo.originalError}
             html: `<div style="max-height: 300px; overflow-y: auto;">${errorHtml}</div>`,
             width: 450,
           });
+          // CRITICAL: Reset loading states when returning early due to validation error
+          setFormLoading(false);
+          setLoading(false);
+          isBulkSavingRef.current = false;
           return;
         }
 
@@ -10268,6 +10429,10 @@ ${errorInfo.originalError}
               html: `<div style="max-height: 300px; overflow-y: auto;">${uniqueErrorHtml}</div>`,
               width: 450,
             });
+            // CRITICAL: Reset loading states when returning early due to unique validation error
+            setFormLoading(false);
+            setLoading(false);
+            isBulkSavingRef.current = false;
             return;
           }
         }
