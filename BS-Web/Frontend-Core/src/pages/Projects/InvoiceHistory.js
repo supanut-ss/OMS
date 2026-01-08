@@ -90,7 +90,7 @@ const InvoiceHistory = (props) => {
           is_incentive_requested,
           is_cancel,
           project_header_id"
-          bsObjBy="document_no asc"
+          bsObjBy="document_type desc"
           bsObjWh={bsObjWh}
           bsComboBox={[
             {
@@ -98,7 +98,7 @@ const InvoiceHistory = (props) => {
               Display: "display_member",
               Value: "value_member",
               Default:
-                getResource(resourceData, "Select Document Type") ||
+                getResource(resourceData, "document_type") ||
                 "--- Select Document Type ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
