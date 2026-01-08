@@ -28,19 +28,19 @@ namespace ApiCore.Services.Implementation
                     CommandType = CommandType.StoredProcedure
                 };
 
-                // Input parameters
-                cmd.Parameters.AddWithValue("@Operation", "SELECT");
-                cmd.Parameters.AddWithValue("@Page", request.Page);
-                cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
-                cmd.Parameters.AddWithValue("@OrderBy", (object?)request.OrderBy ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@FilterModel", (object?)request.FilterModel ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@QuickFilter", (object?)request.QuickFilter ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@TaskStatus", (object?)request.TaskStatus ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@UserId", userId);
+                // Input parameters - ตาม Coding Standards
+                cmd.Parameters.AddWithValue("@in_vchOperation", "SELECT");
+                cmd.Parameters.AddWithValue("@in_intPage", request.Page);
+                cmd.Parameters.AddWithValue("@in_intPageSize", request.PageSize);
+                cmd.Parameters.AddWithValue("@in_vchOrderBy", (object?)request.OrderBy ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchFilterModel", (object?)request.FilterModel ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchQuickFilter", (object?)request.QuickFilter ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchTaskStatus", (object?)request.TaskStatus ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
 
                 // Output parameters
-                cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -110,17 +110,17 @@ namespace ApiCore.Services.Implementation
                     CommandType = CommandType.StoredProcedure
                 };
 
-                // Input parameters
-                cmd.Parameters.AddWithValue("@Operation", "SELECT");
-                cmd.Parameters.AddWithValue("@Page", request.Page);
-                cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
-                cmd.Parameters.AddWithValue("@OrderBy", (object?)request.OrderBy ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@QuickFilter", (object?)request.QuickFilter ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@ProjectTaskId", request.ProjectTaskId);
+                // Input parameters - ตาม Coding Standards
+                cmd.Parameters.AddWithValue("@in_vchOperation", "SELECT");
+                cmd.Parameters.AddWithValue("@in_intPage", request.Page);
+                cmd.Parameters.AddWithValue("@in_intPageSize", request.PageSize);
+                cmd.Parameters.AddWithValue("@in_vchOrderBy", (object?)request.OrderBy ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchQuickFilter", (object?)request.QuickFilter ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_intProjectTaskId", request.ProjectTaskId);
 
                 // Output parameters
-                cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -182,20 +182,20 @@ namespace ApiCore.Services.Implementation
                     CommandType = CommandType.StoredProcedure
                 };
 
-                // Input parameters
-                cmd.Parameters.AddWithValue("@Operation", "INSERT");
-                cmd.Parameters.AddWithValue("@ProjectTaskId", request.ProjectTaskId);
-                cmd.Parameters.AddWithValue("@IssueType", request.IssueType);
-                cmd.Parameters.AddWithValue("@ActualWork", request.ActualWork);
-                cmd.Parameters.AddWithValue("@ActualDate", request.ActualDate);
-                cmd.Parameters.AddWithValue("@ProcessUpdate", request.ProcessUpdate);
+                // Input parameters - ตาม Coding Standards
+                cmd.Parameters.AddWithValue("@in_vchOperation", "INSERT");
+                cmd.Parameters.AddWithValue("@in_intProjectTaskId", request.ProjectTaskId);
+                cmd.Parameters.AddWithValue("@in_vchIssueType", request.IssueType);
+                cmd.Parameters.AddWithValue("@in_decActualWork", request.ActualWork);
+                cmd.Parameters.AddWithValue("@in_dtActualDate", request.ActualDate);
+                cmd.Parameters.AddWithValue("@in_vchProcessUpdate", request.ProcessUpdate);
                 // AssigneeUserId = who the task is assigned to, UserId = who is creating the record
-                cmd.Parameters.AddWithValue("@AssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
-                cmd.Parameters.AddWithValue("@UserId", userId);
+                cmd.Parameters.AddWithValue("@in_vchAssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
+                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
 
                 // Output parameters
-                cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -242,20 +242,20 @@ namespace ApiCore.Services.Implementation
                     CommandType = CommandType.StoredProcedure
                 };
 
-                // Input parameters
-                cmd.Parameters.AddWithValue("@Operation", "UPDATE");
-                cmd.Parameters.AddWithValue("@ProjectTaskTrackingId", request.ProjectTaskTrackingId ?? 0);
-                cmd.Parameters.AddWithValue("@IssueType", request.IssueType);
-                cmd.Parameters.AddWithValue("@ActualWork", request.ActualWork);
-                cmd.Parameters.AddWithValue("@ActualDate", request.ActualDate);
-                cmd.Parameters.AddWithValue("@ProcessUpdate", request.ProcessUpdate);
+                // Input parameters - ตาม Coding Standards
+                cmd.Parameters.AddWithValue("@in_vchOperation", "UPDATE");
+                cmd.Parameters.AddWithValue("@in_intProjectTaskTrackingId", request.ProjectTaskTrackingId ?? 0);
+                cmd.Parameters.AddWithValue("@in_vchIssueType", request.IssueType);
+                cmd.Parameters.AddWithValue("@in_decActualWork", request.ActualWork);
+                cmd.Parameters.AddWithValue("@in_dtActualDate", request.ActualDate);
+                cmd.Parameters.AddWithValue("@in_vchProcessUpdate", request.ProcessUpdate);
                 // AssigneeUserId = who the task is assigned to, UserId = who is updating the record
-                cmd.Parameters.AddWithValue("@AssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
-                cmd.Parameters.AddWithValue("@UserId", userId);
+                cmd.Parameters.AddWithValue("@in_vchAssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
+                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
 
                 // Output parameters
-                cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -304,14 +304,14 @@ namespace ApiCore.Services.Implementation
                     CommandType = CommandType.StoredProcedure
                 };
 
-                // Input parameters
-                cmd.Parameters.AddWithValue("@Operation", "DELETE");
-                cmd.Parameters.AddWithValue("@ProjectTaskTrackingId", projectTaskTrackingId);
+                // Input parameters - ตาม Coding Standards
+                cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
+                cmd.Parameters.AddWithValue("@in_intProjectTaskTrackingId", projectTaskTrackingId);
 
                 // Output parameters
-                var rowCountParam = cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int);
+                var rowCountParam = cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int);
                 rowCountParam.Direction = ParameterDirection.Output;
-                var messageParam = cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000);
+                var messageParam = cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000);
                 messageParam.Direction = ParameterDirection.Output;
 
                 await cmd.ExecuteNonQueryAsync();

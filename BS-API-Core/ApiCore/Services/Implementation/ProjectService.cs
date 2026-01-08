@@ -358,23 +358,23 @@ namespace ApiCore.Services.Implementation
                     CommandType = CommandType.StoredProcedure
                 };
 
-                // Parameters
-                cmd.Parameters.AddWithValue("@Operation", "DELETE");
-                cmd.Parameters.AddWithValue("@ProjectTaskId", projectTaskId);
+                // Parameters - ตาม Coding Standards
+                cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
+                cmd.Parameters.AddWithValue("@in_intProjectTaskId", projectTaskId);
 
                 // Output parameters (ต้องใส่ เพราะ procedure มี output)
-                cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@OutputErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@out_intErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
 
                 await cmd.ExecuteNonQueryAsync();
 
-                int errorCode = (int)cmd.Parameters["@OutputErrorCode"].Value;
+                int errorCode = (int)cmd.Parameters["@out_intErrorCode"].Value;
 
                 return new ProjectTaskDeleteResponse
                 {
                     message_code = errorCode.ToString() ?? "",
-                    message_text = cmd.Parameters["@OutputMessage"].Value.ToString() ?? ""
+                    message_text = cmd.Parameters["@out_vchMessage"].Value.ToString() ?? ""
                 };
             }
             catch
@@ -456,25 +456,26 @@ namespace ApiCore.Services.Implementation
                     using (var cmd = new SqlCommand("tmt.usp_tmt_project_task_member", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
-                        // Parameters
-                        cmd.Parameters.AddWithValue("@Operation", "DELETE");
-                        cmd.Parameters.AddWithValue("@ProjectTaskMemberId", assignTaskMemberId);
+                        // Parameters - ตาม Coding Standards
+                        cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
+                        cmd.Parameters.AddWithValue("@in_intProjectTaskMemberId", assignTaskMemberId);
                         // Output parameters (ต้องใส่ เพราะ procedure มี output)
-                        cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@OutputErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("@out_intErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
                         await cmd.ExecuteNonQueryAsync();
-                        int errorCode = (int)cmd.Parameters["@OutputErrorCode"].Value;
+                        int errorCode = (int)cmd.Parameters["@out_intErrorCode"].Value;
                         return new ProjectAssignTaskMemberResponse
                         {
                             project_task_member_id = assignTaskMemberId,
                             message_code = errorCode.ToString() ?? "",
-                            message_text = cmd.Parameters["@OutputMessage"].Value.ToString() ?? ""
+                            message_text = cmd.Parameters["@out_vchMessage"].Value.ToString() ?? ""
                         };
                     }
                 }
             }
-            catch (Exception ex) { 
+            catch (Exception ex)
+            {
                 return new ProjectAssignTaskMemberResponse
                 {
                     project_task_member_id = 0,
@@ -532,9 +533,10 @@ namespace ApiCore.Services.Implementation
 
 
                     }
-                }  
+                }
                 return response;
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 return new ProjectTeamResponse
                 {
@@ -554,19 +556,19 @@ namespace ApiCore.Services.Implementation
                     using (var cmd = new SqlCommand("tmt.usp_project_teams", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
-                        // Parameters
-                        cmd.Parameters.AddWithValue("@Operation", "DELETE");
-                        cmd.Parameters.AddWithValue("@ProjectMemberId", projectTeamId);
+                        // Parameters - ตาม Coding Standards
+                        cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
+                        cmd.Parameters.AddWithValue("@in_intProjectMemberId", projectTeamId);
                         // Output parameters (ต้องใส่ เพราะ procedure มี output)
-                        cmd.Parameters.Add("@OutputRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@OutputMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@OutputErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add("@out_intErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
                         await cmd.ExecuteNonQueryAsync();
-                        int errorCode = (int)cmd.Parameters["@OutputErrorCode"].Value;
+                        int errorCode = (int)cmd.Parameters["@out_intErrorCode"].Value;
                         return new ProjectTeamResponse
                         {
                             message_code = errorCode.ToString() ?? "",
-                            message_text = cmd.Parameters["@OutputMessage"].Value.ToString() ?? ""
+                            message_text = cmd.Parameters["@out_vchMessage"].Value.ToString() ?? ""
                         };
                     }
                 }

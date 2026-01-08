@@ -1411,33 +1411,33 @@ namespace ApiCore.Services.Implementation
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandTimeout = 120; // 2 minutes timeout
 
-                // Add standard parameters
-                command.Parameters.Add(new SqlParameter("@Operation", request.Operation ?? "SELECT"));
-                command.Parameters.Add(new SqlParameter("@Page", request.Page ?? 1));
-                command.Parameters.Add(new SqlParameter("@PageSize", request.PageSize ?? 25));
+                // Add standard parameters - ตาม Coding Standards
+                command.Parameters.Add(new SqlParameter("@in_vchOperation", request.Operation ?? "SELECT"));
+                command.Parameters.Add(new SqlParameter("@in_intPage", request.Page ?? 1));
+                command.Parameters.Add(new SqlParameter("@in_intPageSize", request.PageSize ?? 25));
 
-                // Only add @UserId if not already provided in custom parameters
+                // Only add @in_vchUserId if not already provided in custom parameters
                 // This prevents duplicate parameter error when data contains user_id field
                 bool hasUserIdInParams = request.Parameters?.ContainsKey("UserId") == true ||
                                          request.Parameters?.ContainsKey("userId") == true ||
                                          request.Parameters?.ContainsKey("User_Id") == true;
                 if (!hasUserIdInParams)
                 {
-                    command.Parameters.Add(new SqlParameter("@UserId", request.UserId ?? "system"));
+                    command.Parameters.Add(new SqlParameter("@in_vchUserId", request.UserId ?? "system"));
                 }
 
                 // Add sort model as JSON
                 if (request.SortModel != null && request.SortModel.Any())
                 {
                     var sortJson = JsonSerializer.Serialize(request.SortModel);
-                    command.Parameters.Add(new SqlParameter("@SortModel", sortJson));
+                    command.Parameters.Add(new SqlParameter("@in_vchSortModel", sortJson));
                 }
 
                 // Add filter model as JSON
                 if (request.FilterModel != null)
                 {
                     var filterJson = JsonSerializer.Serialize(request.FilterModel);
-                    command.Parameters.Add(new SqlParameter("@FilterModel", filterJson));
+                    command.Parameters.Add(new SqlParameter("@in_vchFilterModel", filterJson));
                 }
 
                 // Add custom parameters
@@ -1457,19 +1457,19 @@ namespace ApiCore.Services.Implementation
                 }
 
                 // Add OUTPUT parameters that most Enhanced Stored Procedures expect
-                var outputRowCountParam = new SqlParameter("@OutputRowCount", SqlDbType.Int)
+                var outputRowCountParam = new SqlParameter("@out_intRowCount", SqlDbType.Int)
                 {
                     Direction = ParameterDirection.Output
                 };
                 command.Parameters.Add(outputRowCountParam);
 
-                var outputMessageParam = new SqlParameter("@OutputMessage", SqlDbType.NVarChar, 4000)
+                var outputMessageParam = new SqlParameter("@out_vchMessage", SqlDbType.NVarChar, 4000)
                 {
                     Direction = ParameterDirection.Output
                 };
                 command.Parameters.Add(outputMessageParam);
 
-                var outputErrorCodeParam = new SqlParameter("@OutputErrorCode", SqlDbType.Int)
+                var outputErrorCodeParam = new SqlParameter("@out_intErrorCode", SqlDbType.Int)
                 {
                     Direction = ParameterDirection.Output
                 };
@@ -1611,7 +1611,7 @@ namespace ApiCore.Services.Implementation
                 if (outputErrorCodeParam.Value != DBNull.Value)
                 {
                     outputErrorCode = (int)outputErrorCodeParam.Value;
-                    _logger.LogInformation("📤 OUTPUT PARAMETER: @OutputErrorCode = {ErrorCode}", outputErrorCode);
+                    _logger.LogInformation("📤 OUTPUT PARAMETER: @out_intErrorCode = {ErrorCode}", outputErrorCode);
                 }
 
                 // Determine success based on ErrorCode
