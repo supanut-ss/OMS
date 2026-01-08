@@ -14,9 +14,10 @@ const InvoiceHistory = (props) => {
     : undefined;
 
   // Default values for new records - set project_header_id from props
+  // Always default `is_cancel` to 'NO'
   const defaultFormValues = props.projectID
-    ? { project_header_id: props.projectID }
-    : {};
+    ? { project_header_id: props.projectID, is_cancel: "NO" }
+    : { is_cancel: "NO" };
 
   const gridRef = useRef();
   // โหลด resource ของ group "User"
