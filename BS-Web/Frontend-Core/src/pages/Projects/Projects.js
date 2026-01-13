@@ -10,13 +10,13 @@ const storedProcedure = {
     bsStoredProcedure: "usp_tmt_project_header",
     bsStoredProcedureSchema: "tmt",
     bsCols:
-      "project_header_id,project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
+      "project_header_id,project_no,application_type,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
   },
   ma: {
     bsStoredProcedure: "usp_tmt_project_header_ma",
     bsStoredProcedureSchema: "tmt",
     bsCols:
-      "project_header_id,project_no,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
+      "project_header_id,project_no,application_type,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
   },
 };
 const Projects = (props) => {

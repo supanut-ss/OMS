@@ -130,7 +130,7 @@ export default function MainLayout({ lang, onChangeLang }) {
   // const navigate = useNavigate();
   //const apiUrl = Config.API_URL;
   const apiUrl = Config.API_NOTIFY;
-  const { enqueue } = useNotifications();
+  const { enqueue, enqueueAlarm } = useNotifications();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
     location.pathname === "/" || location.pathname === "/home";
@@ -488,11 +488,42 @@ export default function MainLayout({ lang, onChangeLang }) {
       connectionRef.current = connection;
 
       connection.on("ReceiveAll", (msg) => {
-        enqueue({ message: msg, severity: "info", duration: 3000 });
+        console.log(msg);
+        if (msg.userId === currentUser.UserId) return;
+
+        if (msg.type === "alarm") {
+          enqueueAlarm({
+            title: msg.title,
+            message: msg.message,
+          });
+        } else {
+          enqueue({
+            message: msg.message,
+            severity: msg.type,
+            duration: 3000,
+          });
+        }
       });
+
       connection.on("ReceiveUser", (msg) => {
-        enqueue({ message: msg, severity: "info", duration: 3000 });
+        console.log(msg);
+        if (msg.userId !== currentUser.UserId) return;
+
+        if (msg.type === "alarm") {
+          enqueueAlarm({
+            title: msg.title,
+            message: msg.message,
+          });
+        } else {
+          enqueue({
+            message: msg.message,
+            severity: msg.type,
+            duration: 3000,
+          });
+        }
       });
+
+
       connection.serverTimeoutInMilliseconds = 60000;
       connection.start().catch((err) => {
         // Only log start errors in non-production environments
@@ -1009,7 +1040,6 @@ export default function MainLayout({ lang, onChangeLang }) {
           </Button>
         </DialogActions>
       </Dialog>
-
     </Box>
   );
 }
