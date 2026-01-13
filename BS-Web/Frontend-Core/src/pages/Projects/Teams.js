@@ -133,7 +133,14 @@ const ProjectsTeams = (props) => {
   // Memoize column definitions
   const columnDefs = useMemo(
     () => ({
+      project_member_id: { hide: true },
       project_header_id: { hide: true },
+      assign_user_id: {
+        required: true,
+      },
+      role: {
+        required: true,
+      },
       create_by: { hide: true },
       create_date: { hide: true },
       update_by: { hide: true },
@@ -166,7 +173,7 @@ const ProjectsTeams = (props) => {
           //  onDelete={handleDelete}
           // bsAllowAdd={true}
           // bsAllowEdit={true}
-          //  bsAllowDelete={true} 
+          //  bsAllowDelete={true}
           bsVisibleEdit={true}
           bsVisibleDelete={true}
           bsColumnDefs={columnDefs}
@@ -179,7 +186,10 @@ const ProjectsTeams = (props) => {
       </Paper>
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth={"lg"}>
         <DialogTitle>
-          {formData.project_member_id ? getResource(resourceData, "Edit_From") : getResource(resourceData, "Add_From")} {props.title}
+          {formData.project_member_id
+            ? getResource(resourceData, "Edit_From")
+            : getResource(resourceData, "Add_From")}{" "}
+          {props.title}
         </DialogTitle>
         <IconButton
           aria-label="close"
