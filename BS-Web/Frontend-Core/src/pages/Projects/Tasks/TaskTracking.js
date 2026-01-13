@@ -7,6 +7,9 @@ import {
   IconButton,
   Paper,
   Typography,
+  Box,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useResource } from "../../../hooks/useResource";
@@ -98,6 +101,7 @@ const getCurrentUserId = () => {
 const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const trackingGridRef = useRef();
   const [openTrackingDialog, setOpenTrackingDialog] = useState(false);
+  const [showOnlyMine, setShowOnlyMine] = useState(true); // Toggle: true = show only my tracking
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
 
@@ -193,6 +197,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     setOpenTrackingDialog(true);
   };
 
+  // Handle toggle change
+  const handleToggleChange = (event) => {
+    setShowOnlyMine(event.target.checked);
+    // Grid will auto re-mount due to key change
+  };
+
   // Handle delete tracking
   const handleDeleteTracking = async (id) => {
     BSAlertSwal2.fire({
@@ -221,10 +231,40 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     <>
       {/* Task Tracking Grid */}
       <Paper elevation={2} sx={{ p: 2 }}>
-        <Typography variant="subtitle2" color="primary" gutterBottom>
-          {getResource(resourceData, "task_tracking") || "Task Tracking"}
-        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 1,
+          }}
+        >
+          <Typography variant="subtitle2" color="primary">
+            {getResource(resourceData, "task_tracking") || "Task Tracking"}
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showOnlyMine}
+                onChange={handleToggleChange}
+                color="primary"
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="body2" color="text.secondary">
+                {showOnlyMine
+                  ? getResource(resourceData, "show_only_mine") ||
+                    "Show Only Mine"
+                  : getResource(resourceData, "show_all") || "Show All"}
+              </Typography>
+            }
+            labelPlacement="start"
+            sx={{ mr: 0 }}
+          />
+        </Box>
         <BSDataGrid
+          key={`tracking-grid-${showOnlyMine ? "mine" : "all"}`}
           ref={trackingGridRef}
           bsLocale={lang}
           bsStoredProcedure="usp_tmt_project_task_tracking"
@@ -232,7 +272,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsCols="process_update,actual_date,actual_work,issue_type,assignee_list,create_date,create_by,update_date,update_by"
           bsStoredProcedureParams={{
             in_intProjectTaskId: projectTaskId,
-            in_vchUserId: getCurrentUserId(),
+            in_vchUserId: showOnlyMine ? getCurrentUserId() : null,
           }}
           showAdd={true}
           bsAllowAdd={true}

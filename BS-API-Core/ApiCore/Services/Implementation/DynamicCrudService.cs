@@ -1518,9 +1518,11 @@ namespace ApiCore.Services.Implementation
                 command.Parameters.Add(new SqlParameter(FindSpParamName("PageSize", "@in_intPageSize"), request.PageSize ?? 25));
 
                 // Only add UserId if not already provided in custom parameters
+                // Check all possible key formats: UserId, userId, User_Id, in_vchUserId
                 bool hasUserIdInParams = request.Parameters?.ContainsKey("UserId") == true ||
                                          request.Parameters?.ContainsKey("userId") == true ||
-                                         request.Parameters?.ContainsKey("User_Id") == true;
+                                         request.Parameters?.ContainsKey("User_Id") == true ||
+                                         request.Parameters?.ContainsKey("in_vchUserId") == true;
                 if (!hasUserIdInParams)
                 {
                     command.Parameters.Add(new SqlParameter(FindSpParamName("UserId", "@in_vchUserId"), request.UserId ?? "system"));
