@@ -313,10 +313,13 @@ const TaskStatusSection = ({
   onViewTask,
   expanded,
   onToggle,
+  gridRef,
 }) => {
   const theme = useTheme();
   const dataGridRef = useRef();
   const [count, setCount] = useState(0);
+
+  const effectiveGridRef = gridRef || dataGridRef;
 
   // Handle data loaded to get count
   const handleDataLoaded = (data) => {
@@ -372,7 +375,7 @@ const TaskStatusSection = ({
       <AccordionDetails sx={{ p: 2 }}>
         {expanded && (
           <BSDataGrid
-            ref={dataGridRef}
+            ref={effectiveGridRef}
             bsLocale={lang}
             bsStoredProcedure="usp_tmt_my_task"
             bsStoredProcedureSchema="tmt"
@@ -439,7 +442,6 @@ const TaskStatusSection = ({
 // ============ Section Configurations with Glassmorphism ============
 const getSectionConfigs = (theme) => {
   const isDark = theme.palette.mode === "dark";
-  const glass = theme.palette.custom?.glass;
 
   return [
     {
@@ -479,6 +481,17 @@ const MyTaskPage = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
 
+  // Keep refs to each section grid so we can refresh after closing the dialog
+  const openGridRef = useRef(null);
+  const inProcessGridRef = useRef(null);
+  const closeGridRef = useRef(null);
+
+  const sectionGridRefs = {
+    [TASK_STATUS.OPEN]: openGridRef,
+    [TASK_STATUS.IN_PROCESS]: inProcessGridRef,
+    [TASK_STATUS.CLOSE]: closeGridRef,
+  };
+
   // State for expanded sections
   const [expandedSections, setExpandedSections] = useState({
     [TASK_STATUS.OPEN]: true,
@@ -508,6 +521,12 @@ const MyTaskPage = (props) => {
   const handleCloseTaskDialog = () => {
     setOpenTaskDialog(false);
     setSelectedTask(null);
+
+    // Refresh visible task lists so data is up-to-date after closing
+    // (e.g., when tracking was added/edited inside the dialog)
+    openGridRef.current?.forceRefresh?.();
+    inProcessGridRef.current?.forceRefresh?.();
+    closeGridRef.current?.forceRefresh?.();
   };
 
   // Load resources on mount
@@ -517,7 +536,7 @@ const MyTaskPage = (props) => {
       setResourceData(data);
     };
     loadResources();
-  }, [lang]);
+  }, [lang, getResources]);
 
   // Get theme-aware section configurations
   const sections = getSectionConfigs(theme);
@@ -581,6 +600,7 @@ const MyTaskPage = (props) => {
           onViewTask={handleViewTask}
           expanded={expandedSections[section.status]}
           onToggle={handleToggleSection(section.status)}
+          gridRef={sectionGridRefs[section.status]}
         />
       ))}
 
