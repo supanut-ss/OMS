@@ -76,6 +76,7 @@ import {
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
   AttachFile as AttachFileIcon,
+  RadioButtonUnchecked,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
@@ -8297,20 +8298,43 @@ ${errorInfo.originalError}
             if (effectiveVisibleView && onView) {
               actions.push((params) => {
                 // Get row-specific config
+                // Supports: viewIcon ("visibility" | "circle" | ReactComponent), viewIconColor (string)
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
                 const showView = rowConfig.showView !== false;
 
                 if (!showView) return null;
 
+                // Custom icon support:
+                // - "visibility" (default): Visibility icon
+                // - "circle": RadioButtonUnchecked icon
+                // - React Component: Custom SVG icon component
+                let ViewIcon;
+                if (
+                  typeof rowConfig.viewIcon === "function" ||
+                  (typeof rowConfig.viewIcon === "object" &&
+                    rowConfig.viewIcon !== null)
+                ) {
+                  // Custom React component passed directly
+                  ViewIcon = rowConfig.viewIcon;
+                } else if (rowConfig.viewIcon === "circle") {
+                  ViewIcon = RadioButtonUnchecked;
+                } else {
+                  ViewIcon = Visibility;
+                }
+
+                // Custom color support - default to info color (blue)
+                const defaultColor =
+                  theme.palette.mode === "dark"
+                    ? theme.palette.info.light
+                    : theme.palette.info.main;
+                const iconColor = rowConfig.viewIconColor || defaultColor;
+
                 return (
                   <GridActionsCellItem
                     icon={
-                      <Visibility
-                        htmlColor={
-                          theme.palette.mode === "dark"
-                            ? theme.palette.info.light
-                            : theme.palette.info.main
-                        }
+                      <ViewIcon
+                        htmlColor={iconColor}
+                        sx={{ color: iconColor }}
                       />
                     }
                     label="View"
@@ -8812,17 +8836,53 @@ ${errorInfo.originalError}
           if (effectiveVisibleView && onView) {
             actions.push((params) => {
               // Get row-specific config
+              // Supports: viewIcon ("visibility" | "circle" | ReactComponent), viewIconColor (string)
               const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
               const showView = rowConfig.showView !== false;
 
               if (!showView) return null;
 
+              // Custom icon support:
+              // - "visibility" (default): Visibility icon
+              // - "circle": RadioButtonUnchecked icon
+              // - React Component: Custom SVG icon component
+              let ViewIcon;
+              if (
+                typeof rowConfig.viewIcon === "function" ||
+                (typeof rowConfig.viewIcon === "object" &&
+                  rowConfig.viewIcon !== null)
+              ) {
+                // Custom React component passed directly
+                ViewIcon = rowConfig.viewIcon;
+              } else if (rowConfig.viewIcon === "circle") {
+                ViewIcon = RadioButtonUnchecked;
+              } else {
+                ViewIcon = Visibility;
+              }
+
+              // Custom color support - default to info color (blue)
+              const defaultColor =
+                theme.palette.mode === "dark"
+                  ? theme.palette.info.light
+                  : theme.palette.info.main;
+              const iconColor = rowConfig.viewIconColor || defaultColor;
+
               return (
                 <GridActionsCellItem
-                  icon={<Visibility />}
+                  icon={
+                    <ViewIcon htmlColor={iconColor} sx={{ color: iconColor }} />
+                  }
                   label="View"
                   onClick={() => onView(params.row)}
                   disabled={rowConfig.disabled}
+                  sx={{
+                    "&:hover": {
+                      backgroundColor:
+                        theme.palette.mode === "dark"
+                          ? "rgba(41, 182, 246, 0.2)"
+                          : "rgba(2, 136, 209, 0.1)",
+                    },
+                  }}
                 />
               );
             });

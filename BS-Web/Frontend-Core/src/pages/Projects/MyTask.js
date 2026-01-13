@@ -23,6 +23,8 @@ import AssignmentIcon from "@mui/icons-material/Assignment";
 import AssignmentLateIcon from "@mui/icons-material/AssignmentLate";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import FlagIcon from "@mui/icons-material/Flag";
+import { Visibility } from "@mui/icons-material";
+import { SvgIcon } from "@mui/material";
 
 import BSDataGrid from "../../components/BSDataGrid";
 import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
@@ -85,6 +87,20 @@ const getPriorityColor = (priority, theme) => {
       return priorityColors.low;
   }
 };
+
+// Custom SVG Icon - Eye Close (for tasks without tracking)
+const EyeCloseIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      d="M3 10a13.358 13.358 0 0 0 3 2.685M21 10a13.358 13.358 0 0 1-3 2.685m-8 1.624L9.5 16.5m.5-2.19a10.59 10.59 0 0 0 4 0m-4 0a11.275 11.275 0 0 1-4-1.625m8 1.624.5 2.191m-.5-2.19a11.275 11.275 0 0 0 4-1.625m0 0 1.5 1.815M6 12.685 4.5 14.5"
+    />
+  </SvgIcon>
+);
 
 // ============ Priority Icon Component ============
 const PriorityDisplay = ({ priority, showLabel = true, theme }) => (
@@ -360,7 +376,7 @@ const TaskStatusSection = ({
             bsLocale={lang}
             bsStoredProcedure="usp_tmt_my_task"
             bsStoredProcedureSchema="tmt"
-            bsCols="project_no,project_name,task_name,assignee_list,start_date,end_date,manday,project_type,priority"
+            bsCols="project_no,issue_type,project_name,task_name,assignee_list,start_date,end_date,manday,project_type,priority"
             bsStoredProcedureParams={{ in_vchTaskStatus: status }}
             bsShowRowNumber={true}
             showAdd={false}
@@ -371,6 +387,15 @@ const TaskStatusSection = ({
             bsKeyId="project_task_id"
             bsFilterMode="client"
             onDataLoaded={handleDataLoaded}
+            bsRowConfig={(row) => ({
+              // If task has tracking entries (count > 0), show blue Visibility icon
+              // If task has no tracking yet, show gray Circle icon
+              viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
+              viewIconColor:
+                row.task_tracking_count > 0
+                  ? theme.palette.info.main // Blue for tasks with tracking
+                  : theme.palette.grey[400], // Gray for new tasks without tracking
+            })}
             bsColumnDefs={[
               {
                 field: "assignee_list",
