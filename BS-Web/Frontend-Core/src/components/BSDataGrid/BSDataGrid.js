@@ -5116,64 +5116,84 @@ ${errorInfo.originalError}
       ]
     );
 
-    // Validate form data against metadata constraints
+    // Validate form data against metadata constraints and bsColumnDefs
     const validateFormData = useCallback(
       (data) => {
-        if (!metadata?.columns) return { isValid: true, errors: [] };
-
         const errors = [];
 
-        metadata?.columns.forEach((column) => {
-          const { columnName, maxLength, dataType, isNullable } = column;
-          const value = data[columnName];
+        // 1. Validate using bsColumnDefs (required: true)
+        if (columnDefsConfig && Object.keys(columnDefsConfig).length > 0) {
+          Object.entries(columnDefsConfig).forEach(([columnName, colDef]) => {
+            if (colDef.required === true) {
+              const value = data[columnName];
+              if (value == null || value === "" || value === undefined) {
+                const displayName =
+                  colDef.headerName || formatColumnName(columnName);
+                errors.push(`${displayName}: This field is required`);
+              }
+            }
+          });
+        }
 
-          // Skip validation for fields not in form
-          if (
-            !isFieldInForm(
-              columnName,
-              dataType,
-              column.isIdentity,
-              column.hasDefault,
-              column.defaultValue
-            )
-          ) {
-            return;
-          }
+        // 2. Validate using metadata columns (isNullable = false)
+        if (metadata?.columns) {
+          metadata.columns.forEach((column) => {
+            const { columnName, maxLength, dataType, isNullable } = column;
+            const value = data[columnName];
 
-          // Check maxLength for text fields
-          if (maxLength > 0 && value != null) {
-            const stringValue = String(value);
-            if (stringValue.length > maxLength) {
+            // Skip if already validated via bsColumnDefs
+            if (columnDefsConfig && columnDefsConfig[columnName]?.required) {
+              return;
+            }
+
+            // Skip validation for fields not in form
+            if (
+              !isFieldInForm(
+                columnName,
+                dataType,
+                column.isIdentity,
+                column.hasDefault,
+                column.defaultValue
+              )
+            ) {
+              return;
+            }
+
+            // Check maxLength for text fields
+            if (maxLength > 0 && value != null) {
+              const stringValue = String(value);
+              if (stringValue.length > maxLength) {
+                errors.push(
+                  `${formatColumnName(
+                    columnName
+                  )}: Maximum ${maxLength} characters allowed (current: ${
+                    stringValue.length
+                  })`
+                );
+              }
+            }
+
+            // Check required fields
+            // Skip required validation for fields with default values (database will use default)
+            const hasDefaultValue = column.hasDefault || !!column.defaultValue;
+            if (
+              !isNullable &&
+              !hasDefaultValue &&
+              (value == null || value === "")
+            ) {
               errors.push(
-                `${formatColumnName(
-                  columnName
-                )}: Maximum ${maxLength} characters allowed (current: ${
-                  stringValue.length
-                })`
+                `${formatColumnName(columnName)}: This field is required`
               );
             }
-          }
-
-          // Check required fields
-          // Skip required validation for fields with default values (database will use default)
-          const hasDefaultValue = column.hasDefault || !!column.defaultValue;
-          if (
-            !isNullable &&
-            !hasDefaultValue &&
-            (value == null || value === "")
-          ) {
-            errors.push(
-              `${formatColumnName(columnName)}: This field is required`
-            );
-          }
-        });
+          });
+        }
 
         return {
           isValid: errors.length === 0,
           errors,
         };
       },
-      [metadata, isFieldInForm, formatColumnName]
+      [metadata, columnDefsConfig, isFieldInForm, formatColumnName]
     );
 
     // Save (create/update) from dialog
