@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Notification.Hubs;
+using Notification.Models;
 
 namespace Notification.Services
 {
@@ -14,12 +15,12 @@ namespace Notification.Services
             _logger = logger;
         }
 
-        public async Task NotifyAll(string message)
+        public async Task NotifyAll(NotifyRequest notify)
         {
-            _logger.LogInformation("NotifyAll called with message={Message}", message);
+            _logger.LogInformation("NotifyAll called with message={Message}", notify);
             try
             {
-                await _hub.Clients.All.SendAsync("ReceiveAll", message);
+                await _hub.Clients.All.SendAsync("ReceiveAll", notify);
                 _logger.LogInformation("NotifyAll SendAsync completed");
             }
             catch (Exception ex)
@@ -29,13 +30,13 @@ namespace Notification.Services
             }
         }
 
-        public async Task NotifyUser(string userId, string message)
+        public async Task NotifyUser(string userId, NotifyRequest request)
         {
-            _logger.LogInformation("NotifyUser called for user={UserId} message={Message}", userId, message);
+            _logger.LogInformation("NotifyUser called for user={UserId} message={Message}", userId, request);
             try
             {
                 await _hub.Clients.Group(userId)
-                                  .SendAsync("ReceiveUser", message);
+                                  .SendAsync("ReceiveUser", request);
                 _logger.LogInformation("NotifyUser SendAsync completed for user={UserId}", userId);
             }
             catch (Exception ex)
