@@ -17,7 +17,8 @@ namespace ApiCore.Services.Implementation
             var response = new AutoCompleteResponse
             {
                 message_code = "0",
-                message_text = "success"
+                message_text = "success",
+                data = new List<Dictionary<string, object>>()
             };
 
             try
@@ -26,35 +27,63 @@ namespace ApiCore.Services.Implementation
                 {
                     await conn.OpenAsync();
 
-                    var columns = (request.columns ?? Enumerable.Empty<ColumnItem>())
+                    var keyColumn = request.columns?.FirstOrDefault(c => c.key)?.field;
+                    var displayColumns = request.columns?
+                        .Where(c => c.display)
                         .Select(c => c.field)
                         .ToList();
-                    var colum = columns.Count > 0 ? string.Join(",", columns) : "*";
 
-                    var orderby = request?.order_by ?? "";
-                    if (!string.IsNullOrEmpty(orderby))
-                        orderby = "ORDER BY " + orderby;
+                    // ---------- WHERE ----------
+                    var whereList = new List<string>();
 
-                    var whereClause = request?.where ?? "";
-                    if (!string.IsNullOrEmpty(whereClause))
-                        whereClause = "WHERE " + whereClause;
+                    if (!string.IsNullOrWhiteSpace(request.where))
+                        whereList.Add(request.where);
 
-                    var sql = @$"SELECT {colum}
-                                 FROM {request.schema}{request.table}  
-                                 {whereClause} {orderby}";
+                    if (!string.IsNullOrWhiteSpace(request.keyword) && displayColumns?.Any() == true)
+                    {
+                        var likes = displayColumns.Select(c => $"{c} LIKE @keyword");
+                        whereList.Add("(" + string.Join(" OR ", likes) + ")");
+                    }
+
+                    var whereSql = whereList.Any()
+                        ? "WHERE " + string.Join(" AND ", whereList)
+                        : "";
+
+                    // ---------- ORDER ----------
+                    var orderSql = !string.IsNullOrWhiteSpace(request.order_by)
+                        ? $"ORDER BY {request.order_by}"
+                        : (!string.IsNullOrEmpty(keyColumn) ? $"ORDER BY {keyColumn}" : "");
+
+                    // ---------- COLUMN ----------
+                    var columnList = (request.columns ?? Enumerable.Empty<ColumnItem>())
+                        .Select(c => c.field)
+                        .Distinct()
+                        .ToList();
+
+                    if (!string.IsNullOrEmpty(keyColumn) && !columnList.Contains(keyColumn))
+                        columnList.Add(keyColumn);
+
+                    var selectColumns = columnList.Any()
+                        ? string.Join(",", columnList)
+                        : "*";
+
+                    // ---------- SQL ----------
+                    var sql = $@"
+SELECT TOP (@limit) {selectColumns}
+FROM {request.schema}{request.table}
+{whereSql}
+{orderSql}";
 
                     using (var cmd = new SqlCommand(sql, conn))
-                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        if (!await reader.ReadAsync())
-                        {
-                            response.message_code = "2";
-                            response.message_text = "No resources found.";
-                        }
-                        else
-                        {
-                            response.data = new List<Dictionary<string, object>>();
+                        cmd.Parameters.AddWithValue("@limit", request.limit > 0 ? request.limit : 30);
 
+                        if (!string.IsNullOrWhiteSpace(request.keyword))
+                            cmd.Parameters.AddWithValue("@keyword", $"%{request.keyword}%");
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            // include blank (ครั้งเดียว)
                             if (request.include_blank)
                             {
                                 response.data.Add(new Dictionary<string, object>
@@ -64,46 +93,37 @@ namespace ApiCore.Services.Implementation
                         });
                             }
 
-                            do
+                            while (await reader.ReadAsync())
                             {
                                 var dict = new Dictionary<string, object>();
 
-                                // 🟢 ดึงทุกคอลัมน์จาก reader เข้า dict อัตโนมัติ
+                                // ดึงทุก column
                                 for (int i = 0; i < reader.FieldCount; i++)
                                 {
-                                    string colName = reader.GetName(i);
-                                    object colValue = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                                    dict[colName] = colValue;
+                                    var colName = reader.GetName(i);
+                                    dict[colName] = reader.IsDBNull(i) ? null : reader.GetValue(i);
                                 }
 
-                                // 🟢 เพิ่ม code + value จาก request.columns (ถ้ามี)
-                                int index = request.columns?.FindIndex(c => c.key) ?? -1;
-                                if (index >= 0)
+                                // map code + value
+                                if (!string.IsNullOrEmpty(keyColumn))
                                 {
-                                    var displayValues = (request.columns ?? Enumerable.Empty<ColumnItem>())
-                                        .Where(c => c.display)
-                                        .Select(c => reader[c.field]?.ToString() ?? "")
+                                    var displayValues = (displayColumns ?? new List<string>())
+                                        .Select(c => reader[c]?.ToString() ?? "")
                                         .ToList();
 
-                                    dict["code"] = reader[request.columns[index].field]?.ToString() ?? "";
+                                    dict["code"] = reader[keyColumn]?.ToString() ?? "";
                                     dict["value"] = string.Join(" ", displayValues);
                                 }
 
-                                // 🟢 เพิ่ม option ว่าง (เฉพาะกรณี include_blank = true)
-                                if (request.include_blank && response.data.Count == 0)
-                                {
-                                        response.data.Add(new Dictionary<string, object>
-                                {
-                                    { "code", "" },
-                                    { "value", "--Please Select--" }
-                                });
-                                }
-
-                                // 🟢 เพิ่มแถวนี้ลงใน response.data
                                 response.data.Add(dict);
-
-                            } while (await reader.ReadAsync());
+                            }
                         }
+                    }
+
+                    if (response.data.Count == (request.include_blank ? 1 : 0))
+                    {
+                        response.message_code = "2";
+                        response.message_text = "No resources found.";
                     }
                 }
             }
@@ -116,4 +136,4 @@ namespace ApiCore.Services.Implementation
             return response;
         }
     }
-}
+    }

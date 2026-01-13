@@ -77,6 +77,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState();
   const [resourceDataProject, setResourceDataProject] = useState();
+  const [isSaving, setIsSaving] = useState(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const getLang = async () => {
     setResourceData(
@@ -101,24 +102,33 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
   const handleSave = async () => {
-    if (!validate()) return;
+    try {
+      if (isSaving) return;
+      if (!validate()) return;
+      setIsSaving(true);
+      let body = {
+        ...formData,
+        start_incident_date: formData.start_incident_date ? dayjs(formData.start_incident_date).format("YYYY-MM-DDTHH:mm:ss") : formData.start_incident_date,
+        response_date: formData.response_date ? dayjs(formData.response_date).format("YYYY-MM-DDTHH:mm:ss") : formData.response_date,
+        resolve_duration_date: formData.resolve_duration_date ? dayjs(formData.resolve_duration_date).format("YYYY-MM-DDTHH:mm:ss") : formData.resolve_duration_date,
+        plan_response_date: formData.plan_response_date ? dayjs(formData.plan_response_date).format("YYYY-MM-DDTHH:mm:ss") : formData.plan_response_date,
+        plan_resolve_duration_date: formData.plan_resolve_duration_date ? dayjs(formData.plan_resolve_duration_date).format("YYYY-MM-DDTHH:mm:ss") : formData.plan_resolve_duration_date
+      }
+      const res = await AxiosMaster.post("/projects/task", body);
+      BSAlertSwal2.show(
+        res.data.message_code === 0 ? "success" : "warning",
+        res.data.message_code === 0 ? "บันทึกสำเร็จ" : "บันทึกไม่สำเร็จ"
+      );
 
-    let body = {
-      ...formData,
-      start_incident_date: formData.start_incident_date ? dayjs(formData.start_incident_date).format("YYYY-MM-DDTHH:mm:ss") : formData.start_incident_date,
-      response_date: formData.response_date ? dayjs(formData.response_date).format("YYYY-MM-DDTHH:mm:ss") : formData.response_date,
-      resolve_duration_date: formData.resolve_duration_date ? dayjs(formData.resolve_duration_date).format("YYYY-MM-DDTHH:mm:ss") : formData.resolve_duration_date,
-      plan_response_date: formData.plan_response_date ? dayjs(formData.plan_response_date).format("YYYY-MM-DDTHH:mm:ss") : formData.plan_response_date,
-      plan_resolve_duration_date: formData.plan_resolve_duration_date ? dayjs(formData.plan_resolve_duration_date).format("YYYY-MM-DDTHH:mm:ss") : formData.plan_resolve_duration_date
-    }
-    const res = await AxiosMaster.post("/projects/task", body);
-    BSAlertSwal2.show(
-      res.data.message_code === 0 ? "success" : "warning",
-      res.data.message_code === 0 ? "บันทึกสำเร็จ" : "บันทึกไม่สำเร็จ"
-    );
-
-    if (res.data.data) {
-      setFormData((prev) => ({ ...prev, ...res.data.data }));
+      if (res.data.data) {
+        setFormData((prev) => ({ ...prev, ...res.data.data }));
+      }
+    } catch (err) {
+      BSAlertSwal2.show("error", err.message, {
+        title: "บันทึกไม่สำเร็จ",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -254,8 +264,11 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
         >
           Close
         </BSCloseOutlinedButton>
-        <BSSaveOutlinedButton onClick={handleSave} variant="outlined">
-          Save
+        <BSSaveOutlinedButton
+          variant="outlined"
+          onClick={handleSave}
+          disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save"}
         </BSSaveOutlinedButton>
       </DialogActions>
     </Dialog>

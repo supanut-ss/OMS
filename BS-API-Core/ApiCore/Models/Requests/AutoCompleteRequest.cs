@@ -13,6 +13,8 @@ namespace ApiCore.Models.Requests
         public List<ColumnItem>? columns { get; set; } = new List<ColumnItem>();
      
         public bool include_blank { get; set; } = false;
+        public string? keyword { get; set; } = "";
+        public int limit { get; set; } = 30;
 
     }
     public class ColumnItem

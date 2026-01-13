@@ -80,6 +80,7 @@ const ProjectsDialog = (props) => {
   const [taskRefresh, setTaskRefresh] = useState(false);
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState();
+  const [isSaving, setIsSaving] = useState(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const getLang = async () => {
     setResourceData(await getResources(props.ma ? "t_tmt_project_header_ma" : "t_tmt_project_header", props.lang));
@@ -102,28 +103,29 @@ const ProjectsDialog = (props) => {
     props.onChangeProjectHeaderID({ id: id, newtab: newtab, path: path });
   };
   const handleSave = async () => {
+    if (isSaving) return;
     if (!validate()) return;
+    setIsSaving(true);
     let body = { ...formData, master_project_id: formData.master_project_id !== "" ? formData.master_project_id : null }
     try {
-      await AxiosMaster.post("/projects", body)
-        .then((response) => {
-          console.log(response);
-          if (response.data.message_code === 0) {
-            BSAlertSwal2.show("success", "Project saved successfully");
-            setFormData(response.data.data);
-            setTaskRefresh(true);
-          } else {
-            BSAlertSwal2.show(
-              "error",
-              response?.data?.message || "Save failed"
-            );
-          }
-        })
-        .finally(() => { });
+      const response = await AxiosMaster.post("/projects", body);
+
+      if (response.data.message_code === 0) {
+        BSAlertSwal2.show("success", "Project saved successfully");
+        setFormData(response.data.data);
+        setTaskRefresh(true);
+      } else {
+        BSAlertSwal2.show(
+          "error",
+          response?.data?.message || "Save failed"
+        );
+      }
     } catch (err) {
       BSAlertSwal2.show("error", err.message, {
         title: "Failed to Save Record",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
   const fetchformData = useCallback(async () => {
@@ -218,8 +220,9 @@ const ProjectsDialog = (props) => {
         >
           Close
         </BSCloseOutlinedButton>
-        <BSSaveOutlinedButton onClick={handleSave} autoFocus variant="outlined">
-          Save
+        <BSSaveOutlinedButton autoFocus variant="outlined" onClick={handleSave}
+          disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save"}
         </BSSaveOutlinedButton>
       </DialogActions>
     </Dialog>

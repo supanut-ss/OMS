@@ -55,7 +55,7 @@ const BSAutoComplete = ({
   const [options, setOptions] = useState(bsData);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(bsData.length > 0);
-
+  const [inputValue, setInputValue] = useState("");
   const requestBody = useMemo(
     () => ({
       table: bsObj,
@@ -67,43 +67,76 @@ const BSAutoComplete = ({
     }),
     [bsObj, bsPreObj, bsColumes, bsObjWh, bsObjBy, isSelect]
   );
+  // const fetchData = useCallback(async () => {
+  //   if (loaded) return;
+  //   setLoading(true);
 
-  const fetchData = useCallback(async () => {
-    if (loaded) return;
-    setLoading(true);
+  //   try {
+  //     if (bsCacheKey) {
+  //       const cached = SecureStorage.get(bsCacheKey);
+  //       if (cached) {
+  //         setOptions(JSON.parse(cached));
+  //         setLoaded(true);
+  //         return;
+  //       }
+  //     }
 
-    try {
-      if (bsCacheKey) {
-        const cached = SecureStorage.get(bsCacheKey);
-        if (cached) {
-          setOptions(JSON.parse(cached));
-          setLoaded(true);
-          return;
-        }
+  //     const res = await AxiosMaster.post("/autocomplete", requestBody);
+  //     const list =
+  //       res.data?.data?.map((item) => ({
+  //         code: item.code,
+  //         label: item.value,
+  //         ...item,
+  //       })) || [];
+
+  //     setOptions(list);
+  //     setLoaded(true);
+  //     if (bsCacheKey) SecureStorage.set(bsCacheKey, JSON.stringify(list));
+  //   } catch (err) {
+  //     console.error("Autocomplete fetch error", err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, [loaded, bsCacheKey, requestBody]);
+  const fetchData = useCallback(
+    async (keyword = "") => {
+      setLoading(true);
+      try {
+        const res = await AxiosMaster.post("/autocomplete", {
+          ...requestBody,
+          keyword,      // "" = default
+          limit: 30,
+        });
+
+        const list =
+          res.data?.data?.map((item) => ({
+            code: item.code,
+            value: item.value,
+            ...item,
+          })) || [];
+
+        setOptions(list);
+        setLoaded(true);
+      } catch (err) {
+        console.error("Autocomplete fetch error", err);
+      } finally {
+        setLoading(false);
       }
-
-      const res = await AxiosMaster.post("/autocomplete", requestBody);
-      const list =
-        res.data?.data?.map((item) => ({
-          code: item.code,
-          label: item.value,
-          ...item,
-        })) || [];
-
-      setOptions(list);
-      setLoaded(true);
-      if (bsCacheKey) SecureStorage.set(bsCacheKey, JSON.stringify(list));
-    } catch (err) {
-      console.error("Autocomplete fetch error", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [loaded, bsCacheKey, requestBody]);
+    },
+    [requestBody]
+  );
 
   useEffect(() => {
     if (!bsLoadOnOpen && !loaded) fetchData();
   }, [fetchData, bsLoadOnOpen, loaded]);
 
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      fetchData(inputValue);
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [inputValue, fetchData]);
   // ✅ derive value from options + bsValue (NO internal value state)
   const selectedValue = useMemo(() => {
     if (!options.length || bsValue == null) {
@@ -194,6 +227,15 @@ const BSAutoComplete = ({
             }}
           />
         )}
+        inputValue={inputValue}
+        onInputChange={(e, val, reason) => {
+          if (reason === "input") {
+            setInputValue(val);
+          }
+        }}
+        filterOptions={(x) => x}
+        loadingText="กำลังค้นหา..."
+        noOptionsText="ไม่พบข้อมูล"
         {...props}
       />
       {error && <FormHelperText>{helperText}</FormHelperText>}
