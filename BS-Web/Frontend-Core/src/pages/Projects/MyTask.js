@@ -389,7 +389,7 @@ const TaskStatusSection = ({
             onDataLoaded={handleDataLoaded}
             bsRowConfig={(row) => ({
               // If task has tracking entries (count > 0), show blue Visibility icon
-              // If task has no tracking yet, show gray Circle icon
+              // If task has no tracking yet, show gray EyeCloseIcon
               viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
               viewIconColor:
                 row.task_tracking_count > 0

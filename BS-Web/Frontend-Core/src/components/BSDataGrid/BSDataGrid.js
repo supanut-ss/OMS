@@ -299,6 +299,59 @@ const stringAvatar = (name) => {
   };
 };
 
+/**
+ * OverflowTooltipCell Component
+ * Shows tooltip when cell content overflows (text is truncated)
+ * Uses ref to detect if text is actually overflowing
+ */
+const OverflowTooltipCell = ({ value, children }) => {
+  const textRef = React.useRef(null);
+  const [isOverflowed, setIsOverflowed] = useState(false);
+
+  React.useEffect(() => {
+    const element = textRef.current;
+    if (element) {
+      // Check if text is overflowing
+      setIsOverflowed(element.scrollWidth > element.clientWidth);
+    }
+  }, [value, children]);
+
+  const displayContent = children || value;
+  const tooltipValue =
+    typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+
+  return (
+    <Tooltip
+      title={isOverflowed ? tooltipValue : ""}
+      arrow
+      placement="top-start"
+      enterDelay={500}
+      leaveDelay={0}
+      slotProps={{
+        tooltip: {
+          sx: {
+            fontSize: "0.875rem", // 14px - larger than default 10px
+            padding: "8px 12px",
+            maxWidth: 400,
+          },
+        },
+      }}
+    >
+      <Box
+        ref={textRef}
+        sx={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          width: "100%",
+        }}
+      >
+        {displayContent}
+      </Box>
+    </Tooltip>
+  );
+};
+
 // Split Button Component for Bulk Operations
 const BulkSplitButton = ({
   selectedRowCount,
@@ -1934,6 +1987,9 @@ const BSDataGrid = forwardRef(
 
       // Permission configuration
       bsAutoPermission = false, // Auto-apply permissions from menu settings (canView, canAdd, canEdit, canDelete)
+
+      // Cell Tooltip configuration
+      bsCellTooltip = true, // Show tooltip when cell text overflows (text is truncated)
 
       onCheckBoxSelected,
 
@@ -9240,6 +9296,53 @@ ${errorInfo.originalError}
           );
         });
 
+        // Apply cell tooltip wrapper if bsCellTooltip is enabled
+        // Wraps text cells with OverflowTooltipCell to show tooltip on truncated text
+        if (bsCellTooltip) {
+          finalColumns = finalColumns.map((col) => {
+            // Skip special column types that have their own rendering
+            const skipTypes = ["actions", "boolean", "singleSelect"];
+            const skipFields = ["__check__", "actions", "rowNumber"];
+
+            if (
+              skipTypes.includes(col.type) ||
+              skipFields.includes(col.field) ||
+              col.type === "attachFile" ||
+              col.type === "stringAvatar"
+            ) {
+              return col;
+            }
+
+            // If column already has custom renderCell, wrap it
+            const originalRenderCell = col.renderCell;
+
+            return {
+              ...col,
+              renderCell: (params) => {
+                // Get the rendered content
+                let content;
+                if (originalRenderCell) {
+                  content = originalRenderCell(params);
+                } else {
+                  content = params.formattedValue ?? params.value ?? "";
+                }
+
+                // If content is a React element (not a simple string), don't wrap
+                if (React.isValidElement(content)) {
+                  return content;
+                }
+
+                // Wrap with tooltip
+                return (
+                  <OverflowTooltipCell value={params.value}>
+                    {content}
+                  </OverflowTooltipCell>
+                );
+              },
+            };
+          });
+        }
+
         // Create a deep clone to avoid any reference issues
         finalColumns = finalColumns.map((col) => ({
           field: col.field,
@@ -9293,6 +9396,7 @@ ${errorInfo.originalError}
       formatColumnName,
       resourceData,
       effectiveLang,
+      bsCellTooltip,
     ]);
 
     // Generate custom row styles from bsRowConfig
