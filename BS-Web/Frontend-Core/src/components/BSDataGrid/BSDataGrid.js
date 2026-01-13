@@ -2724,13 +2724,39 @@ const BSDataGrid = forwardRef(
       rowModesModelRef.current = rowModesModel;
     }, [rowModesModel]);
 
+    // Ref to track if combobox data has been loaded to prevent unnecessary reloads
+    // This is crucial when parent re-renders (e.g., token refresh) create new bsComboBox array references
+    const comboBoxLoadedRef = useRef(false);
+    // Ref to store the config key for comparison
+    const comboBoxConfigKeyRef = useRef("");
+
     // Load ComboBox lookup data for grid display and editing
     useEffect(() => {
+      // Generate a stable key from comboBoxConfig to detect actual config changes
+      const configKey = Object.entries(comboBoxConfig || {})
+        .map(([col, cfg]) => `${col}:${cfg.Obj}:${cfg.ObjWh || ""}`)
+        .sort()
+        .join("|");
+
       bsLog("🚀 ComboBox useEffect triggered:", {
         hasConfig: !!comboBoxConfig,
         configKeys: Object.keys(comboBoxConfig || {}),
         comboBoxConfigDetails: Object.entries(comboBoxConfig || {}).slice(0, 3),
+        configKey,
+        previousConfigKey: comboBoxConfigKeyRef.current,
+        alreadyLoaded: comboBoxLoadedRef.current,
       });
+
+      // Skip loading if config hasn't actually changed and data already loaded
+      if (
+        comboBoxLoadedRef.current &&
+        configKey === comboBoxConfigKeyRef.current
+      ) {
+        bsLog(
+          "⏭️ ComboBox useEffect: Data already loaded, skipping reload (config unchanged)"
+        );
+        return;
+      }
 
       const loadComboBoxLookupData = async () => {
         if (!comboBoxConfig || Object.keys(comboBoxConfig).length === 0) {
@@ -2829,6 +2855,11 @@ const BSDataGrid = forwardRef(
           return isSame ? prev : valueOptionsData;
         });
         setComboBoxLoading(false);
+
+        // Mark as loaded and store the config key to prevent unnecessary reloads
+        comboBoxLoadedRef.current = true;
+        comboBoxConfigKeyRef.current = configKey;
+        bsLog("✅ ComboBox data loaded, marked as loaded with key:", configKey);
       };
 
       loadComboBoxLookupData();
@@ -8857,6 +8888,56 @@ ${errorInfo.originalError}
 
                 return formattedValue;
               };
+
+              // Add renderEditCell for number columns to enforce min=0 by default
+              // This prevents negative values when using spinner buttons
+              const numericTypes = [
+                "money",
+                "decimal",
+                "float",
+                "real",
+                "int",
+                "smallint",
+                "tinyint",
+                "bigint",
+              ];
+              if (numericTypes.includes(col.dataType?.toLowerCase())) {
+                baseColumn.renderEditCell = (params) => {
+                  const handleChange = (event) => {
+                    let value = event.target.value;
+                    if (value !== "") {
+                      const numValue = Number(value);
+                      // Enforce min=0 to prevent negative values
+                      if (numValue < 0) {
+                        value = "0";
+                      }
+                    }
+                    params.api.setEditCellValue({
+                      id: params.id,
+                      field: params.field,
+                      value: value === "" ? null : Number(value),
+                    });
+                  };
+
+                  return (
+                    <TextField
+                      type="number"
+                      value={params.value ?? ""}
+                      onChange={handleChange}
+                      variant="standard"
+                      fullWidth
+                      autoFocus
+                      inputProps={{ min: 0, step: "any" }}
+                      sx={{
+                        "& .MuiInput-input": {
+                          textAlign: "right",
+                          padding: "0 8px",
+                        },
+                      }}
+                    />
+                  );
+                };
+              }
             }
 
             baseColumn.valueGetter = (value, row) => {
