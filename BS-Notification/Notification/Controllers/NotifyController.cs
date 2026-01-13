@@ -28,16 +28,16 @@ namespace Notification.Controllers
                 return BadRequest();
 
             _logger.LogInformation("SendAll called by user={User} message={Message}", User?.Identity?.Name ?? User?.FindFirst("UserId")?.Value ?? "(unknown)", request.Message);
-
-            await _service.NotifyAll(request.Message);
+            request.UserId = string.IsNullOrEmpty(User?.FindFirst("UserId")?.Value) ? User.FindFirst("UserId")!.Value : "anonymous";
+            await _service.NotifyAll(request);
             return Accepted();
         }
 
         [HttpPost("user/{userId}")]
-        public async Task<IActionResult> SendUser(string userId, [FromBody] string message)
+        public async Task<IActionResult> SendUser(string userId, [FromBody] NotifyRequest request)
         {
-            _logger.LogInformation("SendUser called by user={User} for user={TargetUser} message={Message}", User?.Identity?.Name ?? User?.FindFirst("UserId")?.Value ?? "(unknown)", userId, message);
-            await _service.NotifyUser(userId, message);
+            _logger.LogInformation("SendUser called by user={User} for user={TargetUser} message={Message}", User?.Identity?.Name ?? User?.FindFirst("UserId")?.Value ?? "(unknown)", userId, request);
+            await _service.NotifyUser(userId, request);
             return Ok();
         }
     }
