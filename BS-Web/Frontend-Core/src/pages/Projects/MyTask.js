@@ -15,7 +15,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import { useResource } from "../../hooks/useResource";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
@@ -305,26 +305,119 @@ const TaskDetailDialog = ({
 };
 
 // ============ Task Status Section (Accordion) ============
-const TaskStatusSection = ({
+const TaskStatusSection = memo(function TaskStatusSection({
   status,
-  icon,
   color,
   lang,
   onViewTask,
   expanded,
   onToggle,
   gridRef,
-}) => {
+}) {
   const theme = useTheme();
   const dataGridRef = useRef();
   const [count, setCount] = useState(0);
 
   const effectiveGridRef = gridRef || dataGridRef;
 
-  // Handle data loaded to get count
-  const handleDataLoaded = (data) => {
+  // Create icon based on status - memoized
+  const icon = useMemo(() => {
+    const isDark = theme.palette.mode === "dark";
+    switch (status) {
+      case TASK_STATUS.OPEN:
+        return (
+          <AssignmentIcon sx={{ color: isDark ? "#00D4FF" : "#1976d2" }} />
+        );
+      case TASK_STATUS.IN_PROCESS:
+        return (
+          <AssignmentLateIcon sx={{ color: isDark ? "#FFD93D" : "#ed6c02" }} />
+        );
+      case TASK_STATUS.CLOSE:
+        return (
+          <AssignmentTurnedInIcon
+            sx={{ color: isDark ? "#6BCB77" : "#2e7d32" }}
+          />
+        );
+      default:
+        return <AssignmentIcon />;
+    }
+  }, [status, theme.palette.mode]);
+
+  // Memoize handleDataLoaded to prevent re-renders
+  const handleDataLoaded = useCallback((data) => {
     setCount(data?.length || 0);
-  };
+  }, []);
+
+  // Memoize stored procedure params to prevent BSDataGrid from re-loading
+  const storedProcedureParams = useMemo(
+    () => ({ in_vchTaskStatus: status }),
+    [status]
+  );
+
+  // Memoize bsRowConfig to prevent re-renders
+  // Use primitive values as dependencies, not objects
+  const infoMainColor = theme.palette.info.main;
+  const greyColor = theme.palette.grey[400];
+
+  const rowConfig = useCallback(
+    (row) => ({
+      viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
+      viewIconColor: row.task_tracking_count > 0 ? infoMainColor : greyColor,
+    }),
+    [infoMainColor, greyColor]
+  );
+
+  // Memoize column definitions to prevent re-renders
+  // Extract priority colors as primitives for stable dependencies
+  const priorityColors = useMemo(
+    () => ({
+      urgent: theme.palette.custom?.priority?.urgent || "#d32f2f",
+      high: theme.palette.custom?.priority?.high || "#ed6c02",
+      normal: theme.palette.custom?.priority?.normal || "#0288d1",
+      low: theme.palette.custom?.priority?.low || "#9e9e9e",
+    }),
+    [theme.palette.mode]
+  ); // Only rebuild when theme mode changes
+
+  const columnDefs = useMemo(
+    () => [
+      {
+        field: "assignee_list",
+        type: "stringAvatar",
+        showTooltip: true,
+      },
+      {
+        field: "start_date",
+        type: "date",
+        dateFormat: "dd/MM/yyyy",
+      },
+      {
+        field: "end_date",
+        type: "date",
+        dateFormat: "dd/MM/yyyy",
+      },
+      {
+        field: "priority",
+        width: 120,
+        renderCell: (params) => {
+          const priority = params.value?.toLowerCase();
+          let color = priorityColors.low;
+          if (priority === "urgent") color = priorityColors.urgent;
+          else if (priority === "high") color = priorityColors.high;
+          else if (priority === "normal" || priority === "medium")
+            color = priorityColors.normal;
+
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <FlagIcon sx={{ color }} />
+              <span>{params.value || "-"}</span>
+            </Box>
+          );
+        },
+      },
+    ],
+    [priorityColors]
+  );
 
   return (
     <Accordion
@@ -380,7 +473,7 @@ const TaskStatusSection = ({
             bsStoredProcedure="usp_tmt_my_task"
             bsStoredProcedureSchema="tmt"
             bsCols="project_no,application_type, project_name,task_name,assignee_list,start_date,end_date,manday,project_type,priority"
-            bsStoredProcedureParams={{ in_vchTaskStatus: status }}
+            bsStoredProcedureParams={storedProcedureParams}
             bsShowRowNumber={true}
             showAdd={false}
             bsVisibleView={true}
@@ -390,54 +483,14 @@ const TaskStatusSection = ({
             bsKeyId="project_task_id"
             bsFilterMode="client"
             onDataLoaded={handleDataLoaded}
-            bsRowConfig={(row) => ({
-              // If task has tracking entries (count > 0), show blue Visibility icon
-              // If task has no tracking yet, show gray EyeCloseIcon
-              viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
-              viewIconColor:
-                row.task_tracking_count > 0
-                  ? theme.palette.info.main // Blue for tasks with tracking
-                  : theme.palette.grey[400], // Gray for new tasks without tracking
-            })}
-            bsColumnDefs={[
-              {
-                field: "assignee_list",
-                type: "stringAvatar",
-                //headerName: "Assignee",
-                showTooltip: true,
-              },
-              {
-                field: "start_date",
-                //headerName: "Start Date",
-                type: "date",
-                dateFormat: "dd/MM/yyyy",
-              },
-              {
-                field: "end_date",
-                //headerName: "Due Date",
-                type: "date",
-                dateFormat: "dd/MM/yyyy",
-              },
-              {
-                field: "priority",
-                //headerName: "Priority",
-                width: 120,
-                renderCell: (params) => (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <FlagIcon
-                      sx={{ color: getPriorityColor(params.value, theme) }}
-                    />
-                    <span>{params.value || "-"}</span>
-                  </Box>
-                ),
-              },
-            ]}
+            bsRowConfig={rowConfig}
+            bsColumnDefs={columnDefs}
           />
         )}
       </AccordionDetails>
     </Accordion>
   );
-};
+});
 
 // ============ Section Configurations with Glassmorphism ============
 const getSectionConfigs = (theme) => {
@@ -446,27 +499,18 @@ const getSectionConfigs = (theme) => {
   return [
     {
       status: TASK_STATUS.OPEN,
-      icon: <AssignmentIcon sx={{ color: isDark ? "#00D4FF" : "#1976d2" }} />,
       color: isDark
         ? theme.palette.custom?.sectionOpen || "rgba(0, 212, 255, 0.12)"
         : "#e3f2fd",
     },
     {
       status: TASK_STATUS.IN_PROCESS,
-      icon: (
-        <AssignmentLateIcon sx={{ color: isDark ? "#FFD93D" : "#ed6c02" }} />
-      ),
       color: isDark
         ? theme.palette.custom?.sectionInProcess || "rgba(255, 217, 61, 0.12)"
         : "#FFD8B3FF",
     },
     {
       status: TASK_STATUS.CLOSE,
-      icon: (
-        <AssignmentTurnedInIcon
-          sx={{ color: isDark ? "#6BCB77" : "#2e7d32" }}
-        />
-      ),
       color: isDark
         ? theme.palette.custom?.sectionClose || "rgba(107, 203, 119, 0.12)"
         : "#D5F5E1FF",
@@ -486,11 +530,15 @@ const MyTaskPage = (props) => {
   const inProcessGridRef = useRef(null);
   const closeGridRef = useRef(null);
 
-  const sectionGridRefs = {
-    [TASK_STATUS.OPEN]: openGridRef,
-    [TASK_STATUS.IN_PROCESS]: inProcessGridRef,
-    [TASK_STATUS.CLOSE]: closeGridRef,
-  };
+  // Memoize sectionGridRefs to prevent unnecessary re-renders
+  const sectionGridRefs = useMemo(
+    () => ({
+      [TASK_STATUS.OPEN]: openGridRef,
+      [TASK_STATUS.IN_PROCESS]: inProcessGridRef,
+      [TASK_STATUS.CLOSE]: closeGridRef,
+    }),
+    []
+  );
 
   // State for expanded sections
   const [expandedSections, setExpandedSections] = useState({
@@ -503,22 +551,46 @@ const MyTaskPage = (props) => {
   const [openTaskDialog, setOpenTaskDialog] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
-  // Handle toggle accordion
-  const handleToggleSection = (status) => () => {
+  // Memoize toggle handlers for each status to prevent re-renders
+  const handleToggleOpen = useCallback(() => {
     setExpandedSections((prev) => ({
       ...prev,
-      [status]: !prev[status],
+      [TASK_STATUS.OPEN]: !prev[TASK_STATUS.OPEN],
     }));
-  };
+  }, []);
 
-  // Handle view task detail
-  const handleViewTask = (taskData) => {
+  const handleToggleInProcess = useCallback(() => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [TASK_STATUS.IN_PROCESS]: !prev[TASK_STATUS.IN_PROCESS],
+    }));
+  }, []);
+
+  const handleToggleClose = useCallback(() => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [TASK_STATUS.CLOSE]: !prev[TASK_STATUS.CLOSE],
+    }));
+  }, []);
+
+  // Map status to toggle handler
+  const toggleHandlers = useMemo(
+    () => ({
+      [TASK_STATUS.OPEN]: handleToggleOpen,
+      [TASK_STATUS.IN_PROCESS]: handleToggleInProcess,
+      [TASK_STATUS.CLOSE]: handleToggleClose,
+    }),
+    [handleToggleOpen, handleToggleInProcess, handleToggleClose]
+  );
+
+  // Handle view task detail - memoized
+  const handleViewTask = useCallback((taskData) => {
     setSelectedTask(taskData);
     setOpenTaskDialog(true);
-  };
+  }, []);
 
-  // Handle close task dialog
-  const handleCloseTaskDialog = () => {
+  // Handle close task dialog - memoized
+  const handleCloseTaskDialog = useCallback(() => {
     setOpenTaskDialog(false);
     setSelectedTask(null);
 
@@ -527,7 +599,7 @@ const MyTaskPage = (props) => {
     openGridRef.current?.forceRefresh?.();
     inProcessGridRef.current?.forceRefresh?.();
     closeGridRef.current?.forceRefresh?.();
-  };
+  }, []);
 
   // Load resources on mount
   useEffect(() => {
@@ -538,8 +610,11 @@ const MyTaskPage = (props) => {
     loadResources();
   }, [lang, getResources]);
 
-  // Get theme-aware section configurations
-  const sections = getSectionConfigs(theme);
+  // Memoize theme-aware section configurations to prevent re-renders
+  const sections = useMemo(
+    () => getSectionConfigs(theme),
+    [theme.palette.mode]
+  );
 
   return (
     <Paper
@@ -594,12 +669,11 @@ const MyTaskPage = (props) => {
         <TaskStatusSection
           key={section.status}
           status={section.status}
-          icon={section.icon}
           color={section.color}
           lang={lang}
           onViewTask={handleViewTask}
           expanded={expandedSections[section.status]}
-          onToggle={handleToggleSection(section.status)}
+          onToggle={toggleHandlers[section.status]}
           gridRef={sectionGridRefs[section.status]}
         />
       ))}

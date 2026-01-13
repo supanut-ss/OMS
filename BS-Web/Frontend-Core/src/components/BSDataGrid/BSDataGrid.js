@@ -8640,6 +8640,7 @@ ${errorInfo.originalError}
                 type: "actions",
                 headerName: "", // Hide column header
                 width: actionsWidth,
+                maxWidth: actionsWidth, // Prevent column from expanding
                 sortable: false,
                 filterable: false,
                 hideable: false,
@@ -8658,7 +8659,8 @@ ${errorInfo.originalError}
             const rowNumberCol = {
               field: "__rowNumber",
               headerName: localeText.bsRowNumber,
-              // Removed width - let DataGrid auto-calculate
+              width: 60,
+              maxWidth: 60, // Prevent column from expanding
               sortable: false,
               filterable: false,
               hideable: false,
@@ -9224,6 +9226,7 @@ ${errorInfo.originalError}
               type: "actions",
               headerName: "", // Hide column header
               width: actionsWidth,
+              maxWidth: actionsWidth, // Prevent column from expanding
               sortable: false,
               filterable: false,
               hideable: false,
@@ -9242,7 +9245,8 @@ ${errorInfo.originalError}
           const rowNumberCol = {
             field: "__rowNumber",
             headerName: localeText.bsRowNumber,
-            // Removed width - let DataGrid auto-calculate
+            width: 60,
+            maxWidth: 60, // Prevent column from expanding
             sortable: false,
             filterable: false,
             hideable: false,
