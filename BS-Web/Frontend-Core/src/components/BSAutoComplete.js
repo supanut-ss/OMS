@@ -202,7 +202,6 @@ const BSAutoComplete = ({
         return exists ? prev : [option, ...prev];
       });
     } catch (err) {
-      console.error("fetchById error", err);
     }
   }, [requestBody, bsColumes]);
   useEffect(() => {
@@ -272,7 +271,6 @@ const BSAutoComplete = ({
         )}
         inputValue={inputValue}
         onInputChange={(e, val, reason) => {
-          console.log("input change", val, reason);
           if (reason === "input") {
             setInputValue(val);
           }
