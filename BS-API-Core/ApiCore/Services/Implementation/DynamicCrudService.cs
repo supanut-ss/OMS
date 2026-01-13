@@ -298,7 +298,7 @@ namespace ApiCore.Services.Implementation
                 _logger.LogInformation("🏗️ Generated WHERE clause: {WhereClause}", whereClause);
 
                 // Build ORDER BY clause
-                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata);
+                var orderByClause = BuildDynamicOrderByClause(request.SortModel, metadata, request.CustomOrderBy);
                 _logger.LogInformation("🏗️ Generated ORDER BY clause: {OrderByClause}", orderByClause);
 
                 // Build User Lookup JOIN and SELECT (pass metadata for column existence check)
@@ -1196,33 +1196,36 @@ namespace ApiCore.Services.Implementation
             // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
             if (!string.IsNullOrEmpty(customOrderBy))
             {
-                _logger.LogInformation("🏗️ No sorting specified, using default.");
-                // Default sort by first primary key or first column
-                var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
-                return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
+                _logger.LogInformation("🏗️ Using custom ORDER BY: {CustomOrderBy}", customOrderBy);
+                return $"ORDER BY {customOrderBy}";
             }
 
-            // var orderItems = sortModel
-            //     .Where(sort => metadata.Columns.Any(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase)))
-            //     .Select(sort => $"[{sort.Field}] {(sort.Sort.ToUpper() == "DESC" ? "DESC" : "ASC")}");
-
-            // return orderItems.Any() ? $"ORDER BY {string.Join(", ", orderItems)}" : "ORDER BY 1 ASC";
-
-            var orderByClauses = new List<string>();
-            foreach (var sort in sortModel)
+            // Priority 2: SortModel from DataGrid UI
+            if (sortModel != null && sortModel.Any())
             {
-                _logger.LogInformation("🏗️ Processing sort: {SortField} {SortDirection}", sort.Field, sort.Sort);
-                // Validate field name against metadata
-                var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase));
-                if (column != null)
+                var orderByClauses = new List<string>();
+                foreach (var sort in sortModel)
                 {
-                    var direction = sort.Sort?.ToUpper() == "DESC" ? "DESC" : "ASC";
-                    orderByClauses.Add($"[{sort.Field}] {direction}");
-                    _logger.LogInformation("✅ Added ORDER BY clause: [{SortField}] {SortDirection}", sort.Field, direction);
+                    _logger.LogInformation("🏗️ Processing sort: {SortField} {SortDirection}", sort.Field, sort.Sort);
+                    var column = metadata.Columns.FirstOrDefault(c => c.ColumnName.Equals(sort.Field, StringComparison.OrdinalIgnoreCase));
+                    if (column != null)
+                    {
+                        var direction = sort.Sort?.ToUpper() == "DESC" ? "DESC" : "ASC";
+                        orderByClauses.Add($"[{sort.Field}] {direction}");
+                        _logger.LogInformation("✅ Added ORDER BY clause: [{SortField}] {SortDirection}", sort.Field, direction);
+                    }
+                }
+                if (orderByClauses.Any())
+                {
+                    return $"ORDER BY {string.Join(", ", orderByClauses)}";
                 }
             }
-            //return string.Join(", ", orderByClauses);
-            return orderByClauses.Any() ? $"ORDER BY {string.Join(", ", orderByClauses)}" : "ORDER BY 1 ASC";
+
+            // Priority 3: Default sort by primary key or first column
+            _logger.LogInformation("🏗️ No sorting specified, using default.");
+            var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
+            return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
+
         }
 
 
