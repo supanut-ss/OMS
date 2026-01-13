@@ -1,97 +1,86 @@
--- =============================================
--- Stored Procedures for My Task (S0012)
--- Created: December 2025
--- Description: My Task and Task Tracking stored procedures
--- Uses existing table: tmt.t_tmt_project_task_tracking
--- Column mapping: issue_type (Task Tracking Type), actual_work (Work Hour)
--- =============================================
-
 USE [Timesheet]
 GO
-
-
--- =============================================
--- 1. Stored Procedure: usp_tmt_my_task
--- Description: Get tasks for current user with status filter
--- =============================================
-IF OBJECT_ID('tmt.usp_tmt_my_task', 'P') IS NOT NULL
-    DROP PROCEDURE tmt.usp_tmt_my_task
+/****** Object:  StoredProcedure [tmt].[usp_tmt_my_task]    Script Date: 13/01/2026 14:12:38 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE [tmt].[usp_tmt_my_task]
+ALTER PROCEDURE [tmt].[usp_tmt_my_task]
     -- Operation parameters
-    @Operation NVARCHAR(10) = 'SELECT',
+    @in_vchOperation NVARCHAR(10) = 'SELECT',
 
     -- Pagination parameters (for SELECT)
-    @Page INT = 1,
-    @PageSize INT = 25,
-    @OrderBy NVARCHAR(500) = NULL,
-    @FilterModel NVARCHAR(MAX) = NULL,
-    @QuickFilter NVARCHAR(255) = NULL,
+    @in_intPage INT = 1,
+    @in_intPageSize INT = 25,
+    @in_vchOrderBy NVARCHAR(500) = NULL,
+    @in_vchSortModel NVARCHAR(MAX) = NULL,
+    @in_vchFilterModel NVARCHAR(MAX) = NULL,
+    @in_vchQuickFilter NVARCHAR(255) = NULL,
 
     -- Filter parameters
-    @TaskStatus NVARCHAR(50) = NULL,
+    @in_vchTaskStatus NVARCHAR(50) = NULL,
     -- Open, In Process, Close
-    @UserId VARCHAR(50) = NULL,
+    @in_vchUserId VARCHAR(50) = NULL,
     -- Current logged in user
 
     -- Output parameters (Enhanced SP pattern - must have all 3)
-    @OutputRowCount INT = 0 OUTPUT,
-    @OutputMessage NVARCHAR(4000) = '' OUTPUT,
-    @OutputErrorCode INT = 0 OUTPUT
+    @out_intRowCount INT = 0 OUTPUT,
+    @out_vchMessage NVARCHAR(4000) = '' OUTPUT,
+    @out_intErrorCode INT = 0 OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
     -- Initialize output parameters
-    SET @OutputRowCount = 0;
-    SET @OutputMessage = '';
-    SET @OutputErrorCode = 0;
+    SET @out_intRowCount = 0;
+    SET @out_vchMessage = '';
+    SET @out_intErrorCode = 0;
 
     BEGIN TRY
         -- ==========================================
         -- SELECT Operation with Advanced Filtering
         -- ==========================================
-        IF @Operation = 'SELECT'
+        IF @in_vchOperation = 'SELECT'
         BEGIN
         DECLARE @SQL NVARCHAR(MAX);
         DECLARE @CountSQL NVARCHAR(MAX);
         DECLARE @WhereClause NVARCHAR(MAX) = ' WHERE 1=1';
         DECLARE @OrderByClause NVARCHAR(500);
-        DECLARE @Offset INT = (@Page - 1) * @PageSize;
+        DECLARE @Offset INT = (@in_intPage - 1) * @in_intPageSize;
 
         -- Default sorting based on status (ตาม requirement)
         -- Open/In Process: Priority High ก่อน, due date วันถัดไป, due date ที่ครบกำหนด
         -- Close: Task No, Due date
-        IF @OrderBy IS NOT NULL AND @OrderBy != ''
-                SET @OrderByClause = @OrderBy;
-            ELSE IF @TaskStatus = 'Close'
+        IF @in_vchOrderBy IS NOT NULL AND @in_vchOrderBy != ''
+                SET @OrderByClause = @in_vchOrderBy;
+            ELSE IF @in_vchTaskStatus = 'Close'
                 SET @OrderByClause = 'task_no ASC, end_date ASC';
             ELSE
                 SET @OrderByClause = 'priority_order ASC, end_date ASC';
 
         -- Filter by Task Status (case-insensitive, handle various status formats)
-        IF @TaskStatus IS NOT NULL AND @TaskStatus != ''
+        IF @in_vchTaskStatus IS NOT NULL AND @in_vchTaskStatus != ''
         BEGIN
             -- Try exact match first, then partial match for flexibility
             SET @WhereClause = @WhereClause + ' AND (
-                t.task_status = ''' + REPLACE(@TaskStatus, '''', '''''') + '''
-                OR UPPER(t.task_status) = UPPER(''' + REPLACE(@TaskStatus, '''', '''''') + ''')
+                t.task_status = ''' + REPLACE(@in_vchTaskStatus, '''', '''''') + '''
+                OR UPPER(t.task_status) = UPPER(''' + REPLACE(@in_vchTaskStatus, '''', '''''') + ''')
             )';
         END
 
         -- Filter by User (member of task) - only if provided (use EXISTS subquery)
-        IF @UserId IS NOT NULL AND @UserId != ''
-                SET @WhereClause = @WhereClause + ' AND EXISTS (SELECT 1 FROM tmt.t_tmt_project_task_member tm WHERE tm.project_task_id = t.project_task_id AND tm.user_id = ''' + REPLACE(@UserId, '''', '''''') + ''')';
+        IF @in_vchUserId IS NOT NULL AND @in_vchUserId != ''
+                SET @WhereClause = @WhereClause + ' AND EXISTS (SELECT 1 FROM tmt.t_tmt_project_task_member tm WHERE tm.project_task_id = t.project_task_id AND tm.user_id = ''' + REPLACE(@in_vchUserId, '''', '''''') + ''')';
 
         -- Quick filter for search across multiple fields
-        IF @QuickFilter IS NOT NULL AND @QuickFilter != ''
+        IF @in_vchQuickFilter IS NOT NULL AND @in_vchQuickFilter != ''
             BEGIN
             SET @WhereClause = @WhereClause + ' AND (
-                    prjHD.project_no LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                    OR prjHD.project_name LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                    OR t.task_name LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                    OR t.task_no LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
+                    prjHD.project_no LIKE ''%' + REPLACE(@in_vchQuickFilter, '''', '''''') + '%''
+                    OR prjHD.project_name LIKE ''%' + REPLACE(@in_vchQuickFilter, '''', '''''') + '%''
+                    OR t.task_name LIKE ''%' + REPLACE(@in_vchQuickFilter, '''', '''''') + '%''
+                    OR t.task_no LIKE ''%' + REPLACE(@in_vchQuickFilter, '''', '''''') + '%''
                 )';
         END
 
@@ -99,7 +88,7 @@ BEGIN
         SET @CountSQL = '
                 SELECT COUNT(t.project_task_id)
                 FROM tmt.t_tmt_project_task t
-                INNER JOIN tmt.t_tmt_project_header prjHD ON t.project_header_id = prjHD.project_header_id
+                INNER JOIN tmt.t_tmt_project_header prjHD ON t.project_header_id = prjHD.project_header_id and prjHD.is_active = ''YES''
                 ' + @WhereClause;
 
         -- Build main query (use subquery with STRING_AGG to combine all members)
@@ -121,18 +110,19 @@ BEGIN
                     prjHD.project_no,
                     prjHD.project_name,
                     prjHD.project_type,
-                    ''' + ISNULL(@UserId, '') + ''' AS assignee,
+                    ''' + ISNULL(@in_vchUserId, '') + ''' AS assignee,
                     ISNULL((SELECT STRING_AGG(LTRIM(RTRIM(ISNULL(tm2.first_name, ''''))) + '' '' + LTRIM(RTRIM(ISNULL(tm2.last_name, ''''))), '','') FROM tmt.t_tmt_project_task_member tm2 WHERE tm2.project_task_id = t.project_task_id), '''') AS assignee_list,
+                    ISNULL((SELECT COUNT(*) FROM tmt.t_tmt_project_task_tracking trk WHERE trk.project_task_id = t.project_task_id AND trk.assignee = ''' + ISNULL(@in_vchUserId, '') + '''), 0) AS task_tracking_count,
                     t.create_by,
                     t.create_date,
                     t.update_by,
                     t.update_date
                 FROM tmt.t_tmt_project_task t
-                INNER JOIN tmt.t_tmt_project_header prjHD ON t.project_header_id = prjHD.project_header_id
+                INNER JOIN tmt.t_tmt_project_header prjHD ON t.project_header_id = prjHD.project_header_id and prjHD.is_active = ''YES''
                 ' + @WhereClause + '
                 ORDER BY ' + @OrderByClause + '
                 OFFSET ' + CAST(@Offset AS NVARCHAR(10)) + ' ROWS
-                FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
+                FETCH NEXT ' + CAST(@in_intPageSize AS NVARCHAR(10)) + ' ROWS ONLY';
 
         -- Execute count query
         DECLARE @TotalRows INT;
@@ -160,7 +150,8 @@ BEGIN
             project_name NVARCHAR(255),
             project_type NVARCHAR(50),
             assignee NVARCHAR(100),
-            assignee_list NVARCHAR(250),
+            assignee_list NVARCHAR(MAX),
+            task_tracking_count INT,
             create_by NVARCHAR(50),
             create_date DATETIME,
             update_by NVARCHAR(50),
@@ -179,455 +170,19 @@ BEGIN
 
         -- Return pagination metadata
         SELECT @TotalRows AS TotalRows,
-            @Page AS CurrentPage,
-            @PageSize AS PageSize,
-            CEILING(CAST(ISNULL(@TotalRows, 0) AS FLOAT) / @PageSize) AS TotalPages;
+            @in_intPage AS CurrentPage,
+            @in_intPageSize AS PageSize,
+            CEILING(CAST(ISNULL(@TotalRows, 0) AS FLOAT) / @in_intPageSize) AS TotalPages;
 
-        SET @OutputRowCount = ISNULL(@TotalRows, 0);
-        SET @OutputMessage = 'My tasks retrieved successfully';
-        SET @OutputErrorCode = 0;
+        SET @out_intRowCount = ISNULL(@TotalRows, 0);
+        SET @out_vchMessage = 'My tasks retrieved successfully';
+        SET @out_intErrorCode = 0;
     END
 
     END TRY
     BEGIN CATCH
-        SET @OutputErrorCode = ERROR_NUMBER();
-        SET @OutputMessage = 'Error: ' + ERROR_MESSAGE();
+        SET @out_intErrorCode = ERROR_NUMBER();
+        SET @out_vchMessage = 'Error: ' + ERROR_MESSAGE();
         THROW;
     END CATCH
 END
-GO
-
-PRINT 'tmt.usp_tmt_my_task created successfully'
-GO
-
-
--- =============================================
--- 2. Stored Procedure: usp_tmt_project_task_tracking
--- Description: Get/Insert/Update/Delete task tracking
--- Table columns: issue_type (Task Tracking Type), actual_work (Work Hour), process_update (Description)
--- =============================================
-IF OBJECT_ID('tmt.usp_tmt_project_task_tracking', 'P') IS NOT NULL
-    DROP PROCEDURE tmt.usp_tmt_project_task_tracking
-GO
-
-CREATE PROCEDURE [tmt].[usp_tmt_project_task_tracking]
-    -- Operation parameters
-    @Operation NVARCHAR(10) = 'SELECT',
-
-    -- Pagination parameters (for SELECT)
-    @Page INT = 1,
-    @PageSize INT = 25,
-    @OrderBy NVARCHAR(500) = 'actual_date DESC, create_date DESC',
-    @FilterModel NVARCHAR(MAX) = NULL,
-    @QuickFilter NVARCHAR(255) = NULL,
-
-    -- Filter/Data parameters
-    @ProjectTaskTrackingId INT = NULL,
-    @ProjectTaskId INT = NULL,
-    @ProjectHeaderId INT = NULL,
-    @IssueType NVARCHAR(25) = NULL,
-    -- Task Tracking Type
-    @ActualWork DECIMAL(18,5) = NULL,
-    -- Work Hour
-    @ActualDate DATETIME = NULL,
-    @ProcessUpdate NVARCHAR(MAX) = NULL,
-    -- Description
-
-    -- Audit parameters
-    @AssigneeUserId VARCHAR(50) = NULL,
-    -- Who the task is assigned to (can be different from @UserId)
-    @UserId VARCHAR(50) = 'system',
-    -- Who is creating/updating the record (logged-in user)
-
-    -- Output parameters (Enhanced SP pattern - must have all 3)
-    @OutputRowCount INT = 0 OUTPUT,
-    @OutputMessage NVARCHAR(4000) = '' OUTPUT,
-    @OutputErrorCode INT = 0 OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Initialize output parameters
-    SET @OutputRowCount = 0;
-    SET @OutputMessage = '';
-    SET @OutputErrorCode = 0;
-
-    BEGIN TRY
-        -- ==========================================
-        -- SELECT Operation
-        -- ==========================================
-        IF @Operation = 'SELECT'
-        BEGIN
-        DECLARE @SQL NVARCHAR(MAX);
-        DECLARE @CountSQL NVARCHAR(MAX);
-        DECLARE @WhereClause NVARCHAR(MAX) = ' WHERE 1=1';
-        DECLARE @OrderByClause NVARCHAR(500) = ISNULL(@OrderBy, 'actual_date DESC, create_date DESC');
-        DECLARE @Offset INT = (@Page - 1) * @PageSize;
-
-        -- Filter by ProjectTaskId
-        IF @ProjectTaskId IS NOT NULL
-                SET @WhereClause = @WhereClause + ' AND tt.project_task_id = ' + CAST(@ProjectTaskId AS NVARCHAR(20));
-
-        -- Filter by specific tracking record
-        IF @ProjectTaskTrackingId IS NOT NULL
-                SET @WhereClause = @WhereClause + ' AND tt.project_task_tracking_id = ' + CAST(@ProjectTaskTrackingId AS NVARCHAR(20));
-
-        -- Quick filter
-        IF @QuickFilter IS NOT NULL AND @QuickFilter != ''
-            BEGIN
-            SET @WhereClause = @WhereClause + ' AND (
-                    tt.issue_type LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                    OR tt.process_update LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                    OR tt.assignee_first_name LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                    OR tt.assignee_last_name LIKE ''%' + REPLACE(@QuickFilter, '''', '''''') + '%''
-                )';
-        END
-
-        -- Build count query
-        SET @CountSQL = '
-                SELECT COUNT(*) 
-                FROM tmt.t_tmt_project_task_tracking tt
-                ' + @WhereClause;
-
-        -- Build main query with user display names
-        SET @SQL = '
-                SELECT 
-                    tt.project_task_tracking_id,
-                    tt.project_task_id,
-                    tt.project_header_id,
-                    tt.issue_type,
-                    tt.actual_work,
-                    tt.actual_date,
-                    tt.process_update,
-                    tt.assignee,
-                    tt.assignee_first_name,
-                    tt.assignee_last_name,
-                    tt.assignee_first_name + '' '' + tt.assignee_last_name AS assignee_list,
-                    tt.create_by,
-                    ISNULL(cu.first_name + '' '' + cu.last_name, tt.create_by) AS create_by_display,
-                    tt.create_date,
-                    tt.update_by,
-                    ISNULL(uu.first_name + '' '' + uu.last_name, tt.update_by) AS update_by_display,
-                    CAST(tt.update_date AS DATETIME) AS update_date
-                FROM tmt.t_tmt_project_task_tracking tt
-                LEFT JOIN sec.t_com_user cu ON tt.create_by = cu.user_id
-                LEFT JOIN sec.t_com_user uu ON tt.update_by = uu.user_id
-                ' + @WhereClause + '
-                ORDER BY ' + @OrderByClause + '
-                OFFSET ' + CAST(@Offset AS NVARCHAR(10)) + ' ROWS
-                FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
-
-        -- Execute count query
-        DECLARE @TotalRows INT;
-        DECLARE @CountParams NVARCHAR(100) = N'@TotalRowsOut INT OUTPUT';
-        SET @CountSQL = 'SELECT @TotalRowsOut = (' + @CountSQL + ')';
-        EXEC sp_executesql @CountSQL, @CountParams, @TotalRowsOut = @TotalRows OUTPUT;
-
-        -- Create temp table to ensure column schema is always returned correctly
-        CREATE TABLE #TrackingResults
-        (
-            project_task_tracking_id INT,
-            project_task_id INT,
-            project_header_id INT,
-            issue_type NVARCHAR(25),
-            actual_work DECIMAL(18,5),
-            actual_date DATETIME,
-            process_update NVARCHAR(MAX),
-            assignee NVARCHAR(50),
-            assignee_first_name NVARCHAR(200),
-            assignee_last_name NVARCHAR(200),
-            assignee_list NVARCHAR(500),
-            create_by NVARCHAR(50),
-            create_by_display NVARCHAR(500),
-            create_date DATETIME,
-            update_by NVARCHAR(50),
-            update_by_display NVARCHAR(500),
-            update_date DATETIME
-        );
-
-        -- Execute main query into temp table
-        INSERT INTO #TrackingResults
-        EXEC sp_executesql @SQL;
-
-        -- Return data (with correct column schema)
-        SELECT *
-        FROM #TrackingResults;
-
-        DROP TABLE #TrackingResults;
-
-        -- Return pagination metadata
-        SELECT @TotalRows AS TotalRows,
-            @Page AS CurrentPage,
-            @PageSize AS PageSize,
-            CEILING(CAST(ISNULL(@TotalRows, 0) AS FLOAT) / @PageSize) AS TotalPages;
-
-        SET @OutputRowCount = ISNULL(@TotalRows, 0);
-        SET @OutputMessage = 'Task tracking retrieved successfully';
-        SET @OutputErrorCode = 0;
-    END
-
-        -- ==========================================
-        -- INSERT Operation
-        -- ==========================================
-        ELSE IF @Operation = 'INSERT'
-        BEGIN
-        -- Validate required fields
-        IF @ProjectTaskId IS NULL
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Project Task ID is required';
-            RETURN;
-        END
-
-        IF @IssueType IS NULL OR @IssueType = ''
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Issue Type is required';
-            RETURN;
-        END
-
-        IF @ActualWork IS NULL
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Actual Work is required';
-            RETURN;
-        END
-
-        IF @ActualDate IS NULL
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Actual Date is required';
-            RETURN;
-        END
-
-        IF @ProcessUpdate IS NULL OR @ProcessUpdate = ''
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Process Update is required';
-            RETURN;
-        END
-
-        -- Get project_header_id and validate ActualDate is within task date range
-        DECLARE @TaskStartDate DATE, @TaskEndDate DATE, @TaskProjectHeaderId INT;
-        SELECT @TaskStartDate = start_date, @TaskEndDate = end_date, @TaskProjectHeaderId = project_header_id
-        FROM tmt.t_tmt_project_task
-        WHERE project_task_id = @ProjectTaskId;
-
-        IF @ActualDate < @TaskStartDate OR @ActualDate > @TaskEndDate
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Actual Date must be within Task date range (' + 
-                    CONVERT(VARCHAR(10), @TaskStartDate, 103) + ' - ' + 
-                    CONVERT(VARCHAR(10), @TaskEndDate, 103) + ')';
-            RETURN;
-        END
-
-        -- Get user info for assignee (use @AssigneeUserId if provided, otherwise @UserId)
-        DECLARE @EffectiveAssignee VARCHAR(50) = ISNULL(NULLIF(@AssigneeUserId, ''), @UserId);
-        DECLARE @AssigneeFirstName NVARCHAR(200), @AssigneeLastName NVARCHAR(200);
-        SELECT @AssigneeFirstName = first_name, @AssigneeLastName = last_name
-        FROM sec.t_com_user
-        WHERE user_id = @EffectiveAssignee;
-
-        -- Get next ID from sequence
-        DECLARE @NewId INT = NEXT VALUE FOR tmt.ProjectTaskTrackingID;
-
-        -- Insert tracking record
-        INSERT INTO tmt.t_tmt_project_task_tracking
-            (
-            project_task_tracking_id,
-            project_task_id,
-            project_header_id,
-            issue_type,
-            actual_work,
-            actual_date,
-            process_update,
-            assignee,
-            assignee_first_name,
-            assignee_last_name,
-            create_by,
-            create_date
-            )
-        VALUES
-            (
-                @NewId,
-                @ProjectTaskId,
-                @TaskProjectHeaderId,
-                @IssueType,
-                @ActualWork,
-                @ActualDate,
-                @ProcessUpdate,
-                @EffectiveAssignee,
-                @AssigneeFirstName,
-                @AssigneeLastName,
-                @UserId,
-                GETDATE()
-            );
-
-        SET @OutputRowCount = 1;
-        SET @OutputMessage = 'Task tracking inserted successfully';
-        SET @OutputErrorCode = 0;
-
-        -- Return inserted record
-        SELECT
-            tt.project_task_tracking_id,
-            tt.project_task_id,
-            tt.project_header_id,
-            tt.issue_type,
-            tt.actual_work,
-            tt.actual_date,
-            tt.process_update,
-            tt.assignee,
-            tt.assignee_first_name,
-            tt.assignee_last_name,
-            tt.create_by,
-            tt.create_date,
-            tt.update_by,
-            tt.update_date
-        FROM tmt.t_tmt_project_task_tracking tt
-        WHERE tt.project_task_tracking_id = @NewId;
-    END
-
-        -- ==========================================
-        -- UPDATE Operation
-        -- ==========================================
-        ELSE IF @Operation = 'UPDATE'
-        BEGIN
-        IF @ProjectTaskTrackingId IS NULL
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Project Task Tracking ID is required for update';
-            RETURN;
-        END
-
-        -- Get project task id for date validation
-        DECLARE @CurrentProjectTaskId INT;
-        SELECT @CurrentProjectTaskId = project_task_id
-        FROM tmt.t_tmt_project_task_tracking
-        WHERE project_task_tracking_id = @ProjectTaskTrackingId;
-
-        DECLARE @TaskStartDate2 DATE, @TaskEndDate2 DATE;
-        SELECT @TaskStartDate2 = start_date, @TaskEndDate2 = end_date
-        FROM tmt.t_tmt_project_task
-        WHERE project_task_id = @CurrentProjectTaskId;
-
-        -- Validate ActualDate if provided
-        IF @ActualDate IS NOT NULL AND (@ActualDate < @TaskStartDate2 OR @ActualDate > @TaskEndDate2)
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Actual Date must be within Task date range (' + 
-                    CONVERT(VARCHAR(10), @TaskStartDate2, 103) + ' - ' + 
-                    CONVERT(VARCHAR(10), @TaskEndDate2, 103) + ')';
-            RETURN;
-        END
-
-        -- Get assignee info if @AssigneeUserId is provided
-        DECLARE @UpdateAssignee VARCHAR(50) = NULL;
-        DECLARE @UpdateAssigneeFirstName NVARCHAR(200) = NULL;
-        DECLARE @UpdateAssigneeLastName NVARCHAR(200) = NULL;
-        IF @AssigneeUserId IS NOT NULL AND @AssigneeUserId != ''
-        BEGIN
-            SET @UpdateAssignee = @AssigneeUserId;
-            SELECT @UpdateAssigneeFirstName = first_name, @UpdateAssigneeLastName = last_name
-            FROM sec.t_com_user
-            WHERE user_id = @AssigneeUserId;
-        END
-
-        -- Update tracking record
-        UPDATE tmt.t_tmt_project_task_tracking
-            SET 
-                issue_type = ISNULL(@IssueType, issue_type),
-                actual_work = ISNULL(@ActualWork, actual_work),
-                actual_date = ISNULL(@ActualDate, actual_date),
-                process_update = ISNULL(@ProcessUpdate, process_update),
-                assignee = ISNULL(@UpdateAssignee, assignee),
-                assignee_first_name = ISNULL(@UpdateAssigneeFirstName, assignee_first_name),
-                assignee_last_name = ISNULL(@UpdateAssigneeLastName, assignee_last_name),
-                update_by = @UserId,
-                update_date = GETDATE()
-            WHERE project_task_tracking_id = @ProjectTaskTrackingId;
-
-        SET @OutputRowCount = 1;
-        SET @OutputMessage = 'Task tracking updated successfully';
-        SET @OutputErrorCode = 0;
-
-        -- Return updated record
-        SELECT
-            tt.project_task_tracking_id,
-            tt.project_task_id,
-            tt.project_header_id,
-            tt.issue_type,
-            tt.actual_work,
-            tt.actual_date,
-            tt.process_update,
-            tt.assignee,
-            tt.assignee_first_name,
-            tt.assignee_last_name,
-            tt.create_by,
-            tt.create_date,
-            tt.update_by,
-            tt.update_date
-        FROM tmt.t_tmt_project_task_tracking tt
-        WHERE tt.project_task_tracking_id = @ProjectTaskTrackingId;
-    END
-
-        -- ==========================================
-        -- DELETE Operation
-        -- ==========================================
-        ELSE IF @Operation = 'DELETE'
-        BEGIN
-        IF @ProjectTaskTrackingId IS NULL
-            BEGIN
-            SET @OutputErrorCode = 1;
-            SET @OutputMessage = 'Project Task Tracking ID is required for delete';
-            RETURN;
-        END
-
-        DELETE FROM tmt.t_tmt_project_task_tracking
-            WHERE project_task_tracking_id = @ProjectTaskTrackingId;
-
-        IF @@ROWCOUNT > 0
-            BEGIN
-            SET @OutputRowCount = 1;
-            SET @OutputMessage = 'Task tracking deleted successfully';
-            SET @OutputErrorCode = 0;
-        END
-            ELSE
-            BEGIN
-            SET @OutputRowCount = 0;
-            SET @OutputMessage = 'Task tracking not found';
-            SET @OutputErrorCode = 1;
-        END
-    END
-
-    END TRY
-    BEGIN CATCH
-        SET @OutputErrorCode = ERROR_NUMBER();
-        SET @OutputMessage = 'Error: ' + ERROR_MESSAGE();
-        THROW;
-    END CATCH
-END
-GO
-
-PRINT 'tmt.usp_tmt_project_task_tracking created successfully'
-GO
-
-
--- =============================================
--- Summary
--- =============================================
-PRINT ''
-PRINT '============================================='
-PRINT 'My Task Stored Procedures Installation Complete'
-PRINT '============================================='
-PRINT 'Created:'
-PRINT '  1. tmt.usp_tmt_my_task - Get tasks by status for current user'
-PRINT '  2. tmt.usp_tmt_project_task_tracking - CRUD for task tracking'
-PRINT ''
-PRINT 'Table: tmt.t_tmt_project_task_tracking (existing)'
-PRINT 'Column mapping:'
-PRINT '  - issue_type = Task Tracking Type'
-PRINT '  - actual_work = Work Hour'
-PRINT '  - process_update = Description'
-PRINT '============================================='
-GO
