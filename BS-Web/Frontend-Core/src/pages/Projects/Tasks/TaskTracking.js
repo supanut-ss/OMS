@@ -129,8 +129,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     // Use assignee_user_id from form, fallback to current user only if null/undefined/empty
     const assigneeUserId =
       assigneeValue !== null &&
-        assigneeValue !== undefined &&
-        assigneeValue !== ""
+      assigneeValue !== undefined &&
+      assigneeValue !== ""
         ? assigneeValue
         : getCurrentUserId();
 
@@ -153,8 +153,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         res.data.message_code === 0
           ? getResource(resourceData, "Save_Success") || "Saved successfully"
           : res.data.message_text ||
-          getResource(resourceData, "Save_Failed") ||
-          "Save failed"
+              getResource(resourceData, "Save_Failed") ||
+              "Save failed"
       );
 
       if (res.data.message_code === 0) {
@@ -166,7 +166,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       BSAlertSwal2.show(
         "error",
         getResource(resourceData, "Save_Error") ||
-        "An error occurred while saving"
+          "An error occurred while saving"
       );
     }
   };
@@ -232,6 +232,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsCols="process_update,actual_date,actual_work,issue_type,assignee_list,create_date,create_by,update_date,update_by"
           bsStoredProcedureParams={{
             in_intProjectTaskId: projectTaskId,
+            in_vchUserId: getCurrentUserId(),
           }}
           showAdd={true}
           bsAllowAdd={true}
@@ -246,7 +247,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsColumnDefs={[
             {
               field: "process_update",
-              width: 300
+              width: 300,
             },
             {
               field: "assignee_list",
@@ -317,8 +318,9 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                         { field: "last_name", display: true },
                       ],
                       bsObjBy: "first_name asc",
-                      bsObjWh: `project_header_id=${taskData?.project_header_id || 0
-                        } AND project_task_id=${projectTaskId || 0}`,
+                      bsObjWh: `project_header_id=${
+                        taskData?.project_header_id || 0
+                      } AND project_task_id=${projectTaskId || 0}`,
                       required: false,
                     },
                     formData,
