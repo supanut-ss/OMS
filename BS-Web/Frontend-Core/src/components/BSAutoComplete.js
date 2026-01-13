@@ -178,6 +178,49 @@ const BSAutoComplete = ({
       }),
     },
   };
+  const fetchById = useCallback(async (id) => {
+    if (!id) return;
+
+    try {
+      const res = await AxiosMaster.post("/autocomplete", {
+        ...requestBody,
+        where: `${bsColumes.find(c => c.key)?.field} = '${id}'`,
+        limit: 1,
+      });
+
+      const item = res.data?.data?.[0];
+      if (!item) return;
+
+      const option = {
+        code: item.code,
+        value: item.value,
+        ...item,
+      };
+
+      setOptions((prev) => {
+        const exists = prev.some((o) => String(o.code) === String(option.code));
+        return exists ? prev : [option, ...prev];
+      });
+    } catch (err) {
+      console.error("fetchById error", err);
+    }
+  }, [requestBody, bsColumes]);
+  useEffect(() => {
+    if (!bsValue) return;
+
+    const exists = options.some(
+      (o) => String(o.code) === String(bsValue)
+    );
+
+    if (!exists) {
+      fetchById(bsValue);
+    }
+  }, [bsValue, options, fetchById]);
+  useEffect(() => {
+    if (selectedValue && !multiple) {
+      setInputValue(selectedValue.value || "");
+    }
+  }, [selectedValue, multiple]);
 
   return (
     <FormControl fullWidth error={error}>
@@ -229,8 +272,14 @@ const BSAutoComplete = ({
         )}
         inputValue={inputValue}
         onInputChange={(e, val, reason) => {
+          console.log("input change", val, reason);
           if (reason === "input") {
             setInputValue(val);
+          }
+
+          if (reason === "clear") {
+            setInputValue("");
+            bsOnChange?.(multiple ? [] : null);
           }
         }}
         filterOptions={(x) => x}
