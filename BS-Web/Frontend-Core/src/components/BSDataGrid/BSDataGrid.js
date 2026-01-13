@@ -3483,6 +3483,11 @@ const BSDataGrid = forwardRef(
     // Manual refresh data function
     const refreshData = useCallback(
       async (forceRefresh = false) => {
+        // Reset bulk edit mode state when refreshing
+        setBulkEditMode(false);
+        unsavedChangesRef.current = {};
+        setHasUnsavedChanges(false);
+
         if (bsStoredProcedure) {
           await loadStoredProcedureData(
             paginationModel,
