@@ -276,10 +276,10 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           }}
           showAdd={true}
           bsAllowAdd={true}
-          bsAllowEdit={true}
-          bsAllowDelete={true}
-          bsVisibleEdit={true}
-          bsVisibleDelete={true}
+          bsAllowEdit={showOnlyMine}
+          bsAllowDelete={showOnlyMine}
+          bsVisibleEdit={showOnlyMine}
+          bsVisibleDelete={showOnlyMine}
           onAdd={handleAddTracking}
           onEdit={handleEditTracking}
           onDelete={handleDeleteTracking}
