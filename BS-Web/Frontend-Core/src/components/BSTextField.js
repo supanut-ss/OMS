@@ -1,5 +1,11 @@
 import React from "react";
-import { TextField, FormControl, FormHelperText, Box, Typography } from "@mui/material";
+import {
+  TextField,
+  FormControl,
+  FormHelperText,
+  Box,
+  Typography,
+} from "@mui/material";
 import { getLocaleText } from "./BSDataGrid/locales";
 
 const BSTextField = ({
@@ -56,8 +62,8 @@ const BSTextField = ({
 
   // คำนวณจำนวนตัวอักษร
   const currentLength = value?.length || 0;
-  const characterCountText = maxLength 
-    ? `${currentLength}/${maxLength}` 
+  const characterCountText = maxLength
+    ? `${currentLength}/${maxLength}`
     : `${currentLength} ${localeText.bsCharacters || "characters"}`;
 
   return (
@@ -91,7 +97,14 @@ const BSTextField = ({
         {...props}
       />
       {/* Helper text and character count */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5, px: 1.5 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mt: 0.5,
+          px: 1.5,
+        }}
+      >
         {error ? (
           <FormHelperText sx={{ m: 0 }}>{helperText}</FormHelperText>
         ) : (
@@ -100,9 +113,13 @@ const BSTextField = ({
           </Typography>
         )}
         {showCharacterCount && (
-          <Typography 
-            variant="caption" 
-            color={maxLength && currentLength >= maxLength ? "error" : "text.secondary"}
+          <Typography
+            variant="caption"
+            color={
+              maxLength && currentLength >= maxLength
+                ? "error"
+                : "text.secondary"
+            }
           >
             {characterCountText}
           </Typography>

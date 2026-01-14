@@ -3,7 +3,13 @@ import BSAutoComplete from "../components/BSAutoComplete";
 import BSDatepicker from "../components/BSDatepicker";
 import dayjs from "dayjs";
 
-export const renderInput = ({ item, formData, errors, updateField, locale = "th" }) => {
+export const renderInput = ({
+  item,
+  formData,
+  errors,
+  updateField,
+  locale = "th",
+}) => {
   if (!item) return null;
 
   switch (item.component) {
