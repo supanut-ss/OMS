@@ -9226,7 +9226,7 @@ ${errorInfo.originalError}
             // Calculate actions column width based on mode
             // Bulk edit mode needs more space for Save/Cancel/Delete or Edit/Restore/Delete buttons
             const actionsWidth =
-              bulkEditMode || effectiveBulkAddInline ? 130 : 80;
+              bulkEditMode || effectiveBulkAddInline ? 130 : 130;
 
             dataColumns.unshift({
               field: "actions",

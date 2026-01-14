@@ -119,7 +119,7 @@ const Projects = (props) => {
         bsVisibleEdit={true}
         bsShowCheckbox={false}
         bsRowConfig={(row) => ({
-          showDelete: row.project_status !== "Open",
+          showDelete: row.project_status === "Open",
         })}
       />
       <ProjectsDialog
