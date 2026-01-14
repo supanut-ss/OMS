@@ -131,7 +131,6 @@ const BSAutoComplete = ({
   }, [fetchData, bsLoadOnOpen, loaded]);
 
   useEffect(() => {
-    console.log("Input Value Changed:", inputValue);
     const delay = setTimeout(() => {
       fetchData(inputValue);
     }, 300);

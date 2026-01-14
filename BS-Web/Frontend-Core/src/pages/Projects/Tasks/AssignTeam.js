@@ -53,6 +53,10 @@ const AssignTeam = (props) => {
       description: {
         hide: true,
       },
+      actual_work: {
+        headerName: "Actual Work (Hours)",
+        type: "decimal",
+      },
       create_by: { hide: true },
       create_date: { hide: true },
       update_by: { hide: true },
@@ -106,7 +110,7 @@ const AssignTeam = (props) => {
         bsStoredProcedureSchema="tmt"
         bsStoredProcedureCrud={true}
         bsKeyId="project_task_member_id"
-        bsCols="task_member_user_id,manday"
+        bsCols="task_member_user_id,manday,actual_work"
         bsStoredProcedureParams={storedProcedureParams}
         bsColumnDefs={columnDefs}
         bsComboBox={comboBoxConfig}
