@@ -134,12 +134,12 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
           </Button>
         </Box>
       </Dialog>
-      <BSFloatingChatButton
+      {/* <BSFloatingChatButton
         users={users}
         unreadCounts={unreadCounts}
        // selectUser={selectUser}
         userId={userId}
-      />
+      /> */}
     </NotificationsContext.Provider>
   );
 }
