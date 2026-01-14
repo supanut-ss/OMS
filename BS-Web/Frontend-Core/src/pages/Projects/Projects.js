@@ -88,21 +88,22 @@ const Projects = (props) => {
         }}
         bsColumnDefs={[
           {
-            field: "progress_percent", type: "progress",
+            field: "progress_percent",
+            type: "progress",
             width: 150,
             renderCell: (params) => (
               <Box
                 sx={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
               >
                 <BSLinearWithValueLabel value={params.value || 0} />
               </Box>
-            )
+            ),
           },
           { field: "project_status", type: "status" },
           {
@@ -117,6 +118,9 @@ const Projects = (props) => {
         bsFilterMode="client"
         bsVisibleEdit={true}
         bsShowCheckbox={false}
+        bsRowConfig={(row) => ({
+          showDelete: row.project_status !== "Open",
+        })}
       />
       <ProjectsDialog
         open={openDialog}
