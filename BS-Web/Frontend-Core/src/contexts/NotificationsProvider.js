@@ -14,6 +14,10 @@ export const useNotifications = () => useContext(NotificationsContext);
 export function NotificationsProvider({ children, maxSnack = 5 }) {
   const [snacks, setSnacks] = useState([]);
   const [alarm, setAlarm] = useState(null); // ⭐ FULLSCREEN ALARM
+//chat state
+  const [users, setUsers] = useState([]);
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [userId, setUserId] = useState(null);
 
   // ---------- Normal Notification ----------
   const enqueue = useCallback(
@@ -130,7 +134,12 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
           </Button>
         </Box>
       </Dialog>
-     
+      <BSFloatingChatButton
+        users={users}
+        unreadCounts={unreadCounts}
+       // selectUser={selectUser}
+        userId={userId}
+      />
     </NotificationsContext.Provider>
   );
 }
