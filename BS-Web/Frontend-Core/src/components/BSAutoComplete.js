@@ -131,12 +131,13 @@ const BSAutoComplete = ({
   }, [fetchData, bsLoadOnOpen, loaded]);
 
   useEffect(() => {
+    console.log("Input Value Changed:", inputValue);
     const delay = setTimeout(() => {
       fetchData(inputValue);
     }, 300);
 
     return () => clearTimeout(delay);
-  }, [inputValue, fetchData]);
+  }, [inputValue]);
   // ✅ derive value from options + bsValue (NO internal value state)
   const selectedValue = useMemo(() => {
     if (!options.length || bsValue == null) {
