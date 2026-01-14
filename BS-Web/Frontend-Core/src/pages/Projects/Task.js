@@ -6,6 +6,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 import TaskDialog from "./TaskDialog";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import FlagIcon from "@mui/icons-material/Flag";
+import BSLinearWithValueLabel from "../../components/LinearProgress/BSLinearProgressWithLabel";
 
 // Theme-aware priority color function
 const getPriorityColor = (priority, theme) => {
@@ -124,6 +125,20 @@ const ProjectTask = (props) => {
                 <Accordion key={phase.project_task_phase_id} sx={{ mb: 1 }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ backgroundColor: theme.palette.custom?.accordionHeader || theme.palette.grey[200] }}>
                         <Typography variant="h6">{phase.phase_name}</Typography>
+                        <Box sx={{ flexGrow: 1, ml: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                            <Box
+                                sx={{
+                                    width: '100%',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-end'
+                                }}
+                            >
+                                <BSLinearWithValueLabel value={phase.progress_percent || 0} width={300} />
+                            </Box>
+
+                        </Box>
                     </AccordionSummary>
 
                     <AccordionDetails sx={{ backgroundColor: theme.palette.custom?.accordionContent || theme.palette.background.paper }}>

@@ -1,22 +1,23 @@
-import { Paper } from "@mui/material";
+import { Box, Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import ProjectsDialog from "./ProjectsDialog/ProjectDialog";
 import { useEffect, useRef, useState } from "react";
 import secureStorage from "../../utils/SecureStorage";
 import Config from "../../utils/Config";
+import BSLinearWithValueLabel from "../../components/LinearProgress/BSLinearProgressWithLabel";
 
 const storedProcedure = {
   project: {
     bsStoredProcedure: "usp_tmt_project_header",
     bsStoredProcedureSchema: "tmt",
     bsCols:
-      "project_header_id,project_no,application_type,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
+      "progress_percent,project_header_id,project_no,application_type,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
   },
   ma: {
     bsStoredProcedure: "usp_tmt_project_header_ma",
     bsStoredProcedureSchema: "tmt",
     bsCols:
-      "project_header_id,project_no,application_type,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
+      "progress_percent,project_header_id,project_no,application_type,project_name,project_status,customer_name, plan_project_start, plan_project_end, sale_name,create_by, create_date,update_by, update_date",
   },
 };
 const Projects = (props) => {
@@ -86,6 +87,23 @@ const Projects = (props) => {
           setOpenDialog(true);
         }}
         bsColumnDefs={[
+          {
+            field: "progress_percent", type: "progress",
+            width: 150,
+            renderCell: (params) => (
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <BSLinearWithValueLabel value={params.value || 0} />
+              </Box>
+            )
+          },
           { field: "project_status", type: "status" },
           {
             field: "plan_project_start",

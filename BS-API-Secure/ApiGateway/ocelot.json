@@ -1288,9 +1288,45 @@
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Notify/all",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_notification",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/notify/all",
+      "UpstreamHttpMethod": [
+        "post"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Notify/user/{userId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_notification",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/v1/api/notify/user/{userId}",
+      "UpstreamHttpMethod": [
+        "post"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:8080"
+    "BaseUrl": "http://10.60.10.144:8080"
   }
 }
