@@ -6043,7 +6043,9 @@ ${errorInfo.originalError}
             const customDef = columnDefsConfig[fieldName];
 
             // Determine if field is read-only (only apply readOnly in edit mode, not add mode)
+            // disabled: true works for both add and edit mode
             const isReadOnly =
+              customDef?.disabled === true ||
               (dialogMode === "edit" && customDef?.readOnly === true) ||
               readOnly;
 
@@ -6157,8 +6159,11 @@ ${errorInfo.originalError}
         const customDef = columnDefsConfig[columnName];
 
         // Determine if field is read-only (only apply customDef.readOnly in edit mode, not add mode)
+        // disabled: true works for both add and edit mode
         const isReadOnly =
-          (dialogMode === "edit" && customDef?.readOnly === true) || readOnly;
+          customDef?.disabled === true ||
+          (dialogMode === "edit" && customDef?.readOnly === true) ||
+          readOnly;
 
         // Determine if field is required (customDef overrides metadata)
         const isRequired =
