@@ -1,5 +1,12 @@
 import React from "react";
-import { TextField, FormControl, FormHelperText } from "@mui/material";
+import {
+  TextField,
+  FormControl,
+  FormHelperText,
+  Box,
+  Typography,
+} from "@mui/material";
+import { getLocaleText } from "./BSDataGrid/locales";
 
 const BSTextField = ({
   label,
@@ -15,8 +22,13 @@ const BSTextField = ({
   disblsed = false,
   variant = "outlined",
   readOnly = false,
+  showCharacterCount = false, // แสดงจำนวนตัวอักษร
+  maxLength = null, // ความยาวสูงสุด (ถ้าไม่กำหนด จะแสดงเฉพาะจำนวนตัวอักษร)
+  locale = "th", // ภาษาสำหรับแสดงข้อความ
   ...props
 }) => {
+  // Get locale text
+  const localeText = getLocaleText(locale);
   const handleChange = (e) => {
     let val = e.target.value;
 
@@ -40,8 +52,19 @@ const BSTextField = ({
       }
     }
 
+    // จำกัดความยาวสูงสุดถ้ามีกำหนด maxLength
+    if (maxLength && val && val.length > maxLength) {
+      val = val.substring(0, maxLength);
+    }
+
     onChange?.(val);
   };
+
+  // คำนวณจำนวนตัวอักษร
+  const currentLength = value?.length || 0;
+  const characterCountText = maxLength
+    ? `${currentLength}/${maxLength}`
+    : `${currentLength} ${localeText.bsCharacters || "characters"}`;
 
   return (
     <FormControl fullWidth error={error}>
@@ -73,7 +96,35 @@ const BSTextField = ({
         maxRows={props.maxRows || 4}
         {...props}
       />
-      {error && <FormHelperText>{helperText}</FormHelperText>}
+      {/* Helper text and character count */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mt: 0.5,
+          px: 1.5,
+        }}
+      >
+        {error ? (
+          <FormHelperText sx={{ m: 0 }}>{helperText}</FormHelperText>
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            {helperText}
+          </Typography>
+        )}
+        {showCharacterCount && (
+          <Typography
+            variant="caption"
+            color={
+              maxLength && currentLength >= maxLength
+                ? "error"
+                : "text.secondary"
+            }
+          >
+            {characterCountText}
+          </Typography>
+        )}
+      </Box>
     </FormControl>
   );
 };
