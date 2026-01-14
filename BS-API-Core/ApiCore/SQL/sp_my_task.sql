@@ -111,15 +111,18 @@ BEGIN
                     prjHD.project_name,
                     prjHD.project_type,
                     prjHD.application_type,
+                    cust.customer_name,
                     ''' + ISNULL(@in_vchUserId, '') + ''' AS assignee,
                     ISNULL((SELECT STRING_AGG(LTRIM(RTRIM(ISNULL(tm2.first_name, ''''))) + '' '' + LTRIM(RTRIM(ISNULL(tm2.last_name, ''''))), '','') FROM tmt.t_tmt_project_task_member tm2 WHERE tm2.project_task_id = t.project_task_id), '''') AS assignee_list,
                     ISNULL((SELECT COUNT(*) FROM tmt.t_tmt_project_task_tracking trk WHERE trk.project_task_id = t.project_task_id AND trk.assignee = ''' + ISNULL(@in_vchUserId, '') + '''), 0) AS task_tracking_count,
-                    t.create_by,
+                    u.first_name+'' ''+u.last_name as create_by,
                     t.create_date,
                     t.update_by,
                     t.update_date
                 FROM tmt.t_tmt_project_task t
                 INNER JOIN tmt.t_tmt_project_header prjHD ON t.project_header_id = prjHD.project_header_id and prjHD.is_active = ''YES''
+                LEFT JOIN tmt.t_tmt_customer cust ON prjHD.customer_id = cust.customer_id
+                LEFT JOIN [sec].[t_com_user] u WITH (NOLOCK) on u.user_id = t.create_by
                 ' + @WhereClause + '
                 ORDER BY ' + @OrderByClause + '
                 OFFSET ' + CAST(@Offset AS NVARCHAR(10)) + ' ROWS
@@ -151,10 +154,11 @@ BEGIN
             project_name NVARCHAR(255),
             project_type NVARCHAR(50),
             application_type NVARCHAR(50),
+            customer_name NVARCHAR(255),
             assignee NVARCHAR(100),
             assignee_list NVARCHAR(MAX),
             task_tracking_count INT,
-            create_by NVARCHAR(50),
+            create_by NVARCHAR(100),
             create_date DATETIME,
             update_by NVARCHAR(50),
             update_date DATETIME
