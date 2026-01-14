@@ -38,6 +38,7 @@
         public int project_header_id { get; set; }
         public string phase_name { get; set; }
         public string description { get; set; }
+        public int progress_percent { get; set; }
         public int? sequence { get; set; }
         public string create_by { get; set; }
         public DateTime create_date { get; set; }

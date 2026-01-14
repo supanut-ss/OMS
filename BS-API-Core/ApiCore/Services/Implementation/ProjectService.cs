@@ -86,7 +86,7 @@ namespace ApiCore.Services.Implementation
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
-                    var sql = @$"SELECT project_task_phase_id, project_header_id, phase_name, description, sequence, create_by, create_date, update_by, update_date
+                    var sql = @$"SELECT project_task_phase_id, project_header_id, phase_name, progress_percent,description, sequence, create_by, create_date, update_by, update_date
                                  FROM tmt.v_tmt_project_task_phase
                                  WHERE project_header_id = @ProjectId
                                 ORDER BY sequence asc
@@ -103,12 +103,13 @@ namespace ApiCore.Services.Implementation
                                     project_task_phase_id = reader.GetInt32(0),
                                     project_header_id = reader.GetInt32(1),
                                     phase_name = reader.GetString(2),
-                                    description = reader.IsDBNull(3) ? null : reader.GetString(3),
-                                    sequence = reader.IsDBNull(4) ? (int?)null : reader.GetInt32(4),
-                                    create_by = reader.GetString(5),
-                                    create_date = reader.GetDateTime(6),
-                                    update_by = reader.IsDBNull(7) ? null : reader.GetString(7),
-                                    update_date = reader.IsDBNull(8) ? (DateTime?)null : reader.GetDateTime(8)
+                                    progress_percent = reader.GetInt32(3),
+                                    description = reader.IsDBNull(4) ? null : reader.GetString(4),
+                                    sequence = reader.IsDBNull(5) ? (int?)null : reader.GetInt32(5),
+                                    create_by = reader.GetString(6),
+                                    create_date = reader.GetDateTime(7),
+                                    update_by = reader.IsDBNull(8) ? null : reader.GetString(8),
+                                    update_date = reader.IsDBNull(9) ? (DateTime?)null : reader.GetDateTime(9)
                                 };
 
                                 response.Add(item);

@@ -1,29 +1,31 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+#FROM mcr.microsoft.com/dotnet/aspnet:8.0-windowsservercore-ltsc2019 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-
-# This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-ARG BUILD_CONFIGURATION=Release
+#FROM mcr.microsoft.com/dotnet/sdk:8.0-windowsservercore-ltsc2019 AS build
 WORKDIR /src
-COPY ["Notification.csproj", "."]
-RUN dotnet restore "./Notification.csproj"
-COPY . .
-WORKDIR "/src/."
-RUN dotnet build "./Notification.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
+# Copy โปรเจกต์ทั้งหมด
+COPY ["../BS-Notification/Notification", "BS-Platform/BS-Notification/Notification/"]
+COPY ["../BS-API-Secure/TokenManagement", "BS-Platform/BS-API-Secure/TokenManagement/"]
+
+RUN dotnet restore "BS-Platform/BS-Notification/Notification/Notification.csproj"
+RUN dotnet restore "BS-Platform/BS-API-Secure/TokenManagement/TokenManagement.csproj"
+
+WORKDIR "/src/BS-Platform/BS-API-Secure/TokenManagement"
+RUN dotnet build "TokenManagement.csproj" -c "Release" -o /app/build/BS-Platform/BS-API-Secure/TokenManagement
+
+WORKDIR "/src/BS-Platform/BS-Notification/Notification"
+RUN dotnet build "Notification.csproj" -c "Release" -o /app/build/BS-Platform/BS-Notification/Notification
+
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Notification.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+WORKDIR "/src/BS-Platform/BS-Notification/Notification"
+RUN dotnet publish "Notification.csproj" -c "Release" -o /app/publish /p:UseAppHost=false
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
