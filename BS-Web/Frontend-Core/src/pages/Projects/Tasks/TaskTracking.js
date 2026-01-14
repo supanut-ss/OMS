@@ -101,7 +101,7 @@ const getCurrentUserId = () => {
 const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const trackingGridRef = useRef();
   const [openTrackingDialog, setOpenTrackingDialog] = useState(false);
-  const [showOnlyMine, setShowOnlyMine] = useState(true); // Toggle: true = show only my tracking
+  const [showOnlyMe, setShowOnlyMe] = useState(true); // Toggle: true = show only my tracking
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
 
@@ -109,6 +109,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     defaultTrackingData,
     requiredTrackingFields
   );
+
+  // Helper: Get resource with fallback - returns fallback if resource returns same as key
+  const r = (key, fallback) => {
+    const value = getResource(resourceData, key);
+    return value && value !== key ? value : fallback;
+  };
 
   // Load resources on mount
   useEffect(() => {
@@ -155,14 +161,10 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
 
       if (res.data.message_code === 0) {
         // Success - show auto-close toast
-        BSAlertSwal2.show(
-          "success",
-          getResource(resourceData, "Save_Success") || "Saved successfully",
-          {
-            timer: 1500,
-            showConfirmButton: false,
-          }
-        );
+        BSAlertSwal2.show("success", r("Save_Success", "Saved successfully"), {
+          timer: 1500,
+          showConfirmButton: false,
+        });
         setOpenTrackingDialog(false);
         setFormData(defaultTrackingData);
         trackingGridRef.current?.refreshData();
@@ -170,16 +172,13 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         // Warning - show with confirm button
         BSAlertSwal2.show(
           "warning",
-          res.data.message_text ||
-            getResource(resourceData, "Save_Failed") ||
-            "Save failed"
+          res.data.message_text || r("Save_Failed", "Save failed")
         );
       }
     } catch (error) {
       BSAlertSwal2.show(
         "error",
-        getResource(resourceData, "Save_Error") ||
-          "An error occurred while saving"
+        r("Save_Error", "An error occurred while saving")
       );
     }
   };
@@ -208,22 +207,21 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
 
   // Handle toggle change
   const handleToggleChange = (event) => {
-    setShowOnlyMine(event.target.checked);
+    setShowOnlyMe(event.target.checked);
     // Grid will auto re-mount due to key change
   };
 
   // Handle delete tracking
   const handleDeleteTracking = async (id) => {
     BSAlertSwal2.fire({
-      title:
-        getResource(resourceData, "Delete_Confirm_Title") || "Delete Data?",
-      text:
-        getResource(resourceData, "Delete_Confirm_Text") ||
-        "Are you sure you want to delete this data?",
+      title: r("Delete_Confirm_Title", "Delete Data?"),
+      text: r(
+        "Delete_Confirm_Text",
+        "Are you sure you want to delete this data?"
+      ),
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText:
-        getResource(resourceData, "Delete_Confirm_Button") || "Yes, Delete!",
+      confirmButtonText: r("Delete_Confirm_Button", "Yes, Delete!"),
     }).then(async (conf) => {
       if (conf.isConfirmed) {
         const res = await AxiosMaster.post("/mytask/tracking/delete/" + id);
@@ -249,12 +247,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           }}
         >
           <Typography variant="subtitle2" color="primary">
-            {getResource(resourceData, "task_tracking") || "Task Tracking"}
+            {r("task_tracking", "Task Tracking")}
           </Typography>
           <FormControlLabel
             control={
               <Switch
-                checked={showOnlyMine}
+                checked={showOnlyMe}
                 onChange={handleToggleChange}
                 color="primary"
                 size="small"
@@ -262,10 +260,9 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             }
             label={
               <Typography variant="body2" color="text.secondary">
-                {showOnlyMine
-                  ? getResource(resourceData, "show_only_mine") ||
-                    "Show Only Mine"
-                  : getResource(resourceData, "show_all") || "Show All"}
+                {showOnlyMe
+                  ? r("show_only_mine", "Show Only Me")
+                  : r("show_all", "Show All")}
               </Typography>
             }
             labelPlacement="start"
@@ -273,7 +270,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           />
         </Box>
         <BSDataGrid
-          key={`tracking-grid-${showOnlyMine ? "mine" : "all"}`}
+          key={`tracking-grid-${showOnlyMe ? "mine" : "all"}`}
           ref={trackingGridRef}
           bsLocale={lang}
           bsStoredProcedure="usp_tmt_project_task_tracking"
@@ -281,14 +278,14 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsCols="process_update,actual_date,actual_work,issue_type,assignee_list,create_date,create_by,update_date,update_by"
           bsStoredProcedureParams={{
             in_intProjectTaskId: projectTaskId,
-            in_vchUserId: showOnlyMine ? getCurrentUserId() : null,
+            in_vchUserId: showOnlyMe ? getCurrentUserId() : null,
           }}
           showAdd={true}
           bsAllowAdd={true}
-          bsAllowEdit={showOnlyMine}
-          bsAllowDelete={showOnlyMine}
-          bsVisibleEdit={showOnlyMine}
-          bsVisibleDelete={showOnlyMine}
+          bsAllowEdit={showOnlyMe}
+          bsAllowDelete={showOnlyMe}
+          bsVisibleEdit={showOnlyMe}
+          bsVisibleDelete={showOnlyMe}
           onAdd={handleAddTracking}
           onEdit={handleEditTracking}
           onDelete={handleDeleteTracking}
@@ -334,8 +331,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       >
         <DialogTitle>
           {formData.project_task_tracking_id
-            ? getResource(resourceData, "Edit_Form") || "Edit Task Tracking"
-            : getResource(resourceData, "Add_Form") || "Add Task Tracking"}
+            ? r("Edit_Form", "Edit Task Tracking")
+            : r("Add_Form", "Add Task Tracking")}
         </DialogTitle>
         <IconButton
           onClick={() => setOpenTrackingDialog(false)}
@@ -353,12 +350,10 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                   {renderInput({
                     item: {
                       field: "assignee_user_id",
-                      headerName:
-                        getResource(resourceData, "assignee") || "Assignee",
+                      headerName: r("assignee", "Assignee"),
                       component: "BSAutoComplete",
                       bsMode: "single",
-                      bsTitle:
-                        getResource(resourceData, "assignee") || "Assignee",
+                      bsTitle: r("assignee", "Assignee"),
                       bsPreObj: "tmt.",
                       bsObj: "t_tmt_project_task_member",
                       bsColumes: [
@@ -384,12 +379,10 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                 {renderInput({
                   item: {
                     field: "issue_type",
-                    headerName:
-                      getResource(resourceData, "issue_type") || "Issue Type",
+                    headerName: r("issue_type", "Issue Type"),
                     component: "BSAutoComplete",
                     bsMode: "single",
-                    bsTitle:
-                      getResource(resourceData, "issue_type") || "Issue Type",
+                    bsTitle: r("issue_type", "Issue Type"),
                     bsPreObj: "sec.t_com_",
                     bsObj: "combobox_item",
                     bsColumes: [
@@ -411,9 +404,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                 {renderInput({
                   item: {
                     field: "actual_work",
-                    headerName:
-                      getResource(resourceData, "actual_work") ||
-                      "Actual Work (Hours)",
+                    headerName: r("actual_work", "Actual Work (Hours)"),
                     component: "BSTextField",
                     type: "decimal",
                     required: true,
@@ -429,8 +420,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                 {renderInput({
                   item: {
                     field: "actual_date",
-                    headerName:
-                      getResource(resourceData, "actual_date") || "Actual Date",
+                    headerName: r("actual_date", "Actual Date"),
                     component: "BSDatePicker",
                     isDateOnly: true,
                     format: "DD/MM/YYYY",
@@ -451,9 +441,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                 {renderInput({
                   item: {
                     field: "process_update",
-                    headerName:
-                      getResource(resourceData, "process_update") ||
-                      "Process Update",
+                    headerName: r("process_update", "Process Update"),
                     component: "BSTextField",
                     required: true,
                     variant: "outlined",
