@@ -152,19 +152,28 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
 
     try {
       const res = await AxiosMaster.post("/mytask/tracking/save", payload);
-      BSAlertSwal2.show(
-        res.data.message_code === 0 ? "success" : "warning",
-        res.data.message_code === 0
-          ? getResource(resourceData, "Save_Success") || "Saved successfully"
-          : res.data.message_text ||
-              getResource(resourceData, "Save_Failed") ||
-              "Save failed"
-      );
 
       if (res.data.message_code === 0) {
+        // Success - show auto-close toast
+        BSAlertSwal2.show(
+          "success",
+          getResource(resourceData, "Save_Success") || "Saved successfully",
+          {
+            timer: 1500,
+            showConfirmButton: false,
+          }
+        );
         setOpenTrackingDialog(false);
         setFormData(defaultTrackingData);
         trackingGridRef.current?.refreshData();
+      } else {
+        // Warning - show with confirm button
+        BSAlertSwal2.show(
+          "warning",
+          res.data.message_text ||
+            getResource(resourceData, "Save_Failed") ||
+            "Save failed"
+        );
       }
     } catch (error) {
       BSAlertSwal2.show(
