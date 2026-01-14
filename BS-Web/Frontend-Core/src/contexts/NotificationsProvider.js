@@ -7,7 +7,7 @@ import {
   Typography,
   Button,
 } from "@mui/material";
-
+import cat from "../assets/images/nyan-cat.gif";
 const NotificationsContext = createContext(null);
 export const useNotifications = () => useContext(NotificationsContext);
 
@@ -95,8 +95,8 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
       <Dialog fullScreen open={Boolean(alarm)}>
         <Box
           sx={{
-            height: "100vh",
-            bgcolor: "error.dark",
+            height: "150vh",
+            background: "linear-gradient(135deg, #1d2671, #c33764)",
             color: "#fff",
             display: "flex",
             flexDirection: "column",
@@ -106,12 +106,13 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
             px: 4,
           }}
         >
-          <Typography variant="h2" fontWeight="bold">
+          <img src={cat} alt="Alarm" width="500vw" />
+          {/* <Typography variant="h2" fontWeight="bold">
             🚨 SYSTEM ALARM
-          </Typography>
+          </Typography> */}
 
-          <Typography variant="h4" sx={{ mt: 3 }}>
-            {alarm?.title}
+          <Typography variant="h2">
+            🚨 {alarm?.title}
           </Typography>
 
           <Typography variant="h5" sx={{ mt: 2 }}>
@@ -125,10 +126,11 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
             sx={{ mt: 6, px: 6, py: 2, fontSize: 20 }}
             onClick={closeAlarm}
           >
-            ACKNOWLEDGE
+          กดเพื่อปิดแจ้งเตือน
           </Button>
         </Box>
       </Dialog>
+     
     </NotificationsContext.Provider>
   );
 }
