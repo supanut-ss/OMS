@@ -56,6 +56,8 @@ const AssignTeam = (props) => {
       actual_work: {
         headerName: "Actual Work (Hours)",
         type: "decimal",
+        editable: true,
+        readOnly: true,
       },
       create_by: { hide: true },
       create_date: { hide: true },
