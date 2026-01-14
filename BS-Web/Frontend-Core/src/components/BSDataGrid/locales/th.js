@@ -344,4 +344,7 @@ export const thaiLocaleText = {
   bsRequiredFieldError: "ฟิลด์ '{field}' จำเป็นต้องกรอก",
   bsDataTypeError: "รูปแบบข้อมูลไม่ถูกต้อง กรุณาตรวจสอบค่าที่กรอก",
   bsDataTruncationError: "ข้อมูลยาวเกินไป กรุณาลดความยาวของข้อความ",
+
+  // Character count
+  bsCharacters: "ตัวอักษร",
 };

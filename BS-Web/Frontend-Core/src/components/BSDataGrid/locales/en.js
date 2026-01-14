@@ -347,4 +347,7 @@ export const englishLocaleText = {
   bsRequiredFieldError: "Required field '{field}' cannot be empty.",
   bsDataTypeError: "Invalid data format. Please check your input values.",
   bsDataTruncationError: "Input value is too long. Please shorten your text.",
+
+  // Character count
+  bsCharacters: "characters",
 };

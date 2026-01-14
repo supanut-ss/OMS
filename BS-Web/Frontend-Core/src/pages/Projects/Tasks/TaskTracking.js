@@ -450,10 +450,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     variant: "outlined",
                     multiline: true,
                     minRows: 4,
+                    showCharacterCount: true,
                   },
                   formData,
                   errors,
                   updateField,
+                  locale: lang,
                 })}
               </Grid>
             </Grid>
