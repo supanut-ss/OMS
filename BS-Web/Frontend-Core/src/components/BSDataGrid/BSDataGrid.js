@@ -8650,6 +8650,8 @@ ${errorInfo.originalError}
                 filterable: false,
                 hideable: false,
                 disableColumnMenu: true,
+                align: "left",
+                headerAlign: "left",
                 getActions: (params) =>
                   actions
                     .map((a) => a(params))
@@ -9236,6 +9238,8 @@ ${errorInfo.originalError}
               filterable: false,
               hideable: false,
               disableColumnMenu: true,
+              align: "left",
+              headerAlign: "left",
               getActions: (params) =>
                 actions
                   .map((a) => a(params))
