@@ -4,19 +4,23 @@ import secureStorage from "../../utils/SecureStorage";
 const getPermissionByPath = (menus, path) => {
     if (!menus) return null;
 
-    for (const group of menus) {
-        const found = group.submenu?.find(
-            m => m.menu_path && path.startsWith(m.menu_path)
-        );
-        if (found) {
-            return {
-                is_view: found.is_view,
-                is_add: found.is_add,
-                is_edit: found.is_edit,
-                is_delete: found.is_delete,
-            };
-        }
+    const allMenus = menus.flatMap(g => g.submenu || []);
+
+    const found = allMenus
+        .filter(m => m.menu_path && m.menu_path !== "/")
+        .sort((a, b) => b.menu_path.length - a.menu_path.length)
+        .find(m => path === m.menu_path || path.startsWith(m.menu_path + "/"))
+        || allMenus.find(m => m.menu_path === "/");
+
+    if (found) {
+        return {
+            is_view: found.is_view ?? false,
+            is_add: found.is_add ?? false,
+            is_edit: found.is_edit ?? false,
+            is_delete: found.is_delete ?? false,
+        };
     }
+
     return null;
 };
 
