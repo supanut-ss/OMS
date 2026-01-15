@@ -1986,7 +1986,7 @@ const BSDataGrid = forwardRef(
       bsUniqueFields = [], // Fields that must be unique: ["field_name"] or [{ field: "field_name", message: "Custom error" }]
 
       // Permission configuration
-      bsAutoPermission = false, // Auto-apply permissions from menu settings (canView, canAdd, canEdit, canDelete)
+      bsAutoPermission = true, // Auto-apply permissions from menu settings (canView, canAdd, canEdit, canDelete)
 
       // Cell Tooltip configuration
       bsCellTooltip = true, // Show tooltip when cell text overflows (text is truncated)
@@ -2024,9 +2024,10 @@ const BSDataGrid = forwardRef(
 
     // Determine effective bulk mode settings
     // When enable is true, enable all bulk operations by default
-    const effectiveBulkAdd = resolvedBulkEnable || resolvedBulkAdd;
-    const effectiveBulkEdit = resolvedBulkEnable || resolvedBulkEdit;
-    const effectiveBulkDelete = resolvedBulkEnable || resolvedBulkDelete;
+    // Note: These will be further restricted by bsAutoPermission below
+    const baseBulkAdd = resolvedBulkEnable || resolvedBulkAdd;
+    const baseBulkEdit = resolvedBulkEnable || resolvedBulkEdit;
+    const baseBulkDelete = resolvedBulkEnable || resolvedBulkDelete;
     const effectiveBulkAddInline = resolvedBulkAddInline;
     const effectiveShowCheckbox = resolvedShowCheckbox;
     const effectiveShowSplitButton = resolvedShowSplitButton;
@@ -2050,6 +2051,17 @@ const BSDataGrid = forwardRef(
       ? permissions.canView && bsVisibleView
       : bsVisibleView;
 
+    // Apply bsAutoPermission to bulk mode settings as well
+    const effectiveBulkAdd = bsAutoPermission
+      ? permissions.canAdd && baseBulkAdd
+      : baseBulkAdd;
+    const effectiveBulkEdit = bsAutoPermission
+      ? permissions.canEdit && baseBulkEdit
+      : baseBulkEdit;
+    const effectiveBulkDelete = bsAutoPermission
+      ? permissions.canDelete && baseBulkDelete
+      : baseBulkDelete;
+
     // Log permission status when bsAutoPermission is enabled
     if (bsAutoPermission) {
       bsLog("🔐 BSDataGrid: Auto Permission enabled", {
@@ -2062,6 +2074,9 @@ const BSDataGrid = forwardRef(
         effectiveVisibleEdit,
         effectiveVisibleDelete,
         effectiveVisibleView,
+        effectiveBulkAdd,
+        effectiveBulkEdit,
+        effectiveBulkDelete,
       });
     }
 
@@ -8445,8 +8460,8 @@ ${errorInfo.originalError}
               });
             }
 
-            // In bulk edit mode, show Save/Cancel buttons for editing rows
-            if (bulkEditMode) {
+            // In bulk edit mode, show Save/Cancel buttons for editing rows (only if bulk edit is allowed)
+            if (bulkEditMode && effectiveBulkEdit) {
               actions.push((params) => {
                 const isInEditMode =
                   rowModesModel[params.id]?.mode === GridRowModes.Edit;
@@ -8504,31 +8519,36 @@ ${errorInfo.originalError}
                     />,
                   ];
                 } else {
-                  // Row is in view mode - show Edit button (and Restore if has changes)
-                  const viewModeActions = [
-                    <GridActionsCellItem
-                      key="edit"
-                      icon={
-                        <Edit
-                          htmlColor={
-                            theme.palette.mode === "dark"
-                              ? theme.palette.warning.light
-                              : theme.palette.warning.dark
-                          }
-                        />
-                      }
-                      label={localeText.bsEdit}
-                      onClick={() => handleBulkRowEditClick(params.id)}
-                      sx={{
-                        "&:hover": {
-                          backgroundColor:
-                            theme.palette.mode === "dark"
-                              ? "rgba(255, 183, 77, 0.2)"
-                              : "rgba(237, 108, 2, 0.1)",
-                        },
-                      }}
-                    />,
-                  ];
+                  // Row is in view mode - show Edit button only if effectiveBulkEdit is true (and Restore if has changes)
+                  const viewModeActions = [];
+
+                  // Only show Edit button if bulk edit is allowed
+                  if (effectiveBulkEdit) {
+                    viewModeActions.push(
+                      <GridActionsCellItem
+                        key="edit"
+                        icon={
+                          <Edit
+                            htmlColor={
+                              theme.palette.mode === "dark"
+                                ? theme.palette.warning.light
+                                : theme.palette.warning.dark
+                            }
+                          />
+                        }
+                        label={localeText.bsEdit}
+                        onClick={() => handleBulkRowEditClick(params.id)}
+                        sx={{
+                          "&:hover": {
+                            backgroundColor:
+                              theme.palette.mode === "dark"
+                                ? "rgba(255, 183, 77, 0.2)"
+                                : "rgba(237, 108, 2, 0.1)",
+                          },
+                        }}
+                      />
+                    );
+                  }
                   if (hasChanges) {
                     viewModeActions.push(
                       <GridActionsCellItem
@@ -9037,9 +9057,13 @@ ${errorInfo.originalError}
           // ========================================================
           // BULK MODE ACTION BUTTONS
           // Priority: effectiveBulkAddInline > bulkEditMode > normal mode
+          // Only show if user has appropriate permissions
           // ========================================================
 
-          if (effectiveBulkAddInline || bulkEditMode) {
+          if (
+            (effectiveBulkAddInline && effectiveShowAdd) ||
+            (bulkEditMode && effectiveBulkEdit)
+          ) {
             // Combined logic for both inline add and bulk edit modes
             actions.push((params) => {
               // CRITICAL: Use ref instead of state to avoid stale closure when columns are cached
@@ -9122,23 +9146,25 @@ ${errorInfo.originalError}
               } else {
                 // Row is in view mode
                 const viewModeActions = [];
-                // Edit button
-                viewModeActions.push(
-                  <GridActionsCellItem
-                    key="edit"
-                    icon={<Edit />}
-                    label={localeText.bsEdit}
-                    onClick={
-                      effectiveBulkAddInline
-                        ? handleInlineEditClick(params.id)
-                        : () => handleBulkRowEditClick(params.id)
-                    }
-                    color="inherit"
-                  />
-                );
+                // Edit button - only show if bulk edit is allowed
+                if (effectiveBulkEdit) {
+                  viewModeActions.push(
+                    <GridActionsCellItem
+                      key="edit"
+                      icon={<Edit />}
+                      label={localeText.bsEdit}
+                      onClick={
+                        effectiveBulkAddInline
+                          ? handleInlineEditClick(params.id)
+                          : () => handleBulkRowEditClick(params.id)
+                      }
+                      color="inherit"
+                    />
+                  );
+                }
 
                 // For new rows in view mode, show Delete button
-                if (isNewRow || bsVisibleDelete) {
+                if (isNewRow || effectiveVisibleDelete) {
                   viewModeActions.push(
                     <GridActionsCellItem
                       key="delete"

@@ -31,6 +31,7 @@ const UserGroupPage = (props) => {
       <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
           bsLocale={props.lang}
+          // bsAutoPermission={true}
           bsPreObj="sec"
           bsObj="t_com_user_group"
           bsCols="app_id,name,description,is_active,create_by,create_date,update_by,update_date"
