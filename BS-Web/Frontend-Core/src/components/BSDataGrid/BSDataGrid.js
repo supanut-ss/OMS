@@ -2023,12 +2023,21 @@ const BSDataGrid = forwardRef(
       bulkModeConfig.showSplitButton ?? bsShowBulkSplitButton;
 
     // Determine effective bulk mode settings
-    // When enable is true, enable all bulk operations by default
+    // When enable is true, enable all bulk operations by default (unless explicitly set to false)
+    // When enable is false, use the individual settings directly
     // Note: These will be further restricted by bsAutoPermission below
-    const baseBulkAdd = resolvedBulkEnable || resolvedBulkAdd;
-    const baseBulkEdit = resolvedBulkEnable || resolvedBulkEdit;
-    const baseBulkDelete = resolvedBulkEnable || resolvedBulkDelete;
-    const effectiveBulkAddInline = resolvedBulkAddInline;
+    const baseBulkAdd = resolvedBulkEnable
+      ? resolvedBulkAdd !== false // When enable=true, default to true unless explicitly false
+      : resolvedBulkAdd === true; // When enable=false, only enable if explicitly true
+    const baseBulkEdit = resolvedBulkEnable
+      ? resolvedBulkEdit !== false
+      : resolvedBulkEdit === true;
+    const baseBulkDelete = resolvedBulkEnable
+      ? resolvedBulkDelete !== false
+      : resolvedBulkDelete === true;
+    const effectiveBulkAddInline = resolvedBulkEnable
+      ? resolvedBulkAddInline !== false
+      : resolvedBulkAddInline === true;
     const effectiveShowCheckbox = resolvedShowCheckbox;
     const effectiveShowSplitButton = resolvedShowSplitButton;
 
@@ -11043,9 +11052,23 @@ ${errorInfo.originalError}
       (params) => {
         bsLog("📝 Row edit started:", params.id);
 
-        // If bulk edit is disabled, prevent any editing
-        if (!effectiveBulkEdit && !effectiveBulkAddInline) {
-          Logger.warn("⚠️ Bulk edit mode is disabled - preventing edit");
+        // Check if this is a new row (Add mode) - new rows have id starting with "new-"
+        const rowId = params.row?.id || params.id;
+        const isNewRow = typeof rowId === "string" && rowId.startsWith("new-");
+
+        // Permission logic:
+        // - New rows: require effectiveBulkAddInline
+        // - Existing rows: require effectiveBulkEdit
+        const canEditThisRow = isNewRow
+          ? effectiveBulkAddInline
+          : effectiveBulkEdit;
+
+        if (!canEditThisRow) {
+          Logger.warn(
+            `⚠️ Cannot edit ${
+              isNewRow ? "new" : "existing"
+            } row - permission denied`
+          );
           // Prevent entering edit mode
           if (params.event) {
             params.event.defaultMuiPrevented = true;
@@ -11053,9 +11076,9 @@ ${errorInfo.originalError}
           return; // Stop execution here
         }
 
-        // Enable bulk edit mode if effectiveBulkEdit OR effectiveBulkAddInline is true
+        // Enable bulk edit mode if we have permission to edit this row
         // This shows the Save All / Discard All toolbar
-        if (!bulkEditMode && (effectiveBulkEdit || effectiveBulkAddInline)) {
+        if (!bulkEditMode) {
           setBulkEditMode(true);
           unsavedChangesRef.current = {};
           setHasUnsavedChanges(false);
@@ -11443,7 +11466,11 @@ ${errorInfo.originalError}
                     resourceData?.[0]?.resource_value || ""
                   }`}
                   // Editing - only enable if bulk edit mode is enabled
-                  editMode="row"
+                  // Only set editMode="row" if effectiveBulkEdit or effectiveBulkAddInline is enabled
+                  // This prevents double-click from entering edit mode when editing is not allowed
+                  {...((effectiveBulkEdit || effectiveBulkAddInline) && {
+                    editMode: "row",
+                  })}
                   processRowUpdate={
                     effectiveBulkEdit || effectiveBulkAddInline
                       ? effectiveBulkAddInline
@@ -11468,13 +11495,21 @@ ${errorInfo.originalError}
                   // Disable all cell editing when bulk edit mode is not enabled
                   // Also respect readOnly property from bsColumnDefs (only for existing rows, not new rows)
                   isCellEditable={(params) => {
-                    if (!(effectiveBulkEdit || effectiveBulkAddInline)) {
-                      return false;
-                    }
                     // Check if this is a new row (Add mode) - new rows have id starting with "new-"
                     const rowId = params.row?.id || params.id;
                     const isNewRow =
                       typeof rowId === "string" && rowId.startsWith("new-");
+
+                    // Permission logic:
+                    // - New rows: require effectiveBulkAddInline
+                    // - Existing rows: require effectiveBulkEdit
+                    const canEditThisRow = isNewRow
+                      ? effectiveBulkAddInline
+                      : effectiveBulkEdit;
+
+                    if (!canEditThisRow) {
+                      return false;
+                    }
 
                     // readOnly only applies to existing rows (Edit mode), not new rows (Add mode)
                     if (!isNewRow) {
