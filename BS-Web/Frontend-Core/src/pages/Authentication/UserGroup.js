@@ -30,23 +30,24 @@ const UserGroupPage = (props) => {
       <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
           bsLocale={props.lang}
+          // bsAutoPermission={true}
           bsPreObj="sec"
           bsObj="t_com_user_group"
           bsCols="app_id,name,description,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="name asc"
           bsShowDescColumn={false}
           bsUniqueFields={["name"]}
-          showAdd={permission.is_add}
-          bsVisibleEdit={permission.is_edit}
-          bsVisibleDelete={permission.is_delete}
-          bsAllowDelete={permission.is_delete}
-          bsVisibleView={permission.is_view}
-          bsBulkDelete={permission.is_delete}
-          bsBulkAdd={permission.is_add}
-          bsBulkEdit={permission.is_edit}
-          showBulkDelete={permission.is_delete}
-          showBulkAdd={permission.is_add}
-          showBulkEdit={permission.is_edit}
+          // showAdd={permission.is_add}
+          // bsVisibleEdit={permission.is_edit}
+          // bsVisibleDelete={permission.is_delete}
+          // bsAllowDelete={permission.is_delete}
+          // bsVisibleView={permission.is_view}
+          // bsBulkDelete={permission.is_delete}
+          // bsBulkAdd={permission.is_add}
+          // bsBulkEdit={permission.is_edit}
+          // showBulkDelete={permission.is_delete}
+          // showBulkAdd={permission.is_add}
+          // showBulkEdit={permission.is_edit}
           bsComboBox={[
             {
               Column: "app_id",
