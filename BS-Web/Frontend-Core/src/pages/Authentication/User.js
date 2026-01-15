@@ -41,6 +41,7 @@ const initialForm = {
 };
 
 const UserPage = (props) => {
+  const { permission } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
@@ -124,8 +125,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-          getResource(resourceData, "SaveFailed") ||
-          "Save failed"
+        getResource(resourceData, "SaveFailed") ||
+        "Save failed"
       );
     }
   };
@@ -162,18 +163,15 @@ const UserPage = (props) => {
   };
 
   const handleGroupChange = (val) => {
-    const groupId = val ?? "";
-    setForm({ ...form, user_group_id: groupId });
+    setForm({ ...form, user_group_id: val?.user_group_id ?? "" });
   };
 
   const handleLocaleChange = (val) => {
-    const localeId = val ?? ""; // ใช้ field key ที่ถูกต้อง
-    setForm({ ...form, locale_id: localeId });
+    setForm({ ...form, locale_id: val?.code ?? "" });
   };
 
   const handleSupervisorChange = (val) => {
-    const supervisorId = val ?? "";
-    setForm({ ...form, supervisor: supervisorId });
+    setForm({ ...form, supervisor: val?.code ?? "" });
   };
 
   const handleSave = async () => {
@@ -216,8 +214,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-          getResource(resourceData, "SaveFailed") ||
-          "Save failed"
+        getResource(resourceData, "SaveFailed") ||
+        "Save failed"
       );
     }
   };
@@ -233,8 +231,8 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-          getResource(resourceData, "SaveFailed") ||
-          "Save failed"
+        getResource(resourceData, "SaveFailed") ||
+        "Save failed"
       );
     }
   };
@@ -405,7 +403,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
-                  bsMode="select"
+                  bsMode="single"
                   bsTitle={getResource(resourceData, "user_group_id")}
                   bsPreObj="sec.t_com_"
                   bsObj="user_group"
@@ -436,7 +434,7 @@ const UserPage = (props) => {
               </Box>
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
-                  bsMode="select"
+                  bsMode="single"
                   bsTitle={getResource(resourceData, "locale_id")}
                   bsPreObj="sec.t_com_"
                   bsObj="combobox_item"
@@ -452,7 +450,7 @@ const UserPage = (props) => {
                       display: true,
                       filter: false,
                       key: false,
-                    },
+                    }
                   ]}
                   bsObjBy=""
                   bsObjWh="group_name='locale_id'"

@@ -520,7 +520,7 @@ const getSectionConfigs = (theme) => {
 
 // ============ Main MyTask Page ============
 const MyTaskPage = (props) => {
-  const { lang = "th" } = props;
+  const { lang = "th", permission } = props;
   const theme = useTheme();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);

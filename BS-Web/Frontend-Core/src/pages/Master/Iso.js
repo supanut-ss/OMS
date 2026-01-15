@@ -15,6 +15,7 @@ import { useResource } from "../../hooks/useResource";
  * When adding a new parent record, child grids are hidden until the parent is saved.
  */
 const IsoPage = (props) => {
+   const { permission } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(null);

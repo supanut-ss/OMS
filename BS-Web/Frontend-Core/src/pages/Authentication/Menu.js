@@ -4,6 +4,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 
 const MenuPage = (props) => {
+  const { permission } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");

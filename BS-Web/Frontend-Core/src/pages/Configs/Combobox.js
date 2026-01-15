@@ -2,6 +2,7 @@ import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 
 const Combobox = (props) => {
+    const { permission } = props;
     return <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
             bsLocale={props.lang}
@@ -31,11 +32,11 @@ const Combobox = (props) => {
                     ObjWh: "",
                     ObjBy: "application_name asc",
                 }]}
-            bsShowDescColumn = { false}
-            bsAllowAdd = { true}
-            bsAllowEdit = { true}
-            bsAllowDelete = { true}
-            />
+            bsShowDescColumn={false}
+            bsAllowAdd={true}
+            bsAllowEdit={true}
+            bsAllowDelete={true}
+        />
     </Paper>
 }
 export default Combobox;

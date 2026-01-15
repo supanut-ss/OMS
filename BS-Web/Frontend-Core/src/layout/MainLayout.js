@@ -61,6 +61,7 @@ import AxiosMaster from "../utils/AxiosMaster";
 import LanguageSwitch from "../components/LanguageSwitch";
 import * as signalR from "@microsoft/signalr";
 import { useNotifications } from "../contexts/NotificationsProvider";
+import secureStorage from "../utils/SecureStorage";
 const drawerWidth = 280;
 const collapsedWidth = 72;
 
@@ -557,6 +558,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       }
     };
   }, [apiUrl, currentUser, enqueue]);
+  console.log("MainLayout render Menu:" ,secureStorage.get("menu"));
   return (
     <Box
       sx={{

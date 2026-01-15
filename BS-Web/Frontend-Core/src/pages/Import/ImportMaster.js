@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
 
 const ImportMaster = (props) => {
+   const { permission } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(); // เพิ่ม ref สำหรับ DataGrid

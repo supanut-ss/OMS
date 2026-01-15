@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
 
 const CustomerPage = (props) => {
+   const { permission } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(null); // ref

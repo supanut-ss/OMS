@@ -107,3 +107,16 @@ nunit-*.xml
 /BS-Notification/Notification/.vs/
 /BS-Notification/Notification/obj/
 /BS-Notification/Notification/bin/
+/BS-Notification/Notification/.vs/Notification/CopilotIndices/17.12.38.29086/CodeChunks.db
+/BS-Notification/Notification/.vs/Notification/CopilotIndices/17.12.38.29086/SemanticSymbols.db
+/BS-Notification/Notification/.vs/Notification/CopilotIndices/17.12.38.29086/SemanticSymbols.db-shm
+/BS-Notification/Notification/.vs/Notification/CopilotIndices/17.12.38.29086/SemanticSymbols.db-wal
+/BS-Notification/Notification/.vs/Notification/DesignTimeBuild/.dtbcache.v2
+/BS-Notification/Notification/.vs/Notification/v17/.futdcache.v2
+/BS-Notification/Notification/.vs/Notification/v17/.suo
+/BS-Notification/Notification/.vs/Notification/v17/DocumentLayout.backup.json
+/BS-Notification/Notification/.vs/Notification/v17/DocumentLayout.json
+/BS-Notification/Notification/.vs/ProjectEvaluation/notification.metadata.v9.bin
+/BS-Notification/Notification/.vs/ProjectEvaluation/notification.projects.v9.bin
+/BS-Notification/Notification/.vs/ProjectEvaluation/notification.strings.v9.bin
+*.tmp

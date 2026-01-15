@@ -4,6 +4,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 
 const UserGroupPage = (props) => {
+  const { permission } = props;
   const { getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
 
@@ -23,6 +24,7 @@ const UserGroupPage = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
+  console.log("UserGroupPage permissions:", permission);
   return (
     <>
       <Paper sx={{ p: 2, mb: 3 }}>
@@ -34,6 +36,17 @@ const UserGroupPage = (props) => {
           bsObjBy="name asc"
           bsShowDescColumn={false}
           bsUniqueFields={["name"]}
+          showAdd={permission.is_add}
+          bsVisibleEdit={permission.is_edit}
+          bsVisibleDelete={permission.is_delete}
+          bsAllowDelete={permission.is_delete}
+          bsVisibleView={permission.is_view}
+          bsBulkDelete={permission.is_delete}
+          bsBulkAdd={permission.is_add}
+          bsBulkEdit={permission.is_edit}
+          showBulkDelete={permission.is_delete}
+          showBulkAdd={permission.is_add}
+          showBulkEdit={permission.is_edit}
           bsComboBox={[
             {
               Column: "app_id",

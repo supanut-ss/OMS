@@ -8,6 +8,7 @@ import AxiosMaster from "../../utils/AxiosMaster";
 import { useRef } from "react";
 
 const UserLogOnPage = (props) => {
+  const { permission } = props;
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);

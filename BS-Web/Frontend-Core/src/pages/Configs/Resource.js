@@ -46,7 +46,8 @@ const activeOptions = [
   { value: "YES", label: "YES" },
   { value: "NO", label: "NO" },
 ];
-const Resource = ({ lang }) => {
+const Resource = (props) => {
+  const { lang, permission } = props;
   const [formData, setFormData] = useState(defaultFormData);
   const [openForm, setOpenForm] = useState(false);
   const [dialogTitleForm, setDialogTitleForm] = useState("Add Resource");
@@ -189,11 +190,11 @@ const Resource = ({ lang }) => {
             // showSplitButton: false,
           }}
           bsShowDescColumn={false}
-          // onEdit={handleOpenEdit}
-          // onAdd={handleOpenAdd}
-          // bsAllowAdd={true}
-          // bsAllowEdit={true}
-          // bsAllowDelete={true}
+        // onEdit={handleOpenEdit}
+        // onAdd={handleOpenAdd}
+        // bsAllowAdd={true}
+        // bsAllowEdit={true}
+        // bsAllowDelete={true}
         />
       </Paper>
       <Dialog open={openForm} maxWidth="lg" onClose={() => setOpenForm(false)}>

@@ -21,6 +21,7 @@ const storedProcedure = {
   },
 };
 const Projects = (props) => {
+   const { permission } = props;
   const { lang } = props;
   const [openDialog, setOpenDialog] = useState(false);
   const [projectHeaderID, setProjectHeaderID] = useState("");

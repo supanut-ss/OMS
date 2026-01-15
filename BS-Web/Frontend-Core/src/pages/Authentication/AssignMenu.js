@@ -17,6 +17,7 @@ import Logger from "../../utils/logger";
 import { useResource } from "../../hooks/useResource";
 
 const MenuTreeView = (props) => {
+  const { permission } = props;
   const { getMenuAssign, saveMenuAssign } = useMenuContext();
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");
@@ -128,10 +129,10 @@ const MenuTreeView = (props) => {
         node.menuChildren && node.menuChildren.length
           ? []
           : (node.permChildren || []).map((p) => ({
-              id: p.id,
-              label: p.label,
-              isCheck: !!p.isCheck,
-            }));
+            id: p.id,
+            label: p.label,
+            isCheck: !!p.isCheck,
+          }));
       const children = [...menuChildrenNodes, ...permLeaves];
       return {
         id: node.id,
