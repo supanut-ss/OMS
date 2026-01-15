@@ -346,20 +346,9 @@ export default function MainLayout({ lang, onChangeLang }) {
       await AxiosMaster.post("/reset_password", password)
         .then((res) => {
           if (res.data.message_code === "0") {
-            BSAlertSwal2.fire({
-              icon: "success",
-              title:
-                lang === "th"
-                  ? "เปลี่ยนรหัสผ่านสำเร็จ"
-                  : "Password Changed Successfully",
-              confirmButtonText: "OK",
-            });
+            BSAlertSwal2.show("success", lang === "th" ? "เปลี่ยนรหัสผ่านสำเร็จ" : "Password Changed Successfully", { timer: 3000 });
           } else {
-            BSAlertSwal2.fire({
-              icon: "warning",
-              title: res.data.message_text,
-              confirmButtonText: "OK",
-            });
+            BSAlertSwal2.show("error", res.data.message_text || (lang === "th" ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "An error occurred while changing the password."));
           }
           setIsPopupResetPasswordOpen(false);
           setPassword({
@@ -558,7 +547,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       }
     };
   }, [apiUrl, currentUser, enqueue]);
-  console.log("MainLayout render Menu:" ,secureStorage.get("menu"));
+  console.log("MainLayout render Menu:", secureStorage.get("menu"));
   return (
     <Box
       sx={{
@@ -930,7 +919,7 @@ export default function MainLayout({ lang, onChangeLang }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3, md: 1 },
+          p: { xs: 0, sm: 3, md: 1 },
           mt: 8,
           width: {
             xs: "100%",

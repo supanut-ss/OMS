@@ -11,7 +11,6 @@ const Home = (props) => {
       sx={{
         width: "100%",
         minHeight: `calc(95vh - ${theme.spacing(8)})`,
-        p: 2,
       }}
     >
       <MyTaskPage lang={lang} permission={permission} />
