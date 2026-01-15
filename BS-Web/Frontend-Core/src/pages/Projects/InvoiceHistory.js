@@ -19,7 +19,7 @@ const InvoiceHistory = (props) => {
     : { is_cancel: "NO" };
 
   const gridRef = useRef();
-  
+
 
   useEffect(() => {
     setLocale_id(props.lang || "en");
@@ -89,7 +89,7 @@ const InvoiceHistory = (props) => {
               Display: "display_member",
               Value: "value_member",
               Default:
-                getResourceByGroupAndName("t_tmt_project_invoice", "document_type",locale_id)?.resource_value ||
+                getResourceByGroupAndName("t_tmt_project_invoice", "document_type", locale_id)?.resource_value ||
                 "--- Select Document Type ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
@@ -100,7 +100,7 @@ const InvoiceHistory = (props) => {
           bsBulkMode={{
             enable: true, // Enable all bulk operations
             addInline: true, // Add new rows inline instead of dialog
-            // edit: true,      // Enabled by default when enable=true
+            edit: true,      // Enabled by default when enable=true
             // delete: true,    // Enabled by default when enable=true
             // add: true,       // Enabled by default when enable=true
             // showCheckbox: false,

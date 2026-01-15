@@ -50,7 +50,7 @@ const IsoPage = (props) => {
       bsBulkMode: {
         enable: true, // Enable all bulk operations
         addInline: true, // Add new rows inline instead of dialog
-        // edit: true,      // Enabled by default when enable=true
+        edit: true,      // Enabled by default when enable=true
         // delete: true,    // Enabled by default when enable=true
         // add: true,       // Enabled by default when enable=true
         // showCheckbox: false,
@@ -82,7 +82,7 @@ const IsoPage = (props) => {
       bsBulkMode: {
         enable: true, // Enable all bulk operations
         addInline: true, // Add new rows inline instead of dialog
-        // edit: true,      // Enabled by default when enable=true
+        edit: true,      // Enabled by default when enable=true
         // delete: true,    // Enabled by default when enable=true
         // add: true,       // Enabled by default when enable=true
         // showCheckbox: false,

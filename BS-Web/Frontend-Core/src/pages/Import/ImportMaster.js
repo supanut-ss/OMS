@@ -8,9 +8,9 @@ const ImportMaster = (props) => {
   const { permission } = useOutletContext();
   const [locale_id, setLocale_id] = useState(props.lang || "en");
   const dataGridRef = useRef(); // เพิ่ม ref สำหรับ DataGrid
-  const{getResourceByGroupAndName}=useResource();
+  const { getResourceByGroupAndName } = useResource();
   useEffect(() => {
-  setLocale_id(props.lang || "en");
+    setLocale_id(props.lang || "en");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
@@ -29,11 +29,11 @@ const ImportMaster = (props) => {
           bsObjBy="create_date desc"
           bsPageSizeOptions={[20, 100, 200, 500, 1000]}
           bsBulkMode={{
-            enable: true, // Enable all bulk operations
+            enable: false, // Enable all bulk operations
             addInline: true, // Add new rows inline instead of dialog
-            // edit: true,      // Enabled by default when enable=true
-            // delete: true,    // Enabled by default when enable=true
-            // add: true,       // Enabled by default when enable=true
+            edit: true,      // Enabled by default when enable=true
+            delete: true,    // Enabled by default when enable=true
+            add: true,       // Enabled by default when enable=true
             // showCheckbox: false,
             // showSplitButton: false,
           }}
