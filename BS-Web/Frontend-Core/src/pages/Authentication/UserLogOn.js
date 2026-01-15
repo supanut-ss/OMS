@@ -9,9 +9,8 @@ import { useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 
 const UserLogOnPage = (props) => {
- const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { permission } = useOutletContext();
+  const { getResourceByGroupAndName } = useResource();
   const [selectedRows, setSelectedRows] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
   const gridRef = useRef();
@@ -20,13 +19,8 @@ const UserLogOnPage = (props) => {
   const [mapOpen, setMapOpen] = useState(false);
   const [mapPoint, setMapPoint] = useState(null);
 
-  const getLang = async () => {
-    setResourceData(await getResources("v_com_user_alive")); // backend group ชื่อ "t_com_user_logon"
-  };
-
   useEffect(() => {
     setLocale_id(props.lang || "en");
-    getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
@@ -34,7 +28,7 @@ const UserLogOnPage = (props) => {
     if (selectedRows.length === 0) {
       BSAlertSwal2.show(
         "error",
-        getResource(resourceData, "please_select_user") ||
+        getResourceByGroupAndName("v_com_user_alive", "please_select_user", locale_id)?.resource_value ||
         "Please select at least one logged on user to clear."
       );
       return;
@@ -62,7 +56,7 @@ const UserLogOnPage = (props) => {
     const acc = row?.accuracy !== undefined && row.accuracy !== null ? row.accuracy : null;
 
     if (!isFinite(lat) || !isFinite(lon)) {
-      BSAlertSwal2.show("info", getResource(resourceData, "no_gps_available") || "No GPS coordinates available for this user.");
+      BSAlertSwal2.show("info", getResourceByGroupAndName("v_com_user_alive", "no_gps_available", locale_id)?.resource_value || "No GPS coordinates available for this user.");
       return;
     }
 
@@ -82,8 +76,7 @@ const UserLogOnPage = (props) => {
           }}
           startIcon={<PersonRemoveIcon />}
         >
-          {getResource(resourceData, "ClearLoggedOnUsers") ||
-            "Clear Logged On Users"}
+          {getResourceByGroupAndName("v_com_user_alive", "ClearLoggedOnUsers", locale_id)?.resource_value || "Clear Logged On Users"}
         </Button>
 
         <BSDataGrid

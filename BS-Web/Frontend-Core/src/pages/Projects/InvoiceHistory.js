@@ -4,8 +4,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
 
 const InvoiceHistory = (props) => {
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { getResourceByGroupAndName } = useResource();
   const [locale_id, setLocale_id] = useState(props.lang || "en");
 
   // If a projectID is provided from props, use it to filter the grid by project_header_id
@@ -20,19 +19,10 @@ const InvoiceHistory = (props) => {
     : { is_cancel: "NO" };
 
   const gridRef = useRef();
-  // โหลด resource ของ group "User"
-  const getLang = async () => {
-    try {
-      const res = await getResources("t_tmt_project_invoice"); // ตั้งชื่อ group ตามที่ backend กำหนด
-      setResourceData(res);
-    } catch (error) {
-      console.error("getResources(Invoice) error:", error);
-    }
-  };
+  
 
   useEffect(() => {
     setLocale_id(props.lang || "en");
-    getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
@@ -99,7 +89,7 @@ const InvoiceHistory = (props) => {
               Display: "display_member",
               Value: "value_member",
               Default:
-                getResource(resourceData, "document_type") ||
+                getResourceByGroupAndName("t_tmt_project_invoice", "document_type",locale_id)?.resource_value ||
                 "--- Select Document Type ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
@@ -138,7 +128,7 @@ const InvoiceHistory = (props) => {
             <Stack spacing={0.5}>
               <Box>
                 <strong>
-                  {getResource(resourceData, "Total PO Amount") ||
+                  {getResourceByGroupAndName("t_tmt_project_invoice", "Total PO Amount", locale_id)?.resource_value ||
                     "Total PO Amount"}
                 </strong>
                 &nbsp;&nbsp;
@@ -149,7 +139,7 @@ const InvoiceHistory = (props) => {
 
               <Box>
                 <strong>
-                  {getResource(resourceData, "Total Invoice Amount") ||
+                  {getResourceByGroupAndName("t_tmt_project_invoice", "Total Invoice Amount", locale_id)?.resource_value ||
                     "Total Invoice Amount"}
                 </strong>
                 &nbsp;&nbsp;
@@ -165,7 +155,7 @@ const InvoiceHistory = (props) => {
                 }}
               >
                 <strong>
-                  {getResource(resourceData, "Remain") || "Remain"}
+                  {getResourceByGroupAndName("t_tmt_project_invoice", "Remain", locale_id)?.resource_value || "Remain"}
                 </strong>
                 &nbsp;&nbsp;
                 {totals.remain.toLocaleString(undefined, {

@@ -42,11 +42,9 @@ const initialForm = {
 };
 
 const UserPage = (props) => {
- const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { permission } = useOutletContext();
   const [locale_id, setLocale_id] = useState(props.lang || "en");
-
+  const { getResourceByGroupAndName } = useResource();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [editMode, setEditMode] = useState(false);
@@ -62,19 +60,10 @@ const UserPage = (props) => {
   const [newPassword, setNewPassword] = useState("");
   const [openPwDialog, setOpenPwDialog] = useState(false);
 
-  // โหลด resource ของ group "User"
-  const getLang = async () => {
-    try {
-      const res = await getResources("t_com_user"); // ตั้งชื่อ group ตามที่ backend กำหนด
-      setResourceData(res);
-    } catch (error) {
-      console.error("getResources(User) error:", error);
-    }
-  };
+  
 
   useEffect(() => {
     setLocale_id(props.lang || "en");
-    getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
@@ -93,7 +82,7 @@ const UserPage = (props) => {
       .join(" ");
   };
 
-  const getLabelText = (key) => getResource(resourceData, key) || humanize(key);
+  const getLabelText = (key) => getResourceByGroupAndName("t_com_user", key, locale_id)?.resource_description || humanize(key);
 
   const handleOpenAdd = () => {
     setForm(initialForm);
@@ -126,7 +115,7 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-        getResource(resourceData, "SaveFailed") ||
+        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id) ||
         "Save failed"
       );
     }
@@ -157,7 +146,7 @@ const UserPage = (props) => {
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       setEmailError(
         val && !emailPattern.test(val)
-          ? getResource(resourceData, "InvalidEmail") || "Invalid email address"
+          ? getResourceByGroupAndName("t_com_user", "InvalidEmail", locale_id)?.resource_value || "Invalid email address"
           : ""
       );
     }
@@ -194,7 +183,7 @@ const UserPage = (props) => {
     if (missing.length > 0) {
       const labels = missing.map((k) => getLabelText(k));
       const baseMsg =
-        getResource(resourceData, "FillRequiredFields") ||
+        getResourceByGroupAndName("t_com_user", "FillRequiredFields", locale_id)?.resource_value ||
         "Please fill all required fields.";
       BSAlertSwal2.show("warning", `${baseMsg} (${labels.join(", ")})`);
       return;
@@ -215,7 +204,7 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-        getResource(resourceData, "SaveFailed") ||
+        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id)?.resource_value ||
         "Save failed"
       );
     }
@@ -232,7 +221,7 @@ const UserPage = (props) => {
       BSAlertSwal2.show(
         "error",
         result?.message_text ||
-        getResource(resourceData, "SaveFailed") ||
+        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id)?.resource_value ||
         "Save failed"
       );
     }
@@ -312,7 +301,7 @@ const UserPage = (props) => {
               Display: "name",
               Value: "name",
               Default:
-                getResource(resourceData, "SelectUserGroup") ||
+                getResourceByGroupAndName("t_com_user", "SelectUserGroup", locale_id)?.resource_value ||
                 "--- Select User Group ---",
               PreObj: "sec",
               Obj: "t_com_user_group",
@@ -348,8 +337,8 @@ const UserPage = (props) => {
       >
         <DialogTitle>
           {editMode
-            ? getResource(resourceData, "EditUser") || "Edit User"
-            : getResource(resourceData, "AddUser") || "Add User"}
+            ? getResourceByGroupAndName("t_com_user", "EditUser", locale_id)?.resource_value || "Edit User"
+            : getResourceByGroupAndName("t_com_user", "AddUser", locale_id)?.resource_value || "Add User"}
         </DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 1 }}>
@@ -357,7 +346,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 sx={{ flex: 1 }}
-                label={getResource(resourceData, "user_id")}
+                label={getResourceByGroupAndName("t_com_user", "user_id", locale_id)?.resource_value || "User ID"}
                 name="user_id"
                 value={form.user_id}
                 onChange={handleChange}
@@ -365,7 +354,7 @@ const UserPage = (props) => {
                 disabled={editMode}
               />
               <TextField
-                label={getResource(resourceData, "password")}
+                label={getResourceByGroupAndName("t_com_user", "password", locale_id)?.resource_value || "Password"}
                 name="password"
                 value={form.password}
                 onChange={handleChange}
@@ -390,7 +379,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label={getResource(resourceData, "first_name")}
+                label={getResourceByGroupAndName("t_com_user", "first_name", locale_id)?.resource_value || "First Name"}
                 name="first_name"
                 value={form.first_name}
                 onChange={handleChange}
@@ -398,7 +387,7 @@ const UserPage = (props) => {
               />
               <TextField
                 fullWidth
-                label={getResource(resourceData, "last_name")}
+                label={getResourceByGroupAndName("t_com_user", "last_name", locale_id)?.resource_value || "Last Name"}
                 name="last_name"
                 value={form.last_name}
                 onChange={handleChange}
@@ -410,7 +399,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="single"
-                  bsTitle={getResource(resourceData, "user_group_id")}
+                  bsTitle={getResourceByGroupAndName("t_com_user", "user_group_id", locale_id)?.resource_value || "User Group"}
                   bsPreObj="sec.t_com_"
                   bsObj="user_group"
                   bsColumes={[
@@ -441,7 +430,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="single"
-                  bsTitle={getResource(resourceData, "locale_id")}
+                  bsTitle={getResourceByGroupAndName("t_com_user", "locale_id", locale_id)?.resource_value || "Locale ID"}
                   bsPreObj="sec.t_com_"
                   bsObj="combobox_item"
                   bsColumes={[
@@ -473,7 +462,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <TextField
                   fullWidth
-                  label={getResource(resourceData, "department")}
+                  label={getResourceByGroupAndName("t_com_user", "department", locale_id)?.resource_value || "Department"}
                   name="department"
                   value={form.department}
                   onChange={handleChange}
@@ -482,7 +471,7 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="single"
-                  bsTitle={getResource(resourceData, "supervisor")}
+                  bsTitle={getResourceByGroupAndName("t_com_user", "supervisor", locale_id)?.resource_value || "Supervisor"}
                   bsPreObj="sec.t_com_"
                   bsObj="user"
                   bsColumes={[
@@ -508,7 +497,7 @@ const UserPage = (props) => {
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label={getResource(resourceData, "email_address")}
+                label={getResourceByGroupAndName("t_com_user", "email_address", locale_id)?.resource_value || "Email Address"}
                 name="email_address"
                 value={form.email_address}
                 onChange={handleChange}
@@ -518,7 +507,7 @@ const UserPage = (props) => {
               />
               <TextField
                 fullWidth
-                label={getResource(resourceData, "domain")}
+                label={getResourceByGroupAndName("t_com_user", "domain", locale_id)?.resource_value || "Domain"}
                 name="domain"
                 value={form.domain}
                 onChange={handleChange}
@@ -528,7 +517,7 @@ const UserPage = (props) => {
               <TextField
                 fullWidth
                 select
-                label={getResource(resourceData, "is_active")}
+                label={getResourceByGroupAndName("t_com_user", "is_active", locale_id)?.resource_value || "Is Active"}
                 name="is_active"
                 value={form.is_active}
                 onChange={handleChange}
@@ -548,18 +537,18 @@ const UserPage = (props) => {
         >
           {editMode && (
             <Button onClick={handleResetPass} variant="contained" color="error">
-              {getResource(resourceData, "ResetPassword") || "Reset Password"}
+              {getResourceByGroupAndName("t_com_user", "ResetPassword", locale_id)?.resource_value || "Reset Password"}
             </Button>
           )}
           <Box>
             <BSCloseOutlinedButton onClick={handleClose}>
-              {getResource(resourceData, "Cancel") || "Cancel"}
+              {getResourceByGroupAndName("t_com_user", "Cancel", locale_id)?.resource_value || "Cancel"}
             </BSCloseOutlinedButton>
 
             <BSSaveOutlinedButton onClick={handleSave}>
               {editMode
-                ? getResource(resourceData, "SaveChanges") || "Save Changes"
-                : getResource(resourceData, "Add") || "Add"}
+                ? getResourceByGroupAndName("t_com_user", "SaveChanges", locale_id)?.resource_value || "Save Changes"
+                : getResourceByGroupAndName("t_com_user", "Add", locale_id)?.resource_value || "Add"}
             </BSSaveOutlinedButton>
           </Box>
         </DialogActions>
@@ -576,11 +565,11 @@ const UserPage = (props) => {
         fullWidth
       >
         <DialogTitle>
-          {getResource(resourceData, "ResetPassword") || "Reset Password"}
+          {getResourceByGroupAndName("t_com_user", "ResetPassword", locale_id)?.resource_value || "Reset Password"}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            {getResource(resourceData, "ConfirmResetPassword") ||
+            {getResourceByGroupAndName("t_com_user", "ConfirmResetPassword", locale_id)?.resource_value ||
               "Confirm resetting the user's password."}
           </Typography>
         </DialogContent>
@@ -589,14 +578,14 @@ const UserPage = (props) => {
             onClick={() => setIsPopupResetPasswordOpen(false)}
             color="primary"
           >
-            {getResource(resourceData, "Cancel") || "Cancel"}
+            {getResourceByGroupAndName("t_com_user", "Cancel", locale_id)?.resource_value || "Cancel"}
           </Button>
           <Button
             onClick={sendChangePassword}
             color="primary"
             variant="contained"
           >
-            {getResource(resourceData, "Confirm") || "Confirm"}
+            {getResourceByGroupAndName("t_com_user", "Confirm", locale_id)?.resource_value || "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -613,7 +602,7 @@ const UserPage = (props) => {
         <DialogTitle
           sx={{ fontWeight: "bold", textAlign: "center", fontSize: "1.3rem" }}
         >
-          {getResource(resourceData, "NewPassword") || "New Password"}
+          {getResourceByGroupAndName("t_com_user", "NewPassword", locale_id)?.resource_value || "New Password"}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -634,7 +623,7 @@ const UserPage = (props) => {
             Copy
           </Button> */}
           <Button variant="outlined" onClick={() => setOpenPwDialog(false)}>
-            {getResource(resourceData, "Close") || "Close"}
+            {getResourceByGroupAndName("t_com_user", "Close", locale_id)?.resource_value || "Close"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -28,8 +28,8 @@ const defaultData = {
 const requiredFields = ["user_id", "role"];
 const ProjectsTeams = (props) => {
   const { project_header_id } = props;
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { getResourceByGroupAndName } = useResource();
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
   const [open, setOpen] = useState(false);
   const dataGridRef = useRef(null);
   const { formData, errors, updateField, validate } = useForm(
@@ -44,8 +44,7 @@ const ProjectsTeams = (props) => {
   );
 
   const getLang = async () => {
-    const res = await getResources("Projects Teams");
-    setResourceData(res);
+    setLocale_id(props.lang || "en")
   };
   const callAddOrEdit = async () => {
     if (!validate) return;
@@ -187,8 +186,8 @@ const ProjectsTeams = (props) => {
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth={"lg"}>
         <DialogTitle>
           {formData.project_member_id
-            ? getResource(resourceData, "Edit_From")
-            : getResource(resourceData, "Add_From")}{" "}
+            ? getResourceByGroupAndName("Projects Teams", "Edit_From", locale_id)?.resource_value || "Edit From" 
+            : getResourceByGroupAndName("Projects Teams", "Add_From", locale_id)?.resource_value || "Add From"}
           {props.title}
         </DialogTitle>
         <IconButton
@@ -209,7 +208,7 @@ const ProjectsTeams = (props) => {
               {renderInput({
                 item: {
                   field: "user_id",
-                  headerName: getResource(resourceData, "user_id"),
+                  headerName: getResourceByGroupAndName("Projects Teams", "user_id", locale_id)?.resource_value || "User ID" ,
                   component: "BSAutoComplete",
                   bsMode: "single",
                   bsTitle: "user_id",
@@ -233,7 +232,7 @@ const ProjectsTeams = (props) => {
               {renderInput({
                 item: {
                   field: "role",
-                  headerName: getResource(resourceData, "role"),
+                  headerName: getResourceByGroupAndName("Projects Teams", "role", locale_id)?.resource_value || "Role",
                   component: "BSAutoComplete",
                   bsMode: "single",
                   bsTitle: "role",
@@ -257,7 +256,7 @@ const ProjectsTeams = (props) => {
               {renderInput({
                 item: {
                   field: "description",
-                  headerName: getResource(resourceData, "description"),
+                  headerName: getResourceByGroupAndName("Projects Teams", "description", locale_id)?.resource_value || "Description",
                   component: "BSTextField",
                   variant: "standard",
                 },
@@ -275,14 +274,14 @@ const ProjectsTeams = (props) => {
             variant="outlined"
             className="btn-close-outlined"
           >
-            {getResource(resourceData, "Close")}
+            {getResourceByGroupAndName("Projects Teams", "Close", locale_id)?.resource_value || "Close"}
           </BSCloseOutlinedButton>
           <BSSaveOutlinedButton
             onClick={handleSave}
             autoFocus
             variant="outlined"
           >
-            {getResource(resourceData, "Save")}
+            {getResourceByGroupAndName("Projects Teams", "Save", locale_id)?.resource_value || "Save" }
           </BSSaveOutlinedButton>
         </DialogActions>
       </Dialog>

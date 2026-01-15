@@ -16,14 +16,14 @@ import { useOutletContext } from "react-router-dom";
  * When adding a new parent record, child grids are hidden until the parent is saved.
  */
 const IsoPage = (props) => {
- const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { permission } = useOutletContext();
+  const { getResourceByGroupAndName } = useResource();
+
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
   const dataGridRef = useRef(null);
 
   const getLang = async () => {
-    const res = await getResources("Iso");
-    setResourceData(res);
+    setLocale_id(props.lang || "en");
   };
 
   useEffect(() => {
@@ -119,7 +119,7 @@ const IsoPage = (props) => {
     <Box>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          {getResource(resourceData, "Iso")}
+          {getResourceByGroupAndName("Iso", "Iso")?.resource_value || "Iso"}
         </Typography>
 
         <BSDataGrid

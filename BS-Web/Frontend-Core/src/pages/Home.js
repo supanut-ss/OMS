@@ -1,6 +1,5 @@
 import { Box, useTheme } from "@mui/material";
 import MyTaskPage from "./Projects/MyTask";
-import secureStorage from "../utils/SecureStorage";
 import { useOutletContext } from "react-router-dom";
 
 const Home = (props) => {
@@ -15,7 +14,7 @@ const Home = (props) => {
         p: 2,
       }}
     >
-      {/* <MyTaskPage lang={lang} permission={permission} /> */}
+      <MyTaskPage lang={lang} permission={permission} />
     </Box>
   );
 };

@@ -1,29 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Paper } from "@mui/material";
+import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
-import { useResource } from "../../hooks/useResource";
 import { useOutletContext } from "react-router-dom";
 
 const MenuPage = (props) => {
  const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
 
-  // ฟังก์ชันโหลด resource ของ group "Menu"
-  const getLang = async () => {
-    try {
-      const res = await getResources("Menu"); // backend group ชื่อ "Menu"
-      setResourceData(res);
-    } catch (error) {
-      console.error("getResources(Menu) error:", error);
-    }
-  };
 
   // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน
   useEffect(() => {
     setLocale_id(props.lang || "en");
-    getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 

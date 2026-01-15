@@ -29,6 +29,7 @@ import { SvgIcon } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
 import TaskTracking from "./Tasks/TaskTracking";
+import { useOutletContext } from "react-router-dom";
 
 // ============ Task Status Constants ============
 const TASK_STATUS = {
@@ -156,13 +157,12 @@ const TaskDetailDialog = ({
   onClose,
   taskData,
   lang,
-  resourceData,
-  getResource,
+  resourceData
 }) => {
   const theme = useTheme();
-
+  const { getResourceByGroupAndName } = useResource();
   // Helper function to get resource with fallback
-  const r = (key, fallback) => getResource(resourceData, key) || fallback;
+  const r = (key, fallback) => getResourceByGroupAndName("usp_tmt_my_task", key)?.resource_value || fallback;
 
   return (
     <>
@@ -313,8 +313,8 @@ const TaskStatusSection = memo(function TaskStatusSection({
   expanded,
   onToggle,
   gridRef,
-  permission,
 }) {
+  const { permission } = useOutletContext();
   const theme = useTheme();
   const dataGridRef = useRef();
   const [count, setCount] = useState(0);
@@ -362,6 +362,9 @@ const TaskStatusSection = memo(function TaskStatusSection({
 
   const rowConfig = useCallback(
     (row) => ({
+      add: permission.is_add,
+      edit: permission.is_edit,
+      delete: permission.is_delete,
       viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
       viewIconColor: row.task_tracking_count > 0 ? infoMainColor : greyColor,
     }),
@@ -476,8 +479,8 @@ const TaskStatusSection = memo(function TaskStatusSection({
             bsCols="project_no,application_type,customer_name,project_name,task_name,assignee_list,start_date,end_date,manday,priority,project_type,create_by"
             bsStoredProcedureParams={storedProcedureParams}
             bsShowRowNumber={true}
-            showAdd={permission?.is_add}
-            bsVisibleEdit={permission?.is_edit}
+            showAdd={false}
+            bsVisibleEdit={false}
             bsVisibleDelete={permission?.is_delete}
             bsAllowDelete={permission?.is_delete}
             bsVisibleView={permission?.is_view}
@@ -522,11 +525,9 @@ const getSectionConfigs = (theme) => {
 
 // ============ Main MyTask Page ============
 const MyTaskPage = (props) => {
-  const { lang = "th", permission } = props;
+  const { lang = "th" } = props;
   const theme = useTheme();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
-
+  const { getResourceByGroupAndName } = useResource();
   // Keep refs to each section grid so we can refresh after closing the dialog
   const openGridRef = useRef(null);
   const inProcessGridRef = useRef(null);
@@ -603,15 +604,6 @@ const MyTaskPage = (props) => {
     closeGridRef.current?.forceRefresh?.();
   }, []);
 
-  // Load resources on mount
-  useEffect(() => {
-    const loadResources = async () => {
-      const data = await getResources("usp_tmt_my_task", lang);
-      setResourceData(data);
-    };
-    loadResources();
-  }, [lang, getResources]);
-
   // Memoize theme-aware section configurations to prevent re-renders
   const sections = useMemo(
     () => getSectionConfigs(theme),
@@ -663,7 +655,7 @@ const MyTaskPage = (props) => {
           color: t.palette.mode === "dark" ? "transparent" : "inherit",
         })}
       >
-        {getResource(resourceData, "my_tasks") || "My Tasks"}
+        {getResourceByGroupAndName("usp_tmt_my_task", "my_tasks")?.resource_value || "My Tasks"}
       </Typography>
 
       {sections.map((section) => (
@@ -676,7 +668,6 @@ const MyTaskPage = (props) => {
           expanded={expandedSections[section.status]}
           onToggle={toggleHandlers[section.status]}
           gridRef={sectionGridRefs[section.status]}
-          permission={permission}
         />
       ))}
 
@@ -687,8 +678,6 @@ const MyTaskPage = (props) => {
           onClose={handleCloseTaskDialog}
           taskData={selectedTask}
           lang={lang}
-          resourceData={resourceData}
-          getResource={getResource}
         />
       )}
     </Paper>

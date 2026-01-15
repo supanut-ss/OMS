@@ -3,13 +3,10 @@ import { Paper, IconButton, Tooltip, Box } from "@mui/material";
 import { AttachFile as AttachFileIcon } from "@mui/icons-material";
 import BSDataGrid from "../../components/BSDataGrid";
 import BSFileUploadDialog from "../../components/BSFileUploadDialog";
-import { useResource } from "../../hooks/useResource";
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { IOSSwitch } from "../../components/BSSwitch";
 
 const ProjectClose = (props) => {
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
 
   // useDynamicCrud for updating records
@@ -33,19 +30,10 @@ const ProjectClose = (props) => {
     : {};
 
   const gridRef = useRef();
-  // โหลด resource ของ group "User"
-  const getLang = async () => {
-    try {
-      const res = await getResources("t_tmt_project_close_document"); // ตั้งชื่อ group ตามที่ backend กำหนด
-      setResourceData(res);
-    } catch (error) {
-      console.error("getResources(ProjectClose) error:", error);
-    }
-  };
+  
 
   useEffect(() => {
     setLocale_id(props.lang || "en");
-    getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 

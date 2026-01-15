@@ -1,55 +1,54 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import secureStorage from "../../utils/SecureStorage";
 
-const isMatch = (path, menuPath) =>
-  path === menuPath || path.startsWith(menuPath + "/");
-
-const collectMenus = (menus) => {
-  const list = [];
-
-  for (const g of menus || []) {
-    // 🔹 menu group ที่มี path
-    if (g.menu_group_path) {
-      list.push({
-        menu_path: g.menu_group_path,
-        is_view: g.is_view,
-        is_add: g.is_add,
-        is_edit: g.is_edit,
-        is_delete: g.is_delete,
-      });
-    }
-
-    // 🔹 submenu
-    for (const m of g.submenu || []) {
-      if (m.menu_path) {
-        list.push({
-          menu_path: m.menu_path,
-          is_view: m.is_view,
-          is_add: m.is_add,
-          is_edit: m.is_edit,
-          is_delete: m.is_delete,
-        });
-      }
-    }
-  }
-  return list;
-};
-
-export default function PermissionRoute({ children }) {
+export default function PermissionRoute() {
   const location = useLocation();
   const menus = secureStorage.get("menu") || [];
 
-  const allMenus = collectMenus(menus);
-  const found =
-    allMenus
-      .filter(m => m.menu_path && m.menu_path !== "/")
-      .sort((a, b) => b.menu_path.length - a.menu_path.length)
-      .find(m => isMatch(location.pathname, m.menu_path))
-    || allMenus.find(m => m.menu_path === "/");
+  const isMatch = (path, menuPath) =>
+    path === menuPath || path.startsWith(menuPath + "/");
 
-  if (!found?.is_view) {
+  // รวมทุก menu + submenu
+  const allMenus = menus.flatMap(g => [
+    ...(g.menu_group_path
+      ? [{
+          menu_path: g.menu_group_path,
+          ...g
+        }]
+      : []),
+    ...(g.submenu || [])
+  ]);
+
+  // เรียงจาก menu_sequence และ menu_group_sequence (match ให้แม่น)
+  const sorted = allMenus
+    .filter(m => m.menu_path)
+    .sort((a, b) => a.menu_sequence - b.menu_sequence || (a.menu_group_sequence || 0) - (b.menu_group_sequence || 0));
+
+  // หา menu ที่ match path ปัจจุบัน
+  const current = sorted.find(m => isMatch(location.pathname, m.menu_path));
+  // 🔹 CASE 1: path = "/" แต่ไม่มี permission
+  if (location.pathname === "/") {
+    if (current?.is_view) {
+      return <Outlet context={{ permission: current }} />;
+    }
+
+    // หา menu แรกที่เปิดได้
+    const firstAllowed = sorted.find(
+      m => m.menu_path !== "/" && m.is_view
+    );
+
+    if (firstAllowed) {
+      return <Navigate to={firstAllowed.menu_path} replace />;
+    }
+
+    // ไม่มีสิทธิ์อะไรเลย
     return <Navigate to="/404" replace />;
   }
 
-  return <Outlet context={{ permission: found }} />;
+  // 🔹 CASE 2: path อื่น ๆ
+  if (!current?.is_view) {
+    return <Navigate to="/404" replace />;
+  }
+
+  return <Outlet context={{ permission: current }} />;
 }

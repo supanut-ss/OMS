@@ -5,15 +5,14 @@ import { useResource } from "../../hooks/useResource";
 import { useOutletContext } from "react-router-dom";
 
 const HolidayPage = (props) => {
- const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { permission } = useOutletContext();
+  const { getResourceByGroupAndName } = useResource();
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
   const dataGridRef = useRef(null); // ref
 
   // โหลด resource ตามภาษาที่เปลี่ยน
   const getLang = async () => {
-    const res = await getResources("MasterHoliday");
-    setResourceData(res);
+    setLocale_id(props.lang || "en");
   };
 
   useEffect(() => {
@@ -25,7 +24,7 @@ const HolidayPage = (props) => {
     <Box>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          {getResource(resourceData, "Master Holiday")}
+          {getResourceByGroupAndName("MasterHoliday", "Master Holiday", locale_id)?.resource_value || "Master Holiday"}
         </Typography>
 
         <BSDataGrid

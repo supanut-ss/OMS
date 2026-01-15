@@ -63,5 +63,60 @@ export const useResource = () => {
     return response;
   }, []);
 
-  return { getResource, getResourceDescription, getResources };
+  /**
+   * Fetch resource value by resource_group, resource_name, and lang from secureStorage
+   * @param {string} resource_group - Resource group to filter by
+   * @param {string} resource_name - Specific resource name to fetch
+   * @param {string} lang - Language code (en/th/other) for translation
+   * @returns {object} Object containing resource_value and resource_description
+   */
+  const getResourceByGroupAndName = useCallback(
+    (resource_group, resource_name, lang = null) => {
+      const resourceData = secureStorage.get("resource") || [];
+      const resolvedLang = lang || secureStorage.get("lang");
+
+      const resource = resourceData.find(
+        (r) =>
+          r.resource_group === resource_group &&
+          r.resource_name === resource_name
+      );
+
+      if (!resource) {
+        return {
+          resource_value: resource_name,
+          resource_description: resource_name,
+        };
+      }
+
+      return {
+        resource_value:
+          resolvedLang === "en"
+            ? resource.resource_en
+            : resolvedLang === "th"
+            ? resource.resource_th
+            : resource.resource_other,
+        resource_description:
+          resolvedLang === "en"
+            ? resource.description_en
+            : resolvedLang === "th"
+            ? resource.description_th
+            : resource.description_other,
+      };
+    },
+    []
+  );
+
+  /**
+   * Returns resource utility functions that fetch and format values from secureStorage
+   * - getResource: Get a specific resource value by resource_name from resourceData
+   * - getResourceDescription: Get a specific resource description by resource_name from resourceData
+   * - getResources: Get all resources for a resource_group with language-specific translations
+   * - getResourceByGroupAndName: Get resource value and description by resource_group, resource_name, and lang
+   */
+  return {
+    getResource,
+    getResourceDescription,
+    getResources,
+    getResourceByGroupAndName,
+  };
 };

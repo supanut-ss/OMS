@@ -36,8 +36,7 @@ export default function LoginPage({ setLang }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState();
+  const { getResourceByGroupAndName } = useResource();
   const { login, resource, menu, role, version, resetLocationPermission, startLocationTracking, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -104,7 +103,6 @@ export default function LoginPage({ setLang }) {
     if (!checkVersion) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       checkVersion = true;
-      setResourceData(await getResources("Login"));
       let vs = await version({
         version_control_name: "RESOURCE_WEB",
         application_license: Config.LICENSE_KEY
@@ -349,7 +347,7 @@ export default function LoginPage({ setLang }) {
               fullWidth
               disabled={loading}
               name="usersname"
-              label={getResource(resourceData, "Username")}
+              label={getResourceByGroupAndName("Login", "Username")?.resource_value || "Username"}
               type="text"
               value={formData.usersname}
               onChange={handleChange}
@@ -382,7 +380,7 @@ export default function LoginPage({ setLang }) {
               fullWidth
               disabled={loading}
               name="password"
-              label={getResource(resourceData, "Password")}
+              label={getResourceByGroupAndName("Login", "Password")?.resource_value || "Password"}
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={handleChange}
@@ -441,7 +439,7 @@ export default function LoginPage({ setLang }) {
               }}
             >
               {/* {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"} */}
-              {loading ? getResource(resourceData, "Login in") : getResource(resourceData, "Login")}
+              {loading ? getResourceByGroupAndName("Login", "Login in")?.resource_value || "Login in" : getResourceByGroupAndName("Login", "Login")?.resource_value || "Login"}
             </Button>
 
             {/* <Box sx={{ textAlign: "center" }}>
@@ -499,7 +497,7 @@ export default function LoginPage({ setLang }) {
               color="text.secondary"
               sx={{ fontWeight: 500 }}
             >
-              {getResource(resourceData, "Version")}  : {secureStorage.get("version")}
+              {getResourceByGroupAndName("Login", "Version")?.resource_value || "Version"}  : {secureStorage.get("version")}
             </Typography>
           </Box>
         </CardContent>

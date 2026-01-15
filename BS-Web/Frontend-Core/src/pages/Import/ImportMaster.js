@@ -6,16 +6,11 @@ import { useOutletContext } from "react-router-dom";
 
 const ImportMaster = (props) => {
   const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
   const dataGridRef = useRef(); // เพิ่ม ref สำหรับ DataGrid
-
-  const getLang = async () => {
-    setResourceData(await getResources("ImportMaster"));
-  };
-
+  const{getResourceByGroupAndName}=useResource();
   useEffect(() => {
-    getLang();
+  setLocale_id(props.lang || "en");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 
@@ -23,7 +18,7 @@ const ImportMaster = (props) => {
     <Box>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          {getResource(resourceData, "Import Master")}
+          {getResourceByGroupAndName("ImportMaster", "Import Master", locale_id)?.resource_value || "Import Master"}
         </Typography>
 
         <BSDataGrid
@@ -51,7 +46,6 @@ const ImportMaster = (props) => {
               field: "is_active",
               defaultValue: "YES",
             },
-            ,
             {
               field: "create_date",
               type: "date",

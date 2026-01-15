@@ -22,6 +22,7 @@ import AxiosMaster from "../../utils/AxiosMaster";
 import { useAuth } from "../../contexts/AuthContext";
 import BSFullScreenLoader from "../../contexts/BSFullScreenLoader";
 import { useResource } from "../../hooks/useResource";
+import { useOutletContext } from "react-router-dom";
 const defaultFormData = {
   resource_id: 0,
   app_id: "",
@@ -47,23 +48,23 @@ const activeOptions = [
   { value: "NO", label: "NO" },
 ];
 const Resource = (props) => {
-  const { lang, permission } = props;
+  const { permission } = useOutletContext();
+  const { lang } = props;
   const [formData, setFormData] = useState(defaultFormData);
   const [openForm, setOpenForm] = useState(false);
   const [dialogTitleForm, setDialogTitleForm] = useState("Add Resource");
   const [loading, setLoading] = useState(false);
   const { resource } = useAuth();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState();
-  const [resourceForm, setResourceForm] = useState();
+  const { getResourceByGroupAndName } = useResource();
   const dataGridRef = useRef();
+  const [locale_id, setLocale_id] = useState(lang || "en");
   const handleOpenEdit = (row) => {
-    setDialogTitleForm(getResource(resourceData, "Edit_Form"));
+    setDialogTitleForm(getResourceByGroupAndName("Resource", "Edit_Form", lang)?.resource_value || "Edit Form");
     setFormData({ ...row });
     setOpenForm(true);
   };
   const handleOpenAdd = () => {
-    setDialogTitleForm(getResource(resourceData, "Add_Form"));
+    setDialogTitleForm(getResourceByGroupAndName("Resource", "Add_Form", lang)?.resource_value || "Add Form");
     setFormData(defaultFormData);
     setOpenForm(true);
   };
@@ -130,8 +131,7 @@ const Resource = (props) => {
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const getLang = async () => {
-    setResourceData(await getResources("Resource"));
-    setResourceForm(await getResources("t_com_resource"));
+   setLocale_id(lang || "en");
   };
   useEffect(() => {
     getLang();
@@ -273,7 +273,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_group">
-                  {getResource(resourceForm, "resource_group")}
+                  {getResourceByGroupAndName("t_com_resource", "resource_group", locale_id)?.resource_value || "Resource Group"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_group"
@@ -293,7 +293,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_name">
-                  {getResource(resourceForm, "resource_name")}
+                  {getResourceByGroupAndName("t_com_resource", "resource_name", locale_id)?.resource_value || "Resource Name"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_name"
@@ -313,7 +313,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_en">
-                  {getResource(resourceForm, "resource_en")}
+                  {getResourceByGroupAndName("t_com_resource", "resource_en", locale_id)?.resource_value || "Resource (EN)"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_en"
@@ -333,7 +333,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_th">
-                  {getResource(resourceForm, "resource_th")}
+                  {getResourceByGroupAndName("t_com_resource", "resource_th", locale_id)?.resource_value || "Resource (TH)"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_th"
@@ -353,7 +353,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_other">
-                  {getResource(resourceForm, "resource_other")}
+                  {getResourceByGroupAndName("t_com_resource", "resource_other", locale_id)?.resource_value || "Resource (Other)"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_other"
@@ -373,7 +373,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="description_en">
-                  {getResource(resourceForm, "description_en")}
+                  {getResourceByGroupAndName("t_com_resource", "description_en", locale_id)?.resource_value || "Description (EN)"}
                 </InputLabel>
                 <OutlinedInput
                   id="description_en"
@@ -393,7 +393,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="description_th">
-                  {getResource(resourceForm, "description_th")}
+                  {getResourceByGroupAndName("t_com_resource", "description_th", locale_id)?.resource_value || "Description (TH)"}
                 </InputLabel>
                 <OutlinedInput
                   id="description_th"
@@ -413,7 +413,7 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="descrption_other">
-                  {getResource(resourceForm, "descrption_other")}
+                  {getResourceByGroupAndName("t_com_resource", "descrption_other", locale_id)?.resource_value || "Description (Other)"}
                 </InputLabel>
                 <OutlinedInput
                   id="descrption_other"
@@ -438,7 +438,7 @@ const Resource = (props) => {
                 <TextField
                   fullWidth
                   select
-                  label={getResource(resourceForm, "is_active")}
+                  label={getResourceByGroupAndName("t_com_resource", "is_active", locale_id)?.resource_value || "Is Active"}
                   name="is_active"
                   value={formData.is_active}
                   onChange={(e) =>
@@ -459,10 +459,10 @@ const Resource = (props) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenForm(false)}>
-            {getResource(resourceData, "Cancel")}
+            {getResourceByGroupAndName("Resource", "Cancel", locale_id)?.resource_value || "Cancel"}
           </Button>
           <Button variant="contained" onClick={onSave}>
-            {getResource(resourceData, "Save")}
+            {getResourceByGroupAndName("Resource", "Save", locale_id)?.resource_value || "Save"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -18,7 +18,7 @@ import { useResource } from "../../hooks/useResource";
 import { useOutletContext } from "react-router-dom";
 
 const MenuTreeView = (props) => {
- const { permission } = useOutletContext();
+  const { permission } = useOutletContext();
   const { getMenuAssign, saveMenuAssign } = useMenuContext();
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");
@@ -30,17 +30,10 @@ const MenuTreeView = (props) => {
   const [tabIndex, setTabIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
-  const [resourceMenuData, setResourceMenuData] = useState([]);
   const [localeId, setLocaleId] = useState(props.lang || "en");
-
+  const { getResourceByGroupAndName } = useResource();
   const getLang = async () => {
     try {
-      const res = await getResources("AssignMenu");
-      const resMenu = await getResources("Menu");
-      setResourceData(res);
-      setResourceMenuData(resMenu);
       setLocaleId(props.lang || "en");
     } catch (error) {
       console.error("getResources(AssignMenu) error:", error);
@@ -68,23 +61,23 @@ const MenuTreeView = (props) => {
       const perms = [
         {
           id: `add-${id}`,
-          label: "➕ " + getResource(resourceData, "is_add_view") || "Add",
+          label: "➕ " + getResourceByGroupAndName("AssignMenu", "is_add_view", localeId)?.resource_value || "Add",
           isCheck: toBool(r.is_add_view),
         },
         {
           id: `edit-${id}`,
-          label: "✏️ " + getResource(resourceData, "is_edit_view") || "Edit",
+          label: "✏️ " + getResourceByGroupAndName("AssignMenu", "is_edit_view", localeId)?.resource_value || "Edit",
           isCheck: toBool(r.is_edit_view),
         },
         {
           id: `delete-${id}`,
           label:
-            "🗑️ " + getResource(resourceData, "is_delete_view") || "Delete",
+            "🗑️ " + getResourceByGroupAndName("AssignMenu", "is_delete_view", localeId)?.resource_value || "Delete",
           isCheck: toBool(r.is_delete_view),
         },
         {
           id: `view-${id}`,
-          label: "👁️ " + getResource(resourceData, "is_view") || "View",
+          label: "👁️ " + getResourceByGroupAndName("AssignMenu", "is_view", localeId)?.resource_value || "View",
           isCheck: toBool(r.is_view),
         },
       ];
@@ -92,7 +85,7 @@ const MenuTreeView = (props) => {
       nodes[id] = {
         id,
         label:
-          getResource(resourceMenuData, r.menu_name) ||
+          getResourceByGroupAndName("Menu", r.menu_name, localeId)?.resource_value ||
           r.menu_name ||
           `menu-${id}`,
         isCheck: toBool(r.is_view),
@@ -267,7 +260,7 @@ const MenuTreeView = (props) => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsMode="single"
-              bsTitle={getResource(resourceData, "user_group_id")}
+              bsTitle={getResourceByGroupAndName("AssignMenu", "user_group_id", localeId)?.resource_value || "User Group"}
               bsPreObj="sec.t_com_"
               bsObj="user_group"
               bsColumes={[
@@ -291,7 +284,7 @@ const MenuTreeView = (props) => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsMode="single"
-              bsTitle={getResource(resourceData, "platform")}
+              bsTitle={getResourceByGroupAndName("AssignMenu", "platform", localeId)?.resource_value || "Platform"}
               bsPreObj="sec.t_com_"
               bsObj="combobox_item"
               bsColumes={[
@@ -336,7 +329,7 @@ const MenuTreeView = (props) => {
                   Saving...
                 </Box>
               ) : (
-                getResource(resourceData, "save") || "Save"
+                getResourceByGroupAndName("AssignMenu", "save", localeId)?.resource_value || "Save"
               )}
             </Button>
           </Box>
@@ -354,7 +347,7 @@ const MenuTreeView = (props) => {
               {menuData.map((parent) => (
                 <Tab
                   key={parent.id}
-                  label={getResource(resourceMenuData, parent.label)}
+                  label={getResourceByGroupAndName("Menu", parent.label, localeId)?.resource_value || parent.label}
                 />
               ))}
             </Tabs>

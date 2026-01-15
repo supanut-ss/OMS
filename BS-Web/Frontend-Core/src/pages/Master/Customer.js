@@ -6,14 +6,13 @@ import { useOutletContext } from "react-router-dom";
 
 const CustomerPage = (props) => {
  const { permission } = useOutletContext();
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
+  const { getResourceByGroupAndName } = useResource();
+  const [locale_id, setLocale_id] = useState(props.lang || "en");
   const dataGridRef = useRef(null); // ref
 
   // โหลด resource ตามภาษาที่เปลี่ยน
   const getLang = async () => {
-    const res = await getResources("Customer");
-    setResourceData(res);
+    setLocale_id(props.lang || "en");
   };
 
   useEffect(() => {
@@ -25,7 +24,7 @@ const CustomerPage = (props) => {
     <Box>
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          {getResource(resourceData, "Master Customer")}
+          {getResourceByGroupAndName("Customer", "Master Customer", locale_id)?.resource_value || "Master Customer"}
         </Typography>
 
         <BSDataGrid

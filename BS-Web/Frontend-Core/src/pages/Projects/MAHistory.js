@@ -1,12 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
-import { useResource } from "../../hooks/useResource";
 
 const MAHistory = (props) => {
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
   // If a projectID is provided from props, use it to filter the grid by project_header_id
   const bsObjWh = props.projectID
@@ -19,16 +15,7 @@ const MAHistory = (props) => {
     : {};
 
   const gridRef = useRef();
-  const navigate = useNavigate();
-  // โหลด resource ของ group "User"
-  const getLang = async () => {
-    try {
-      const res = await getResources("t_tmt_project_header"); // ตั้งชื่อ group ตามที่ backend กำหนด
-      setResourceData(res);
-    } catch (error) {
-      console.error("getResources(MAHistory) error:", error);
-    }
-  };
+ 
 
   const onViewChick = (rowData) => {
     const id =
@@ -47,7 +34,6 @@ const MAHistory = (props) => {
   };
   useEffect(() => {
     setLocale_id(props.lang || "en");
-    getLang();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
 

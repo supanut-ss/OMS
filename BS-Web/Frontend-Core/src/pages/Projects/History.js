@@ -3,21 +3,10 @@ import BSDataGrid from "../../components/BSDataGrid";
 import { useEffect, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
 const ProjectsHistory = (props) => {
-  const { getResource, getResources } = useResource();
-  const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(null);
-
-  const getLang = async () => {
-    const res = await getResources("Projects History");
-    setResourceData(res);
-  };
   const handleViewTask = (data) => {
     props.onChangeProjectHeaderID({ id: data.project_header_id, newtab: true, path: "projects" });
   };
-  useEffect(() => {
-    getLang();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.lang]);
 
   return (
     <Box>
