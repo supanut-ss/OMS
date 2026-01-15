@@ -15,9 +15,10 @@ import {
 import CustomTreeView from "../../components/CustomTreeView";
 import Logger from "../../utils/logger";
 import { useResource } from "../../hooks/useResource";
+import { useOutletContext } from "react-router-dom";
 
 const MenuTreeView = (props) => {
-  const { permission } = props;
+ const { permission } = useOutletContext();
   const { getMenuAssign, saveMenuAssign } = useMenuContext();
   const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("");

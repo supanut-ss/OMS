@@ -2,6 +2,7 @@ import { Box, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useEffect, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
+import { useOutletContext } from "react-router-dom";
 
 /**
  * IsoPage - Example of Hierarchical Data with BSDataGrid
@@ -15,7 +16,7 @@ import { useResource } from "../../hooks/useResource";
  * When adding a new parent record, child grids are hidden until the parent is saved.
  */
 const IsoPage = (props) => {
-   const { permission } = props;
+ const { permission } = useOutletContext();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(null);
@@ -110,6 +111,7 @@ const IsoPage = (props) => {
       //         Obj: "t_tmt_doc_type",
       //     }
       // ],
+
     },
   ];
 
@@ -137,6 +139,11 @@ const IsoPage = (props) => {
           // bsParentRecordLabel="resource:iso_type_label_name"
           bsParentRecordLabel="ISO Type"
           bsUniqueFields={["iso_type_name"]}
+          showAdd={permission.is_add}
+          bsVisibleEdit={permission.is_edit}
+          bsVisibleDelete={permission.is_delete}
+          bsAllowDelete={permission.is_delete}
+          bsVisibleView={permission.is_view}
         />
       </Paper>
     </Box>

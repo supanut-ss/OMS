@@ -2,9 +2,10 @@ import { Box, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useEffect, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
+import { useOutletContext } from "react-router-dom";
 
 const ImportMaster = (props) => {
-   const { permission } = props;
+  const { permission } = useOutletContext();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(); // เพิ่ม ref สำหรับ DataGrid

@@ -62,7 +62,9 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Home />} />
+        <Route element={<PermissionRoute />}>
+          <Route index element={<Home lang={lang} />} />
+        </Route>
 
         <Route path="test">
           {/* route สำหรับ BSDataGrid Examples */}
@@ -90,33 +92,33 @@ export default function AppRoutes() {
           />
         </Route>
 
-        <Route path="import">
-          <Route path="importExcel" element={<PermissionRoute>{(p) => <ImportExcel permission={p} />}</PermissionRoute>} />
-          <Route path="importMaster" element={<PermissionRoute>{(p) => <ImportMaster lang={lang} permission={p} />}</PermissionRoute>} />
+        <Route path="import" element={<PermissionRoute />}>
+          <Route path="importExcel" element={<ImportExcel />} />
+          <Route path="importMaster" element={<ImportMaster lang={lang} />} />
         </Route>
 
-        <Route path="authentication">
-          <Route path="user_group" element={<PermissionRoute>{(p) => <UserGroupPage lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="user" element={<PermissionRoute>{(p) => <UserPage lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="assign_menu" element={<PermissionRoute>{(p) => <AssignMenu lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="menu" element={<PermissionRoute>{(p) => <MenuPage lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="user_logon" element={<PermissionRoute>{(p) => <UserLogOnPage lang={lang} permission={p} />}</PermissionRoute>} />
+        <Route path="authentication" element={<PermissionRoute />}>
+          <Route path="user_group" element={<UserGroupPage lang={lang} />} />
+          <Route path="user" element={<UserPage lang={lang} />} />
+          <Route path="assign_menu" element={<AssignMenu lang={lang} />} />
+          <Route path="menu" element={<MenuPage lang={lang} />} />
+          <Route path="user_logon" element={<UserLogOnPage lang={lang} />} />
         </Route>
 
-        <Route path="configs">
-          <Route path="resource" element={<PermissionRoute>{(p) => <Resource lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="combobox" element={<PermissionRoute>{(p) => <Combobox lang={lang} permission={p} />}</PermissionRoute>} />
+        <Route path="configs" element={<PermissionRoute />}>
+          <Route path="resource" element={<Resource lang={lang} />} />
+          <Route path="combobox" element={<Combobox lang={lang} />} />
         </Route>
-        <Route path="master">
-          <Route path="sale" element={<PermissionRoute>{(p) => <SalePage lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="holiday" element={<PermissionRoute>{(p) => <HolidayPage lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="customer" element={<PermissionRoute>{(p) => <CustomerPage lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="iso" element={<PermissionRoute>{(p) => <IsoPage lang={lang} permission={p} />}</PermissionRoute>} />
+        <Route path="master" element={<PermissionRoute />}>
+          <Route path="sale" element={<SalePage lang={lang} />} />
+          <Route path="holiday" element={<HolidayPage lang={lang} />} />
+          <Route path="customer" element={<CustomerPage lang={lang} />} />
+          <Route path="iso" element={<IsoPage lang={lang} />} />
         </Route>
-        <Route path="projects">
-          <Route path="" element={<PermissionRoute>{(p) => <Projects lang={lang} permission={p} />}</PermissionRoute>} />
-          <Route path="ma" element={<PermissionRoute>{(p) => <Projects lang={lang} ma={true} permission={p} />}</PermissionRoute>} />
-          <Route path="my-task" element={<PermissionRoute>{(p) => <MyTaskPage lang={lang} permission={p} />}</PermissionRoute>} />
+        <Route path="projects" element={<PermissionRoute />}>
+          <Route path="" element={<Projects lang={lang} />} />
+          <Route path="ma" element={<Projects lang={lang} ma={true} />} />
+          <Route path="my-task" element={<MyTaskPage lang={lang} />} />
         </Route>
 
       </Route>

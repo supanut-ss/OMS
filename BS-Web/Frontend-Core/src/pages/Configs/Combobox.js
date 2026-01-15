@@ -1,8 +1,9 @@
 import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
+import { useOutletContext } from "react-router-dom";
 
 const Combobox = (props) => {
-    const { permission } = props;
+   const { permission } = useOutletContext();
     return <Paper sx={{ p: 2, mb: 3 }}>
         <BSDataGrid
             bsLocale={props.lang}
@@ -33,9 +34,13 @@ const Combobox = (props) => {
                     ObjBy: "application_name asc",
                 }]}
             bsShowDescColumn={false}
-            bsAllowAdd={true}
-            bsAllowEdit={true}
-            bsAllowDelete={true}
+            bsAllowAdd={permission.is_add}
+            bsAllowEdit={permission.is_edit}
+            showAdd={permission.is_add}
+            bsVisibleEdit={permission.is_edit}
+            bsVisibleDelete={permission.is_delete}
+            bsAllowDelete={permission.is_delete}
+            bsVisibleView={permission.is_view}
         />
     </Paper>
 }

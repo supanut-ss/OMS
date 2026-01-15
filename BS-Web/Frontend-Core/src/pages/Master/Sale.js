@@ -2,9 +2,10 @@ import { Box, Paper, Typography } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useEffect, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
+import { useOutletContext } from "react-router-dom";
 
 const SalePage = (props) => {
-   const { permission } = props;
+ const { permission } = useOutletContext();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const dataGridRef = useRef(null); // ref
@@ -38,14 +39,19 @@ const SalePage = (props) => {
           bsCols="sale_empolyee_code,sale_name,email,is_active,create_by,create_date,update_by,update_date"
           bsUniqueFields={["sale_empolyee_code"]}
           bsBulkMode={{
-            enable: true, // Enable all bulk operations
-            addInline: true, // Add new rows inline instead of dialog
-            // edit: true,      // Enabled by default when enable=true
-            // delete: true,    // Enabled by default when enable=true
-            // add: true,       // Enabled by default when enable=true
+            enable: false, // Enable all bulk operations
+            addInline: permission.is_add, // Add new rows inline instead of dialog
+            edit: permission.is_edit,      // Enabled by default when enable=true
+            delete: permission.is_delete,    // Enabled by default when enable=true
+            add: permission.is_add,       // Enabled by default when enable=true
             // showCheckbox: false,
             // showSplitButton: false,
           }}
+          showAdd={permission.is_add}
+          bsVisibleEdit={permission.is_edit}
+          bsVisibleDelete={permission.is_delete}
+          bsAllowDelete={permission.is_delete}
+          bsVisibleView={permission.is_view}
         // bsColumnDefs={[
         //   {
         //     field: "sale_empolyee_code",

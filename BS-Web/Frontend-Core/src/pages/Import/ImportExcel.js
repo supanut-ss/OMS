@@ -8,8 +8,9 @@ import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import DownloadIcon from "@mui/icons-material/Download";
 import { BSDataGridClient } from "../../components/BSDataGrid";
 import Config from "../../utils/Config";
+import { useOutletContext } from "react-router-dom";
 const ImportExcel = (props) => {
-   const { permission } = props;
+  const { permission } = useOutletContext();
   const [select, setSelect] = useState("");
   const [gridData, setGridData] = useState([]);
 

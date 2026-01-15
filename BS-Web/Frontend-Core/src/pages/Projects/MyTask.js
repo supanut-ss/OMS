@@ -313,6 +313,7 @@ const TaskStatusSection = memo(function TaskStatusSection({
   expanded,
   onToggle,
   gridRef,
+  permission,
 }) {
   const theme = useTheme();
   const dataGridRef = useRef();
@@ -475,10 +476,11 @@ const TaskStatusSection = memo(function TaskStatusSection({
             bsCols="project_no,application_type,customer_name,project_name,task_name,assignee_list,start_date,end_date,manday,priority,project_type,create_by"
             bsStoredProcedureParams={storedProcedureParams}
             bsShowRowNumber={true}
-            showAdd={false}
-            bsVisibleView={true}
-            bsVisibleEdit={false}
-            bsVisibleDelete={false}
+            showAdd={permission?.is_add}
+            bsVisibleEdit={permission?.is_edit}
+            bsVisibleDelete={permission?.is_delete}
+            bsAllowDelete={permission?.is_delete}
+            bsVisibleView={permission?.is_view}
             onView={onViewTask}
             bsKeyId="project_task_id"
             bsFilterMode="client"
@@ -631,9 +633,8 @@ const MyTaskPage = (props) => {
         // Subtle glass border
         border:
           t.palette.mode === "dark"
-            ? `1px solid ${
-                t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
-              }`
+            ? `1px solid ${t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
+            }`
             : "none",
         // Rounded corners
         borderRadius: 3,
@@ -675,6 +676,7 @@ const MyTaskPage = (props) => {
           expanded={expandedSections[section.status]}
           onToggle={toggleHandlers[section.status]}
           gridRef={sectionGridRefs[section.status]}
+          permission={permission}
         />
       ))}
 

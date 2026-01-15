@@ -6,9 +6,10 @@ import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import AxiosMaster from "../../utils/AxiosMaster";
 import { useRef } from "react";
+import { useOutletContext } from "react-router-dom";
 
 const UserLogOnPage = (props) => {
-  const { permission } = props;
+ const { permission } = useOutletContext();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import secureStorage from "../../utils/SecureStorage";
 import Config from "../../utils/Config";
 import BSLinearWithValueLabel from "../../components/LinearProgress/BSLinearProgressWithLabel";
+import { useOutletContext } from "react-router-dom";
 
 const storedProcedure = {
   project: {
@@ -21,7 +22,7 @@ const storedProcedure = {
   },
 };
 const Projects = (props) => {
-   const { permission } = props;
+ const { permission } = useOutletContext();
   const { lang } = props;
   const [openDialog, setOpenDialog] = useState(false);
   const [projectHeaderID, setProjectHeaderID] = useState("");
@@ -73,11 +74,11 @@ const Projects = (props) => {
         }
         bsCols={storedProcedure[props?.ma ? "ma" : "project"].bsCols}
         bsShowRowNumber={true}
-        showAdd={true}
-        bsVisibleDelete={true}
-        bsAllowAdd={false}
-        bsAllowEdit={true}
-        bsAllowDelete={true}
+        showAdd={permission.is_add}
+        bsVisibleEdit={permission.is_edit}
+        bsVisibleDelete={permission.is_delete}
+        bsAllowDelete={permission.is_delete}
+        bsVisibleView={permission.is_view}
         bsRowPerPage={25}
         onAdd={(r) => {
           setProjectHeaderID("");
@@ -117,7 +118,6 @@ const Projects = (props) => {
           },
         ]}
         bsFilterMode="client"
-        bsVisibleEdit={true}
         bsShowCheckbox={false}
         bsRowConfig={(row) => ({
           showDelete: row.project_status === "Open",

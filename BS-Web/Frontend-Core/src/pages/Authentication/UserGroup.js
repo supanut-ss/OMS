@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Paper } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useResource } from "../../hooks/useResource";
+import { useOutletContext } from "react-router-dom";
 
 const UserGroupPage = (props) => {
-  const { permission } = props;
+ const { permission } = useOutletContext();
   const { getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
 
@@ -41,12 +42,6 @@ const UserGroupPage = (props) => {
           bsVisibleDelete={permission.is_delete}
           bsAllowDelete={permission.is_delete}
           bsVisibleView={permission.is_view}
-          bsBulkDelete={permission.is_delete}
-          bsBulkAdd={permission.is_add}
-          bsBulkEdit={permission.is_edit}
-          showBulkDelete={permission.is_delete}
-          showBulkAdd={permission.is_add}
-          showBulkEdit={permission.is_edit}
           bsComboBox={[
             {
               Column: "app_id",
@@ -60,11 +55,11 @@ const UserGroupPage = (props) => {
             },
           ]}
           bsBulkMode={{
-            enable: true, // Enable all bulk operations
-            addInline: true, // Add new rows inline instead of dialog
-            // edit: true,      // Enabled by default when enable=true
-            // delete: true,    // Enabled by default when enable=true
-            // add: true,       // Enabled by default when enable=true
+            enable: false, // Enable all bulk operations
+            addInline: permission.is_add, // Add new rows inline instead of dialog
+            edit: permission.is_edit,      // Enabled by default when enable=true
+            delete: permission.is_delete,    // Enabled by default when enable=true
+            add: permission.is_add,       // Enabled by default when enable=true
             // showCheckbox: false,
             // showSplitButton: false,
           }}

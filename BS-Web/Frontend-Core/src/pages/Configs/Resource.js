@@ -181,20 +181,25 @@ const Resource = (props) => {
             },
           ]}
           bsBulkMode={{
-            enable: true, // Enable all bulk operations
-            addInline: true, // Add new rows inline instead of dialog
-            // edit: true,      // Enabled by default when enable=true
-            // delete: true,    // Enabled by default when enable=true
-            // add: true,       // Enabled by default when enable=true
+            enable: false, // Enable all bulk operations
+            addInline: permission.is_add, // Add new rows inline instead of dialog
+            edit: permission.is_edit,      // Enabled by default when enable=true
+            delete: permission.is_delete,    // Enabled by default when enable=true
+            add: permission.is_add,       // Enabled by default when enable=true
             // showCheckbox: false,
             // showSplitButton: false,
           }}
           bsShowDescColumn={false}
-        // onEdit={handleOpenEdit}
-        // onAdd={handleOpenAdd}
-        // bsAllowAdd={true}
-        // bsAllowEdit={true}
-        // bsAllowDelete={true}
+          // onEdit={handleOpenEdit}
+          // onAdd={handleOpenAdd}
+          // bsAllowAdd={true}
+          // bsAllowEdit={true}
+          // bsAllowDelete={true}
+          showAdd={permission.is_add}
+          bsVisibleEdit={permission.is_edit}
+          bsVisibleDelete={permission.is_delete}
+          bsAllowDelete={permission.is_delete}
+          bsVisibleView={permission.is_view}
         />
       </Paper>
       <Dialog open={openForm} maxWidth="lg" onClose={() => setOpenForm(false)}>

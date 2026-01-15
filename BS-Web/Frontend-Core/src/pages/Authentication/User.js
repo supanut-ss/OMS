@@ -20,6 +20,7 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useResource } from "../../hooks/useResource";
 import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../components/Button/BSSaveOutlinedButton";
+import { useOutletContext } from "react-router-dom";
 
 const activeOptions = [
   { value: "YES", label: "YES" },
@@ -41,7 +42,7 @@ const initialForm = {
 };
 
 const UserPage = (props) => {
-  const { permission } = props;
+ const { permission } = useOutletContext();
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [locale_id, setLocale_id] = useState(props.lang || "en");
@@ -328,6 +329,11 @@ const UserPage = (props) => {
             field: "user_group_id",
             hide: true,
           }}
+          showAdd={permission.is_add}
+          bsVisibleEdit={permission.is_edit}
+          bsVisibleDelete={permission.is_delete}
+          bsAllowDelete={permission.is_delete}
+          bsVisibleView={permission.is_view}
         />
       </Paper>
 
