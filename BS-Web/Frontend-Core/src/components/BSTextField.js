@@ -93,7 +93,7 @@ const BSTextField = ({
         }}
         multiline={props.multiline || false}
         minRows={props.minRows || 1}
-        maxRows={props.maxRows || 4}
+        {...(props.maxRows && { maxRows: props.maxRows })}
         {...props}
       />
       {/* Helper text and character count */}

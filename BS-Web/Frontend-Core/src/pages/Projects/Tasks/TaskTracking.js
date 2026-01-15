@@ -325,7 +325,13 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       {/* Task Tracking Dialog */}
       <Dialog
         open={openTrackingDialog}
-        onClose={() => setOpenTrackingDialog(false)}
+        onClose={(event, reason) => {
+          // Prevent closing on backdrop click or escape key
+          if (reason === "backdropClick" || reason === "escapeKeyDown") {
+            return;
+          }
+          setOpenTrackingDialog(false);
+        }}
         maxWidth="md"
         fullWidth
       >
@@ -447,6 +453,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     variant: "outlined",
                     multiline: true,
                     minRows: 4,
+                    maxRows: 12,
                     showCharacterCount: true,
                   },
                   formData,

@@ -26,6 +26,7 @@ export const renderInput = ({
           variant={item.variant || "outlined"}
           multiline={item.multiline}
           minRows={item.minRows || 1}
+          maxRows={item.maxRows}
           error={!!errors[item.field]}
           helperText={errors[item.field] || ""}
           disabled={item.readOnly || item.disabled}
