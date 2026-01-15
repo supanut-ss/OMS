@@ -111,6 +111,9 @@ export default function LoginPage({ setLang }) {
         secureStorage.set("version", vs);
         setIsVersion(true);
       }
+      if(secureStorage.get("resource") === null){
+        setIsVersion(true);
+      }
 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
