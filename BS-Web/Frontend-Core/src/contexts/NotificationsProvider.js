@@ -13,7 +13,7 @@ const NotificationsContext = createContext(null);
 export const useNotifications = () => useContext(NotificationsContext);
 
 export function NotificationsProvider({ children, maxSnack = 5 }) {
-  const { getNotify, markNotifyAsRead } = NotifyContext();
+  const { getNotify, markNotifyAsRead, deleteNotify } = NotifyContext();
   const [snacks, setSnacks] = useState([]);
   const [alarm, setAlarm] = useState(null); // ⭐ FULLSCREEN ALARM
   const [notifications, setNotifications] = useState([]);
@@ -48,6 +48,20 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
       );
     }
   }, [markNotifyAsRead]);
+  const deleteNotification = useCallback(async (id) => {
+    const response = await deleteNotify(id);
+    if (response?.message_code === 0) {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    }
+  }, [deleteNotify]);
+
+  const clearAll = useCallback(async () => {
+    console.log("delete all",notifications);
+    notifications.forEach(async (notification) => {
+      await deleteNotify(notification.id);
+    })
+    setNotifications([]);
+  }, []);
   // ---------- Normal Notification ----------
   const enqueue = useCallback(
     ({ message, severity = "info", duration = 5000 }) => {
@@ -112,7 +126,9 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
   };
 
   return (
-    <NotificationsContext.Provider value={{ enqueue, enqueueAlarm, getNotifications, markAsRead, notifications, totalUnread, total }}>
+    <NotificationsContext.Provider value={{
+      enqueue, enqueueAlarm, getNotifications, markAsRead, notifications, totalUnread, total, deleteNotification, clearAll
+    }}>
       {children}
 
       {/* Snackbar */}

@@ -11,13 +11,17 @@ import {
   Avatar,
   Chip,
   Divider,
+  IconButton,
+  Button,
+  useTheme,
 } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
-import { useNotifications } from "../../contexts/NotificationsProvider";
-import { useEffect } from "react";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import InfoIcon from "@mui/icons-material/Info";
 import ErrorIcon from "@mui/icons-material/Error";
 import WarningIcon from "@mui/icons-material/Warning";
+import { useNotifications } from "../../contexts/NotificationsProvider";
+import { useEffect } from "react";
 import { FormatTimeToText } from "../../config/dateConfig";
 
 const getIconByType = (type) => {
@@ -31,20 +35,27 @@ const getIconByType = (type) => {
   }
 };
 
-const getColorByType = (type) => {
+const getColorByType = (type, theme) => {
   switch (type) {
     case "error":
-      return "error.main";
+      return theme.palette.error.main;
     case "warning":
-      return "warning.main";
+      return theme.palette.warning.main;
     default:
-      return "primary.main";
+      return theme.palette.primary.main;
   }
 };
 
 const NotifyDialog = ({ open, onClose }) => {
-  const { notifications, getNotifications, markAsRead, total } =
-    useNotifications();
+  const theme = useTheme();
+  const {
+    notifications,
+    getNotifications,
+    markAsRead,
+    deleteNotification,
+    clearAll,
+    total,
+  } = useNotifications();
 
   useEffect(() => {
     if (open) getNotifications(total);
@@ -52,22 +63,37 @@ const NotifyDialog = ({ open, onClose }) => {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      {/* ===== Header ===== */}
       <DialogTitle
         sx={{
           display: "flex",
           alignItems: "center",
-          gap: 1,
-          bgcolor: "primary.main",
-          color: "white",
+          justifyContent: "space-between",
+          bgcolor: theme.palette.primary.main,
+          color: theme.palette.primary.contrastText,
         }}
       >
-        <NotificationsActiveIcon />
-        Notifications
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <NotificationsActiveIcon />
+          <Typography variant="h6">Notifications</Typography>
+        </Box>
+
+        {notifications.length > 0 && (
+          <Button
+            size="small"
+            color="inherit"
+            onClick={clearAll}
+            sx={{ textTransform: "none" }}
+          >
+            ลบทั้งหมด
+          </Button>
+        )}
       </DialogTitle>
 
+      {/* ===== Content ===== */}
       <DialogContent sx={{ p: 0 }}>
         {notifications.length === 0 ? (
-          <Box p={3} textAlign="center">
+          <Box p={4} textAlign="center">
             <Typography color="text.secondary">
               ไม่มีการแจ้งเตือน
             </Typography>
@@ -82,23 +108,35 @@ const NotifyDialog = ({ open, onClose }) => {
                     px: 3,
                     py: 2,
                     bgcolor: n.is_read
-                      ? "background.paper"
-                      : "action.hover",
-                    cursor: "pointer",
+                      ? theme.palette.background.paper
+                      : theme.palette.action.hover,
+                    transition: "background-color .2s",
                     "&:hover": {
-                      bgcolor: "action.selected",
+                      bgcolor: theme.palette.action.selected,
                     },
                   }}
+                  secondaryAction={
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation(); // ❗ กัน click parent
+                        deleteNotification(n.id);
+                      }}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  }
                   onClick={() => {
                     if (!n.is_read) markAsRead(n.id);
                     if (n.link) window.location.href = n.link;
                   }}
                 >
-                  {/* Icon */}
+                  {/* Avatar */}
                   <ListItemAvatar>
                     <Avatar
                       sx={{
-                        bgcolor: getColorByType(n.type),
+                        bgcolor: getColorByType(n.type, theme),
                         width: 40,
                         height: 40,
                       }}
@@ -107,18 +145,14 @@ const NotifyDialog = ({ open, onClose }) => {
                     </Avatar>
                   </ListItemAvatar>
 
-                  {/* Content */}
+                  {/* Text */}
                   <ListItemText
                     primary={
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        gap={1}
-                      >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <Typography
                           fontWeight={n.is_read ? 400 : 600}
                           noWrap
-                          component="span" // ✅
+                          component="span"
                         >
                           {n.title}
                         </Typography>
@@ -128,10 +162,7 @@ const NotifyDialog = ({ open, onClose }) => {
                             label="ใหม่"
                             size="small"
                             color="primary"
-                            sx={{
-                              fontSize: "0.65rem",
-                              height: 18,
-                            }}
+                            sx={{ fontSize: "0.65rem", height: 18 }}
                           />
                         )}
                       </Box>
@@ -141,8 +172,9 @@ const NotifyDialog = ({ open, onClose }) => {
                         {n.description && (
                           <Typography
                             variant="body2"
-                            component="div" // ✅
+                            component="div"
                             noWrap
+                            color="text.secondary"
                           >
                             {n.description}
                           </Typography>
@@ -150,22 +182,18 @@ const NotifyDialog = ({ open, onClose }) => {
 
                         <Typography
                           variant="caption"
-                          color="text.secondary"
-                          component="div" // ✅
+                          component="div"
+                          color="text.disabled"
                         >
                           {FormatTimeToText(n.create_at)}
                         </Typography>
                       </Box>
                     }
-                    secondaryTypographyProps={{
-                      component: "div", // ✅ สำคัญมาก
-                    }}
+                    secondaryTypographyProps={{ component: "div" }}
                   />
                 </ListItem>
 
-                {index < notifications.length - 1 && (
-                  <Divider />
-                )}
+                {index < notifications.length - 1 && <Divider />}
               </Box>
             ))}
           </List>

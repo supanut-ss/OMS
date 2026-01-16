@@ -10,8 +10,9 @@ import InfoIcon from "@mui/icons-material/Info";
 import ErrorIcon from "@mui/icons-material/Error";
 import WarningIcon from "@mui/icons-material/Warning";
 import { FormatTimeToText } from "../config/dateConfig";
+import { useNotifications } from "../contexts/NotificationsProvider";
 const MenuNoti = ({ notifications, handleNotificationClose }) => {
-
+    const { markAsRead } = useNotifications();
     const getIconByType = (type) => {
         switch (type) {
             case "error":
@@ -43,6 +44,7 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
                     key={key}
                     onClick={() => {
                         handleNotificationClose();
+                        if (!n.is_read) markAsRead(n.id);
                         if (n.link) window.location.href = n.link;
                     }}
                     sx={{
@@ -97,7 +99,7 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
                             variant="body2"
                             color="text.secondary"
                             noWrap
-                            sx={{ mt: 0.5, maxWidth: "150px" }}
+                            sx={{ mt: 0.5, maxWidth: "200px" }}
                         >
                             {n.description}
                         </Typography>
