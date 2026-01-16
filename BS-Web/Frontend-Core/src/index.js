@@ -13,7 +13,24 @@ import reportWebVitals from "./reportWebVitals";
 
 // Initialize MUI X License Manager
 import muiLicenseManager from "./utils/muiLicenseManager";
+// 🔇 ปิด console log / info / warn / error (เฉพาะ production)
+if (process.env.NODE_ENV === "production") {
+  // Suppress installHook.js warnings from browser extensions
+  if (typeof window !== "undefined") {
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+      if (args[0]?.includes?.("installHook") || args[0]?.includes?.("__REDUX_DEVTOOLS_EXTENSION__")) {
+        return;
+      }
+      originalWarn(...args);
+    };
+  }
 
+  console.log = () => { };
+  console.info = () => { };
+  console.warn = () => { };
+  console.error = () => { };
+}
 // Initialize license on app startup
 muiLicenseManager.initialize();
 

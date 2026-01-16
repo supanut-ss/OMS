@@ -4,25 +4,14 @@ import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import AssignMenu from "./pages/Authentication/AssignMenu";
 import ProtectedRoute from "./components/ProtectedRoute";
-import BSAutoCompleteExamples from "./examples/BSAutoCompleteExamples";
-import BSDataGridExamples from "./examples/BSDataGridExamples";
-import BSDataGridClientExample from "./pages/Examples/BSDataGridClientExample";
-import TestBSDataGrid from "./test/TestBSDataGrid";
 import UserPage from "./pages/Authentication/User";
 import UserGroupPage from "./pages/Authentication/UserGroup";
 import MenuPage from "./pages/Authentication/Menu";
-import SchemaTestPage from "./test/SchemaTestPage";
-import SchemaMappingDemo from "./test/SchemaMappingDemo";
-import EnhancedSPTestPage from "./pages/Test/EnhancedSPTestPage";
 import ImportExcel from "./pages/Import/ImportExcel";
 import Resource from "./pages/Configs/Resource";
 import { useState } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import secureStorage from "./utils/SecureStorage";
-import BSTextFieldExamples from "./examples/BSTextFieldExamples";
-import BSFilterCustomExamples from "./examples/BSFilterCustomExamples";
-import BSDatepickerExamples from "./examples/BSDatepickerExamples";
-import BSDataGridWithCustomFilterExample from "./examples/BSDataGridWithCustomFilterExample";
 import Home from "./pages/Home";
 import ImportMaster from "./pages/Import/ImportMaster";
 import UserLogOnPage from "./pages/Authentication/UserLogOn";
@@ -66,22 +55,16 @@ export default function AppRoutes() {
           <Route index element={<Home lang={lang} />} />
         </Route>
 
-        <Route path="test">
-          {/* route สำหรับ BSDataGrid Examples */}
+        {/* <Route path="test">
           <Route path="bsdatagrid" element={<BSDataGridExamples />} />
-          {/* route สำหรับ BSDataGridClient Examples */}
           <Route
             path="bsdatagridclient"
             element={<BSDataGridClientExample />}
           />
           <Route path="autocomplete" element={<BSAutoCompleteExamples />} />
-          {/* route สำหรับ Testing BSDataGrid */}
           <Route path="bsdatagrid" element={<TestBSDataGrid />} />
-          {/* route สำหรับ Schema Mapping Test */}
           <Route path="schema" element={<SchemaTestPage />} />
-          {/* route สำหรับ Schema Mapping Demo */}
           <Route path="schema-demo" element={<SchemaMappingDemo />} />
-          {/* route สำหรับ Enhanced SP Test with Metadata */}
           <Route path="test/enhanced-sp" element={<EnhancedSPTestPage />} />
           <Route path="textfield" element={<BSTextFieldExamples />} />
           <Route path="datepicker" element={<BSDatepickerExamples />} />
@@ -90,7 +73,7 @@ export default function AppRoutes() {
             path="datagrid-custom-filter"
             element={<BSDataGridWithCustomFilterExample />}
           />
-        </Route>
+        </Route> */}
 
         <Route path="import" element={<PermissionRoute />}>
           <Route path="importExcel" element={<ImportExcel />} />

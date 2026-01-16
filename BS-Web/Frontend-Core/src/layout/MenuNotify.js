@@ -36,7 +36,8 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
         }
     };
     return (
-        <Box>{
+
+        <Box>{notifications &&
             notifications.map((n, key) => (
                 <MenuItem
                     key={key}

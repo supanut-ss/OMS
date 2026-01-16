@@ -20,7 +20,6 @@ import {
   Menu,
   MenuItem,
   Chip,
-  ListItemAvatar,
   Badge,
 } from "@mui/material";
 import {
@@ -51,7 +50,6 @@ import * as signalR from "@microsoft/signalr";
 import { useNotifications } from "../contexts/NotificationsProvider";
 import ResetPasswordDialog from "./Dialogs/ResetPasswordDialog";
 import NotifyDialog from "./Dialogs/NotifyDialog";
-import { FormatTimeToText } from "../config/dateConfig";
 import MenuNoti from "./MenuNotify";
 const drawerWidth = 280;
 const collapsedWidth = 72;
@@ -132,66 +130,61 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   const toggleDrawer = () => setOpen((prev) => !prev);
 
-  const handleNotificationClick = (event) => {
+  const handleNotificationClick = useCallback((event) => {
     setNotificationAnchor(event.currentTarget);
-  };
+  }, []);
 
-  const handleNotificationClose = () => {
+  const handleNotificationClose = useCallback(() => {
     setNotificationAnchor(null);
-  };
+  }, []);
 
-  const handleUserMenuClick = (event) => {
+  const handleUserMenuClick = useCallback((event) => {
     setUserMenuAnchor(event.currentTarget);
-  };
+  }, []);
 
-  const handleUserMenuClose = () => {
+  const handleUserMenuClose = useCallback(() => {
     setUserMenuAnchor(null);
-  };
+  }, []);
 
-  const handleLogout = async () => {
+  // Debounce timer for getNotifications to prevent excessive API calls
+  const debounceTimerRef = useRef(null);
+
+  const handleLogout = useCallback(async () => {
     handleUserMenuClose();
 
-    // Ensure SignalR connection is stopped on logout
+    // Ensure SignalR connection is stopped on logout (non-blocking)
     if (connectionRef.current) {
-      try {
-        await connectionRef.current.stop();
-        if (process.env.NODE_ENV !== "production") {
-          console.info("SignalR disconnected on logout");
-        }
-      } catch (err) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("SignalR disconnect error on logout:", err);
-        }
-      } finally {
-        connectionRef.current = null;
-      }
+      connectionRef.current.stop().catch(() => { });
+      connectionRef.current = null;
     }
 
-    // เรียกใช้ logout function จาก AuthContext
-    let data = await logout();
-    // Navigate ไปหน้า login
-    if (data.status) {
-      BSAlertSwal2.fire({
-        icon: "success",
-        title: "Logout Success",
-        confirmButtonText: "OK",
-      }).then((result) => {
-        window.location.href = Config.BASE_URL + "/login";
-      });
-    } else {
-      BSAlertSwal2.fire({
-        icon: "warning",
-        title: "Logout Failed",
-        confirmButtonText: "OK",
-      }).then((result) => {
-        window.location.reload();
-      });
-    }
-  };
-  const handleResetPassword = () => {
+    // Call logout in background (non-blocking)
+    logout().then((data) => {
+      if (data.status) {
+        BSAlertSwal2.fire({
+          icon: "success",
+          title: "Logout Success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          window.location.href = Config.BASE_URL + "/login";
+        });
+      } else {
+        BSAlertSwal2.fire({
+          icon: "warning",
+          title: "Logout Failed",
+          confirmButtonText: "OK",
+        }).then(() => {
+          window.location.reload();
+        });
+      }
+    }).catch(() => {
+      window.location.href = Config.BASE_URL + "/login";
+    });
+  }, [logout, handleUserMenuClose]);
+  const handleResetPassword = useCallback(() => {
     setIsPopupResetPasswordOpen(true);
     handleUserMenuClose();
-  };
+  }, [handleUserMenuClose]);
   const getInitials = (name) => {
     return name
       .split(" ")
@@ -211,6 +204,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       setRole("User");
     }
   }, [location]);
+
   useEffect(() => {
     if (!currentUser?.UserId) return;
 
@@ -237,42 +231,67 @@ export default function MainLayout({ lang, onChangeLang }) {
 
       connectionRef.current = connection;
 
-      connection.on("ReceiveAll", (msg) => {
-        if (msg.userId === currentUser.UserId) return;
-        callGetNoti();
-        if (msg.type === "alarm") {
-          enqueueAlarm({
-            title: msg.title,
-            message: msg.message,
-          });
-        } else {
-          enqueue({
-            message: msg.message,
-            severity: msg.type,
-            duration: 3000,
-          });
+      // Non-blocking message handler with debounced notification fetch
+      const debouncedGetNoti = () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
         }
+        debounceTimerRef.current = setTimeout(() => {
+          callGetNoti();
+        }, 500); // Increased debounce delay
+      };
+
+      connection.on("ReceiveAll", (msg) => {
+        // Use requestAnimationFrame to defer notification to next frame
+        requestAnimationFrame(() => {
+          if (!msg?.message) return;
+          // Fire notification immediately (non-blocking)
+          if (msg.type === "alarm") {
+            enqueueAlarm({
+              title: msg.title,
+              message: msg.message,
+            });
+          } else {
+            enqueue({
+              message: msg.message,
+              severity: msg.type,
+              duration: 3000,
+            });
+          }
+
+          // Fetch notifications asynchronously with debounce
+          debouncedGetNoti();
+        });
       });
 
       connection.on("ReceiveUser", (msg) => {
-        if (msg.userId !== currentUser.UserId) return;
-        callGetNoti();
-        if (msg.type === "alarm") {
-          enqueueAlarm({
-            title: msg.title,
-            message: msg.message,
-          });
-        } else {
-          enqueue({
-            message: msg.message,
-            severity: msg.type,
-            duration: 3000,
-          });
-        }
+        // Use requestAnimationFrame to defer notification to next frame
+        requestAnimationFrame(() => {
+          if (!msg?.message) return;
+          // Fire notification immediately (non-blocking)
+          if (msg.type === "alarm") {
+            enqueueAlarm({
+              title: msg.title,
+              message: msg.message,
+            });
+          } else {
+            enqueue({
+              message: msg.message,
+              severity: msg.type,
+              duration: 3000,
+            });
+          }
+
+          // Fetch notifications asynchronously with debounce
+          debouncedGetNoti();
+        });
       });
 
 
-      connection.serverTimeoutInMilliseconds = 60000;
+      // Reduce connection timeout overhead
+      connection.serverTimeoutInMilliseconds = 60000; // ✅ ดี
+      // Add connection keep-alive
+      connection.keepAliveIntervalInMilliseconds = 15000;
       connection.start(() => {
       }).catch((err) => {
         // Only log start errors in non-production environments
@@ -298,6 +317,11 @@ export default function MainLayout({ lang, onChangeLang }) {
       }
     }
     return () => {
+      // Clear debounce timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
       const conn = connectionRef.current;
       if (conn) {
         conn.onclose();
@@ -306,13 +330,21 @@ export default function MainLayout({ lang, onChangeLang }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiUrl, currentUser, enqueue]);
+  }, [apiUrl, currentUser, enqueue, enqueueAlarm]);
   const callGetNoti = useCallback(async () => {
-    await getNotifications(10);
-  }, []);
+    // Prevent simultaneous API calls
+    if (callGetNoti.pending) return;
+    callGetNoti.pending = true;
+
+    try {
+      await getNotifications(10);
+    } finally {
+      callGetNoti.pending = false;
+    }
+  }, [getNotifications]);
   useEffect(() => {
     if (total === -1) callGetNoti();
-  }, []);
+  }, [total, callGetNoti]);
   return (
     <Box
       sx={{

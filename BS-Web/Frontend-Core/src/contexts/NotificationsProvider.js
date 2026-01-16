@@ -32,7 +32,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
       setTotal(0);
       setTotalUnread(0);
     }
-  }, []);
+  }, [getNotify]);
 
   const markAsRead = useCallback(async (id) => {
     const response = await markNotifyAsRead(id);
@@ -47,7 +47,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
         )
       );
     }
-  }, []);
+  }, [markNotifyAsRead]);
   // ---------- Normal Notification ----------
   const enqueue = useCallback(
     ({ message, severity = "info", duration = 5000 }) => {
@@ -59,9 +59,11 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
         open: true,
       };
 
-      // Windows Notification
+      // Defer Windows Notification to prevent blocking (non-blocking)
       if (Notification.permission === "granted") {
-        new Notification("แจ้งเตือนใหม่", { body: message });
+        setTimeout(() => {
+          new Notification("แจ้งเตือนใหม่", { body: message });
+        }, 0);
       }
 
       setSnacks(prev => {
@@ -74,17 +76,23 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
 
   // ---------- FULLSCREEN ALARM ----------
   const enqueueAlarm = useCallback(({ title, message }) => {
-    setAlarm({
-      title: title || "SYSTEM ALARM",
-      message,
-    });
-
-    if (Notification.permission === "granted") {
-      new Notification("🚨 SYSTEM ALARM", {
-        body: message,
-        requireInteraction: true,
+    // Defer state update to prevent blocking
+    setTimeout(() => {
+      setAlarm({
+        title: title || "SYSTEM ALARM",
+        message,
       });
-    }
+
+      // Defer Windows Notification to prevent blocking (non-blocking)
+      if (Notification.permission === "granted") {
+        setTimeout(() => {
+          new Notification("🚨 SYSTEM ALARM", {
+            body: message,
+            requireInteraction: true,
+          });
+        }, 0);
+      }
+    }, 0);
   }, []);
 
   const closeAlarm = useCallback(() => {
