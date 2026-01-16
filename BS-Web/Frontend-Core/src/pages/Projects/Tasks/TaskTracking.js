@@ -104,7 +104,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const [showOnlyMe, setShowOnlyMe] = useState(true); // Toggle: true = show only my tracking
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
-
+  const [showView, setShowView] = useState(false);
   const { formData, errors, updateField, validate, setFormData } = useForm(
     defaultTrackingData,
     requiredTrackingFields
@@ -139,8 +139,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     // Use assignee_user_id from form, fallback to current user only if null/undefined/empty
     const assigneeUserId =
       assigneeValue !== null &&
-      assigneeValue !== undefined &&
-      assigneeValue !== ""
+        assigneeValue !== undefined &&
+        assigneeValue !== ""
         ? assigneeValue
         : getCurrentUserId();
 
@@ -233,7 +233,11 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       }
     });
   };
-
+  const handleViewTracking = (view) => {
+    setFormData(view);
+    setShowView(true);
+    setOpenTrackingDialog(true);
+  }
   return (
     <>
       {/* Task Tracking Grid */}
@@ -284,8 +288,14 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsAllowAdd={true}
           bsAllowEdit={showOnlyMe}
           bsAllowDelete={showOnlyMe}
-          bsVisibleEdit={showOnlyMe}
+          bsVisibleEdit={
+            showOnlyMe &&
+            new Date(taskData.start_date).getTime() <= Date.now() &&
+            new Date(taskData.end_date).getTime() >= Date.now()
+          }
           bsVisibleDelete={showOnlyMe}
+          bsVisibleView={showOnlyMe}
+          onView={handleViewTracking}
           onAdd={handleAddTracking}
           onEdit={handleEditTracking}
           onDelete={handleDeleteTracking}
@@ -330,13 +340,15 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           if (reason === "backdropClick" || reason === "escapeKeyDown") {
             return;
           }
+          if (showView) setShowView(false);
           setOpenTrackingDialog(false);
         }}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle>
-          {formData.project_task_tracking_id
+          {showView && lang === 'th' ? "ดู" : "View"}
+          {!showView && formData.project_task_tracking_id
             ? r("Edit_Form", "Edit Task Tracking")
             : r("Add_Form", "Add Task Tracking")}
         </DialogTitle>
@@ -368,9 +380,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                         { field: "last_name", display: true },
                       ],
                       bsObjBy: "first_name asc",
-                      bsObjWh: `project_header_id=${
-                        taskData?.project_header_id || 0
-                      } AND project_task_id=${projectTaskId || 0}`,
+                      bsObjWh: `project_header_id=${taskData?.project_header_id || 0
+                        } AND project_task_id=${projectTaskId || 0}`,
                       required: false,
                     },
                     formData,
@@ -473,9 +484,11 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           >
             Close
           </BSCloseOutlinedButton>
-          <BSSaveOutlinedButton onClick={handleSaveTracking} variant="outlined">
-            Save
-          </BSSaveOutlinedButton>
+          {!showView &&
+            <BSSaveOutlinedButton onClick={handleSaveTracking} variant="outlined">
+              Save
+            </BSSaveOutlinedButton>
+          }
         </DialogActions>
       </Dialog>
     </>
