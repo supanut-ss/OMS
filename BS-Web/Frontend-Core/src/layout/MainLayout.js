@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 import CustomBreadcrumbs from "../components/CustomBreadcrumbs";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Box,
   CssBaseline,
@@ -20,17 +20,8 @@ import {
   Menu,
   MenuItem,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  FormControl,
-  InputLabel,
-  FormHelperText,
-  Input,
-  InputAdornment,
   ListItemAvatar,
+  Badge,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -41,8 +32,6 @@ import {
   // Settings as SettingsIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
-  Visibility,
-  VisibilityOff,
 } from "@mui/icons-material";
 
 import { Outlet, useLocation } from "react-router-dom";
@@ -57,11 +46,13 @@ import TopLinearProgress from "../components/TopLinearProgress";
 import SecureStorage from "../utils/SecureStorage";
 import BSAlertSwal2 from "../components/BSAlertSwal2";
 import Config from "../utils/Config";
-import AxiosMaster from "../utils/AxiosMaster";
 import LanguageSwitch from "../components/LanguageSwitch";
 import * as signalR from "@microsoft/signalr";
 import { useNotifications } from "../contexts/NotificationsProvider";
-import secureStorage from "../utils/SecureStorage";
+import ResetPasswordDialog from "./Dialogs/ResetPasswordDialog";
+import NotifyDialog from "./Dialogs/NotifyDialog";
+import { FormatTimeToText } from "../config/dateConfig";
+import MenuNoti from "./MenuNotify";
 const drawerWidth = 280;
 const collapsedWidth = 72;
 
@@ -122,262 +113,28 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   const [open, setOpen] = useState(!isMobile);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [isNotifyDialogOpen, setIsNotifyDialogOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
-
-  // State สำหรับควบคุมการโชว์พาสเวิร์ด
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   // const navigate = useNavigate();
   //const apiUrl = Config.API_URL;
   const apiUrl = Config.API_NOTIFY;
-  const { enqueue, enqueueAlarm } = useNotifications();
+  const { enqueue, enqueueAlarm, notifications, getNotifications, totalUnread, total } = useNotifications();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
     location.pathname === "/" || location.pathname === "/home";
-
-  // Mock data สำหรับ notifications
-  const notifications = [
-    { id: 1, title: "งานใหม่ถูกมอบหมาย", time: "5 นาทีที่แล้ว", unread: true },
-    {
-      id: 2,
-      title: "รายงานประจำสัปดาห์พร้อม",
-      time: "1 ชั่วโมงที่แล้ว",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "ระบบจะปิดปรับปรุงในคืนนี้",
-      time: "3 ชั่วโมงที่แล้ว",
-      unread: false,
-    },
-  ];
 
   // Mock user data - ในอนาคตใช้ข้อมูลจาก useAuth แทน
   const [role, setRole] = useState("User");
   const [currentUser, setCurrentUser] = useState(null);
   const connectionRef = useRef(null);
   const [loading, setLoading] = useState(false);
-  const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
-    useState(false);
-  const [password, setPassword] = useState({
-    new_password: "",
-    confirm_password: "",
-  });
-  const [errorPassword, setErrorPassword] = useState({
-    new_password: {
-      status: false,
-      message: "",
-    },
-    confirm_password: {
-      status: false,
-      message: "",
-    },
-  });
-  const validatePassword = (pw) => {
-    if (pw.length < 8) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร"
-            : "Password must be at least 8 characters long.",
-      };
-    } else if (pw.length > 20) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องมีความยาวไม่เกิน 20 ตัวอักษร"
-            : "Password must not exceed 20 characters.",
-      };
-    } else if (!/[A-Z]/.test(pw)) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่ อย่างน้อย 1 ตัว"
-            : "Password must contain at least one uppercase letter.",
-      };
-    } else if (!/[a-z]/.test(pw)) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องมีตัวอักษรพิมพ์เล็ก อย่างน้อย 1 ตัว"
-            : "Password must contain at least one lowercase letter.",
-      };
-    } else if (!/[0-9]/.test(pw)) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องมีตัวเลข อย่างน้อย 1 ตัว"
-            : "Password must contain at least one number.",
-      };
-    } else if (!/[!@#$%^&*]/.test(pw)) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องมีอักขระพิเศษ อย่างน้อย 1 ตัว (!@#$%^&*)"
-            : "Password must contain at least one special character (!@#$%^&*).",
-      };
-    } else if (/\s/.test(pw)) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องไม่มีช่องว่าง"
-            : "Password must not contain spaces.",
-      };
-    } else if (
-      pw.toLowerCase().includes(currentUser?.FirstName.toLowerCase()) ||
-      pw.toLowerCase().includes(currentUser?.LastName.toLowerCase())
-    ) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องไม่ประกอบด้วยชื่อหรือสกุลของคุณ"
-            : "Password must not contain your first or last name.",
-      };
-      // } else if (pw.toLowerCase().includes(currentUser?.Email.toLowerCase()) && pw !== "@" ) {
-      //   return { status: true, message: lang === "th" ? 'รหัสผ่านต้องไม่ประกอบด้วยอีเมลของคุณ' : 'Password must not contain your email.' };
-    } else if (
-      pw.toLowerCase().includes("1234") ||
-      pw.toLowerCase().includes("abcd")
-    ) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องไม่ประกอบด้วยลำดับตัวอักษรหรือตัวเลขที่ง่ายต่อการคาดเดา เช่น 1234 หรือ abcd"
-            : "Password must not contain easily guessable sequences like 1234 or abcd.",
-      };
-    } else if (
-      pw.toLowerCase() === "password" ||
-      pw.toLowerCase() === "qwerty" ||
-      pw.toLowerCase() === "letmein"
-    ) {
-      return {
-        status: true,
-        message:
-          lang === "th"
-            ? "รหัสผ่านต้องไม่ใช่รหัสผ่านที่ใช้บ่อยหรือคาดเดาได้ง่าย เช่น password, qwerty, letmein"
-            : "Password must not be a commonly used or easily guessable password like password, qwerty, letmein.",
-      };
-    } else if (pw.length === 0) {
-      return {
-        status: true,
-        message:
-          lang === "th" ? "กรุณากรอกรหัสผ่าน" : "Please enter a password.",
-      };
-    } else {
-      return { status: false, message: "" };
-    }
-  };
-  const onChangePassword = (e) => {
-    let validate = validatePassword(e.target.value);
-    if (validate.status) {
-      setErrorPassword({ ...errorPassword, new_password: validate });
-    } else {
-      setErrorPassword({
-        ...errorPassword,
-        new_password: { status: false, message: "" },
-      });
-    }
-    setPassword({ ...password, new_password: e.target.value });
-  };
-  const onChangeConfirmPassword = (e) => {
-    let validate = validatePassword(password.new_password);
-    if (validate.status) {
-      setErrorPassword({ ...errorPassword, confirm_password: validate });
-    } else if (password.new_password !== e.target.value) {
-      setErrorPassword({
-        ...errorPassword,
-        confirm_password: {
-          status: true,
-          message:
-            lang === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match.",
-        },
-      });
-    } else {
-      setErrorPassword({
-        ...errorPassword,
-        confirm_password: { status: false, message: "" },
-      });
-    }
-    setPassword({ ...password, confirm_password: e.target.value });
-  };
-  const handleResetPassword = () => {
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-    setIsPopupResetPasswordOpen(true);
-    handleUserMenuClose();
-  };
-  const sendChangePassword = async () => {
-    let validateNewPassword = validatePassword(password.new_password);
-    let validateConfirmPassword = validatePassword(password.confirm_password);
-    if (validateNewPassword.status) {
-      setErrorPassword({ ...errorPassword, new_password: validateNewPassword });
-    }
-    if (
-      validateConfirmPassword.status ||
-      password.new_password !== password.confirm_password
-    ) {
-      setErrorPassword({
-        ...errorPassword,
-        confirm_password: validateConfirmPassword.status
-          ? validateConfirmPassword
-          : {
-            status: true,
-            message:
-              lang === "th" ? "รหัสผ่านไม่ตรงกัน" : "Passwords do not match.",
-          },
-      });
-    }
-    if (
-      !validateNewPassword.status &&
-      !validateConfirmPassword.status &&
-      password.new_password === password.confirm_password
-    ) {
-      setLoading(true);
-      await AxiosMaster.post("/reset_password", password)
-        .then((res) => {
-          if (res.data.message_code === "0") {
-            BSAlertSwal2.show("success", lang === "th" ? "เปลี่ยนรหัสผ่านสำเร็จ" : "Password Changed Successfully", { timer: 3000 });
-          } else {
-            BSAlertSwal2.show("error", res.data.message_text || (lang === "th" ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "An error occurred while changing the password."));
-          }
-          setIsPopupResetPasswordOpen(false);
-          setPassword({
-            new_password: "",
-            confirm_password: "",
-          });
-          setErrorPassword({
-            new_password: {
-              status: false,
-              message: "",
-            },
-            confirm_password: {
-              status: false,
-              message: "",
-            },
-          });
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
-  };
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] = useState(false);
 
   const toggleDrawer = () => setOpen((prev) => !prev);
 
-  // const handleNotificationClick = (event) => {
-  //   setNotificationAnchor(event.currentTarget);
-  // };
+  const handleNotificationClick = (event) => {
+    setNotificationAnchor(event.currentTarget);
+  };
 
   const handleNotificationClose = () => {
     setNotificationAnchor(null);
@@ -431,7 +188,10 @@ export default function MainLayout({ lang, onChangeLang }) {
       });
     }
   };
-
+  const handleResetPassword = () => {
+    setIsPopupResetPasswordOpen(true);
+    handleUserMenuClose();
+  };
   const getInitials = (name) => {
     return name
       .split(" ")
@@ -478,9 +238,8 @@ export default function MainLayout({ lang, onChangeLang }) {
       connectionRef.current = connection;
 
       connection.on("ReceiveAll", (msg) => {
-        console.log(msg);
         if (msg.userId === currentUser.UserId) return;
-
+        callGetNoti();
         if (msg.type === "alarm") {
           enqueueAlarm({
             title: msg.title,
@@ -496,9 +255,8 @@ export default function MainLayout({ lang, onChangeLang }) {
       });
 
       connection.on("ReceiveUser", (msg) => {
-        console.log(msg);
         if (msg.userId !== currentUser.UserId) return;
-
+        callGetNoti();
         if (msg.type === "alarm") {
           enqueueAlarm({
             title: msg.title,
@@ -515,7 +273,8 @@ export default function MainLayout({ lang, onChangeLang }) {
 
 
       connection.serverTimeoutInMilliseconds = 60000;
-      connection.start().catch((err) => {
+      connection.start(() => {
+      }).catch((err) => {
         // Only log start errors in non-production environments
         if (process.env.NODE_ENV !== "production") {
           console.error("SignalR connection error:", err);
@@ -546,8 +305,14 @@ export default function MainLayout({ lang, onChangeLang }) {
         connectionRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiUrl, currentUser, enqueue]);
-  console.log("MainLayout render Menu:", secureStorage.get("menu"));
+  const callGetNoti = useCallback(async () => {
+    await getNotifications(10);
+  }, []);
+  useEffect(() => {
+    if (total === -1) callGetNoti();
+  }, []);
   return (
     <Box
       sx={{
@@ -634,18 +399,18 @@ export default function MainLayout({ lang, onChangeLang }) {
             </Tooltip>
 
             {/* Notifications */}
-            {/* <Tooltip title="การแจ้งเตือน">
+            <Tooltip title="การแจ้งเตือน">
               <IconButton
                 color="inherit"
                 onClick={handleNotificationClick}
                 aria-label="notifications"
                 sx={{ borderRadius: 2, p: 1.5 }}
               >
-                <Badge badgeContent={unreadCount} color="error">
+                <Badge badgeContent={totalUnread} color="error">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
-            </Tooltip> */}
+            </Tooltip>
 
             {/* User Menu */}
             <Tooltip title="เมนูผู้ใช้">
@@ -699,61 +464,19 @@ export default function MainLayout({ lang, onChangeLang }) {
             การแจ้งเตือน
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            คุณมีการแจ้งเตือน {unreadCount} รายการที่ยังไม่ได้อ่าน
+            คุณมีการแจ้งเตือน {totalUnread} รายการที่ยังไม่ได้อ่าน
           </Typography>
         </Box>
-        {notifications.map((notification) => (
-          <MenuItem
-            key={notification.id}
-            onClick={handleNotificationClose}
-            sx={{
-              py: 2,
-              px: 2,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-              "&:last-child": { borderBottom: "none" },
-            }}
-          >
-            <ListItemAvatar>
-              <Avatar
-                sx={{
-                  bgcolor: notification.unread ? "primary.main" : "grey.400",
-                }}
-              >
-                <NotificationsIcon />
-              </Avatar>
-            </ListItemAvatar>
-            <Box sx={{ flex: 1 }}>
-              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: notification.unread ? 600 : 400,
-                    flex: 1,
-                  }}
-                >
-                  {notification.title}
-                </Typography>
-                {notification.unread && (
-                  <Chip
-                    label="ใหม่"
-                    size="small"
-                    color="primary"
-                    sx={{ fontSize: "0.7rem", height: 20 }}
-                  />
-                )}
-              </Box>
-              <Typography variant="caption" color="text.secondary">
-                {notification.time}
-              </Typography>
-            </Box>
-          </MenuItem>
-        ))}
+        <MenuNoti notifications={notifications} handleNotificationClose={handleNotificationClose} />
         <Box sx={{ p: 2, textAlign: "center" }}>
           <Typography
             variant="body2"
             color="primary"
             sx={{ cursor: "pointer", fontWeight: 500 }}
-            onClick={handleNotificationClose}
+            onClick={() => {
+              setIsNotifyDialogOpen(true);
+              handleNotificationClose();
+            }}
           >
             ดูการแจ้งเตือนทั้งหมด
           </Typography>
@@ -935,102 +658,22 @@ export default function MainLayout({ lang, onChangeLang }) {
           overflow: "auto",
         }}
       >
-        {/* <Button onClick={async () => {
-          await AxiosMaster.post(`${Config.API_URL}/notify/all`, { message: "พักเที่ยง" });
-        }}>send noti</Button> */}
         <Outlet />
       </Box>
-      {/* Reset Password Popup */}
-      <Dialog
+      {/* Reset Password Dialog */}
+      <ResetPasswordDialog
         open={isPopupResetPasswordOpen}
+        lang={lang}
         onClose={() => setIsPopupResetPasswordOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        {/* เนื้อหาของ Popup Reset Password จะอยู่ที่นี่ */}
-        <DialogTitle>
-          {lang === "th" ? "เปลี่ยนรหัสผ่าน" : "Reset Password"}
-        </DialogTitle>
-        <DialogContent>
-          {/* ใส่ฟอร์มเปลี่ยนรหัสผ่านที่นี่ */}
-          <Typography variant="body2" color="text.secondary">
-            {lang === "th"
-              ? "กรุณากรอกรหัสผ่านใหม่ของคุณด้านล่าง"
-              : "Please enter your new password below."}
-          </Typography>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel htmlFor="new-password">
-              {lang === "th" ? "รหัสผ่านใหม่" : "New Password"}
-            </InputLabel>
-            <Input
-              id="new-password"
-              type={showPassword ? "text" : "password"}
-              value={password.new_password}
-              onChange={(e) => onChangePassword(e)}
-              label={lang === "th" ? "รหัสผ่านใหม่" : "New Password"}
-              endAdornment={
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              }
-            />
-            {errorPassword.new_password.status && (
-              <FormHelperText sx={{ color: "red" }}>
-                {errorPassword.new_password.message}
-              </FormHelperText>
-            )}
-          </FormControl>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel htmlFor="confirm-password">
-              {lang === "th" ? "ยืนยันรหัสผ่านใหม่" : "Confirm New Password"}
-            </InputLabel>
-            <Input
-              id="confirm-password"
-              type={showConfirmPassword ? "text" : "password"}
-              value={password.confirm_password}
-              onChange={(e) => onChangeConfirmPassword(e)}
-              label={
-                lang === "th" ? "ยืนยันรหัสผ่านใหม่" : "Confirm New Password"
-              }
-              endAdornment={
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    edge="end"
-                  >
-                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              }
-            />
-            {errorPassword.confirm_password.status && (
-              <FormHelperText sx={{ color: "red" }}>
-                {errorPassword.confirm_password.message}
-              </FormHelperText>
-            )}
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setIsPopupResetPasswordOpen(false)}
-            color="primary"
-          >
-            {lang === "th" ? "ยกเลิก" : "Cancel"}
-          </Button>
-          <Button
-            onClick={sendChangePassword}
-            color="primary"
-            variant="contained"
-          >
-            {lang === "th" ? "บันทึก" : "Save"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        currentUser={currentUser}
+        loading={loading}
+        setLoading={setLoading}
+      />
+      <NotifyDialog
+        open={isNotifyDialogOpen}
+        onClose={() => setIsNotifyDialogOpen(false)}
+      />
+      {/* End Main content */}
     </Box>
   );
 }

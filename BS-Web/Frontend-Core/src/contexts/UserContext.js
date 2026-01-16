@@ -51,11 +51,20 @@ export function UserContext() {
       return null;
     }
   };
-
+  const newPassword = async (passwordData) => {
+    try {
+      const res = await AxiosMaster.post("/reset_password", passwordData);
+      return res.data;
+    } catch (err) {
+      console.error("error ", err);
+      return null;
+    }
+  }
   return {
     registerUser,
     updateUser,
     deleteUser,
     resetPassword,
+    newPassword
   };
 }

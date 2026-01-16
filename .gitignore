@@ -120,3 +120,11 @@ nunit-*.xml
 /BS-Notification/Notification/.vs/ProjectEvaluation/notification.projects.v9.bin
 /BS-Notification/Notification/.vs/ProjectEvaluation/notification.strings.v9.bin
 *.tmp
+/BS-API-Core/ApiCore/Properties/PublishProfiles/FolderProfile.pubxml.user
+*.db
+*.db-shm
+*.db-wal
+*.vsidx
+/BS-Notification/BS-Notify-Worker/.vs/BS-Notify-Worker/v17/TestStore/0
+*.suo
+/BS-Notification/BS-Notify-Worker/Properties/PublishProfiles

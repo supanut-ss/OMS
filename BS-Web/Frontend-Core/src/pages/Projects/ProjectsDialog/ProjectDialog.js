@@ -19,6 +19,7 @@ import FormProjectMa from "./Form/Ma";
 import TabsProject from "./FormTabs/TabsProject";
 import TabsMa from "./FormTabs/TabsMa";
 import secureStorage from "../../../utils/SecureStorage";
+import { Timer } from "@mui/icons-material";
 const ProjectsDialog = (props) => {
   const defaultData = props.ma ? {
     project_no: "",
@@ -112,7 +113,7 @@ const ProjectsDialog = (props) => {
       const response = await AxiosMaster.post("/projects", body);
 
       if (response.data.message_code === 0) {
-        BSAlertSwal2.show("success", "Project saved successfully");
+        BSAlertSwal2.show("success", "Project saved successfully", { title: "Success" });
         setFormData(response.data.data);
         setTaskRefresh(true);
       } else {

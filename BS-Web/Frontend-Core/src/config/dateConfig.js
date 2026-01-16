@@ -4,6 +4,8 @@
  * Values are read from environment variables with sensible defaults
  */
 
+import secureStorage from "../utils/SecureStorage";
+
 // Default formats if not specified in .env
 const DEFAULT_DATE_FORMAT = "DD/MM/YYYY";
 const DEFAULT_DATETIME_FORMAT = "DD/MM/YYYY HH:mm";
@@ -47,6 +49,55 @@ export const getDateConfig = () => ({
   dateFormatLower: getDateFormat().toLowerCase(),
   dateTimeFormatLower: getDateTimeFormat().toLowerCase(),
 });
+export const FormatTimeToText = (date) => {
+  const lang = secureStorage.get("lang") === "th" ? "th" : "en";
+
+  const now = new Date();
+  const past = new Date(date);
+  const diffMs = now - past;
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  // ---- JUST NOW ----
+  if (diffSec < 30) {
+    return lang === "th" ? "ล่าสุด" : "Just now";
+  }
+
+  // ---- MINUTES ----
+  if (diffMin < 60) {
+    return lang === "th"
+      ? `${diffMin} นาทีที่แล้ว`
+      : `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`;
+  }
+
+  // ---- HOURS ----
+  if (diffHour < 24) {
+    return lang === "th"
+      ? `${diffHour} ชั่วโมงที่แล้ว`
+      : `${diffHour} hour${diffHour > 1 ? "s" : ""} ago`;
+  }
+
+  // ---- YESTERDAY ----
+  if (diffDay === 1) {
+    return lang === "th" ? "เมื่อวาน" : "Yesterday";
+  }
+
+  // ---- DAYS ----
+  if (diffDay < 7) {
+    return lang === "th"
+      ? `${diffDay} วันที่แล้ว`
+      : `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
+  }
+
+  // ---- FALLBACK → แสดงวันที่ปกติ ----
+  return past.toLocaleDateString(
+    lang === "th" ? "th-TH" : "en-EN",
+    { dateStyle: "short" }
+  );
+};
 
 // Export individual format strings for direct import
 export const DATE_FORMAT = getDateFormat();

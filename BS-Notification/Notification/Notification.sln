@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification", "Notification.csproj", "{30D6CFA8-B54A-4A64-888D-A7F64A865BD3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TokenManagement", "..\..\BS-API-Secure\TokenManagement\TokenManagement.csproj", "{9D6D9831-483B-463C-8E4C-FD48E59206E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BS-Notify-Worker", "..\BS-Notify-Worker\BS-Notify-Worker.csproj", "{A3E04548-F0BB-4EA2-9E42-FAD30396F8D8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{9D6D9831-483B-463C-8E4C-FD48E59206E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D6D9831-483B-463C-8E4C-FD48E59206E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D6D9831-483B-463C-8E4C-FD48E59206E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3E04548-F0BB-4EA2-9E42-FAD30396F8D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3E04548-F0BB-4EA2-9E42-FAD30396F8D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3E04548-F0BB-4EA2-9E42-FAD30396F8D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3E04548-F0BB-4EA2-9E42-FAD30396F8D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

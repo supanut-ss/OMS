@@ -31,12 +31,14 @@ import Config from "../utils/Config";
 import secureStorage from "../utils/SecureStorage";
 import { useResource } from "../hooks/useResource";
 import { requestNotificationPermission } from "../utils/requestNotificationPermission";
+import { useNotifications } from "../contexts/NotificationsProvider";
 
 export default function LoginPage({ setLang }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { getResourceByGroupAndName } = useResource();
+  const { getNotifications } = useNotifications();
   const { login, resource, menu, role, version, resetLocationPermission, startLocationTracking, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -84,7 +86,7 @@ export default function LoginPage({ setLang }) {
             navigate(from);
           }
         }
-
+        await getNotifications(10);
       } else {
         setError(data.message)
       }
@@ -109,9 +111,9 @@ export default function LoginPage({ setLang }) {
       });
       if (secureStorage.get("version") !== vs) {
         secureStorage.set("version", vs);
-        setIsVersion(true);
+        window.location.reload();
       }
-      if(secureStorage.get("resource") === null){
+      if (secureStorage.get("resource") === null) {
         setIsVersion(true);
       }
 

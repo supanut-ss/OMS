@@ -1,15 +1,18 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Azure.Core;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Notification.Attribute;
+using Notification.Interfaces;
 using Notification.Models;
+using Notification.Models.Requests;
 using Notification.Services;
 
 namespace Notification.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class NotifyController : ControllerBase
     {
         private readonly NotificationService _service;
@@ -21,24 +24,118 @@ namespace Notification.Controllers
             _logger = logger;
         }
 
+        [HttpGet]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> Get([FromQuery] int limit = 20)
+        {
+            var userId = User?.FindFirst("UserId")?.Value ?? "";
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+            var res = await _service.GetNotifyListAsync(userId, limit);
+
+            if (res.message_code != 0)
+            {
+                _logger.LogError("Get notifications failed for user={UserId} status={Status} message={Message}", userId, res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+        }
+        // Other endpoints (MarkNotifyAsRead, DeleteNotification, SaveNotificationToDatabase) would go here
+
+        [HttpPost("read/{notifyId}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> MarkNotifyAsRead(int notifyId)
+        {
+            var userId = User?.FindFirst("UserId")?.Value ?? "";
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var res = await _service.MarkNotifyAsRead(userId, notifyId);
+            if (res.message_code != 0)
+            {
+                _logger.LogError("MarkNotifyAsRead failed for user={UserId} notifyId={NotifyId} status={Status} message={Message}", userId, notifyId, res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+        }
+
+        [HttpPost("delete/{notifyId}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> DeleteNotification(int notifyId)
+        {
+            var userId = User?.FindFirst("UserId")?.Value ?? "";
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var res = await _service.DeleteNotification(userId, notifyId);
+            if (res.message_code != 0)
+            {
+                _logger.LogError("DeleteNotification failed for user={UserId} notifyId={NotifyId} status={Status} message={Message}", userId, notifyId, res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+        }
+
+        [HttpPost("user/{userId}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> SaveNotificationToDatabase(string userId, [FromBody] NotifyRequest request)
+        {
+            var fromUser = User?.FindFirst("UserId")?.Value ?? "";
+            if (string.IsNullOrEmpty(fromUser) || string.IsNullOrEmpty(request?.Message))
+                return BadRequest();
+
+            var res = await _service.SaveNotificationToDatabase(fromUser,userId, request);
+            if (res.message_code != 0)
+            {
+                _logger.LogError("SaveNotificationToDatabase failed for fromUser={FromUser} toUser={ToUser} status={Status} message={Message}", fromUser, request.UserId, res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+        }
         [HttpPost("all")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<IActionResult> SendAll([FromBody] NotifyRequest request)
         {
             if (string.IsNullOrWhiteSpace(request?.Message))
                 return BadRequest();
 
-            _logger.LogInformation("SendAll called by user={User} message={Message}", User?.Identity?.Name ?? User?.FindFirst("UserId")?.Value ?? "(unknown)", request.Message);
-            request.UserId = string.IsNullOrEmpty(User?.FindFirst("UserId")?.Value) ? User.FindFirst("UserId")!.Value : "anonymous";
-            await _service.NotifyAll(request);
-            return Accepted();
+            var fromUser = User?.FindFirst("UserId")?.Value ?? "anonymous";
+
+            _logger.LogInformation(
+                "SendAll called by user={User} message={Message}",
+                fromUser,
+                request.Message
+            );
+
+            var res = await _service
+                .SaveAndNotifyAll(fromUser, request);
+
+            if (res.message_code != 0)
+            {
+                _logger.LogError(
+                    "NotifyAll failed for user={User} status={Status} message={Message}",
+                    fromUser,
+                    res.message_code,
+                    res.message_text
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+
+            return Ok(res);
         }
 
-        [HttpPost("user/{userId}")]
-        public async Task<IActionResult> SendUser(string userId, [FromBody] NotifyRequest request)
+        [HttpPost("push")]
+        [WorkerAuthorize]
+        public async Task<IActionResult> Push([FromBody] NotifyPushRequest req)
         {
-            _logger.LogInformation("SendUser called by user={User} for user={TargetUser} message={Message}", User?.Identity?.Name ?? User?.FindFirst("UserId")?.Value ?? "(unknown)", userId, request);
-            await _service.NotifyUser(userId, request);
-            return Ok();
+            if (string.IsNullOrWhiteSpace(req?.userId))
+                return BadRequest("userId required");
+
+            await _service.PushToUserAsync(req);
+
+            return Ok(new { message = "pushed" });
         }
     }
 }

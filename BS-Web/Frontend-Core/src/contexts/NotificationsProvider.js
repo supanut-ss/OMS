@@ -8,17 +8,46 @@ import {
   Button,
 } from "@mui/material";
 import cat from "../assets/images/nyan-cat.gif";
+import NotifyContext from "./NotifyContext";
 const NotificationsContext = createContext(null);
 export const useNotifications = () => useContext(NotificationsContext);
 
 export function NotificationsProvider({ children, maxSnack = 5 }) {
+  const { getNotify, markNotifyAsRead } = NotifyContext();
   const [snacks, setSnacks] = useState([]);
   const [alarm, setAlarm] = useState(null); // ⭐ FULLSCREEN ALARM
-//chat state
-  const [users, setUsers] = useState([]);
-  const [unreadCounts, setUnreadCounts] = useState({});
-  const [userId, setUserId] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [total, setTotal] = useState(-1);
+  const [totalUnread, setTotalUnread] = useState(0);
 
+  //----------Notification ----------
+  const getNotifications = useCallback(async (limit) => {
+    const response = await getNotify(limit);
+    if (response?.message_code === 0) {
+      setNotifications([...response.data]);
+      setTotal(response.total);
+      setTotalUnread(response.unread_total);
+    } else {
+      setNotifications([]);
+      setTotal(0);
+      setTotalUnread(0);
+    }
+  }, []);
+
+  const markAsRead = useCallback(async (id) => {
+    const response = await markNotifyAsRead(id);
+    if (response?.message_code === 0) {
+      setTotal(response.total);
+      setTotalUnread(response.unread_total);
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notification) =>
+          notification.id === id
+            ? { ...notification, is_read: true }
+            : notification
+        )
+      );
+    }
+  }, []);
   // ---------- Normal Notification ----------
   const enqueue = useCallback(
     ({ message, severity = "info", duration = 5000 }) => {
@@ -75,7 +104,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
   };
 
   return (
-    <NotificationsContext.Provider value={{ enqueue, enqueueAlarm }}>
+    <NotificationsContext.Provider value={{ enqueue, enqueueAlarm, getNotifications, markAsRead, notifications, totalUnread, total }}>
       {children}
 
       {/* Snackbar */}
@@ -130,7 +159,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
             sx={{ mt: 6, px: 6, py: 2, fontSize: 20 }}
             onClick={closeAlarm}
           >
-          กดเพื่อปิดแจ้งเตือน
+            กดเพื่อปิดแจ้งเตือน
           </Button>
         </Box>
       </Dialog>

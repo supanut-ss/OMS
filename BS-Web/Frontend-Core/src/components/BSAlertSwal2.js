@@ -13,7 +13,7 @@ const injectScrollableStyles = () => {
       .swal2-scrollable-content .swal2-html-container {
         max-height: 60vh !important;
         overflow-y: auto !important;
-        text-align: left !important;
+        text-align: center !important;
         padding: 0 1em !important;
       }
       .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar {
