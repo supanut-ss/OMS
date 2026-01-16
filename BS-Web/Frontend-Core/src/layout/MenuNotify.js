@@ -95,12 +95,8 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
                         <Typography
                             variant="body2"
                             color="text.secondary"
-                            sx={{
-                                mt: 0.5,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                            }}
+                            noWrap
+                            sx={{ mt: 0.5, maxWidth: "150px" }}
                         >
                             {n.description}
                         </Typography>

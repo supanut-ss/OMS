@@ -294,7 +294,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             new Date(taskData.end_date).getTime() >= Date.now()
           }
           bsVisibleDelete={showOnlyMe}
-          bsVisibleView={showOnlyMe}
+          bsVisibleView={true}
           onView={handleViewTracking}
           onAdd={handleAddTracking}
           onEdit={handleEditTracking}
@@ -340,20 +340,20 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           if (reason === "backdropClick" || reason === "escapeKeyDown") {
             return;
           }
-          if (showView) setShowView(false);
+          setShowView(false);
           setOpenTrackingDialog(false);
         }}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle>
-          {showView && lang === 'th' ? "ดู" : "View"}
-          {!showView && formData.project_task_tracking_id
-            ? r("Edit_Form", "Edit Task Tracking")
-            : r("Add_Form", "Add Task Tracking")}
+          {showView ? (lang === 'th' ? "ดูรายละเอียด" : "View") :
+            (formData.project_task_tracking_id
+              ? r("Edit_Form", "Edit Task Tracking")
+              : r("Add_Form", "Add Task Tracking"))}
         </DialogTitle>
         <IconButton
-          onClick={() => setOpenTrackingDialog(false)}
+          onClick={() => { setOpenTrackingDialog(false); setShowView(false); }}
           sx={{ position: "absolute", right: 8, top: 8 }}
         >
           <CloseIcon />
@@ -479,7 +479,10 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
 
         <DialogActions>
           <BSCloseOutlinedButton
-            onClick={() => setOpenTrackingDialog(false)}
+            onClick={() => {
+              setShowView(false);
+              setOpenTrackingDialog(false);
+            }}
             variant="outlined"
           >
             Close

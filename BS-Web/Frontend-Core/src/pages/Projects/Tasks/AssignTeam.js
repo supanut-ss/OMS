@@ -90,6 +90,7 @@ const AssignTeam = (props) => {
     () => ({
       enable: true,
       addInline: true, // Add new rows inline
+      edit: true
       //   showCheckbox: true,
       //   showSplitButton: true,
     }),
