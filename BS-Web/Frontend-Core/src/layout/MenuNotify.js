@@ -41,7 +41,7 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
     return (
 
         <Box>{notifications &&
-            notifications.map((n, key) => (
+            notifications.filter((f)=>!f.is_read).map((n, key) => (
                 <MenuItem
                     key={key}
                     onClick={() => {
