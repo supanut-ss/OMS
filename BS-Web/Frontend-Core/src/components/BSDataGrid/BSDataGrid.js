@@ -205,7 +205,7 @@ const sanitizeDataForApi = (data, columns = []) => {
           dataType.includes("smalldatetime")
         );
       })
-      .map((col) => col.columnName)
+      .map((col) => col.columnName),
   );
 
   Object.keys(sanitized).forEach((key) => {
@@ -279,8 +279,9 @@ const stringAvatar = (name) => {
   const nameParts = trimmedName.split(" ").filter((part) => part.length > 0);
   let initials;
   if (nameParts.length >= 2) {
-    initials = `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]
-      }`.toUpperCase();
+    initials = `${nameParts[0][0]}${
+      nameParts[nameParts.length - 1][0]
+    }`.toUpperCase();
   } else if (nameParts.length === 1) {
     initials = nameParts[0].substring(0, 2).toUpperCase();
   } else {
@@ -820,7 +821,7 @@ const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
   const handleSearch = useCallback(() => {
     if (apiRef?.current) {
       apiRef.current.setQuickFilterValues(
-        value ? value.split(" ").filter((word) => word) : []
+        value ? value.split(" ").filter((word) => word) : [],
       );
     }
   }, [apiRef, value]);
@@ -832,7 +833,7 @@ const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
         handleSearch();
       }
     },
-    [handleSearch]
+    [handleSearch],
   );
 
   const handleClear = useCallback(() => {
@@ -1998,7 +1999,7 @@ const BSDataGrid = forwardRef(
       bsPageSizeOptions = [20, 100, 200, 500, 1000],
       ...props
     },
-    ref
+    ref,
   ) => {
     // Get theme for icon colors
     const theme = useTheme();
@@ -2199,7 +2200,7 @@ const BSDataGrid = forwardRef(
 
     // State for column visibility (allow user to toggle)
     const [columnVisibilityModel, setColumnVisibilityModel] = useState(
-      initialColumnVisibility
+      initialColumnVisibility,
     );
 
     // CRITICAL: Track the last applied visibility key to prevent infinite loops
@@ -2269,8 +2270,8 @@ const BSDataGrid = forwardRef(
               if (tabItem.Tab) {
                 const columns = tabItem.Tab.Column
                   ? tabItem.Tab.Column.split(",")
-                    .map((c) => c.trim())
-                    .filter(Boolean)
+                      .map((c) => c.trim())
+                      .filter(Boolean)
                   : [];
                 tabs.push({
                   name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
@@ -2328,7 +2329,7 @@ const BSDataGrid = forwardRef(
     // Internal lang state that syncs with secureStorage to detect language changes
     // This is needed because bsLocale prop may not update when React Router caches route elements
     const [internalLang, setInternalLang] = useState(
-      secureStorage.get("lang") || "en"
+      secureStorage.get("lang") || "en",
     );
     const bsLocaleRef = useRef(bsLocale);
 
@@ -2428,7 +2429,7 @@ const BSDataGrid = forwardRef(
       (date, includeTime = false, effectiveLocale) => {
         return formatDate(date, { includeTime, locale: effectiveLocale });
       },
-      []
+      [],
     );
 
     // Helper: Get locale-specific date/time formatting options
@@ -2497,7 +2498,8 @@ const BSDataGrid = forwardRef(
         return str
           .split("_")
           .map(
-            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
           )
           .join("");
       }
@@ -2510,7 +2512,7 @@ const BSDataGrid = forwardRef(
       async (operation, data, primaryKeyValue = null) => {
         if (!bsStoredProcedure || !executeEnhancedStoredProcedure) {
           throw new Error(
-            "Stored procedure not configured for CRUD operations"
+            "Stored procedure not configured for CRUD operations",
           );
         }
 
@@ -2541,7 +2543,8 @@ const BSDataGrid = forwardRef(
           if (!primaryKeyName && data && Object.keys(data).length > 0) {
             const dataKeys = Object.keys(data);
             primaryKeyName = dataKeys.find(
-              (k) => k.toLowerCase().endsWith("_id") || k.toLowerCase() === "id"
+              (k) =>
+                k.toLowerCase().endsWith("_id") || k.toLowerCase() === "id",
             );
           }
 
@@ -2556,7 +2559,7 @@ const BSDataGrid = forwardRef(
           const pascalPrimaryKey = toPascalCase(primaryKeyName);
           spParams[pascalPrimaryKey] = primaryKeyValue;
           bsLog(
-            `🔑 Added primary key param: ${pascalPrimaryKey} = ${primaryKeyValue}`
+            `🔑 Added primary key param: ${pascalPrimaryKey} = ${primaryKeyValue}`,
           );
         }
 
@@ -2583,7 +2586,7 @@ const BSDataGrid = forwardRef(
 
         if (!result.success) {
           throw new Error(
-            result.message || `Failed to ${operation.toLowerCase()} record`
+            result.message || `Failed to ${operation.toLowerCase()} record`,
           );
         }
 
@@ -2599,7 +2602,7 @@ const BSDataGrid = forwardRef(
         toPascalCase,
         getUserId,
         bsKeyId,
-      ]
+      ],
     );
 
     // DataGrid state
@@ -2618,12 +2621,12 @@ const BSDataGrid = forwardRef(
     const [filterModel, setFilterModel] = useState(() => ({
       items: bsObjWh
         ? [
-          {
-            field: "custom_where",
-            operator: "custom",
-            value: bsObjWh,
-          },
-        ]
+            {
+              field: "custom_where",
+              operator: "custom",
+              value: bsObjWh,
+            },
+          ]
         : [],
     }));
 
@@ -2642,7 +2645,7 @@ const BSDataGrid = forwardRef(
 
       // Ensure numeric, unique and sorted
       const numericOptions = Array.from(
-        new Set(baseOptions.map((v) => Number(v)))
+        new Set(baseOptions.map((v) => Number(v))),
       )
         .filter((v) => !Number.isNaN(v))
         .sort((a, b) => a - b);
@@ -2725,7 +2728,7 @@ const BSDataGrid = forwardRef(
     // ComboBox loading state - track if lookup data is being loaded
     // Initialize as true if there's combobox config to prevent showing raw values before loading
     const [comboBoxLoading, setComboBoxLoading] = useState(
-      () => Array.isArray(bsComboBox) && bsComboBox.length > 0
+      () => Array.isArray(bsComboBox) && bsComboBox.length > 0,
     );
 
     // Refs to hold the latest values of comboBoxLookupData and comboBoxValueOptions
@@ -2776,7 +2779,7 @@ const BSDataGrid = forwardRef(
         configKey === comboBoxConfigKeyRef.current
       ) {
         bsLog(
-          "⏭️ ComboBox useEffect: Data already loaded, skipping reload (config unchanged)"
+          "⏭️ ComboBox useEffect: Data already loaded, skipping reload (config unchanged)",
         );
         return;
       }
@@ -2845,7 +2848,7 @@ const BSDataGrid = forwardRef(
           } catch (error) {
             Logger.error(
               `❌ Failed to load ComboBox lookup for ${columnName}:`,
-              error
+              error,
             );
           }
         }
@@ -2865,7 +2868,7 @@ const BSDataGrid = forwardRef(
             prevKeys.length === newKeys.length &&
             prevKeys.every(
               (k) =>
-                JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k])
+                JSON.stringify(prev[k]) === JSON.stringify(valueOptionsData[k]),
             );
           bsLog("🔽 Setting comboBoxValueOptions:", {
             keys: newKeys,
@@ -3006,7 +3009,7 @@ const BSDataGrid = forwardRef(
               const values = Array.isArray(value) ? value : [value];
               return values.some(
                 (v) =>
-                  String(rowValue).toLowerCase() === String(v).toLowerCase()
+                  String(rowValue).toLowerCase() === String(v).toLowerCase(),
               );
 
             case ">":
@@ -3169,21 +3172,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-                bsCustomFilters &&
-                bsCustomFilters.length > 0
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields (optional until backend is ready)
             userLookup: bsUserLookup
               ? {
-                table: bsUserLookup.table || "sec.t_com_user",
-                idField: bsUserLookup.idField || "user_id",
-                displayFields: bsUserLookup.displayFields || [
-                  "first_name",
-                  "last_name",
-                ],
-                separator: bsUserLookup.separator || " ",
-              }
+                  table: bsUserLookup.table || "sec.t_com_user",
+                  idField: bsUserLookup.idField || "user_id",
+                  displayFields: bsUserLookup.displayFields || [
+                    "first_name",
+                    "last_name",
+                  ],
+                  separator: bsUserLookup.separator || " ",
+                }
               : undefined,
           };
 
@@ -3296,7 +3299,7 @@ const BSDataGrid = forwardRef(
         applyCustomFilters,
         bsCustomFilters,
         bsUserLookup,
-      ]
+      ],
     );
 
     // Load data from Enhanced Stored Procedure
@@ -3305,11 +3308,11 @@ const BSDataGrid = forwardRef(
         currentPaginationModel = paginationModel,
         currentSortModel = sortModel,
         currentFilterModel = filterModel,
-        forceRefresh = false
+        forceRefresh = false,
       ) => {
         if (!bsStoredProcedure || !executeEnhancedStoredProcedure) {
           Logger.warn(
-            "⚠️ No stored procedure specified or function not available"
+            "⚠️ No stored procedure specified or function not available",
           );
           return;
         }
@@ -3339,9 +3342,9 @@ const BSDataGrid = forwardRef(
             sortModel:
               bsFilterMode === "server"
                 ? currentSortModel.map((sort) => ({
-                  field: sort.field,
-                  sort: sort.sort,
-                }))
+                    field: sort.field,
+                    sort: sort.sort,
+                  }))
                 : [], // Only send sort for server-side mode
             filterModel:
               bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
@@ -3352,21 +3355,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-                bsCustomFilters &&
-                bsCustomFilters.length > 0
+              bsCustomFilters &&
+              bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields
             userLookup: bsUserLookup
               ? {
-                table: bsUserLookup.table || "sec.t_com_user",
-                idField: bsUserLookup.idField || "user_id",
-                displayFields: bsUserLookup.displayFields || [
-                  "first_name",
-                  "last_name",
-                ],
-                separator: bsUserLookup.separator || " ",
-              }
+                  table: bsUserLookup.table || "sec.t_com_user",
+                  idField: bsUserLookup.idField || "user_id",
+                  displayFields: bsUserLookup.displayFields || [
+                    "first_name",
+                    "last_name",
+                  ],
+                  separator: bsUserLookup.separator || " ",
+                }
               : undefined,
             userId: getUserId(),
           };
@@ -3384,7 +3387,7 @@ const BSDataGrid = forwardRef(
               "bsKeyId:",
               bsKeyId,
               "pkFromMetadata:",
-              pkFromMetadata
+              pkFromMetadata,
             );
 
             let processedRows = (result.data || []).map((row, index) => {
@@ -3414,7 +3417,7 @@ const BSDataGrid = forwardRef(
             ) {
               processedRows = applyCustomFilters(
                 processedRows,
-                bsCustomFilters
+                bsCustomFilters,
               );
             }
 
@@ -3433,7 +3436,7 @@ const BSDataGrid = forwardRef(
             setRowCount(
               bsFilterMode === "client"
                 ? processedRows.length
-                : result.rowCount || processedRows.length
+                : result.rowCount || processedRows.length,
             );
 
             // Call onDataBind callback with the loaded data
@@ -3443,7 +3446,7 @@ const BSDataGrid = forwardRef(
               } catch (err) {
                 Logger.error(
                   "❌ Error in Enhanced SP onDataBind callback:",
-                  err
+                  err,
                 );
               }
             }
@@ -3470,7 +3473,7 @@ const BSDataGrid = forwardRef(
               setEnhancedMetadata(enhancedMetadataStructure);
             } else {
               Logger.warn(
-                "⚠️ Enhanced SP did not return metadata - generating fallback from data"
+                "⚠️ Enhanced SP did not return metadata - generating fallback from data",
               );
 
               // Generate fallback metadata from data structure
@@ -3548,13 +3551,13 @@ const BSDataGrid = forwardRef(
             }
           } else {
             throw new Error(
-              result.message || "Stored procedure execution failed"
+              result.message || "Stored procedure execution failed",
             );
           }
         } catch (err) {
           Logger.error(
             "❌ Failed to load Enhanced Stored Procedure data:",
-            err
+            err,
           );
           setError(err.message || "Failed to load stored procedure data");
           setRows([]);
@@ -3580,12 +3583,12 @@ const BSDataGrid = forwardRef(
         applyCustomFilters,
         bsCustomFilters,
         bsUserLookup,
-      ]
+      ],
     );
 
     // Store loadData reference to use in useEffect without dependency
     const loadDataRef = useRef(
-      bsStoredProcedure ? loadStoredProcedureData : loadData
+      bsStoredProcedure ? loadStoredProcedureData : loadData,
     );
     loadDataRef.current = bsStoredProcedure
       ? loadStoredProcedureData
@@ -3604,7 +3607,7 @@ const BSDataGrid = forwardRef(
             paginationModel,
             sortModel,
             filterModel,
-            forceRefresh
+            forceRefresh,
           );
         } else {
           await loadData(forceRefresh);
@@ -3617,7 +3620,7 @@ const BSDataGrid = forwardRef(
         paginationModel,
         sortModel,
         filterModel,
-      ]
+      ],
     );
 
     // Expose refresh methods via ref
@@ -3627,7 +3630,7 @@ const BSDataGrid = forwardRef(
         refreshData,
         forceRefresh: () => refreshData(true),
       }),
-      [refreshData]
+      [refreshData],
     );
 
     // Track if initial load has been done
@@ -3720,7 +3723,7 @@ const BSDataGrid = forwardRef(
           notifyFilteredDataChange();
         }, 150);
       },
-      [notifyFilteredDataChange]
+      [notifyFilteredDataChange],
     );
 
     // Helper: Format column name for display with multi-language support
@@ -3733,8 +3736,9 @@ const BSDataGrid = forwardRef(
           const resourceText = getResource(resourceData, columnName);
           // Debug: Log resource lookup
           Logger.log(
-            `🌐 formatColumnName: columnName="${columnName}", resourceText="${resourceText}", resourceDataLength=${resourceData?.length || 0
-            }`
+            `🌐 formatColumnName: columnName="${columnName}", resourceText="${resourceText}", resourceDataLength=${
+              resourceData?.length || 0
+            }`,
           );
           // If resource found and different from original, use it
           if (resourceText && resourceText !== columnName) {
@@ -3742,7 +3746,7 @@ const BSDataGrid = forwardRef(
           }
         } else {
           Logger.log(
-            `🌐 formatColumnName: No resourceData available for "${columnName}"`
+            `🌐 formatColumnName: No resourceData available for "${columnName}"`,
           );
         }
 
@@ -3754,7 +3758,8 @@ const BSDataGrid = forwardRef(
             // Convert to title case (first letter of each word capitalized)
             .replace(
               /\w\S*/g,
-              (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+              (txt) =>
+                txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(),
             )
             // Handle special cases for common abbreviations
             .replace(/\bId\b/g, "ID")
@@ -3765,7 +3770,7 @@ const BSDataGrid = forwardRef(
             .replace(/\bXml\b/g, "XML")
         );
       },
-      [resourceData, getResource]
+      [resourceData, getResource],
     );
 
     // Helper: Get column width based on data type
@@ -3871,13 +3876,13 @@ const BSDataGrid = forwardRef(
             case "time":
               return new Date(`1970-01-01T${value}`).toLocaleTimeString(
                 formatOptions.localeString,
-                formatOptions.timeOptions
+                formatOptions.timeOptions,
               );
             case "money":
             case "decimal":
               return Number(value).toLocaleString(
                 formatOptions.localeString,
-                formatOptions.numberOptions
+                formatOptions.numberOptions,
               );
             default:
               return String(value);
@@ -3890,13 +3895,13 @@ const BSDataGrid = forwardRef(
               dataType,
               effectiveLocale,
               error: error.message,
-            }
+            },
           );
           // Fallback to simple string conversion
           return String(value);
         }
       },
-      [getEffectiveLocale, getLocaleFormatOptions, formatDateCustom]
+      [getEffectiveLocale, getLocaleFormatOptions, formatDateCustom],
     );
 
     // Helper: Check if field should be shown in form
@@ -3930,7 +3935,7 @@ const BSDataGrid = forwardRef(
         if (dialogMode === "add") {
           // Check if this field is in the primaryKeys array from metadata (case-insensitive)
           const isPrimaryKey = metadata?.primaryKeys?.some(
-            (pk) => pk.toLowerCase() === columnName.toLowerCase()
+            (pk) => pk.toLowerCase() === columnName.toLowerCase(),
           );
 
           if (isPrimaryKey) {
@@ -3964,7 +3969,7 @@ const BSDataGrid = forwardRef(
         } else if (dialogMode === "edit") {
           // Check if this field is in the primaryKeys array from metadata (case-insensitive)
           const isPrimaryKey = metadata?.primaryKeys?.some(
-            (pk) => pk.toLowerCase() === columnName.toLowerCase()
+            (pk) => pk.toLowerCase() === columnName.toLowerCase(),
           );
 
           if (isPrimaryKey) {
@@ -4009,7 +4014,7 @@ const BSDataGrid = forwardRef(
 
         return true;
       },
-      [dialogMode, metadata?.primaryKeys, bsKeyId]
+      [dialogMode, metadata?.primaryKeys, bsKeyId],
     );
 
     // Helper: Check if field is boolean type (is_active or any field starting with is_)
@@ -4119,7 +4124,7 @@ const BSDataGrid = forwardRef(
 
         // Check for FK constraint error on DELETE (with optional prefix like "Error deleting record: ")
         const fkDeleteMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?The DELETE statement conflicted with the REFERENCE constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i
+          /(?:Error\s+\w+\s+record:\s*)?The DELETE statement conflicted with the REFERENCE constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i,
         );
 
         if (fkDeleteMatch) {
@@ -4138,7 +4143,7 @@ const BSDataGrid = forwardRef(
 
         // Check for FK constraint error on INSERT/UPDATE
         const fkInsertMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?The INSERT statement conflicted with the FOREIGN KEY constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i
+          /(?:Error\s+\w+\s+record:\s*)?The INSERT statement conflicted with the FOREIGN KEY constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i,
         );
 
         if (fkInsertMatch) {
@@ -4157,7 +4162,7 @@ const BSDataGrid = forwardRef(
 
         // Check for FK constraint error on UPDATE
         const fkUpdateMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?The UPDATE statement conflicted with the FOREIGN KEY constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i
+          /(?:Error\s+\w+\s+record:\s*)?The UPDATE statement conflicted with the FOREIGN KEY constraint "([^"]+)".*table "([^"]+)".*column '([^']+)'/i,
         );
 
         if (fkUpdateMatch) {
@@ -4176,7 +4181,7 @@ const BSDataGrid = forwardRef(
 
         // Check for duplicate key / unique constraint violation
         const duplicateKeyMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?(duplicate key|unique constraint|primary key violation|Cannot insert duplicate key|Violation of UNIQUE KEY constraint|Violation of PRIMARY KEY constraint)/i
+          /(?:Error\s+\w+\s+record:\s*)?(duplicate key|unique constraint|primary key violation|Cannot insert duplicate key|Violation of UNIQUE KEY constraint|Violation of PRIMARY KEY constraint)/i,
         );
 
         if (duplicateKeyMatch) {
@@ -4195,7 +4200,7 @@ const BSDataGrid = forwardRef(
 
         // Check for NOT NULL constraint violation
         const notNullMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?Cannot insert the value NULL into column '([^']+)'/i
+          /(?:Error\s+\w+\s+record:\s*)?Cannot insert the value NULL into column '([^']+)'/i,
         );
 
         if (notNullMatch) {
@@ -4216,7 +4221,7 @@ const BSDataGrid = forwardRef(
 
         // Check for data type/conversion errors
         const conversionMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?(Conversion failed|Error converting data type)/i
+          /(?:Error\s+\w+\s+record:\s*)?(Conversion failed|Error converting data type)/i,
         );
 
         if (conversionMatch) {
@@ -4235,7 +4240,7 @@ const BSDataGrid = forwardRef(
 
         // Check for string/binary data truncation
         const truncationMatch = errorMessage.match(
-          /(?:Error\s+\w+\s+record:\s*)?(String or binary data would be truncated)/i
+          /(?:Error\s+\w+\s+record:\s*)?(String or binary data would be truncated)/i,
         );
 
         if (truncationMatch) {
@@ -4270,7 +4275,7 @@ const BSDataGrid = forwardRef(
           title: defaultTitle,
         };
       },
-      [getEffectiveLocale]
+      [getEffectiveLocale],
     );
 
     // Helper: Show error with collapsible details (for INSERT, UPDATE, DELETE)
@@ -4289,9 +4294,10 @@ const BSDataGrid = forwardRef(
         htmlContent += `
           <details style="text-align: left; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
             <summary style="cursor: pointer; padding: 8px 12px; background: #f5f5f5; font-size: 13px; color: #666; user-select: none;">
-              ${currentLocaleText.bsViewExceptionDetails ||
-          "View Exception Details"
-          }
+              ${
+                currentLocaleText.bsViewExceptionDetails ||
+                "View Exception Details"
+              }
             </summary>
             <div style="padding: 12px; background: #fafafa; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; color: #333;">
 ${errorInfo.originalError}
@@ -4307,7 +4313,7 @@ ${errorInfo.originalError}
           confirmButtonText: currentLocaleText.bsOk || "OK",
         });
       },
-      [getEffectiveLocale]
+      [getEffectiveLocale],
     );
 
     // Helper: Get effective primary key (from metadata or detected from data)
@@ -4347,7 +4353,7 @@ ${errorInfo.originalError}
         metadata?.primaryKeys,
         bsStoredProcedure,
         detectPrimaryKeyFromData,
-      ]
+      ],
     );
 
     // Initialize form data based on metadata
@@ -4365,7 +4371,7 @@ ${errorInfo.originalError}
           const allPrimaryKeys = [
             ...metadataPrimaryKeys,
             ...(detectedPrimaryKey &&
-              !metadataPrimaryKeys.includes(detectedPrimaryKey)
+            !metadataPrimaryKeys.includes(detectedPrimaryKey)
               ? [detectedPrimaryKey]
               : []),
           ];
@@ -4416,7 +4422,7 @@ ${errorInfo.originalError}
               // Check if field should be excluded (case-insensitive)
               return !excludedFields.some(
                 (excludedField) =>
-                  key.toLowerCase() === excludedField.toLowerCase()
+                  key.toLowerCase() === excludedField.toLowerCase(),
               );
             })
             .forEach((key) => {
@@ -4437,8 +4443,8 @@ ${errorInfo.originalError}
               c.dataType,
               c.isIdentity,
               c.hasDefault,
-              c.defaultValue
-            )
+              c.defaultValue,
+            ),
           )
           .forEach((c) => {
             if (existing && existing[c.columnName] !== undefined) {
@@ -4461,7 +4467,7 @@ ${errorInfo.originalError}
                   init[c.columnName] = options[0].value;
                   bsLog(
                     `🎯 Auto-selected single option for ${c.columnName}:`,
-                    options[0].value
+                    options[0].value,
                   );
                 } else {
                   init[c.columnName] = ""; // Empty string matches the empty option in dropdown
@@ -4517,7 +4523,7 @@ ${errorInfo.originalError}
             if (colDef.field && colDef.defaultValue !== undefined) {
               // Find matching field in init (case-insensitive)
               const matchingField = Object.keys(init).find(
-                (key) => key.toLowerCase() === colDef.field.toLowerCase()
+                (key) => key.toLowerCase() === colDef.field.toLowerCase(),
               );
               const fieldToUse = matchingField || colDef.field;
 
@@ -4530,7 +4536,7 @@ ${errorInfo.originalError}
                 init[fieldToUse] = colDef.defaultValue;
                 bsLog(
                   `🎯 Applied defaultValue for ${fieldToUse}:`,
-                  colDef.defaultValue
+                  colDef.defaultValue,
                 );
               }
             }
@@ -4549,7 +4555,7 @@ ${errorInfo.originalError}
         detectPrimaryKeyFromData,
         bsDefaultFormValues,
         bsColumnDefs,
-      ]
+      ],
     );
 
     // Open Add dialog or delegate to external handler
@@ -4564,7 +4570,7 @@ ${errorInfo.originalError}
         BSAlertSwal2.show(
           "warning",
           `Offline mode: Cannot create form without metadata.\nPlease connect to backend server.`,
-          { title: `Add Record for ${tableName}` }
+          { title: `Add Record for ${tableName}` },
         );
         return;
       }
@@ -4583,7 +4589,7 @@ ${errorInfo.originalError}
         BSAlertSwal2.show(
           "warning",
           "No data available to generate form fields.\nPlease load data first or define bsColumnDefs or bsCols.",
-          { title: "Add Record" }
+          { title: "Add Record" },
         );
         return;
       }
@@ -4591,7 +4597,7 @@ ${errorInfo.originalError}
       // Inline bulk add mode
       bsLog(
         "🔍 handleAddClick - effectiveBulkAddInline:",
-        effectiveBulkAddInline
+        effectiveBulkAddInline,
       );
       if (effectiveBulkAddInline) {
         const id = `new-${newRowIdCounter.current++}`;
@@ -4651,7 +4657,7 @@ ${errorInfo.originalError}
         BSAlertSwal2.show(
           "warning",
           `Offline mode: Cannot create form without metadata.\nPlease connect to backend server.`,
-          { title: `Add Record for ${tableName}` }
+          { title: `Add Record for ${tableName}` },
         );
         return;
       }
@@ -4669,7 +4675,7 @@ ${errorInfo.originalError}
         BSAlertSwal2.show(
           "warning",
           "No data available to generate form fields.\nPlease load data first or define bsColumnDefs or bsCols.",
-          { title: "Add Record" }
+          { title: "Add Record" },
         );
         return;
       }
@@ -4712,7 +4718,7 @@ ${errorInfo.originalError}
           col.column_name !== "__row_number__" &&
           col.column_name !== "actions" &&
           !col.is_identity &&
-          !col.is_computed
+          !col.is_computed,
       );
       const firstEditableField = editableColumns[0]?.column_name;
 
@@ -4821,7 +4827,7 @@ ${errorInfo.originalError}
         bsChildGrids,
         bsPrimaryKeys,
         metadata?.primaryKeys,
-      ]
+      ],
     );
 
     // Handle Delete (external or built-in)
@@ -4836,7 +4842,7 @@ ${errorInfo.originalError}
           "id:",
           id,
           "metadata.primaryKeys:",
-          metadata?.primaryKeys
+          metadata?.primaryKeys,
         );
         if (!id) {
           Logger.error("❌ No primary key found for deletion", {
@@ -4868,7 +4874,7 @@ ${errorInfo.originalError}
             confirmButtonText:
               currentLocaleText.bsYesDelete || "Yes, delete it!",
             cancelButtonText: currentLocaleText.bsCancel || "Cancel",
-          }
+          },
         );
 
         if (isConfirmed) {
@@ -4887,7 +4893,7 @@ ${errorInfo.originalError}
                     .map(
                       (word) =>
                         word.charAt(0).toUpperCase() +
-                        word.slice(1).toLowerCase()
+                        word.slice(1).toLowerCase(),
                     )
                     .join("");
                 };
@@ -4923,9 +4929,8 @@ ${errorInfo.originalError}
                   userId: getUserId(),
                 };
 
-                const result = await executeEnhancedStoredProcedure(
-                  deleteRequest
-                );
+                const result =
+                  await executeEnhancedStoredProcedure(deleteRequest);
 
                 if (result.success) {
                   // Show success notification if message is not empty
@@ -4951,7 +4956,7 @@ ${errorInfo.originalError}
             Logger.error("❌ Failed to delete record:", err);
             const errorInfo = formatSqlErrorMessage(
               err.message || "Failed to delete record",
-              "delete"
+              "delete",
             );
             showErrorWithDetails(errorInfo);
           }
@@ -4975,7 +4980,7 @@ ${errorInfo.originalError}
         formatSqlErrorMessage,
         showErrorWithDetails,
         metadata?.primaryKeys,
-      ]
+      ],
     );
 
     // Validate unique fields against database
@@ -5033,7 +5038,7 @@ ${errorInfo.originalError}
               // In edit mode, exclude current record from check
               if (mode === "edit" && currentPrimaryKeyValue != null) {
                 whereCondition += ` AND ${primaryKeyField} <> '${String(
-                  currentPrimaryKeyValue
+                  currentPrimaryKeyValue,
                 ).replace(/'/g, "''")}'`;
               }
 
@@ -5053,7 +5058,7 @@ ${errorInfo.originalError}
               if (existingCount > 0) {
                 // Filter out hidden columns from display
                 const visibleFields = fields.filter(
-                  (f) => !bsHiddenColumns?.includes(f)
+                  (f) => !bsHiddenColumns?.includes(f),
                 );
                 const displayNames = visibleFields
                   .map((f) => formatColumnName(f))
@@ -5070,7 +5075,7 @@ ${errorInfo.originalError}
               Logger.error(
                 "❌ Error checking composite unique key:",
                 fields,
-                err
+                err,
               );
             }
           } else {
@@ -5094,7 +5099,7 @@ ${errorInfo.originalError}
                 `🔍 Unique validation - field: ${fieldName}, value:`,
                 value,
                 `type: ${typeof value}`,
-                `isDate: ${value instanceof Date}`
+                `isDate: ${value instanceof Date}`,
               );
 
               // Helper function to format date to YYYY-MM-DD using LOCAL timezone (not UTC)
@@ -5119,7 +5124,7 @@ ${errorInfo.originalError}
                 const isDateString = datePatterns.some((p) => p.test(value));
 
                 bsLog(
-                  `🔍 String value patterns check - isDateString: ${isDateString}`
+                  `🔍 String value patterns check - isDateString: ${isDateString}`,
                 );
 
                 if (isDateString) {
@@ -5134,14 +5139,14 @@ ${errorInfo.originalError}
 
               // Also check column metadata for date type
               const columnMeta = metadata?.columns?.find(
-                (c) => c.columnName === fieldName
+                (c) => c.columnName === fieldName,
               );
               const isDateTypeFromMeta = columnMeta?.dataType
                 ?.toLowerCase()
                 ?.includes("date");
 
               bsLog(
-                `🔍 Column meta - dataType: ${columnMeta?.dataType}, isDateType: ${isDateTypeFromMeta}`
+                `🔍 Column meta - dataType: ${columnMeta?.dataType}, isDateType: ${isDateTypeFromMeta}`,
               );
 
               // If column is date type but value wasn't reformatted, try to reformat now
@@ -5150,7 +5155,7 @@ ${errorInfo.originalError}
                 if (!isNaN(parsedDate.getTime())) {
                   formattedValue = formatDateToLocal(parsedDate);
                   bsLog(
-                    `🔍 Reformatted based on column meta: ${formattedValue}`
+                    `🔍 Reformatted based on column meta: ${formattedValue}`,
                   );
                 }
               }
@@ -5163,11 +5168,11 @@ ${errorInfo.originalError}
               if (isDateType) {
                 // Use CAST/CONVERT for date comparison to handle time component
                 whereCondition = `CAST(${fieldName} AS DATE) = '${String(
-                  formattedValue
+                  formattedValue,
                 ).replace(/'/g, "''")}'`;
               } else {
                 whereCondition = `${fieldName} = '${String(
-                  formattedValue
+                  formattedValue,
                 ).replace(/'/g, "''")}'`;
               }
 
@@ -5176,7 +5181,7 @@ ${errorInfo.originalError}
               // In edit mode, exclude current record from check
               if (mode === "edit" && currentPrimaryKeyValue != null) {
                 whereCondition += ` AND ${primaryKeyField} <> '${String(
-                  currentPrimaryKeyValue
+                  currentPrimaryKeyValue,
                 ).replace(/'/g, "''")}'`;
               }
 
@@ -5222,7 +5227,7 @@ ${errorInfo.originalError}
         formatColumnName,
         bsDefaultFormValues,
         bsHiddenColumns,
-      ]
+      ],
     );
 
     // Validate form data against metadata constraints and bsColumnDefs
@@ -5262,7 +5267,7 @@ ${errorInfo.originalError}
                 dataType,
                 column.isIdentity,
                 column.hasDefault,
-                column.defaultValue
+                column.defaultValue,
               )
             ) {
               return;
@@ -5274,9 +5279,10 @@ ${errorInfo.originalError}
               if (stringValue.length > maxLength) {
                 errors.push(
                   `${formatColumnName(
-                    columnName
-                  )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
-                  })`
+                    columnName,
+                  )}: Maximum ${maxLength} characters allowed (current: ${
+                    stringValue.length
+                  })`,
                 );
               }
             }
@@ -5290,7 +5296,7 @@ ${errorInfo.originalError}
               (value == null || value === "")
             ) {
               errors.push(
-                `${formatColumnName(columnName)}: This field is required`
+                `${formatColumnName(columnName)}: This field is required`,
               );
             }
           });
@@ -5301,7 +5307,7 @@ ${errorInfo.originalError}
           errors,
         };
       },
-      [metadata, columnDefsConfig, isFieldInForm, formatColumnName]
+      [metadata, columnDefsConfig, isFieldInForm, formatColumnName],
     );
 
     // Save (create/update) from dialog
@@ -5327,7 +5333,7 @@ ${errorInfo.originalError}
         const uniqueValidation = await validateUniqueFields(
           formData,
           dialogMode,
-          currentPrimaryKeyValue
+          currentPrimaryKeyValue,
         );
         if (!uniqueValidation.isValid) {
           BSAlertSwal2.show("error", "", {
@@ -5343,7 +5349,7 @@ ${errorInfo.originalError}
           // Sanitize date values for SQL Server compatibility
           const saveData = sanitizeDataForApi(
             { ...formData },
-            metadata?.columns || []
+            metadata?.columns || [],
           );
 
           // Add auto-generated values for fields not shown in form
@@ -5375,7 +5381,7 @@ ${errorInfo.originalError}
                 .split("_")
                 .map(
                   (word) =>
-                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
                 )
                 .join("");
             };
@@ -5477,7 +5483,7 @@ ${errorInfo.originalError}
           // Sanitize date values for SQL Server compatibility
           const sanitizedFormData = sanitizeDataForApi(
             formData,
-            metadata?.columns || []
+            metadata?.columns || [],
           );
 
           ///
@@ -5488,7 +5494,7 @@ ${errorInfo.originalError}
                 .split("_")
                 .map(
                   (word) =>
-                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
                 )
                 .join("");
             };
@@ -5519,7 +5525,7 @@ ${errorInfo.originalError}
                     : "id device",
                   compatibilityNote:
                     "Some devices send @id instead of @part_id",
-                }
+                },
               );
 
               // Add both variations for maximum compatibility
@@ -5564,7 +5570,7 @@ ${errorInfo.originalError}
 
             bsLog(
               "✅ Record updated via Enhanced Stored Procedure:",
-              result.message
+              result.message,
             );
           } else {
             await updateRecord(id, sanitizedFormData, bsPreObj);
@@ -5630,7 +5636,7 @@ ${errorInfo.originalError}
 
           if (Object.keys(pkValues).length === 0) {
             Logger.warn(
-              "⚠️ Could not extract PK values. Child grids may not work correctly."
+              "⚠️ Could not extract PK values. Child grids may not work correctly.",
             );
           }
 
@@ -5646,7 +5652,7 @@ ${errorInfo.originalError}
 
           bsLog(
             "🔗 Hierarchical Add - Parent saved, switched to edit mode, PK values:",
-            pkValues
+            pkValues,
           );
 
           // Don't close dialog - show child grids
@@ -5767,7 +5773,7 @@ ${errorInfo.originalError}
         // Fallback to comboBoxValueOptions if no lookup data found
         if (!displayText && currentValueOptions[field]) {
           const option = currentValueOptions[field].find(
-            (opt) => opt.value === value || String(opt.value) === String(value)
+            (opt) => opt.value === value || String(opt.value) === String(value),
           );
           if (option) {
             displayText = option.label;
@@ -5777,7 +5783,7 @@ ${errorInfo.originalError}
         // Fallback to static valueOptions if provided in config
         if (!displayText && comboConfig.valueOptions) {
           const option = comboConfig.valueOptions.find(
-            (opt) => opt.value === value || String(opt.value) === String(value)
+            (opt) => opt.value === value || String(opt.value) === String(value),
           );
           if (option) {
             displayText = option.label;
@@ -5796,7 +5802,7 @@ ${errorInfo.originalError}
           </Box>
         );
       },
-      [] // No dependencies - uses refs instead to get latest values
+      [], // No dependencies - uses refs instead to get latest values
     );
 
     // Helper: Get ComboBox value options for editing (uses pre-fetched data)
@@ -5816,7 +5822,7 @@ ${errorInfo.originalError}
           ? [emptyOption, ...staticOptions]
           : [emptyOption];
       },
-      [comboBoxValueOptions]
+      [comboBoxValueOptions],
     );
 
     // Custom Edit Cell for ComboBox columns - reads options from ref at edit time
@@ -5863,7 +5869,7 @@ ${errorInfo.originalError}
           </Select>
         );
       },
-      [] // No dependencies - always read from ref
+      [], // No dependencies - always read from ref
     );
 
     // Helper: Get is_active dropdown options
@@ -5933,7 +5939,7 @@ ${errorInfo.originalError}
 
         return false;
       },
-      [metadata?.primaryKeys, parsedCols]
+      [metadata?.primaryKeys, parsedCols],
     );
 
     // Render form fields from metadata
@@ -6037,14 +6043,14 @@ ${errorInfo.originalError}
             // Check if field should be excluded (case-insensitive)
             const isExcluded = excludedFields.some(
               (excludedField) =>
-                key.toLowerCase() === excludedField.toLowerCase()
+                key.toLowerCase() === excludedField.toLowerCase(),
             );
 
             if (isExcluded) {
               bsLog(
                 `🚫 Excluding field from form (${dialogMode} mode): ${key} (matched: ${excludedFields.find(
-                  (f) => f.toLowerCase() === key.toLowerCase()
-                )})`
+                  (f) => f.toLowerCase() === key.toLowerCase(),
+                )})`,
               );
             } else {
               bsLog(`✅ Including field in form (${dialogMode} mode): ${key}`);
@@ -6132,7 +6138,7 @@ ${errorInfo.originalError}
           c.dataType,
           c.isIdentity,
           c.hasDefault,
-          c.defaultValue
+          c.defaultValue,
         );
       });
 
@@ -6141,12 +6147,12 @@ ${errorInfo.originalError}
       if (comboBoxConfig && Object.keys(comboBoxConfig).length > 0) {
         Object.keys(comboBoxConfig).forEach((comboFieldName) => {
           const alreadyIncluded = formColumns.some(
-            (c) => c.columnName === comboFieldName
+            (c) => c.columnName === comboFieldName,
           );
           if (!alreadyIncluded) {
             // Find the column in metadata
             const comboColumn = metadata?.columns.find(
-              (c) => c.columnName === comboFieldName
+              (c) => c.columnName === comboFieldName,
             );
             if (comboColumn) {
               // Check if it should be in form (excluding bsCols logic)
@@ -6155,7 +6161,7 @@ ${errorInfo.originalError}
                 comboColumn.dataType,
                 comboColumn.isIdentity,
                 comboColumn.hasDefault,
-                comboColumn.defaultValue
+                comboColumn.defaultValue,
               );
               if (shouldInclude) {
                 formColumns.push(comboColumn);
@@ -6505,8 +6511,8 @@ ${errorInfo.originalError}
             inputProps={{
               ...(maxLength > 0 &&
                 (inputType === "text" || multiline) && {
-                maxLength: maxLength,
-              }),
+                  maxLength: maxLength,
+                }),
               ...buildNumberInputProps(),
             }}
             error={maxLength > 0 && String(displayVal).length > maxLength}
@@ -6544,7 +6550,7 @@ ${errorInfo.originalError}
 
         // Find unassigned fields
         const unassignedFields = formFields.filter(
-          (field) => field && field.key && !assignedColumns.has(field.key)
+          (field) => field && field.key && !assignedColumns.has(field.key),
         );
 
         return (
@@ -6658,7 +6664,7 @@ ${errorInfo.originalError}
               return change.originalData;
             }
             return row;
-          })
+          }),
         );
 
         bsLog("✅ Row restored successfully:", {
@@ -6666,7 +6672,7 @@ ${errorInfo.originalError}
           remainingChanges,
         });
       },
-      [getEffectivePrimaryKey]
+      [getEffectivePrimaryKey],
     );
 
     // Inline editing handlers for bsBulkAddInline functionality
@@ -6697,7 +6703,7 @@ ${errorInfo.originalError}
           // Block all other reasons (focus out, enter, tab, etc.)
           event.defaultMuiPrevented = true;
           bsLog(
-            `🚫 Prevented auto-exit for new row: ${rowId}, reason: ${params.reason}`
+            `🚫 Prevented auto-exit for new row: ${rowId}, reason: ${params.reason}`,
           );
           return;
         }
@@ -6707,7 +6713,7 @@ ${errorInfo.originalError}
           event.defaultMuiPrevented = true;
         }
       },
-      [setRows, setRowModesModel]
+      [setRows, setRowModesModel],
     );
 
     // Bulk Edit Mode row-level handlers (Save/Cancel per row)
@@ -6718,7 +6724,7 @@ ${errorInfo.originalError}
           [id]: { mode: GridRowModes.Edit },
         }));
       },
-      [setRowModesModel]
+      [setRowModesModel],
     );
 
     const handleBulkRowSaveClick = useCallback(
@@ -6729,7 +6735,7 @@ ${errorInfo.originalError}
           [id]: { mode: GridRowModes.View },
         }));
       },
-      [setRowModesModel]
+      [setRowModesModel],
     );
 
     const handleBulkRowCancelClick = useCallback(
@@ -6749,7 +6755,7 @@ ${errorInfo.originalError}
         const isNewRow =
           editedRow &&
           String(
-            editedRow[getEffectivePrimaryKey()] || editedRow.id
+            editedRow[getEffectivePrimaryKey()] || editedRow.id,
           ).startsWith("new-");
 
         if (isNewRow) {
@@ -6805,7 +6811,7 @@ ${errorInfo.originalError}
           }
         }
       },
-      [rows, getEffectivePrimaryKey, setRowModesModel]
+      [rows, getEffectivePrimaryKey, setRowModesModel],
     );
 
     const handleInlineEditClick = useCallback(
@@ -6829,7 +6835,7 @@ ${errorInfo.originalError}
         effectiveBulkEdit,
         bulkEditMode,
         setRowModesModel,
-      ]
+      ],
     );
 
     const handleInlineSaveClick = useCallback(
@@ -6839,7 +6845,7 @@ ${errorInfo.originalError}
           [id]: { mode: GridRowModes.View },
         }));
       },
-      [setRowModesModel]
+      [setRowModesModel],
     );
 
     const handleInlineDeleteClick = useCallback(
@@ -6879,13 +6885,13 @@ ${errorInfo.originalError}
         // Try multiple matching strategies:
         // 1. Match by row.id (which is set to primaryKey value in loadStoredProcedureData)
         let rowToDelete = currentRows.find(
-          (row) => String(row.id) === String(id)
+          (row) => String(row.id) === String(id),
         );
 
         // 2. Match by primary key field if different from id
         if (!rowToDelete && primaryKey && primaryKey !== "id") {
           rowToDelete = currentRows.find(
-            (row) => String(row[primaryKey]) === String(id)
+            (row) => String(row[primaryKey]) === String(id),
           );
         }
 
@@ -6905,7 +6911,7 @@ ${errorInfo.originalError}
             "❌ Could not find row with id:",
             id,
             "primaryKey:",
-            primaryKey
+            primaryKey,
           );
           return;
         }
@@ -6920,8 +6926,8 @@ ${errorInfo.originalError}
             oldRows.filter(
               (row) =>
                 String(row[primaryKey]) !== String(id) &&
-                String(row.id) !== String(id)
-            )
+                String(row.id) !== String(id),
+            ),
           );
           setRowModesModel((oldModel) => {
             const newModel = { ...oldModel };
@@ -6941,7 +6947,7 @@ ${errorInfo.originalError}
         bsKeyId,
         apiRef,
         setRowModesModel,
-      ]
+      ],
     );
 
     const handleInlineCancelClick = useCallback(
@@ -6997,10 +7003,10 @@ ${errorInfo.originalError}
                       updatedRow[fieldName] = fieldData.value;
                       bsLog(
                         `📝 Preserved edit value for ${rowId}.${fieldName}:`,
-                        fieldData.value
+                        fieldData.value,
                       );
                     }
-                  }
+                  },
                 );
                 return updatedRow;
               }
@@ -7040,7 +7046,7 @@ ${errorInfo.originalError}
               const hasRemainingNewRows = remainingRows.some(
                 (row) =>
                   row.isNew === true ||
-                  (row.isNew !== false && String(row.id).startsWith("new-"))
+                  (row.isNew !== false && String(row.id).startsWith("new-")),
               );
               const hasUnsavedEdits =
                 Object.keys(unsavedChangesRef.current).length > 0;
@@ -7062,7 +7068,7 @@ ${errorInfo.originalError}
                   setHasUnsavedChanges(false);
                   setRowModesModel({});
                   bsLog(
-                    "📝 Bulk edit mode disabled after cancel - no remaining new rows or unsaved changes"
+                    "📝 Bulk edit mode disabled after cancel - no remaining new rows or unsaved changes",
                   );
                 }, 0);
               }
@@ -7086,7 +7092,7 @@ ${errorInfo.originalError}
           }, 100);
         }
       },
-      [rows, apiRef, setRowModesModel]
+      [rows, apiRef, setRowModesModel],
     );
 
     const processRowUpdate = useCallback(
@@ -7131,7 +7137,7 @@ ${errorInfo.originalError}
             if (tempId && savedRowIdsRef.current.has(String(tempId))) {
               bsLog(
                 "⏭️ processRowUpdate skipped - row already saved in bulk:",
-                tempId
+                tempId,
               );
               savedRowIdsRef.current.delete(String(tempId));
               return { ...newRow, isNew: false };
@@ -7170,7 +7176,7 @@ ${errorInfo.originalError}
 
             if (metadata?.columns && Array.isArray(metadata?.columns)) {
               const validColumns = new Set(
-                metadata?.columns.map((col) => col.columnName)
+                metadata?.columns.map((col) => col.columnName),
               );
               Object.keys(cleanData).forEach((key) => {
                 if (!validColumns.has(key)) {
@@ -7216,9 +7222,9 @@ ${errorInfo.originalError}
             // This prevents losing data when user saves one row while other rows are still being edited
             const currentRows = apiRef.current?.getAllRowIds
               ? apiRef.current
-                .getAllRowIds()
-                .map((id) => apiRef.current.getRow(id))
-                .filter(Boolean)
+                  .getAllRowIds()
+                  .map((id) => apiRef.current.getRow(id))
+                  .filter(Boolean)
               : rows;
 
             // Get edit values from DataGrid internal state for other rows
@@ -7231,7 +7237,7 @@ ${errorInfo.originalError}
             const otherNewRows = currentRows
               .filter((row) => {
                 const rowId = String(
-                  row.id || row[getEffectivePrimaryKey()] || ""
+                  row.id || row[getEffectivePrimaryKey()] || "",
                 );
                 return (
                   (rowId.startsWith("new-") || row.isNew) &&
@@ -7249,7 +7255,7 @@ ${errorInfo.originalError}
                       if (fieldData && fieldData.value !== undefined) {
                         mergedRow[fieldName] = fieldData.value;
                       }
-                    }
+                    },
                   );
                   return mergedRow;
                 }
@@ -7273,7 +7279,7 @@ ${errorInfo.originalError}
 
             // Update the saved row in state immediately
             setRows((oldRows) =>
-              oldRows.map((row) => (row.id === newRow.id ? updatedRow : row))
+              oldRows.map((row) => (row.id === newRow.id ? updatedRow : row)),
             );
 
             // Only refresh if there are no other unsaved new rows
@@ -7312,7 +7318,7 @@ ${errorInfo.originalError}
                 setHasUnsavedChanges(false);
                 setRowModesModel({});
                 bsLog(
-                  "📝 Bulk edit mode disabled - no remaining changes after save"
+                  "📝 Bulk edit mode disabled - no remaining changes after save",
                 );
               }, 50);
             } else if (hasRemainingNewRows) {
@@ -7320,7 +7326,7 @@ ${errorInfo.originalError}
               setHasUnsavedChanges(true);
               bsLog(
                 "📝 Keeping bulk edit mode - still have new rows:",
-                otherNewRows.length
+                otherNewRows.length,
               );
             }
 
@@ -7364,7 +7370,7 @@ ${errorInfo.originalError}
                   return { ...row, ...newRow };
                 }
                 return row;
-              })
+              }),
             );
 
             // Return newRow to update the grid display but don't save to backend
@@ -7409,7 +7415,7 @@ ${errorInfo.originalError}
           // that are generated by user lookup but are not actual database columns
           if (metadata?.columns && Array.isArray(metadata?.columns)) {
             const validColumns = new Set(
-              metadata?.columns.map((col) => col.columnName)
+              metadata?.columns.map((col) => col.columnName),
             );
             Object.keys(cleanData).forEach((key) => {
               if (!validColumns.has(key)) {
@@ -7455,7 +7461,7 @@ ${errorInfo.originalError}
           };
 
           setRows((oldRows) =>
-            oldRows.map((row) => (row.id === newRow.id ? updatedRow : row))
+            oldRows.map((row) => (row.id === newRow.id ? updatedRow : row)),
           );
 
           bsLog("✅ Record updated successfully:", {
@@ -7474,7 +7480,7 @@ ${errorInfo.originalError}
           Logger.error("❌ Failed to save record:", error);
           const errorInfo = formatSqlErrorMessage(
             error.message || "Failed to save record",
-            "save"
+            "save",
           );
           showErrorWithDetails(errorInfo);
           return newRow; // Return unchanged to keep edit mode
@@ -7499,14 +7505,14 @@ ${errorInfo.originalError}
         bsKeyId,
         setRowModesModel,
         apiRef,
-      ]
+      ],
     );
 
     const handleRowModesModelChange = useCallback(
       (newRowModesModel) => {
         setRowModesModel(newRowModesModel);
       },
-      [setRowModesModel]
+      [setRowModesModel],
     );
 
     /**
@@ -7671,11 +7677,11 @@ ${errorInfo.originalError}
           const defaultFormat =
             customDef.type === "dateTime"
               ? DATETIME_FORMAT.toLowerCase()
-                .replace("dd", "dd")
-                .replace("mm", "MM")
+                  .replace("dd", "dd")
+                  .replace("mm", "MM")
               : DATE_FORMAT.toLowerCase()
-                .replace("dd", "dd")
-                .replace("mm", "MM");
+                  .replace("dd", "dd")
+                  .replace("mm", "MM");
           const dateFormat =
             customDef.dateFormat || customDef.dateTimeFormat || defaultFormat;
           const includeTime = customDef.type === "dateTime";
@@ -7907,7 +7913,7 @@ ${errorInfo.originalError}
                   hasPrimaryKey
                     ? localeText.bsAttachFiles || "Attach Files"
                     : localeText.bsSaveRecordFirst ||
-                    "Save record first to attach files"
+                      "Save record first to attach files"
                 }
                 arrow
               >
@@ -7957,7 +7963,7 @@ ${errorInfo.originalError}
         return mergedColumn;
       },
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      [columnDefsConfig, getEffectivePrimaryKey]
+      [columnDefsConfig, getEffectivePrimaryKey],
     );
 
     // Get localization object for DataGrid
@@ -8062,10 +8068,10 @@ ${errorInfo.originalError}
       const resourceContentKey =
         resourceData && Array.isArray(resourceData)
           ? resourceData.length +
-          "-" +
-          resourceData
-            .map((r) => `${r.resource_name || ""}:${r.resource_value || ""}`)
-            .join("|")
+            "-" +
+            resourceData
+              .map((r) => `${r.resource_name || ""}:${r.resource_value || ""}`)
+              .join("|")
           : "";
 
       return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}::${rowModesModelKey}::${localeKey}::${resourceContentKey}`;
@@ -8102,7 +8108,7 @@ ${errorInfo.originalError}
           ([k, v]) => ({
             column: k,
             count: v?.length || 0,
-          })
+          }),
         ),
       });
 
@@ -8112,7 +8118,7 @@ ${errorInfo.originalError}
       const hasComboBoxData =
         Object.keys(comboBoxValueOptions).length > 0 &&
         Object.values(comboBoxValueOptions).some(
-          (opts) => opts && opts.length > 0
+          (opts) => opts && opts.length > 0,
         );
       const shouldForceRebuild = hasComboBoxConfig && !hasComboBoxData;
 
@@ -8127,7 +8133,7 @@ ${errorInfo.originalError}
             column: k,
             optionsLength: v?.length || 0,
             sample: v?.slice?.(0, 2),
-          })
+          }),
         ),
       });
 
@@ -8251,7 +8257,7 @@ ${errorInfo.originalError}
                   typeof firstValue === "boolean" ||
                   (typeof firstValue === "string" &&
                     /^(true|false|yes|no|1|0)$/i.test(
-                      firstValue.toString().trim()
+                      firstValue.toString().trim(),
                     ))
                 ) {
                   columnType = "boolean";
@@ -8551,7 +8557,7 @@ ${errorInfo.originalError}
                                 : "rgba(237, 108, 2, 0.1)",
                           },
                         }}
-                      />
+                      />,
                     );
                   }
                   if (hasChanges) {
@@ -8577,7 +8583,7 @@ ${errorInfo.originalError}
                                 : "rgba(237, 108, 2, 0.1)",
                           },
                         }}
-                      />
+                      />,
                     );
                   }
                   return viewModeActions;
@@ -8621,7 +8627,7 @@ ${errorInfo.originalError}
             if (effectiveVisibleDelete) {
               bsLog(
                 "🗑️ Adding Delete button action - effectiveVisibleDelete:",
-                effectiveVisibleDelete
+                effectiveVisibleDelete,
               );
               actions.push((params) => {
                 // Get row-specific config
@@ -8700,15 +8706,16 @@ ${errorInfo.originalError}
               headerAlign: "center",
               renderCell: (params) => {
                 // Calculate row number based on pagination
-                const currentPage = params?.api?.state?.pagination?.paginationModel?.page || 0;
-                const pageSize = params?.api?.state?.pagination?.paginationModel?.pageSize || bsRowPerPage;
-
-
+                const currentPage =
+                  params?.api?.state?.pagination?.paginationModel?.page || 0;
+                const pageSize =
+                  params?.api?.state?.pagination?.paginationModel?.pageSize ||
+                  bsRowPerPage;
 
                 // Get the index of current row in the VISIBLE (paginated) rows
                 // getRowIndexRelativeToVisibleRows returns 0-19 for page of 20 items
                 const rowIndex = params.api.getRowIndexRelativeToVisibleRows(
-                  params.id
+                  params.id,
                 );
 
                 // Calculate absolute row number: page * pageSize + index + 1
@@ -8716,7 +8723,7 @@ ${errorInfo.originalError}
                 // Page 1: 1*20 + 0-19 + 1 = 21-40
                 // Page 2: 2*20 + 0-19 + 1 = 41-60
                 const rowNumber = currentPage * pageSize + rowIndex + 1;
-                console.log()
+                console.log();
                 return (
                   <Box
                     sx={{
@@ -8738,7 +8745,7 @@ ${errorInfo.originalError}
 
             // Insert row number column after actions column (or at the beginning if no actions)
             const actionsIndex = dataColumns.findIndex(
-              (col) => col.field === "actions"
+              (col) => col.field === "actions",
             );
             if (actionsIndex >= 0) {
               dataColumns.splice(actionsIndex + 1, 0, rowNumberCol);
@@ -8751,7 +8758,7 @@ ${errorInfo.originalError}
           return dataColumns;
         } else {
           Logger.warn(
-            "⚠️ Enhanced Stored Procedure: No data available to generate columns"
+            "⚠️ Enhanced Stored Procedure: No data available to generate columns",
           );
           return [];
         }
@@ -8765,7 +8772,7 @@ ${errorInfo.originalError}
             metadata: !!metadata,
             columns: metadata?.columns,
             isArray: Array.isArray(metadata?.columns),
-          }
+          },
         );
         return [];
       }
@@ -8774,7 +8781,7 @@ ${errorInfo.originalError}
         const dataColumns = metadata?.columns
           .filter(
             (col) =>
-              !col.isHidden && !isColumnHidden(col.columnName, col.dataType)
+              !col.isHidden && !isColumnHidden(col.columnName, col.dataType),
           ) // Skip hidden and GUID/audit columns
           .map((col) => {
             const columnName = col.columnName;
@@ -9166,7 +9173,7 @@ ${errorInfo.originalError}
                           : () => handleBulkRowEditClick(params.id)
                       }
                       color="inherit"
-                    />
+                    />,
                   );
                 }
 
@@ -9180,7 +9187,7 @@ ${errorInfo.originalError}
                       onClick={handleInlineDeleteClick(params.id)}
                       // sx={{ color: "error.main" }}
                       sx={{ color: "inherit" }}
-                    />
+                    />,
                   );
                 } else if (hasChanges) {
                   // For existing rows with changes, show Restore button
@@ -9197,7 +9204,7 @@ ${errorInfo.originalError}
                           color: "warning.dark",
                         },
                       }}
-                    />
+                    />,
                   );
                 }
 
@@ -9256,17 +9263,38 @@ ${errorInfo.originalError}
             effectiveVisibleDelete;
 
           if (hasActions && actions.length > 0) {
-            // Calculate actions column width based on mode
-            // Bulk edit mode needs more space for Save/Cancel/Delete or Edit/Restore/Delete buttons
-            const actionsWidth =
-              bulkEditMode || effectiveBulkAddInline ? 130 : 130;
+            // Calculate actions column width based on number of action buttons
+            // Each action button needs approximately 40-45px width
+            // Base padding: 10px, each button: ~42px
+            let actionButtonCount = 0;
+
+            if (bulkEditMode || effectiveBulkAddInline) {
+              // Bulk mode: maximum buttons shown is 2-3 (Edit/Save/Cancel/Delete/Restore)
+              // In edit mode: Save + Cancel = 2 buttons
+              // In view mode: Edit + Delete = 2 buttons (or Edit + Restore)
+              actionButtonCount = 2;
+              // If effectiveVisibleDelete is true in view mode, may have 2-3 buttons
+              if (effectiveVisibleDelete) {
+                actionButtonCount = 2;
+              }
+            } else {
+              // Normal mode: count actual buttons
+              if (effectiveVisibleView && onView) actionButtonCount++;
+              if (effectiveVisibleEdit) actionButtonCount++;
+              if (effectiveVisibleDelete) actionButtonCount++;
+            }
+
+            // Calculate width: base 10px + (42px per button) + buffer
+            // Minimum width: 50px (for 1 button)
+            // 1 button: 50px, 2 buttons: 90px, 3 buttons: 130px
+            const actionsWidth = Math.max(50, 10 + actionButtonCount * 42);
 
             dataColumns.unshift({
               field: "actions",
               type: "actions",
               headerName: "", // Hide column header
               width: actionsWidth,
-              maxWidth: actionsWidth, // Prevent column from expanding
+              minWidth: actionsWidth, // Ensure minimum width
               sortable: false,
               filterable: false,
               hideable: false,
@@ -9296,13 +9324,16 @@ ${errorInfo.originalError}
             headerAlign: "center",
             renderCell: (params) => {
               // Calculate row number based on pagination
-              const currentPage = params?.api?.state?.pagination?.paginationModel?.page || 0;
-              const pageSize = params?.api?.state?.pagination?.paginationModel?.pageSize || bsRowPerPage;
+              const currentPage =
+                params?.api?.state?.pagination?.paginationModel?.page || 0;
+              const pageSize =
+                params?.api?.state?.pagination?.paginationModel?.pageSize ||
+                bsRowPerPage;
 
               // Get the index of current row in the VISIBLE (paginated) rows
               // getRowIndexRelativeToVisibleRows returns 0-19 for page of 20 items
               const rowIndex = params.api.getRowIndexRelativeToVisibleRows(
-                params.id
+                params.id,
               );
               // Calculate absolute row number: page * pageSize + index + 1
               // Page 0: 0*20 + 0-19 + 1 = 1-20
@@ -9331,7 +9362,7 @@ ${errorInfo.originalError}
 
           // Insert row number column after actions column (or at the beginning if no actions)
           const actionsIndex = dataColumns.findIndex(
-            (col) => col.field === "actions"
+            (col) => col.field === "actions",
           );
           if (actionsIndex >= 0) {
             dataColumns.splice(actionsIndex + 1, 0, rowNumberCol);
@@ -9353,10 +9384,10 @@ ${errorInfo.originalError}
           // Separate special columns that should always be included
           const actionsCol = dataColumns.find((c) => c.field === "actions");
           const rowNumberCol = dataColumns.find(
-            (c) => c.field === "__rowNumber"
+            (c) => c.field === "__rowNumber",
           );
           const otherColumns = dataColumns.filter(
-            (c) => c.field !== "actions" && c.field !== "__rowNumber"
+            (c) => c.field !== "actions" && c.field !== "__rowNumber",
           );
 
           // Filter to only show specified columns, maintaining order
@@ -9397,7 +9428,7 @@ ${errorInfo.originalError}
             (col) =>
               col.field === "actions" ||
               col.field === "__rowNumber" ||
-              !bsHiddenColumns.includes(col.field)
+              !bsHiddenColumns.includes(col.field),
           );
           bsLog("🙈 Hidden columns applied:", {
             hiddenColumns: bsHiddenColumns,
@@ -9547,9 +9578,9 @@ ${errorInfo.originalError}
         if (rowConfig.showCheckbox === false) {
           bsLog("🚫 Hiding checkbox for row:", rowId);
           styles[`${rowSelector} .MuiDataGrid-cellCheckbox .MuiCheckbox-root`] =
-          {
-            visibility: "hidden",
-          };
+            {
+              visibility: "hidden",
+            };
         }
 
         // Apply background and text colors
@@ -9605,7 +9636,7 @@ ${errorInfo.originalError}
           typeof col === "object" &&
           typeof col.field === "string" &&
           col.field.length > 0 &&
-          typeof col.headerName === "string"
+          typeof col.headerName === "string",
       );
 
       // Cache the result
@@ -9618,7 +9649,7 @@ ${errorInfo.originalError}
     // Memoize filtered rows to prevent new array reference on every render
     const filteredRows = useMemo(() => {
       return rows.filter(
-        (row) => row && typeof row === "object" && Object.keys(row).length > 0
+        (row) => row && typeof row === "object" && Object.keys(row).length > 0,
       );
     }, [rows]);
 
@@ -9663,7 +9694,7 @@ ${errorInfo.originalError}
         }, 0);
         return `generated-${Math.abs(hash)}`;
       },
-      [getEffectivePrimaryKey]
+      [getEffectivePrimaryKey],
     );
 
     // Memoize getRowClassName callback to prevent re-renders
@@ -9698,7 +9729,7 @@ ${errorInfo.originalError}
 
         return classes.join(" ");
       },
-      [metadata?.primaryKeys, bsRowConfig]
+      [metadata?.primaryKeys, bsRowConfig],
     );
 
     // Memoize isRowSelectable callback to prevent re-renders
@@ -9713,7 +9744,7 @@ ${errorInfo.originalError}
         }
         return true;
       },
-      [bsRowConfig]
+      [bsRowConfig],
     );
 
     // Handle row selection changes for checkbox selection
@@ -9752,10 +9783,10 @@ ${errorInfo.originalError}
             firstRowAllIds:
               rows.length > 0
                 ? {
-                  id: rows[0].id,
-                  Id: rows[0].Id,
-                  [primaryKey]: rows[0][primaryKey],
-                }
+                    id: rows[0].id,
+                    Id: rows[0].Id,
+                    [primaryKey]: rows[0][primaryKey],
+                  }
                 : "NO ROWS",
           });
 
@@ -9816,7 +9847,7 @@ ${errorInfo.originalError}
         metadata,
         enhancedMetadata,
         bsStoredProcedure,
-      ]
+      ],
     );
 
     // Bulk operations handlers
@@ -9902,7 +9933,7 @@ ${errorInfo.originalError}
           confirmButtonText:
             currentLocaleText.bsYesDelete || "Yes, delete them!",
           cancelButtonText: currentLocaleText.bsCancel || "Cancel",
-        }
+        },
       );
 
       if (isConfirmed) {
@@ -9947,7 +9978,7 @@ ${errorInfo.originalError}
       try {
         // Get visible column definitions (excluding actions and checkbox columns)
         const visibleColumns = columns.filter(
-          (col) => col.field !== "actions" && col.field !== "__check__"
+          (col) => col.field !== "actions" && col.field !== "__check__",
         );
 
         // Get filtered and sorted row IDs from grid using apiRef
@@ -10006,7 +10037,7 @@ ${errorInfo.originalError}
           const header = col.headerName || col.field;
           const maxLength = Math.max(
             header.length,
-            ...exportData.map((row) => String(row[header] || "").length)
+            ...exportData.map((row) => String(row[header] || "").length),
           );
           return { wch: Math.min(maxLength + 2, 50) };
         });
@@ -10018,8 +10049,9 @@ ${errorInfo.originalError}
         // Generate filename - use bsExportFileName prop if provided, otherwise use table name
         const exportFileName =
           bsExportFileName || effectiveTableName || "export";
-        const filename = `${exportFileName}_${new Date().toISOString().split("T")[0]
-          }.xlsx`;
+        const filename = `${exportFileName}_${
+          new Date().toISOString().split("T")[0]
+        }.xlsx`;
 
         // Trigger download
         XLSX.writeFile(workbook, filename);
@@ -10028,7 +10060,7 @@ ${errorInfo.originalError}
           "✅ Excel export completed:",
           filename,
           "rows:",
-          exportData.length
+          exportData.length,
         );
       } catch (err) {
         Logger.error("❌ Excel export failed:", err);
@@ -10037,7 +10069,7 @@ ${errorInfo.originalError}
           localeText.bsExportExcelError || "Failed to export Excel",
           {
             title: localeText.bsError || "Error",
-          }
+          },
         );
       }
     }, [
@@ -10061,8 +10093,9 @@ ${errorInfo.originalError}
             delimiter: ";",
             utf8WithBom: true,
             escapeFormulas: false,
-            fileName: `${exportFileName}_${new Date().toISOString().split("T")[0]
-              }`,
+            fileName: `${exportFileName}_${
+              new Date().toISOString().split("T")[0]
+            }`,
           });
           bsLog("✅ CSV export triggered");
         }
@@ -10095,7 +10128,7 @@ ${errorInfo.originalError}
         const validRows = bulkAddRows.filter((row) => {
           const { _id, ...data } = row;
           return Object.values(data).some(
-            (value) => value !== null && value !== undefined && value !== ""
+            (value) => value !== null && value !== undefined && value !== "",
           );
         });
 
@@ -10124,13 +10157,15 @@ ${errorInfo.originalError}
             .map((item) => {
               const errorItems = item.errors
                 .map(
-                  (err) => `<li style="margin: 2px 0; color: #666;">${err}</li>`
+                  (err) =>
+                    `<li style="margin: 2px 0; color: #666;">${err}</li>`,
                 )
                 .join("");
               return `
                 <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                  <strong style="color: #c0392b;">📋 ${localeText.bsRow || "Row"
-                } ${item.rowNumber}</strong>
+                  <strong style="color: #c0392b;">📋 ${
+                    localeText.bsRow || "Row"
+                  } ${item.rowNumber}</strong>
                   <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
                 </div>`;
             })
@@ -10183,8 +10218,8 @@ ${errorInfo.originalError}
     const updateBulkRow = useCallback((rowIndex, field, value) => {
       setBulkAddRows((prev) =>
         prev.map((row, index) =>
-          index === rowIndex ? { ...row, [field]: value } : row
-        )
+          index === rowIndex ? { ...row, [field]: value } : row,
+        ),
       );
     }, []);
 
@@ -10248,7 +10283,7 @@ ${errorInfo.originalError}
           // that are generated by user lookup but are not actual database columns
           if (metadata?.columns && Array.isArray(metadata?.columns)) {
             const validColumns = new Set(
-              metadata?.columns.map((col) => col.columnName)
+              metadata?.columns.map((col) => col.columnName),
             );
             Object.keys(cleanData).forEach((key) => {
               if (!validColumns.has(key)) {
@@ -10288,13 +10323,13 @@ ${errorInfo.originalError}
               // This prevents metadata from becoming null during re-render
               if (!metadata || !metadata?.columns) {
                 Logger.warn(
-                  "⚠️ Metadata missing before background refresh, reloading now..."
+                  "⚠️ Metadata missing before background refresh, reloading now...",
                 );
                 try {
                   await loadMetadata(bsPreObj);
                   await new Promise((resolve) => setTimeout(resolve, 100));
                   bsLog(
-                    "✅ Metadata reloaded successfully before background refresh"
+                    "✅ Metadata reloaded successfully before background refresh",
                   );
                 } catch (metadataError) {
                   Logger.error("❌ Failed to reload metadata:", metadataError);
@@ -10310,7 +10345,7 @@ ${errorInfo.originalError}
                 }, 100);
               } else {
                 Logger.warn(
-                  "⚠️ Skipping background refresh due to missing metadata"
+                  "⚠️ Skipping background refresh due to missing metadata",
                 );
               }
 
@@ -10320,7 +10355,7 @@ ${errorInfo.originalError}
               Logger.error("❌ Normal mode update failed:", error);
               const errorInfo = formatSqlErrorMessage(
                 error.message || "Failed to update record",
-                "update"
+                "update",
               );
               showErrorWithDetails(errorInfo);
               throw error;
@@ -10345,7 +10380,7 @@ ${errorInfo.originalError}
           if (isBulkSavingRef.current) {
             bsLog(
               "⏭️ Skipping individual save - bulk save in progress:",
-              rowId
+              rowId,
             );
             return newRow; // Return row as-is, bulk save will handle it
           }
@@ -10354,7 +10389,7 @@ ${errorInfo.originalError}
           if (savedRowIdsRef.current.has(rowId)) {
             bsLog(
               "⏭️ Skipping individual save - row already saved in bulk:",
-              rowId
+              rowId,
             );
             savedRowIdsRef.current.delete(rowId); // Clear after check
             return newRow;
@@ -10400,7 +10435,7 @@ ${errorInfo.originalError}
           // Filter to only include fields that exist in metadata (actual table columns)
           if (metadata?.columns && Array.isArray(metadata?.columns)) {
             const validColumns = new Set(
-              metadata?.columns.map((col) => col.columnName)
+              metadata?.columns.map((col) => col.columnName),
             );
             Object.keys(cleanData).forEach((key) => {
               if (!validColumns.has(key)) {
@@ -10420,7 +10455,7 @@ ${errorInfo.originalError}
                 localeText.bsRecordCreated || "Record created successfully",
                 {
                   title: localeText.bsSuccess || "Success",
-                }
+                },
               );
 
               // Refresh data to get the latest from server
@@ -10464,7 +10499,7 @@ ${errorInfo.originalError}
               return { ...row, ...newRow };
             }
             return row;
-          })
+          }),
         );
 
         // Return newRow to update the grid display but don't save to backend
@@ -10483,7 +10518,7 @@ ${errorInfo.originalError}
         localeText,
         formatSqlErrorMessage,
         showErrorWithDetails,
-      ]
+      ],
     );
 
     const handleBulkSaveChanges = useCallback(async () => {
@@ -10517,7 +10552,7 @@ ${errorInfo.originalError}
           } catch (getRowsError) {
             Logger.warn(
               "⚠️ Could not get rows from apiRef, using state:",
-              getRowsError
+              getRowsError,
             );
           }
         }
@@ -10536,7 +10571,7 @@ ${errorInfo.originalError}
                 updatedRow[fieldName] = fieldData.value;
                 bsLog(
                   `📝 Merged edit value for ${rowId}.${fieldName}:`,
-                  fieldData.value
+                  fieldData.value,
                 );
               }
             });
@@ -10572,7 +10607,7 @@ ${errorInfo.originalError}
 
         // Get only the new data from changes (not the original data)
         const changesFromRef = Object.values(unsavedChangesRef.current).map(
-          (change) => change.newData
+          (change) => change.newData,
         );
 
         // Also include new rows that are in the rows state but not yet in unsavedChangesRef
@@ -10610,7 +10645,7 @@ ${errorInfo.originalError}
                   if (fieldData && fieldData.value !== undefined) {
                     updatedRow[fieldName] = fieldData.value;
                   }
-                }
+                },
               );
               changesMap.set(rowId, updatedRow);
             } else {
@@ -10660,13 +10695,15 @@ ${errorInfo.originalError}
             .map((item) => {
               const errorItems = item.errors
                 .map(
-                  (err) => `<li style="margin: 2px 0; color: #666;">${err}</li>`
+                  (err) =>
+                    `<li style="margin: 2px 0; color: #666;">${err}</li>`,
                 )
                 .join("");
               return `
                 <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                  <strong style="color: #c0392b;">📋 ${localeText.bsRow || "Row"
-                } ${item.rowNumber}</strong>
+                  <strong style="color: #c0392b;">📋 ${
+                    localeText.bsRow || "Row"
+                  } ${item.rowNumber}</strong>
                   <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
                 </div>`;
             })
@@ -10704,7 +10741,7 @@ ${errorInfo.originalError}
             const uniqueResult = await validateUniqueFields(
               row, // formData/data
               mode,
-              currentPrimaryKeyValue
+              currentPrimaryKeyValue,
             );
 
             if (!uniqueResult.isValid) {
@@ -10722,13 +10759,14 @@ ${errorInfo.originalError}
                 const errorItems = item.errors
                   .map(
                     (err) =>
-                      `<li style="margin: 2px 0; color: #666;">${err}</li>`
+                      `<li style="margin: 2px 0; color: #666;">${err}</li>`,
                   )
                   .join("");
                 return `
                   <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                    <strong style="color: #c0392b;">📋 ${localeText.bsRow || "Row"
-                  } ${item.rowNumber}</strong>
+                    <strong style="color: #c0392b;">📋 ${
+                      localeText.bsRow || "Row"
+                    } ${item.rowNumber}</strong>
                     <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
                   </div>`;
               })
@@ -10769,7 +10807,7 @@ ${errorInfo.originalError}
           // Sanitize date values for SQL Server compatibility
           const cleanData = sanitizeDataForApi(
             { ...row },
-            metadata?.columns || []
+            metadata?.columns || [],
           );
 
           // Remove isNew flag before saving
@@ -10810,7 +10848,7 @@ ${errorInfo.originalError}
           // that are generated by user lookup but are not actual database columns
           if (metadata?.columns && Array.isArray(metadata?.columns)) {
             const validColumns = new Set(
-              metadata?.columns.map((col) => col.columnName)
+              metadata?.columns.map((col) => col.columnName),
             );
             Object.keys(cleanData).forEach((key) => {
               if (!validColumns.has(key)) {
@@ -10903,7 +10941,7 @@ ${errorInfo.originalError}
         // Ensure metadata is available before reloading data
         if (!metadata || !metadata?.columns) {
           Logger.warn(
-            "⚠️ Metadata not available after bulk save, reloading metadata..."
+            "⚠️ Metadata not available after bulk save, reloading metadata...",
           );
           await loadMetadata(bsPreObj);
           // Wait a bit for metadata to be set in state
@@ -10917,7 +10955,7 @@ ${errorInfo.originalError}
             paginationModel,
             sortModel,
             filterModel,
-            true // forceRefresh
+            true, // forceRefresh
           );
         } else {
           await loadData(true);
@@ -10983,13 +11021,13 @@ ${errorInfo.originalError}
           oldRows.filter((row) => {
             const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
             return !rowId.startsWith("new-");
-          })
+          }),
         );
 
         // Ensure metadata is available before reloading data
         if (!metadata || !metadata?.columns) {
           Logger.warn(
-            "⚠️ Metadata not available after discard, reloading metadata..."
+            "⚠️ Metadata not available after discard, reloading metadata...",
           );
           await loadMetadata(bsPreObj);
           // Wait a bit for metadata to be set in state
@@ -11003,7 +11041,7 @@ ${errorInfo.originalError}
             paginationModel,
             sortModel,
             filterModel,
-            true // forceRefresh
+            true, // forceRefresh
           );
         } else {
           await loadData(true);
@@ -11057,8 +11095,9 @@ ${errorInfo.originalError}
 
         if (!canEditThisRow) {
           Logger.warn(
-            `⚠️ Cannot edit ${isNewRow ? "new" : "existing"
-            } row - permission denied`
+            `⚠️ Cannot edit ${
+              isNewRow ? "new" : "existing"
+            } row - permission denied`,
           );
           // Prevent entering edit mode
           if (params.event) {
@@ -11076,7 +11115,7 @@ ${errorInfo.originalError}
           bsLog("📝 Bulk Edit mode enabled via row double-click");
         }
       },
-      [bulkEditMode, effectiveBulkEdit, effectiveBulkAddInline]
+      [bulkEditMode, effectiveBulkEdit, effectiveBulkAddInline],
     );
 
     const handleRowEditStop = useCallback(
@@ -11092,7 +11131,7 @@ ${errorInfo.originalError}
         // For other reasons (like clicking away), keep bulk edit mode active
         // Let user manually save/discard changes via toolbar
       },
-      [hasUnsavedChanges]
+      [hasUnsavedChanges],
     );
 
     // Loading state
@@ -11298,8 +11337,8 @@ ${errorInfo.originalError}
               columnsValid: Array.isArray(columns) && columns.length > 0,
               sampleColumns: Array.isArray(columns)
                 ? columns
-                  .slice(0, 2)
-                  .map((c) => ({ field: c.field, type: c.type }))
+                    .slice(0, 2)
+                    .map((c) => ({ field: c.field, type: c.type }))
                 : "N/A",
               metadataExists: !!metadata,
               metadataColumnsCount: metadata?.columns?.length,
@@ -11450,10 +11489,12 @@ ${errorInfo.originalError}
                   // Use stable key that forces re-mount when combobox data loads or language changes
                   // This ensures columns are rebuilt with correct valueOptions and localized headers
                   // Also include resourceData hash to force re-mount when translations load
-                  key={`datagrid-${effectiveTableName}-${effectiveLang}-comboReady-${!comboBoxLoading &&
+                  key={`datagrid-${effectiveTableName}-${effectiveLang}-comboReady-${
+                    !comboBoxLoading &&
                     Object.keys(comboBoxValueOptions).length > 0
-                    }-res-${resourceData?.length || 0}-${resourceData?.[0]?.resource_value || ""
-                    }`}
+                  }-res-${resourceData?.length || 0}-${
+                    resourceData?.[0]?.resource_value || ""
+                  }`}
                   // Editing - only enable if bulk edit mode is enabled
                   // Only set editMode="row" if effectiveBulkEdit or effectiveBulkAddInline is enabled
                   // This prevents double-click from entering edit mode when editing is not allowed
@@ -11580,48 +11621,38 @@ ${errorInfo.originalError}
                   slotProps={
                     showToolbar
                       ? {
-                        toolbar: {
-                          onAdd: handleDialogAdd,
-                          onInlineAdd: handleInlineAdd,
-                          showAdd: effectiveShowAdd,
-                          headerFiltersEnabled,
-                          onToggleHeaderFilters: handleToggleHeaderFilters,
-                          bsBulkEdit: effectiveBulkEdit,
-                          bsBulkAdd: effectiveBulkAdd,
-                          bsBulkDelete: effectiveBulkDelete,
-                          bsEnableBulkMode: resolvedBulkEnable,
-                          bsShowBulkSplitButton: effectiveShowSplitButton,
-                          selectedRowCount: rowSelectionModel.length,
-                          onBulkEdit: handleBulkEdit,
-                          onBulkDelete: handleBulkDelete,
-                          onBulkAdd: handleBulkAdd,
-                          showBulkDelete: effectiveBulkDelete,
-                          onRefresh: () => refreshData(true),
-                          onExportExcel: handleExportExcel,
-                          onExportCsv: handleExportCsv,
-                          onPrint: handlePrint,
-                          localeText,
-                          apiRef,
-                          quickFilterValue: quickFilterInputValue,
-                          onQuickFilterChange: setQuickFilterInputValue,
-                          bulkEditMode,
-                          onBulkSave: handleBulkSaveChanges,
-                          onBulkDiscard: handleBulkDiscardChanges,
-                          hasUnsavedChanges,
-                          formLoading,
-                          changesCount: Object.keys(unsavedChangesRef.current)
-                            .length,
-                        },
-                        headerFilterCell: {
-                          showClearIcon: true,
-                        },
-                        pagination: {
-                          showFirstButton: true,
-                          showLastButton: true,
-                        },
-                      }
-                      : headerFiltersEnabled
-                        ? {
+                          toolbar: {
+                            onAdd: handleDialogAdd,
+                            onInlineAdd: handleInlineAdd,
+                            showAdd: effectiveShowAdd,
+                            headerFiltersEnabled,
+                            onToggleHeaderFilters: handleToggleHeaderFilters,
+                            bsBulkEdit: effectiveBulkEdit,
+                            bsBulkAdd: effectiveBulkAdd,
+                            bsBulkDelete: effectiveBulkDelete,
+                            bsEnableBulkMode: resolvedBulkEnable,
+                            bsShowBulkSplitButton: effectiveShowSplitButton,
+                            selectedRowCount: rowSelectionModel.length,
+                            onBulkEdit: handleBulkEdit,
+                            onBulkDelete: handleBulkDelete,
+                            onBulkAdd: handleBulkAdd,
+                            showBulkDelete: effectiveBulkDelete,
+                            onRefresh: () => refreshData(true),
+                            onExportExcel: handleExportExcel,
+                            onExportCsv: handleExportCsv,
+                            onPrint: handlePrint,
+                            localeText,
+                            apiRef,
+                            quickFilterValue: quickFilterInputValue,
+                            onQuickFilterChange: setQuickFilterInputValue,
+                            bulkEditMode,
+                            onBulkSave: handleBulkSaveChanges,
+                            onBulkDiscard: handleBulkDiscardChanges,
+                            hasUnsavedChanges,
+                            formLoading,
+                            changesCount: Object.keys(unsavedChangesRef.current)
+                              .length,
+                          },
                           headerFilterCell: {
                             showClearIcon: true,
                           },
@@ -11630,12 +11661,22 @@ ${errorInfo.originalError}
                             showLastButton: true,
                           },
                         }
+                      : headerFiltersEnabled
+                        ? {
+                            headerFilterCell: {
+                              showClearIcon: true,
+                            },
+                            pagination: {
+                              showFirstButton: true,
+                              showLastButton: true,
+                            },
+                          }
                         : {
-                          pagination: {
-                            showFirstButton: true,
-                            showLastButton: true,
-                          },
-                        }
+                            pagination: {
+                              showFirstButton: true,
+                              showLastButton: true,
+                            },
+                          }
                   }
                   // Styling with required field indicator and custom row styles
                   sx={(theme) => ({
@@ -11662,9 +11703,9 @@ ${errorInfo.originalError}
                     },
                     // Force header text bold
                     "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                    {
-                      fontWeight: "bold",
-                    },
+                      {
+                        fontWeight: "bold",
+                      },
                     // Required field styling
                     "& .required-field .MuiDataGrid-columnHeaderTitle": {
                       color: "error.main",
@@ -11720,10 +11761,11 @@ ${errorInfo.originalError}
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: `${theme.palette.mode === "dark"
-                        ? theme.palette.grey[200]
-                        : "#E0DEDEFF"
-                        } !important`,
+                      backgroundColor: `${
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[200]
+                          : "#E0DEDEFF"
+                      } !important`,
                       borderBottom: `1px solid ${theme.palette.divider} !important`,
                       minHeight: "30px !important",
                       maxHeight: "46px !important",
@@ -11780,10 +11822,11 @@ ${errorInfo.originalError}
                     },
                     // Edit mode cell input styling - add subtle border to show it's editable
                     "& .MuiDataGrid-cell--editing": {
-                      backgroundColor: `${theme.palette.mode === "dark"
-                        ? theme.palette.grey[800]
-                        : "#fafafa"
-                        } !important`,
+                      backgroundColor: `${
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[800]
+                          : "#fafafa"
+                      } !important`,
                       "& .MuiInputBase-root": {
                         border: `1px solid ${theme.palette.divider}`,
                         borderRadius: "4px",
@@ -11803,10 +11846,11 @@ ${errorInfo.originalError}
                     },
                     // New row styling
                     "& .MuiDataGrid-row--editing": {
-                      backgroundColor: `${theme.palette.mode === "dark"
-                        ? theme.palette.grey[800]
-                        : "#f5f9ff"
-                        } !important`,
+                      backgroundColor: `${
+                        theme.palette.mode === "dark"
+                          ? theme.palette.grey[800]
+                          : "#f5f9ff"
+                      } !important`,
                       boxShadow: `inset 0 0 0 1px ${theme.palette.primary.main}`,
                     },
                   })}
@@ -11900,7 +11944,7 @@ ${errorInfo.originalError}
                               bsParentRecordLabel.substring(9);
                             const resourceValue = getResource(
                               resourceData,
-                              resourceKey
+                              resourceKey,
                             );
 
                             bsLog("🏷️ bsParentRecordLabel resource lookup:", {
@@ -12021,16 +12065,16 @@ ${errorInfo.originalError}
                 )}
               </Box>
             ) : // Standard Mode - no child grids
-              metadata?.columns || bsStoredProcedure ? (
-                renderFormFields()
-              ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
-                  <CircularProgress />
-                  <Typography variant="body2" sx={{ mt: 2 }}>
-                    {localeText.bsLoadingMetadata}
-                  </Typography>
-                </Box>
-              )}
+            metadata?.columns || bsStoredProcedure ? (
+              renderFormFields()
+            ) : (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <CircularProgress />
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                  {localeText.bsLoadingMetadata}
+                </Typography>
+              </Box>
+            )}
           </DialogContent>
           <DialogActions>
             <BSCloseOutlinedButton
@@ -12046,9 +12090,9 @@ ${errorInfo.originalError}
               {formLoading
                 ? localeText.bsSaving
                 : bsChildGrids &&
-                  bsChildGrids.length > 0 &&
-                  dialogMode === "add" &&
-                  !isParentSaved
+                    bsChildGrids.length > 0 &&
+                    dialogMode === "add" &&
+                    !isParentSaved
                   ? localeText.bsSaveAndContinue || "Save & Continue"
                   : localeText.bsSave}
             </BSSaveOutlinedButton>
@@ -12091,7 +12135,7 @@ ${errorInfo.originalError}
                     value={bulkRowCount}
                     onChange={(e) =>
                       setBulkRowCount(
-                        Math.max(1, parseInt(e.target.value) || 1)
+                        Math.max(1, parseInt(e.target.value) || 1),
                       )
                     }
                     sx={{ width: 150 }}
@@ -12135,8 +12179,8 @@ ${errorInfo.originalError}
                                 c.dataType,
                                 c.isIdentity,
                                 c.hasDefault,
-                                c.defaultValue
-                              ) || comboBoxConfig[c.columnName]
+                                c.defaultValue,
+                              ) || comboBoxConfig[c.columnName],
                           )
                           .map((c) => {
                             const {
@@ -12190,7 +12234,7 @@ ${errorInfo.originalError}
                                         updateBulkRow(
                                           rowIndex,
                                           columnName,
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                     >
@@ -12312,7 +12356,7 @@ ${errorInfo.originalError}
                                         updateBulkRow(
                                           rowIndex,
                                           columnName,
-                                          isoValue
+                                          isoValue,
                                         );
                                       }}
                                       format={DATETIME_FORMAT}
@@ -12363,7 +12407,7 @@ ${errorInfo.originalError}
                                         updateBulkRow(
                                           rowIndex,
                                           columnName,
-                                          dateValue
+                                          dateValue,
                                         );
                                       }}
                                       format={DATE_FORMAT}
@@ -12397,7 +12441,7 @@ ${errorInfo.originalError}
                                           updateBulkRow(
                                             rowIndex,
                                             columnName,
-                                            e.target.checked
+                                            e.target.checked,
                                           )
                                         }
                                       />
@@ -12454,7 +12498,7 @@ ${errorInfo.originalError}
                                   updateBulkRow(
                                     rowIndex,
                                     columnName,
-                                    e.target.value
+                                    e.target.value,
                                   )
                                 }
                                 required={!isNullable}
@@ -12463,8 +12507,8 @@ ${errorInfo.originalError}
                                 inputProps={{
                                   ...(maxLength > 0 &&
                                     (inputType === "text" || multiline) && {
-                                    maxLength: maxLength,
-                                  }),
+                                      maxLength: maxLength,
+                                    }),
                                 }}
                                 error={
                                   maxLength > 0 &&
@@ -12543,7 +12587,7 @@ ${errorInfo.originalError}
         />
       </Paper>
     );
-  }
+  },
 );
 
 BSDataGrid.displayName = "BSDataGrid";
