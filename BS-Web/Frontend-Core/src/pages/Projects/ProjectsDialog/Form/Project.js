@@ -199,7 +199,7 @@ const FormProject = (props) => {
                         },
                     ],
                     bsObjBy: "iso_type_name asc",
-                    bsObjWh: "is_active='YES'",
+                    bsObjWh: "is_active='YES' AND iso_type_name <> 'MA'",
                     required: true,
                     variant: formData.project_header_id ? "filled" : "standard",
                     disabled: formData.project_header_id ? true : false,

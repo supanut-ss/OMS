@@ -100,6 +100,7 @@ const BSAutoComplete = ({
   // }, [loaded, bsCacheKey, requestBody]);
   const fetchData = useCallback(
     async (keyword = "") => {
+      if (disabled) return;
       setLoading(true);
       try {
         const res = await AxiosMaster.post("/autocomplete", {
@@ -151,7 +152,7 @@ const BSAutoComplete = ({
   }, [options, bsValue, multiple]);
 
   const handleChange = (event, newValue) => {
-    if (!bsOnChange) return;
+    if (!bsOnChange || disabled) return;
 
     if (multiple) {
       bsOnChange(newValue.map((v) => v.code));
@@ -179,7 +180,7 @@ const BSAutoComplete = ({
     },
   };
   const fetchById = useCallback(async (id) => {
-    if (!id) return;
+    if (!id && disabled) return;
 
     try {
       const res = await AxiosMaster.post("/autocomplete", {
@@ -227,6 +228,7 @@ const BSAutoComplete = ({
         {...commonProps}
         multiple={multiple}
         value={selectedValue}
+        disabled={disabled}
         getOptionLabel={(option) => option?.value || ""}
         renderOption={(props, option) => (
           <li {...props}>
@@ -247,6 +249,8 @@ const BSAutoComplete = ({
             required={required}
             error={error}
             variant={variant}
+
+            disabled={disabled}
             InputProps={{
               ...params.InputProps,
               startAdornment:

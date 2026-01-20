@@ -394,6 +394,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                       bsObjWh: `project_header_id=${taskData?.project_header_id || 0
                         } AND project_task_id=${projectTaskId || 0}`,
                       required: false,
+                      readOnly: showView,
+                      disabled: showView
                     },
                     formData,
                     errors,
@@ -420,6 +422,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     bsObjBy: "display_sequence asc",
                     bsObjWh: "is_active='YES' and group_name='issue_type'",
                     required: true,
+                    disabled: showView,
                   },
                   formData,
                   errors,
@@ -436,6 +439,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     component: "BSTextField",
                     type: "decimal",
                     required: true,
+                    disabled: showView 
                   },
                   formData,
                   errors,
@@ -457,6 +461,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     // Validate: ไม่เกิน due date range ของ task
                     minDate: taskData?.start_date,
                     maxDate: taskData?.end_date,
+                    disabled: showView 
                   },
                   formData,
                   errors,
@@ -477,6 +482,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     minRows: 4,
                     maxRows: 12,
                     showCharacterCount: true,
+                    disabled: showView 
                   },
                   formData,
                   errors,
