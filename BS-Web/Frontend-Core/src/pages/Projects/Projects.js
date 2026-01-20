@@ -22,7 +22,7 @@ const storedProcedure = {
   },
 };
 const Projects = (props) => {
- const { permission } = useOutletContext();
+  const { permission } = useOutletContext();
   const { lang } = props;
   const [openDialog, setOpenDialog] = useState(false);
   const [projectHeaderID, setProjectHeaderID] = useState("");

@@ -102,6 +102,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const trackingGridRef = useRef();
   const [openTrackingDialog, setOpenTrackingDialog] = useState(false);
   const [showOnlyMe, setShowOnlyMe] = useState(true); // Toggle: true = show only my tracking
+  const [currentDate, setCurrentDate] = useState(false);
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [showView, setShowView] = useState(false);
@@ -238,6 +239,17 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     setShowView(true);
     setOpenTrackingDialog(true);
   }
+  const toDateOnly = (d) => {
+    const date = new Date(d);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+  useEffect(() => {
+    const today = toDateOnly(new Date());
+    setCurrentDate(
+      toDateOnly(taskData.start_date) <= today &&
+      toDateOnly(taskData.end_date) >= today)
+  }, [])
   return (
     <>
       {/* Task Tracking Grid */}
@@ -284,16 +296,15 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             in_intProjectTaskId: projectTaskId,
             in_vchUserId: showOnlyMe ? getCurrentUserId() : null,
           }}
-          showAdd={true}
-          bsAllowAdd={true}
-          bsAllowEdit={showOnlyMe}
-          bsAllowDelete={showOnlyMe}
+          showAdd={currentDate}
+          bsAllowAdd={currentDate}
+          bsAllowEdit={showOnlyMe && currentDate}
+          bsAllowDelete={showOnlyMe && currentDate}
           bsVisibleEdit={
             showOnlyMe &&
-            new Date(taskData.start_date).getTime() <= Date.now() &&
-            new Date(taskData.end_date).getTime() >= Date.now()
+            currentDate
           }
-          bsVisibleDelete={showOnlyMe}
+          bsVisibleDelete={showOnlyMe && currentDate}
           bsVisibleView={true}
           onView={handleViewTracking}
           onAdd={handleAddTracking}
