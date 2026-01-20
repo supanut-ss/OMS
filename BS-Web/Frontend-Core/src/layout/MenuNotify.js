@@ -11,7 +11,9 @@ import ErrorIcon from "@mui/icons-material/Error";
 import WarningIcon from "@mui/icons-material/Warning";
 import { FormatTimeToText } from "../config/dateConfig";
 import { useNotifications } from "../contexts/NotificationsProvider";
+import { useNavigate } from "react-router-dom";
 const MenuNoti = ({ notifications, handleNotificationClose }) => {
+    const navigate = useNavigate();
     const { markAsRead } = useNotifications();
     const getIconByType = (type) => {
         switch (type) {
@@ -45,7 +47,7 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
                     onClick={() => {
                         handleNotificationClose();
                         if (!n.is_read) markAsRead(n.id);
-                        if (n.link) window.location.href = n.link;
+                        if (n.link)   navigate(n.link);
                     }}
                     sx={{
                         alignItems: "flex-start",

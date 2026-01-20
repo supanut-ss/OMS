@@ -23,6 +23,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import { useNotifications } from "../../contexts/NotificationsProvider";
 import { useEffect } from "react";
 import { FormatTimeToText } from "../../config/dateConfig";
+import { useNavigate } from "react-router-dom";
 
 const getIconByType = (type) => {
   switch (type) {
@@ -60,7 +61,7 @@ const NotifyDialog = ({ open, onClose }) => {
   useEffect(() => {
     if (open) getNotifications(total);
   }, [open, getNotifications, total]);
-
+  const navigate = useNavigate();
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       {/* ===== Header ===== */}
@@ -105,6 +106,7 @@ const NotifyDialog = ({ open, onClose }) => {
                 <ListItem
                   alignItems="flex-start"
                   sx={{
+                    cursor:"pointer",
                     px: 3,
                     py: 2,
                     bgcolor: n.is_read
@@ -129,7 +131,10 @@ const NotifyDialog = ({ open, onClose }) => {
                   }
                   onClick={() => {
                     if (!n.is_read) markAsRead(n.id);
-                    if (n.link) window.location.href = n.link;
+                    if (n.link) {
+                      onClose();
+                      navigate(n.link);
+                    }
                   }}
                 >
                   {/* Avatar */}
