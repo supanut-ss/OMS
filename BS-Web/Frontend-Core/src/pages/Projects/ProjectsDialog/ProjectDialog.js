@@ -19,8 +19,6 @@ import FormProjectMa from "./Form/Ma";
 import TabsProject from "./FormTabs/TabsProject";
 import TabsMa from "./FormTabs/TabsMa";
 import MinimizeIcon from "@mui/icons-material/Minimize";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import { delay } from "lodash";
 const ProjectsDialog = (props) => {
   const defaultData = props.ma ? {
     project_no: "",
@@ -38,7 +36,7 @@ const ProjectsDialog = (props) => {
     record_type: "MA",
     remark: "",
     po_number: "",
-    iso_type_id: 0
+    iso_type_id: 29
   } : {
     project_name: null,
     project_status: "Open",

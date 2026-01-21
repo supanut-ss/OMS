@@ -31,7 +31,7 @@ const FormProjectMa = (props) => {
                     updateField("application_type", e?.application_type || "");
                     updateField("customer_id", e?.customer_id || "");
                     updateField("sale_id", e?.sale_id || "");
-                    updateField("iso_type_id", e?.iso_type_id || "");
+                    updateField("iso_type_id", 29);
                 }}
                 bsMode="single"
                 bsTitle={getResource(resourceData, "parent_project_id")}

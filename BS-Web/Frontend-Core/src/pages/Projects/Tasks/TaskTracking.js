@@ -252,7 +252,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     const today = toDateOnly(new Date());
     setCurrentDate(
       toDateOnly(taskData.start_date) <= today &&
-      toDateOnly(taskData.end_date_extend) >= today)
+      new Date() <= new Date(taskData.end_date_extend))
   }, [])
   return (
     <>
