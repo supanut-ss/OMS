@@ -16,6 +16,7 @@
     "@mui/x-date-pickers": "^8.16.0",
     "@mui/x-date-pickers-pro": "^7.29.4",
     "@mui/x-tree-view": "^8.9.2",
+    "@svar-ui/react-gantt": "^2.4.5",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

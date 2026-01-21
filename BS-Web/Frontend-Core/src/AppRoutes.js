@@ -23,6 +23,8 @@ import HolidayPage from "./pages/Master/Holiday";
 import SalePage from "./pages/Master/Sale";
 import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
+// Test pages
+import BSGanttChartTest from "./test/BSGanttChartTest";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -102,6 +104,11 @@ export default function AppRoutes() {
           <Route path="" element={<Projects lang={lang} />} />
           <Route path="ma" element={<Projects lang={lang} ma={true} />} />
           <Route path="my-task" element={<MyTaskPage lang={lang} />} />
+        </Route>
+
+        {/* Test routes - accessible without permission check */}
+        <Route path="test">
+          <Route path="gantt" element={<BSGanttChartTest />} />
         </Route>
 
       </Route>
