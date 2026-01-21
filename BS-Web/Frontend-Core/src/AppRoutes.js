@@ -23,7 +23,6 @@ import HolidayPage from "./pages/Master/Holiday";
 import SalePage from "./pages/Master/Sale";
 import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
-
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
   const { switchLang } = useAuth();
@@ -51,8 +50,10 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
+     
         <Route element={<PermissionRoute />}>
           <Route index element={<Home lang={lang} />} />
+          
         </Route>
 
         {/* <Route path="test">

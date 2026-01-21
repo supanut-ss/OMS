@@ -190,10 +190,10 @@ const ResetPasswordDialog = ({ open, onClose, lang, currentUser, loading, setLoa
       setLoading(true);
       const res = await newPassword(password);
       console.log("res:", res);
-      if (res?.data.message_code === 0) {
+      if (res?.message_code === 0 || res.message_code === "0") {
         BSAlertSwal2.show("success", lang === "th" ? "เปลี่ยนรหัสผ่านสำเร็จ" : "Password Changed Successfully", { timer: 3000 });
       } else {
-        BSAlertSwal2.show("error", res.data.message_text || (lang === "th" ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "An error occurred while changing the password."));
+        BSAlertSwal2.show("error", res.message_text || (lang === "th" ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "An error occurred while changing the password."));
       }
       setLoading(false);
       headleClose();

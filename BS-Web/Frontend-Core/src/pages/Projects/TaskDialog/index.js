@@ -213,9 +213,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
             <Tabs label={getResource(resourceData, "task")} value={tap} onChange={(e, v) => setTap(v)} sx={{ mt: 3 }}>
               <Tab label={getResource(resourceData, "assign_team")} />
               <Tab label={getResource(resourceData, "task_tracking")} />
-              {projectHeader.record_type === "MA" && (
-                <Tab label={getResource(resourceData, "upload_image")} />
-              )}
+              <Tab label={getResource(resourceData, "upload_image")} />
             </Tabs>
 
             <Box sx={{ mt: 2, borderTop: 1, borderColor: "divider", pt: 2 }}>
@@ -234,7 +232,7 @@ const TaskDialog = ({ phases, projectHeader, open, onClose, lang }) => {
                   taskData={formData}
                 />
               )}
-              {tap === 2 && projectHeader.record_type === "MA" && (
+              {tap === 2 && (
                 <BSFileUpload
                   attachConfig={{
                     preObj: "tmt",
