@@ -16,14 +16,15 @@ string KEY = Environment.GetEnvironmentVariable("API_KEY_WEB") ?? "";
 //    .Split(',', StringSplitOptions.RemoveEmptyEntries)
 //    .Select(a => a.Trim())
 //    .ToList();
-builder.Services.AddCors(options => {
+builder.Services.AddCors(options =>
+{
     options.AddPolicy("SignalRCors",
         policy =>
         {
             policy.WithOrigins(
         "http://localhost:3000",
-        "http://10.10.60.66",
-        "https://10.10.60.66"
+        "http://10.10.60.60",
+        "https://10.10.60.60"
      )
                   .AllowAnyHeader()
                   .AllowAnyMethod()

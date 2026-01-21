@@ -23,6 +23,9 @@ import HolidayPage from "./pages/Master/Holiday";
 import SalePage from "./pages/Master/Sale";
 import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
+// Test pages
+import BSGanttChartTest from "./test/BSGanttChartTest";
+
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
   const { switchLang } = useAuth();
@@ -32,7 +35,9 @@ export default function AppRoutes() {
         setLang(lang);
         secureStorage.set("lang", lang);
         // Dispatch custom event so all components (including BSDataGrid) can detect language change
-        window.dispatchEvent(new CustomEvent('bsLangChange', { detail: { lang } }));
+        window.dispatchEvent(
+          new CustomEvent("bsLangChange", { detail: { lang } }),
+        );
       }
     }
   };
@@ -50,10 +55,8 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-     
         <Route element={<PermissionRoute />}>
           <Route index element={<Home lang={lang} />} />
-          
         </Route>
 
         {/* <Route path="test">
@@ -105,6 +108,10 @@ export default function AppRoutes() {
           <Route path="my-task" element={<MyTaskPage lang={lang} />} />
         </Route>
 
+        {/* Test routes - accessible without permission check */}
+        <Route path="test">
+          <Route path="gantt" element={<BSGanttChartTest />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
