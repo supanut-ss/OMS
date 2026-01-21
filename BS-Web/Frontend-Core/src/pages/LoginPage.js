@@ -77,7 +77,7 @@ export default function LoginPage({ setLang }) {
       let data = await login(formData);
       setLang(data?.lang ?? "en");
       if (data.status) {
-        let status_resource = isVersion ? await resource() : true;
+        let status_resource = await resource();
         if (status_resource) {
           await role();
           let status_menu = await menu();
