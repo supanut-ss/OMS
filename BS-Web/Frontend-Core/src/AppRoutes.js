@@ -35,7 +35,9 @@ export default function AppRoutes() {
         setLang(lang);
         secureStorage.set("lang", lang);
         // Dispatch custom event so all components (including BSDataGrid) can detect language change
-        window.dispatchEvent(new CustomEvent('bsLangChange', { detail: { lang } }));
+        window.dispatchEvent(
+          new CustomEvent("bsLangChange", { detail: { lang } }),
+        );
       }
     }
   };
@@ -110,7 +112,6 @@ export default function AppRoutes() {
         <Route path="test">
           <Route path="gantt" element={<BSGanttChartTest />} />
         </Route>
-
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

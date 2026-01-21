@@ -106,6 +106,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
   const [showView, setShowView] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { formData, errors, updateField, validate, setFormData } = useForm(
     defaultTrackingData,
     requiredTrackingFields
@@ -128,8 +129,9 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
 
   // Handle save tracking
   const handleSaveTracking = async () => {
+    if (isSaving) return;
     if (!validate()) return;
-
+    setIsSaving(true)
     // Get assignee_user_id - BSAutoComplete (single mode) returns object { code, label, ... }
     // So we need to extract the code value
     let assigneeValue = formData.assignee_user_id;
@@ -181,6 +183,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         "error",
         r("Save_Error", "An error occurred while saving")
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -394,6 +398,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                       bsObjWh: `project_header_id=${taskData?.project_header_id || 0
                         } AND project_task_id=${projectTaskId || 0}`,
                       required: false,
+                      readOnly: showView,
+                      disabled: showView
                     },
                     formData,
                     errors,
@@ -420,6 +426,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     bsObjBy: "display_sequence asc",
                     bsObjWh: "is_active='YES' and group_name='issue_type'",
                     required: true,
+                    disabled: showView,
                   },
                   formData,
                   errors,
@@ -436,6 +443,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     component: "BSTextField",
                     type: "decimal",
                     required: true,
+                    disabled: showView
                   },
                   formData,
                   errors,
@@ -457,6 +465,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     // Validate: ไม่เกิน due date range ของ task
                     minDate: taskData?.start_date,
                     maxDate: taskData?.end_date,
+                    disabled: showView
                   },
                   formData,
                   errors,
@@ -477,6 +486,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     minRows: 4,
                     maxRows: 12,
                     showCharacterCount: true,
+                    disabled: showView
                   },
                   formData,
                   errors,
@@ -499,8 +509,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             Close
           </BSCloseOutlinedButton>
           {!showView &&
-            <BSSaveOutlinedButton onClick={handleSaveTracking} variant="outlined">
-              Save
+            <BSSaveOutlinedButton onClick={handleSaveTracking} variant="outlined" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
             </BSSaveOutlinedButton>
           }
         </DialogActions>

@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import BSCloseOutlinedButton from "../../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../../components/Button/BSSaveOutlinedButton";
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AxiosMaster from "../../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../../components/BSAlertSwal2";
 import CloseIcon from "@mui/icons-material/Close";
@@ -18,8 +18,9 @@ import FormProject from "./Form/Project";
 import FormProjectMa from "./Form/Ma";
 import TabsProject from "./FormTabs/TabsProject";
 import TabsMa from "./FormTabs/TabsMa";
-import secureStorage from "../../../utils/SecureStorage";
-import { Timer } from "@mui/icons-material";
+import MinimizeIcon from "@mui/icons-material/Minimize";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import { delay } from "lodash";
 const ProjectsDialog = (props) => {
   const defaultData = props.ma ? {
     project_no: "",
@@ -83,6 +84,10 @@ const ProjectsDialog = (props) => {
   const { getResource, getResources } = useResource();
   const [resourceData, setResourceData] = useState();
   const [isSaving, setIsSaving] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const getLang = async () => {
     setResourceData(await getResources(props.ma ? "t_tmt_project_header_ma" : "t_tmt_project_header", props.lang));
@@ -92,12 +97,17 @@ const ProjectsDialog = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
   const handleClose = () => {
+    setMinimized(false);
+    setOpen(false);
     setTap(0);
     setFormData({ ...defaultData });
     props.onClose(false);
   };
   const onChangeProjectHeaderID = ({ id, newtab, path }) => {
     if (!newtab) {
+      setFocus(false);
+      setOpen(false);
+      setMinimized(false);
       setTap(0);
       setFormData({ ...defaultData });
       props.onClose(false);
@@ -131,7 +141,14 @@ const ProjectsDialog = (props) => {
     }
   };
   const fetchformData = useCallback(async () => {
+    // 🔥 ถ้า dialog เปิดอยู่แล้ว
+    if (open) {
+      setFocus(true);
+      return;
+    }
+
     if (formData.project_header_id || props.projectID) {
+      setLoading(true);
       await getLang();
       await AxiosMaster.get(
         `/projects/${formData.project_header_id || props.projectID}`
@@ -147,6 +164,8 @@ const ProjectsDialog = (props) => {
             "Error",
             "Failed to fetch project header data.</br>" + error
           );
+        }).finally(() => {
+          setLoading(false);
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,81 +173,128 @@ const ProjectsDialog = (props) => {
   useEffect(() => {
     fetchformData();
   }, [fetchformData]);
-
-  return (
-    <Dialog fullScreen open={props.open} onClose={handleClose}>
-      <DialogTitle>
-        {formData.project_header_id ? "Edit" : "Add"} {props.title}
-      </DialogTitle>
-      <IconButton
-        aria-label="close"
-        onClick={handleClose}
-        sx={(theme) => ({
-          position: "absolute",
-          right: 8,
-          top: 8,
-          color: theme.palette.grey[500],
-        })}
-      >
-        <CloseIcon />
-      </IconButton>
-      <DialogContent>
-        {formData === null && formData.project_header_id ? (
-          <Box sx={{ p: 3 }}>Loading...</Box>
-        ) : (
-          <Box sx={{ pl: 3, pr: 3 }}>
-            {/* Form fields for formData */}
-            {props.ma ? (<FormProjectMa formData={formData} errors={errors} updateField={updateField} resourceData={resourceData} getResource={getResource} />) : (
-              <FormProject formData={formData} errors={errors} updateField={updateField} resourceData={resourceData} getResource={getResource} />
-
-            )}{/* End of form fields for formData */}
-            {/* Tabs for additional information */}
-            {formData.record_type === "PROJECT" && (
-              <TabsProject
-                formData={formData}
-                resourceData={resourceData}
-                getResource={getResource}
-                onChangeProjectHeaderID={onChangeProjectHeaderID}
-                tap={tap}
-                setTap={setTap}
-                taskRefresh={taskRefresh}
-                setTaskRefresh={setTaskRefresh}
-                lang={props.lang}
-              />
-            )}
-            {formData.record_type === "MA" && (
-              <TabsMa
-                formData={formData}
-                resourceData={resourceData}
-                getResource={getResource}
-                onChangeProjectHeaderID={onChangeProjectHeaderID}
-                tap={tap}
-                setTap={setTap}
-                taskRefresh={taskRefresh}
-                setTaskRefresh={setTaskRefresh}
-                lang={props.lang}
-              />
-            )}
-            {/* End of Tabs for additional information */}
-          </Box>
-        )}
-        {props.children}
-      </DialogContent>
-      <DialogActions>
-        <BSCloseOutlinedButton
-          autoFocus
-          onClick={handleClose}
-          variant="outlined"
-          className="btn-close-outlined"
+  useEffect(() => {
+    if (props.open !== open) setOpen(true);
+  }, [props.open])
+  return (<>
+    {!loading &&
+      <Dialog fullScreen open={props.open && !minimized} onClose={handleClose}>
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            pr: 6, // กันปุ่ม close
+          }}
         >
-          Close
-        </BSCloseOutlinedButton>
-        <BSSaveOutlinedButton autoFocus variant="outlined" onClick={handleSave}
-          disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save"}
-        </BSSaveOutlinedButton>
-      </DialogActions>
-    </Dialog>
+          {formData.project_header_id ? "Edit" : "Add"} {props.title}
+
+          <Box>
+            <IconButton
+              size="small"
+              onClick={() => setMinimized(true)}
+              sx={{ mr: 1 }}
+            >
+              <MinimizeIcon />
+            </IconButton>
+
+            <IconButton size="small" onClick={handleClose}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {formData === null && formData.project_header_id ? (
+            <Box sx={{ p: 3 }}>Loading...</Box>
+          ) : (
+            <Box sx={{ pl: 3, pr: 3 }}>
+              {/* Form fields for formData */}
+              {props.ma ? (<FormProjectMa formData={formData} errors={errors} updateField={updateField} resourceData={resourceData} getResource={getResource} />) : (
+                <FormProject formData={formData} errors={errors} updateField={updateField} resourceData={resourceData} getResource={getResource} />
+
+              )}{/* End of form fields for formData */}
+              {/* Tabs for additional information */}
+              {formData.record_type === "PROJECT" && (
+                <TabsProject
+                  formData={formData}
+                  resourceData={resourceData}
+                  getResource={getResource}
+                  onChangeProjectHeaderID={onChangeProjectHeaderID}
+                  tap={tap}
+                  setTap={setTap}
+                  taskRefresh={taskRefresh}
+                  setTaskRefresh={setTaskRefresh}
+                  lang={props.lang}
+                />
+              )}
+              {formData.record_type === "MA" && (
+                <TabsMa
+                  formData={formData}
+                  resourceData={resourceData}
+                  getResource={getResource}
+                  onChangeProjectHeaderID={onChangeProjectHeaderID}
+                  tap={tap}
+                  setTap={setTap}
+                  taskRefresh={taskRefresh}
+                  setTaskRefresh={setTaskRefresh}
+                  lang={props.lang}
+                />
+              )}
+              {/* End of Tabs for additional information */}
+            </Box>
+          )}
+          {props.children}
+        </DialogContent>
+        <DialogActions>
+          <BSCloseOutlinedButton
+            autoFocus
+            onClick={handleClose}
+            variant="outlined"
+            className="btn-close-outlined"
+          >
+            Close
+          </BSCloseOutlinedButton>
+          <BSSaveOutlinedButton autoFocus variant="outlined" onClick={handleSave}
+            disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
+          </BSSaveOutlinedButton>
+        </DialogActions>
+      </Dialog>
+    }
+    {minimized && (
+      <Box
+        tabIndex={0} // 🔥 ทำให้ focus ได้
+        sx={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          zIndex: 1300,
+          px: 2,
+          py: 1,
+          bgcolor: "background.paper",
+          boxShadow: focus ? 8 : 3,
+          borderRadius: 2,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          cursor: "pointer",
+          outline: focus ? "2px solid #1976d2" : "none",
+          transition: "all .2s ease",
+        }}
+        onClick={() => {
+          setFocus(false);
+          setMinimized(false);
+        }}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+      >
+        <MinimizeIcon fontSize="small" />
+        <span>
+          {formData.project_header_id ? "Edit" : "Add"} {props.title} {formData.project_no && "[" + formData.project_no + "]"} {formData.project_name}
+        </span>
+      </Box>
+    )}
+  </>
   );
 };
 

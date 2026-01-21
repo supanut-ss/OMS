@@ -56,7 +56,7 @@ export const renderInput = ({
           error={!!errors[item.field]}
           helperText={errors[item.field] || ""}
           required={item.required}
-          disabled={item.disabled}
+          disabled={item.readOnly || item.disabled}
           bsFlagColor={item.bsFlagColor || false}
         />
       );
