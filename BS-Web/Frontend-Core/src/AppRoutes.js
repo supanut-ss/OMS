@@ -111,10 +111,7 @@ export default function AppRoutes() {
           <Route path="manpower" element={<ManPowerPage lang={lang} />} />
         </Route>
 
-        {/* Test routes - accessible without permission check */}
-        <Route path="test">
-          <Route path="gantt" element={<BSGanttChartTest />} />
-        </Route>
+       
         <Route path="gantt" element={<PermissionRoute />}>
           <Route path="chart" element={<GanttChart />} />
         </Route>
