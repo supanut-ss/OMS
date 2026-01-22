@@ -26,7 +26,6 @@ import PermissionRoute from "./components/Router/PermissionRoute";
 import ManPowerPage from "./pages/Projects/ManPower";
 // Test pages
 import BSGanttChartTest from "./test/BSGanttChartTest";
-import GanttChart from "./pages/Gantt/GanttChart";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -109,11 +108,6 @@ export default function AppRoutes() {
           <Route path="ma" element={<Projects lang={lang} ma={true} />} />
           <Route path="my-task" element={<MyTaskPage lang={lang} />} />
           <Route path="manpower" element={<ManPowerPage lang={lang} />} />
-        </Route>
-
-       
-        <Route path="gantt" element={<PermissionRoute />}>
-          <Route path="chart" element={<GanttChart />} />
         </Route>
       </Route>
 
