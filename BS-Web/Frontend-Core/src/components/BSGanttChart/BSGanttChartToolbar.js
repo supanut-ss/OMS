@@ -27,6 +27,7 @@ import {
   Tune as TuneIcon,
   UnfoldLess as UnfoldLessIcon,
   UnfoldMore as UnfoldMoreIcon,
+  Fullscreen as FullscreenIcon,
 } from "@mui/icons-material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -62,6 +63,7 @@ const BSGanttChartToolbar = ({
   onClearFilters,
   onExpandAll,
   onCollapseAll,
+  onToggleFullscreen,
   
   // Localization
   localeText = {},
@@ -215,7 +217,7 @@ const BSGanttChartToolbar = ({
               sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
             />
           )}
-          sx={{flexGrow: 2, width: 220 }}
+          sx={{flexGrow: 1, width: 220 }}
           disabled={loading}
           noOptionsText={localeText.bsNoData || "No options"}
         />
@@ -264,7 +266,7 @@ const BSGanttChartToolbar = ({
                </>
              );
           }}
-          sx={{ flexGrow: 1, minWidth: 200 }}
+          sx={{ minWidth: 200 }}
           disabled={loading}
           disableCloseOnSelect
           limitTags={2}
@@ -273,21 +275,8 @@ const BSGanttChartToolbar = ({
 
         {/* Action Group */}
         <Stack direction="row" spacing={1} alignItems="center">
-          <Tooltip title={localeText.bsExpandAll || "Expand All"}>
-            <IconButton size="small" onClick={onExpandAll} disabled={loading}>
-              <UnfoldMoreIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title={localeText.bsCollapseAll || "Collapse All"}>
-            <IconButton size="small" onClick={onCollapseAll} disabled={loading}>
-               <UnfoldLessIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          
-          <Divider orientation="vertical" flexItem sx={{ height: 20, my: "auto" }} />
-
-          <Tooltip title={localeText.bsClearFilters || "Clear Filters"}>
+        
+           <Tooltip title={localeText.bsClearFilters || "Clear Filters"}>
             <IconButton
               size="small"
               onClick={onClearFilters}
@@ -311,6 +300,30 @@ const BSGanttChartToolbar = ({
               color="primary"
             >
               <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Divider orientation="vertical" flexItem sx={{ height: 20, my: "auto" }} />
+          <Tooltip title={localeText.bsExpandAll || "Expand All"}>
+            <IconButton size="small" onClick={onExpandAll} disabled={loading}>
+              <UnfoldMoreIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+          <Tooltip title={localeText.bsCollapseAll || "Collapse All"}>
+            <IconButton size="small" onClick={onCollapseAll} disabled={loading}>
+               <UnfoldLessIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+         
+
+          <Tooltip title={localeText.bsFullscreen || "Fullscreen"}>
+            <IconButton
+              size="small"
+              onClick={onToggleFullscreen}
+              disabled={loading}
+              color="default"
+            >
+              <FullscreenIcon fontSize="small" />
             </IconButton>
           </Tooltip>
 

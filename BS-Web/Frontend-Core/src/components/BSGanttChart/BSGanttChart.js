@@ -15,7 +15,6 @@ import {
   useTheme,
 } from "@mui/material";
 import { Gantt, Willow, WillowDark } from "@svar-ui/react-gantt";
-import { Fullscreen } from "@svar-ui/react-core";
 import "@svar-ui/react-gantt/all.css";
 
 import BSGanttChartToolbar from "./BSGanttChartToolbar";
@@ -163,33 +162,45 @@ const BSGanttChart = forwardRef(
           "BSGanttChart: Injected global holiday styles successfully",
         );
 
-        // Add click listener to fullscreen button to apply scroll fix
-        setTimeout(() => {
-          const fullscreenBtn = document.querySelector('.wx-fullscreen-button');
-          if (fullscreenBtn) {
-            fullscreenBtn.addEventListener('click', () => {
-              // Wait a bit for the fullscreen transition to complete
-              setTimeout(() => {
-                const fullscreenEl = document.querySelector('.wx-fullscreen');
-                if (fullscreenEl) {
-                  const computedStyle = window.getComputedStyle(fullscreenEl);
-                  if (computedStyle.position === 'fixed') {
-                    fullscreenEl.style.setProperty('overflow', 'auto', 'important');
-                    fullscreenEl.style.setProperty('height', '100vh', 'important');
-                    console.warn('BSGanttChart: Applied fullscreen scroll fix');
-                  } else {
-                    fullscreenEl.style.removeProperty('overflow');
-                    fullscreenEl.style.removeProperty('height');
-                    console.warn('BSGanttChart: Removed fullscreen scroll fix');
-                  }
-                }
-              }, 100);
-            });
-            console.warn('BSGanttChart: Fullscreen button click listener attached');
-          }
-        }, 1000);
       }
     }, []);
+
+    // Refs
+    const chartContainerRef = React.useRef(null);
+    const ganttInstance = React.useRef(null);
+
+    // Fullscreen Handler
+    const handleToggleFullscreen = useCallback(() => {
+      if (!chartContainerRef.current) return;
+
+      if (!document.fullscreenElement) {
+        chartContainerRef.current.requestFullscreen().catch((err) => {
+          Logger.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }, []);
+
+    // Effect: Handle Fullscreen State Class
+    useEffect(() => {
+      const handleFullscreenChange = () => {
+        const el = chartContainerRef.current;
+        if (!el) return;
+
+        if (document.fullscreenElement === el) {
+          el.classList.add("wx-gantt-fullscreen-active");
+        } else {
+          el.classList.remove("wx-gantt-fullscreen-active");
+        }
+      };
+
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
+      return () => {
+        document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      };
+    }, []);
+
     const [selectedEmployees, setSelectedEmployees] = useState(
       initialSelectedEmployees,
     );
@@ -1093,6 +1104,7 @@ const BSGanttChart = forwardRef(
               onClearFilters={handleClearFilters}
               onExpandAll={handleExpandAll}
               onCollapseAll={handleCollapseAll}
+              onToggleFullscreen={handleToggleFullscreen}
               // Localization
               localeText={localeText}
               // Loading
@@ -1103,6 +1115,7 @@ const BSGanttChart = forwardRef(
 
         {/* Gantt Chart */}
         <Box
+          ref={chartContainerRef}
           sx={{
             height: height,
             position: "relative",
@@ -1234,41 +1247,39 @@ const BSGanttChart = forwardRef(
           )}
 
           {!loading && holidaysLoaded && tasks.length > 0 && (
-            <Fullscreen hotkey="ctrl+shift+f">
-              {theme.palette.mode === "dark" ? (
-                <WillowDark>
-                  <Gantt
-                    key={`gantt-dark-${holidayDates.size}`}
-                    tasks={tasks}
-                    scales={scales}
-                    columns={columns}
-                    taskTypes={taskTypes}
-                    cellWidth={cellWidth}
-                    cellHeight={cellHeight}
-                    scaleHeight={scaleHeight}
-                    readonly={readonly}
-                    zoom
-                    highlightTime={highlightTime}
-                  />
-                </WillowDark>
-              ) : (
-                <Willow>
-                  <Gantt
-                    key={`gantt-light-${holidayDates.size}`}
-                    tasks={tasks}
-                    scales={scales}
-                    columns={columns}
-                    taskTypes={taskTypes}
-                    cellWidth={cellWidth}
-                    cellHeight={cellHeight}
-                    scaleHeight={scaleHeight}
-                    readonly={readonly}
-                    zoom
-                    highlightTime={highlightTime}
-                  />
-                </Willow>
-              )}
-            </Fullscreen>
+            theme.palette.mode === "dark" ? (
+              <WillowDark>
+                <Gantt
+                  key={`gantt-dark-${holidayDates.size}`}
+                  tasks={tasks}
+                  scales={scales}
+                  columns={columns}
+                  taskTypes={taskTypes}
+                  cellWidth={cellWidth}
+                  cellHeight={cellHeight}
+                  scaleHeight={scaleHeight}
+                  readonly={readonly}
+                  zoom
+                  highlightTime={highlightTime}
+                />
+              </WillowDark>
+            ) : (
+              <Willow>
+                <Gantt
+                  key={`gantt-light-${holidayDates.size}`}
+                  tasks={tasks}
+                  scales={scales}
+                  columns={columns}
+                  taskTypes={taskTypes}
+                  cellWidth={cellWidth}
+                  cellHeight={cellHeight}
+                  scaleHeight={scaleHeight}
+                  readonly={readonly}
+                  zoom
+                  highlightTime={highlightTime}
+                />
+              </Willow>
+            )
           )}
         </Box>
 
