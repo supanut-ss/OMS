@@ -15,6 +15,9 @@ import {
   MenuItem,
   Paper,
   Divider,
+  Popover,
+  Stack,
+  InputAdornment,
 } from "@mui/material";
 import {
   Refresh as RefreshIcon,
@@ -22,6 +25,8 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   Tune as TuneIcon,
+  UnfoldLess as UnfoldLessIcon,
+  UnfoldMore as UnfoldMoreIcon,
 } from "@mui/icons-material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -55,6 +60,8 @@ const BSGanttChartToolbar = ({
   onScaleChange,
   onRefresh,
   onClearFilters,
+  onExpandAll,
+  onCollapseAll,
   
   // Localization
   localeText = {},
@@ -62,7 +69,17 @@ const BSGanttChartToolbar = ({
   // Loading state
   loading = false,
 }) => {
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  // Popover state for settings
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
+  const openSettings = Boolean(settingsAnchorEl);
+
+  const handleSettingsClick = (event) => {
+    setSettingsAnchorEl(event.currentTarget);
+  };
+
+  const handleSettingsClose = () => {
+    setSettingsAnchorEl(null);
+  };
   
   // Local state for sliders to prevent excessive updates/errors while dragging
   const [localCellWidth, setLocalCellWidth] = useState(cellWidth);
@@ -112,7 +129,7 @@ const BSGanttChartToolbar = ({
     <Paper
       elevation={0}
       sx={{
-        p: 2,
+        p: 1.5,
         mb: 2,
         borderRadius: 2,
         backgroundColor: "background.paper",
@@ -120,271 +137,309 @@ const BSGanttChartToolbar = ({
         borderColor: "divider",
       }}
     >
-      {/* Main Toolbar Row */}
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
-       
-
-        {/* Date Filters */}
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-              {localeText.bsDueDateStart || "Due Date Start"}:
-            </Typography>
+      {/* Compact Toolbar Layout */}
+      <Stack direction="row" spacing={2} alignItems="center" flexWrap="nowrap">
+        {/* Date Filter Group */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            px: 1,
+            py: 0.5,
+            gap: 1,
+            backgroundColor: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.05)"
+                : "rgba(0,0,0,0.02)",
+          }}
+        >
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
               value={startDate ? dayjs(startDate) : null}
-              onChange={(date) => onStartDateChange && onStartDateChange(date?.toDate() || null)}
+              onChange={(date) =>
+                onStartDateChange && onStartDateChange(date?.toDate() || null)
+              }
               format="DD/MM/YYYY"
               slotProps={{
                 textField: {
+                  variant: "standard",
                   size: "small",
-                  sx: { width: 165 },
+                  placeholder: localeText.bsStartDate || "Start",
+                  InputProps: { disableUnderline: true },
+                  sx: { width: 150, "& input": { textAlign: "center", fontSize: "0.875rem" } },
                 },
               }}
               disabled={loading}
             />
-          </Box>
-          
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-              {localeText.bsDueDateEnd || "Due Date End"}:
+            <Typography variant="caption" color="text.secondary">
+              —
             </Typography>
             <DatePicker
               value={endDate ? dayjs(endDate) : null}
-              onChange={(date) => onEndDateChange && onEndDateChange(date?.toDate() || null)}
+              onChange={(date) =>
+                onEndDateChange && onEndDateChange(date?.toDate() || null)
+              }
               format="DD/MM/YYYY"
               slotProps={{
                 textField: {
+                  variant: "standard",
                   size: "small",
-                  sx: { width: 165 },
+                  placeholder: localeText.bsEndDate || "End",
+                  InputProps: { disableUnderline: true },
+                  sx: { width: 150, "& input": { textAlign: "center", fontSize: "0.875rem" } },
                 },
               }}
               disabled={loading}
             />
-          </Box>
-        </LocalizationProvider>
-
-        {/* Project Single-select */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 250 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 60 }}>
-            {localeText.bsSelectProject || "Project"}:
-          </Typography>
-          <Autocomplete
-            size="small"
-            options={projects}
-            value={selectedProject}
-            onChange={(event, newValue) => onProjectChange && onProjectChange(newValue)}
-            getOptionLabel={(option) => option?.label || ""}
-            isOptionEqualToValue={(option, value) => option?.id === value?.id}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder={localeText.bsSearchProjects || "Search projects..."}
-                variant="outlined"
-              />
-            )}
-            sx={{ minWidth: 200 }}
-            disabled={loading}
-            noOptionsText={localeText.bsNoData || "No options"}
-          />
+          </LocalizationProvider>
         </Box>
 
-        {/* Employee Multi-select */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 300, flexGrow: 1 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-            {localeText.bsSelectEmployees || "Employees"}:
-          </Typography>
-          <Autocomplete
-            multiple
-            size="small"
-            options={employees}
-            value={selectedEmployees}
-            onChange={(event, newValue) => onEmployeesChange && onEmployeesChange(newValue)}
-            getOptionLabel={(option) => option.label || ""}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder={employees.length > 0 
-                  ? (localeText.bsSearchEmployees || "Search employees...") 
-                  : (localeText.bsAllEmployees || "All")
-                }
-                variant="outlined"
-              />
-            )}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip
-                  {...getTagProps({ index })}
-                  key={option.id}
-                  label={option.label}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
-              ))
-            }
-            sx={{ flexGrow: 1 }}
-            disabled={loading}
-            noOptionsText={localeText.bsNoData || "No options"}
-          />
-        </Box>
+        {/* Project Filter */}
+        <Autocomplete
+          size="small"
+          options={projects}
+          value={selectedProject}
+          onChange={(event, newValue) =>
+            onProjectChange && onProjectChange(newValue)
+          }
+          getOptionLabel={(option) => option?.label || ""}
+          isOptionEqualToValue={(option, value) => option?.id === value?.id}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder={localeText.bsSelectProject || "Select Project..."}
+              variant="outlined"
+              sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+            />
+          )}
+          sx={{flexGrow: 2, width: 220 }}
+          disabled={loading}
+          noOptionsText={localeText.bsNoData || "No options"}
+        />
 
-        {/* Selected count indicator */}
-        {selectedEmployees.length > 0 && (
-          <Chip
-            label={`${selectedEmployees.length} ${localeText.bsPersonsSelected?.replace("{count}", "") || "selected"}`}
-            size="small"
-            color="info"
-          />
-        )}
+        {/* Employee Filter */}
+        <Autocomplete
+          multiple
+          size="small"
+          options={employees}
+          value={selectedEmployees}
+          onChange={(event, newValue) =>
+            onEmployeesChange && onEmployeesChange(newValue)
+          }
+          getOptionLabel={(option) => option.label || ""}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder={
+                selectedEmployees.length === 0
+                  ? localeText.bsSelectEmployees || "Select Employees..."
+                  : ""
+              }
+              variant="outlined"
+              sx={{ "& .MuiInputBase-root": { fontSize: "0.875rem" } }}
+            />
+          )}
+          renderTags={(value, getTagProps) => {
+             // Limit tags to 2 for cleaner look
+             const numTags = 2;
+             const limitTags = value.slice(0, numTags);
+             const remaining = value.length - numTags;
+             
+             return (
+               <>
+                {limitTags.map((option, index) => (
+                  <Chip
+                    {...getTagProps({ index })}
+                    key={option.id}
+                    label={option.label}
+                    size="small"
+                    sx={{ height: 24, fontSize: "0.75rem" }}
+                  />
+                ))}
+                {remaining > 0 && <Chip size="small" label={`+${remaining}`} sx={{ height: 24, fontSize: "0.75rem" }} />}
+               </>
+             );
+          }}
+          sx={{ flexGrow: 1, minWidth: 200 }}
+          disabled={loading}
+          disableCloseOnSelect
+          limitTags={2}
+          noOptionsText={localeText.bsNoData || "No options"}
+        />
 
-        <Box sx={{ flexGrow: 1 }} />
+        {/* Action Group */}
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Tooltip title={localeText.bsExpandAll || "Expand All"}>
+            <IconButton size="small" onClick={onExpandAll} disabled={loading}>
+              <UnfoldMoreIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+          <Tooltip title={localeText.bsCollapseAll || "Collapse All"}>
+            <IconButton size="small" onClick={onCollapseAll} disabled={loading}>
+               <UnfoldLessIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+          <Divider orientation="vertical" flexItem sx={{ height: 20, my: "auto" }} />
 
-        {/* Action Buttons */}
-        <Tooltip title={localeText.bsClearFilters || "Clear Filters"}>
-          <IconButton
-            size="small"
-            onClick={onClearFilters}
-            disabled={loading || (!startDate && !endDate && selectedEmployees.length === 0 && !selectedProject)}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+          <Tooltip title={localeText.bsClearFilters || "Clear Filters"}>
+            <IconButton
+              size="small"
+              onClick={onClearFilters}
+              disabled={
+                loading ||
+                (!startDate &&
+                  !endDate &&
+                  selectedEmployees.length === 0 &&
+                  !selectedProject)
+              }
+            >
+              <ClearIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-        <Tooltip title={localeText.bsRefresh || "Refresh"}>
-          <IconButton
-            size="small"
-            onClick={onRefresh}
-            disabled={loading}
-            color="primary"
-          >
-            <RefreshIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+          <Tooltip title={localeText.bsRefresh || "Refresh"}>
+            <IconButton
+              size="small"
+              onClick={onRefresh}
+              disabled={loading}
+              color="primary"
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
 
-         {/* Filter Toggle */}
-        <Tooltip title={localeText.bsToggleViewOptions || "Toggle View Options"}>
-          <IconButton
-            size="small"
-            color={filtersExpanded ? "primary" : "default"}
-            onClick={() => setFiltersExpanded(!filtersExpanded)}
-            sx={{
-              border: "1px solid",
-              borderColor: filtersExpanded ? "primary.main" : "divider",
-            }}
-          >
-            <TuneIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
+          <Tooltip title={localeText.bsViewSettings || "View Settings"}>
+            <IconButton
+              size="small"
+              onClick={handleSettingsClick}
+              color={openSettings ? "primary" : "default"}
+              sx={{
+                border: "1px solid",
+                borderColor: openSettings ? "primary.main" : "divider",
+              }}
+            >
+              <TuneIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
 
-      {/* Scale/Size Controls Row */}
-      {filtersExpanded && (
-        <>
-          <Divider sx={{ my: 2 }} />
-          <Box
-            sx={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 3,
-            }}
-          >
+      {/* View Settings Popover */}
+      <Popover
+        open={openSettings}
+        anchorEl={settingsAnchorEl}
+        onClose={handleSettingsClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        PaperProps={{
+            elevation: 3,
+            sx: { p: 2, width: 320, borderRadius: 2, mt: 1 }
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+             {localeText.bsDisplayOptions || "Display Options"}
+        </Typography>
+        
+        <Stack spacing={2}>
+            {/* Scale Selector */}
+            <Box>
+                <Typography variant="caption" color="text.secondary" gutterBottom>
+                    {localeText.bsScale || "Time Scale"}
+                </Typography>
+                <FormControl size="small" fullWidth>
+                    <Select
+                      value={currentScale}
+                      onChange={(e) => onScaleChange && onScaleChange(e.target.value)}
+                      disabled={loading}
+                      sx={{ fontSize: "0.875rem" }}
+                    >
+                      {scaleOptions.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                </FormControl>
+            </Box>
+
+            <Divider />
+
             {/* Cell Width Control */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 200 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                {localeText.bsCellWidth || "Cell Width"}:
-              </Typography>
-              <Slider
-                value={localCellWidth}
-                onChange={handleCellWidthChange}
-                onChangeCommitted={handleCellWidthCommit}
-                min={30}
-                max={120}
-                step={10}
-                size="small"
-                valueLabelDisplay="auto"
-                sx={{ width: 120 }}
-                disabled={loading}
-              />
-              <Typography variant="body2" sx={{ minWidth: 30 }}>
-                {localCellWidth}px
-              </Typography>
+            <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="caption" color="text.secondary">
+                        {localeText.bsCellWidth || "Column Width"}
+                    </Typography>
+                    <Typography variant="caption" fontWeight="bold">
+                         {localCellWidth}px
+                    </Typography>
+                </Stack>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <Tooltip title={localeText.bsZoomOut || "Zoom Out"}>
+                       <IconButton 
+                         size="small" 
+                         onClick={() => onCellWidthChange && onCellWidthChange(Math.max(30, cellWidth - 10))}
+                         disabled={loading || cellWidth <= 30}>
+                          <ZoomOutIcon fontSize="small" />
+                       </IconButton>
+                    </Tooltip>
+                    <Slider
+                        value={localCellWidth}
+                        onChange={handleCellWidthChange}
+                        onChangeCommitted={handleCellWidthCommit}
+                        min={30}
+                        max={120}
+                        step={10}
+                        size="small"
+                        sx={{ mx: 1 }}
+                        disabled={loading}
+                    />
+                    <Tooltip title={localeText.bsZoomIn || "Zoom In"}>
+                       <IconButton 
+                         size="small" 
+                         onClick={() => onCellWidthChange && onCellWidthChange(Math.min(120, cellWidth + 10))}
+                         disabled={loading || cellWidth >= 120}>
+                          <ZoomInIcon fontSize="small" />
+                       </IconButton>
+                    </Tooltip>
+                </Stack>
             </Box>
 
-            {/* Scale Height Control */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 200 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
-                {localeText.bsScaleHeight || "Scale Height"}:
-              </Typography>
-              <Slider
-                value={localScaleHeight}
-                onChange={handleScaleHeightChange}
-                onChangeCommitted={handleScaleHeightCommit}
-                min={25}
-                max={60}
-                step={5}
-                size="small"
-                valueLabelDisplay="auto"
-                sx={{ width: 120 }}
-                disabled={loading}
-              />
-              <Typography variant="body2" sx={{ minWidth: 30 }}>
-                {localScaleHeight}px
-              </Typography>
+             {/* Scale Height Control */}
+            <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={0.5}>
+                    <Typography variant="caption" color="text.secondary">
+                         {localeText.bsScaleHeight || "Header Height"}
+                    </Typography>
+                    <Typography variant="caption" fontWeight="bold">
+                        {localScaleHeight}px
+                    </Typography>
+                </Stack>
+                 <Slider
+                    value={localScaleHeight}
+                    onChange={handleScaleHeightChange}
+                    onChangeCommitted={handleScaleHeightCommit}
+                    min={25}
+                    max={60}
+                    step={5}
+                    size="small"
+                    disabled={loading}
+                  />
             </Box>
-
-            {/* Scale Type Selector */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                {localeText.bsScale || "Scale"}:
-              </Typography>
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <Select
-                  value={currentScale}
-                  onChange={(e) => onScaleChange && onScaleChange(e.target.value)}
-                  disabled={loading}
-                >
-                  {scaleOptions.map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-
-            {/* Zoom Buttons */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Tooltip title={localeText.bsZoomOut || "Zoom Out"}>
-                <IconButton
-                  size="small"
-                  onClick={() => onCellWidthChange && onCellWidthChange(Math.max(30, cellWidth - 10))}
-                  disabled={loading || cellWidth <= 30}
-                >
-                  <ZoomOutIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={localeText.bsZoomIn || "Zoom In"}>
-                <IconButton
-                  size="small"
-                  onClick={() => onCellWidthChange && onCellWidthChange(Math.min(120, cellWidth + 10))}
-                  disabled={loading || cellWidth >= 120}
-                >
-                  <ZoomInIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-        </>
-      )}
+        </Stack>
+      </Popover>
     </Paper>
   );
 };

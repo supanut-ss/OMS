@@ -15,6 +15,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { Gantt, Willow, WillowDark } from "@svar-ui/react-gantt";
+import { Fullscreen } from "@svar-ui/react-core";
 import "@svar-ui/react-gantt/all.css";
 
 import BSGanttChartToolbar from "./BSGanttChartToolbar";
@@ -23,6 +24,7 @@ import { getLocaleText } from "./locales";
 import { useResource } from "../../hooks/useResource";
 import SecureStorage from "../../utils/SecureStorage";
 import Logger from "../../utils/logger";
+import AxiosMaster from "../../utils/AxiosMaster";
 
 /**
  * BSGanttChart - Configurable Gantt Chart Component
@@ -57,7 +59,7 @@ const BSGanttChart = forwardRef(
       // Display customization
       columns: customColumns = null,
       scales: customScales = null,
-      initialCellWidth = 60,
+      initialCellWidth = 30,
       initialCellHeight = 38,
       initialScaleHeight = 40,
       initialScale = "day",
@@ -76,15 +78,118 @@ const BSGanttChart = forwardRef(
       onDataLoad = null,
       onError = null,
 
+      // Holiday highlighting
+      holidays = [], // Array of holiday dates: [{ date: '2026-01-01', name: 'New Year' }, ...] or ['2026-01-01', ...]
+      holidayProcedureName = null, // SP name to fetch holidays (e.g., 'usp_tmt_get_holidays')
+      holidayTableName = null, // Table name to fetch holidays directly (e.g., 't_tmt_holiday')
+      holidayPreObj = null, // Schema prefix for holiday SP or table (e.g., 'tmt')
+      showHolidays = true, // Show/hide holiday highlighting
+
       // Custom styles
       sx = {},
     },
     ref,
   ) => {
+    // Debug: Check if component receives props
+    if (holidayTableName) {
+      console.warn(
+        "BSGanttChart: Rendered with holidayTableName:",
+        holidayTableName,
+      );
+    }
+
     // State
     const [tasks, setTasks] = useState([]);
     const [startDate, setStartDate] = useState(initialStartDate);
     const [endDate, setEndDate] = useState(initialEndDate);
+
+    // Initial style injection (Force apply styles globally to bypass specificity/shadow DOM issues)
+    useEffect(() => {
+      const styleId = "bs-gantt-holiday-global-styles";
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+          /* Holiday Header - Purple background */
+          body .wx-gantt .wx-scale .wx-cell.wx-holiday {
+            background-color: rgba(156, 39, 176, 0.4) !important;
+            background: rgba(156, 39, 176, 0.4) !important;
+            color: #4a148c !important;
+            font-weight: bold !important;
+          }
+          /* Holiday Body Cells - Fix height/position and apply purple background */
+          body .wx-gantt .wx-gantt-holidays .wx-holiday {
+            position: absolute !important;
+            height: 100% !important;
+            top: 0 !important;
+            background-color: rgba(156, 39, 176, 0.3) !important;
+            background: rgba(156, 39, 176, 0.3) !important;
+          }
+          /* Fullscreen button - Fixed position at bottom-right of viewport */
+          .wx-fullscreen .wx-fullscreen-button {
+            position: fixed !important;
+            bottom: 60px !important;
+            right: 40px !important;
+            top: auto !important;
+            z-index: 1000 !important;
+            background: rgba(255, 255, 255, 0.45) !important;
+            border-radius: 8px !important;
+            padding: 8px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+            border: 1px solid rgba(0,0,0,0.1) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .wx-fullscreen .wx-fullscreen-button .wx-fullscreen-icon {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+            display: block !important;
+          }
+          .wx-fullscreen .wx-fullscreen-button:hover {
+            background: rgba(255, 255, 255, 1) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+            transform: scale(1.05);
+          }
+          /* Fullscreen mode - Enable scrolling */
+          .wx-fullscreen-scroll-fix {
+            overflow: auto !important;
+            height: 100vh !important;
+          }
+        `;
+        document.head.appendChild(style);
+        console.warn(
+          "BSGanttChart: Injected global holiday styles successfully",
+        );
+
+        // Add click listener to fullscreen button to apply scroll fix
+        setTimeout(() => {
+          const fullscreenBtn = document.querySelector('.wx-fullscreen-button');
+          if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+              // Wait a bit for the fullscreen transition to complete
+              setTimeout(() => {
+                const fullscreenEl = document.querySelector('.wx-fullscreen');
+                if (fullscreenEl) {
+                  const computedStyle = window.getComputedStyle(fullscreenEl);
+                  if (computedStyle.position === 'fixed') {
+                    fullscreenEl.style.setProperty('overflow', 'auto', 'important');
+                    fullscreenEl.style.setProperty('height', '100vh', 'important');
+                    console.warn('BSGanttChart: Applied fullscreen scroll fix');
+                  } else {
+                    fullscreenEl.style.removeProperty('overflow');
+                    fullscreenEl.style.removeProperty('height');
+                    console.warn('BSGanttChart: Removed fullscreen scroll fix');
+                  }
+                }
+              }, 100);
+            });
+            console.warn('BSGanttChart: Fullscreen button click listener attached');
+          }
+        }, 1000);
+      }
+    }, []);
     const [selectedEmployees, setSelectedEmployees] = useState(
       initialSelectedEmployees,
     );
@@ -100,13 +205,24 @@ const BSGanttChart = forwardRef(
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
     const [tooltipContent, setTooltipContent] = useState("");
 
+    // Holiday state
+    const [holidayDates, setHolidayDates] = useState(new Map()); // Map<dateString, holidayName>
+    const [holidaysLoaded, setHolidaysLoaded] = useState(false); // Track if holidays have been loaded
+
     // Hooks
     const theme = useTheme();
     const lang = SecureStorage.get("lang");
     const localeText = useMemo(() => getLocaleText(), [lang]); // Re-fetch when lang changes
     const { getResources } = useResource();
-    const { loading, error, employees, projects, fetchData, getFilteredTasks, allTasks } =
-      useGanttData();
+    const {
+      loading,
+      error,
+      employees,
+      projects,
+      fetchData,
+      getFilteredTasks,
+      allTasks,
+    } = useGanttData();
 
     // Generate scales based on current scale setting
     const scales = useMemo(() => {
@@ -129,8 +245,12 @@ const BSGanttChart = forwardRef(
             unit: "day",
             step: 1,
             format: (date) => {
-              const dayName = new Intl.DateTimeFormat(locale, { weekday: "short" }).format(date);
-              const dayNum = new Intl.DateTimeFormat(locale, { day: "numeric" }).format(date);
+              const dayName = new Intl.DateTimeFormat(locale, {
+                weekday: "short",
+              }).format(date);
+              const dayNum = new Intl.DateTimeFormat(locale, {
+                day: "numeric",
+              }).format(date);
               return `${dayName}\n${dayNum}`;
             },
           },
@@ -155,9 +275,7 @@ const BSGanttChart = forwardRef(
               );
               d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
               const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-              const weekNo = Math.ceil(
-                ((d - yearStart) / 86400000 + 1) / 7,
-              );
+              const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
               return `W${weekNo}`;
             },
           },
@@ -167,9 +285,7 @@ const BSGanttChart = forwardRef(
             unit: "year",
             step: 1,
             format: (date) =>
-              new Intl.DateTimeFormat(locale, { year: "numeric" }).format(
-                date,
-              ),
+              new Intl.DateTimeFormat(locale, { year: "numeric" }).format(date),
           },
           {
             unit: "month",
@@ -219,7 +335,12 @@ const BSGanttChart = forwardRef(
           width: 80,
           template: (value, row, col) => {
             // value is the man_day field from task object (set in useGanttData.js)
-            return value ? parseFloat(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
+            return value
+              ? parseFloat(value).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "-";
           },
         },
         {
@@ -229,7 +350,12 @@ const BSGanttChart = forwardRef(
           width: 80,
           template: (value, row, col) => {
             // value is the actual_man_day field from task object (set in useGanttData.js)
-            return value ? parseFloat(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
+            return value
+              ? parseFloat(value).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "-";
           },
         },
       ];
@@ -260,13 +386,13 @@ const BSGanttChart = forwardRef(
         const progressLabel = localeText.bsProgress || "Progress";
         const startLabel = localeText.bsStartDate || "Start";
         const endLabel = localeText.bsEndDate || "End";
-        
+
         return `
           <div class="wx-gantt-tooltip-content">
             <div style="font-weight: bold; margin-bottom: 4px;">${task.text}</div>
             <div>${startLabel}: ${startDate}</div>
             <div>${endLabel}: ${endDate}</div>
-            ${task.progress !== undefined ? `<div>${progressLabel}: ${Math.round(task.progress * 100)}%</div>` : ''}
+            ${task.progress !== undefined ? `<div>${progressLabel}: ${Math.round(task.progress * 100)}%</div>` : ""}
           </div>
         `;
       },
@@ -364,6 +490,176 @@ const BSGanttChart = forwardRef(
       return new Date(today.getFullYear(), today.getMonth() + 1, 0);
     }, []);
 
+    // Process holidays prop into Map for quick lookup
+    useEffect(() => {
+      if (!showHolidays) {
+        setHolidayDates(new Map());
+        setHolidaysLoaded(true); // Mark as loaded even when disabled
+        return;
+      }
+
+      const holidayMap = new Map();
+
+      // Process holidays prop (array of dates or objects)
+      if (holidays && holidays.length > 0) {
+        holidays.forEach((holiday) => {
+          if (typeof holiday === "string") {
+            // Simple date string: '2026-01-01'
+            const dateKey = holiday.split("T")[0]; // Remove time part if exists
+            holidayMap.set(dateKey, "Holiday");
+          } else if (holiday && holiday.date) {
+            // Object with date and name: { date: '2026-01-01', name: 'New Year' }
+            const dateKey = String(holiday.date).split("T")[0];
+            holidayMap.set(dateKey, holiday.name || "Holiday");
+          }
+        });
+        setHolidayDates(holidayMap);
+        setHolidaysLoaded(true); // Mark as loaded when holidays prop is processed
+      } else if (!holidayProcedureName && !holidayTableName) {
+        // No holidays prop and no SP/table to fetch from
+        setHolidaysLoaded(true);
+      }
+      // If there's a holidayProcedureName or holidayTableName, the other useEffect will handle loading
+    }, [holidays, showHolidays, holidayProcedureName, holidayTableName]);
+
+    // Fetch holidays from SP or Table
+    useEffect(() => {
+      //   console.warn("[BSGanttChart] Holiday Effect Triggered. showHolidays:", showHolidays, "holidayTableName:", holidayTableName);
+
+      //   // TEST: Force add Jan 1, 2026 and Today as holiday to test rendering
+      //   const testDate = "2026-01-01";
+      //   const todayDate = new Date().toISOString().split('T')[0];
+      // //   console.warn(`[BSGanttChart] TEST: Forcing holidays on ${testDate} and ${todayDate} to verify CSS/Rendering`);
+
+      //   setHolidayDates(prev => {
+      //       const m = new Map(prev);
+      //       m.set(testDate, "Test Holiday 1");
+      //       m.set(todayDate, "Test Holiday Today");
+      //       return m;
+      //   });
+
+      const fetchHolidays = async () => {
+        // Skip if neither SP nor table is specified, or holidays are disabled
+        if ((!holidayProcedureName && !holidayTableName) || !showHolidays) {
+          // console.warn("BSGanttChart: Holiday fetch skipped (params missing or disabled)");
+          return;
+        }
+
+        try {
+          //   console.warn("BSGanttChart: Starting holiday fetch...");
+          let response;
+
+          if (holidayTableName) {
+            // console.warn(
+            //   "BSGanttChart: Fetching holidays from table",
+            //   holidayPreObj
+            //     ? `${holidayPreObj}.${holidayTableName}`
+            //     : holidayTableName,
+            // );
+
+            // Use POST to Dynamic/bs-datagrid (AxiosMaster already has /api prefix)
+            response = await AxiosMaster.post("Dynamic/bs-datagrid", {
+              tableName: holidayTableName,
+              schemaName: holidayPreObj || "dbo",
+              pageSize: 1000, // Get all holidays
+              page: 1,
+              customWhere: "is_active = 'YES'",
+              customOrderBy: "holiday_date ASC",
+            });
+            // console.warn("BSGanttChart: Holiday API response received", response?.status);
+          } else if (holidayProcedureName) {
+            // ...
+            // Query from stored procedure
+            const fullProcedureName = holidayPreObj
+              ? `${holidayPreObj}.${holidayProcedureName}`
+              : holidayProcedureName;
+
+            console.warn(
+              "BSGanttChart: Fetching holidays from SP",
+              fullProcedureName,
+            );
+
+            response = await AxiosMaster.get(
+              `GenericSP/execute/${fullProcedureName}`,
+            );
+          }
+
+          // Handle response data
+          let data =
+            response?.data?.rows || response?.data?.data || response?.data;
+
+          if (data && Array.isArray(data)) {
+            const holidayMap = new Map();
+
+            data.forEach((row) => {
+              // bs-datagrid wraps data in .data property, SP returns flat rows
+              const rowData = row.data || row;
+
+              // Try common field names for date and name
+              const dateValue =
+                rowData.holiday_date ||
+                rowData.date ||
+                rowData.holidayDate ||
+                rowData.HolidayDate ||
+                rowData.HOLIDAY_DATE;
+              const nameValue =
+                rowData.holiday_name ||
+                rowData.name ||
+                rowData.holidayName ||
+                rowData.HolidayName ||
+                rowData.HOLIDAY_NAME ||
+                rowData.description ||
+                "Holiday";
+
+              if (dateValue) {
+                const dateKey = String(dateValue).split("T")[0];
+                holidayMap.set(dateKey, nameValue);
+                // Log first few holidays
+                if (holidayMap.size <= 3) {
+                  console.warn(
+                    `BSGanttChart: Parsed holiday: ${dateKey} - ${nameValue}`,
+                  );
+                }
+              }
+            });
+
+            console.warn(
+              "BSGanttChart: Total holidays loaded:",
+              holidayMap.size,
+            );
+
+            Logger.log(
+              "BSGanttChart: Loaded",
+              holidayMap.size,
+              "holidays",
+              Array.from(holidayMap.keys()),
+            );
+
+            setHolidayDates((prevMap) => {
+              const mergedMap = new Map(holidayMap);
+              prevMap.forEach((value, key) => {
+                mergedMap.set(key, value);
+              });
+              console.warn("BSGanttChart: Holiday map updated, size:", mergedMap.size);
+              return mergedMap;
+            });
+            setHolidaysLoaded(true); // Mark holidays as loaded after fetch completes
+          } else {
+            console.warn(
+              "BSGanttChart: No valid holiday data found in response",
+            );
+            setHolidaysLoaded(true); // Mark as loaded even if no data found
+          }
+        } catch (err) {
+          console.error("BSGanttChart: Failed to fetch holidays", err);
+          Logger.error("BSGanttChart: Failed to fetch holidays", err);
+          setHolidaysLoaded(true); // Mark as loaded even on error to prevent indefinite loading
+        }
+      };
+
+      fetchHolidays();
+    }, [holidayProcedureName, holidayTableName, holidayPreObj, showHolidays]);
+
     // Initial data load
     useEffect(() => {
       loadData();
@@ -391,7 +687,7 @@ const BSGanttChart = forwardRef(
       (newEmployees) => {
         setSelectedEmployees(newEmployees);
         // Re-fetch with selected employees
-          loadData({ selectedEmployees: newEmployees });
+        loadData({ selectedEmployees: newEmployees });
       },
       [loadData],
     );
@@ -425,6 +721,45 @@ const BSGanttChart = forwardRef(
       },
       [onTaskClick],
     );
+
+    // Handle Expand All
+    const handleExpandAll = useCallback(() => {
+      setTasks((prevTasks) =>
+        prevTasks.map((t) => {
+          // Only expand parent nodes (user and project levels)
+          // Check type or data.level depending on how data is structured
+          const isParent =
+            t.type === "user" ||
+            t.type === "project" ||
+            t.data?.level === "user" ||
+            t.data?.level === "project";
+
+          if (isParent) {
+            return { ...t, open: true };
+          }
+          return t;
+        }),
+      );
+    }, []);
+
+    // Handle Collapse All
+    const handleCollapseAll = useCallback(() => {
+      setTasks((prevTasks) =>
+        prevTasks.map((t) => {
+          // Only collapse parent nodes
+          const isParent =
+            t.type === "user" ||
+            t.type === "project" ||
+            t.data?.level === "user" ||
+            t.data?.level === "project";
+
+          if (isParent) {
+            return { ...t, open: false };
+          }
+          return t;
+        }),
+      );
+    }, []);
 
     // Clear all filters and re-fetch with defaults
     const handleClearFilters = useCallback(() => {
@@ -484,11 +819,11 @@ const BSGanttChart = forwardRef(
     // Function to apply tooltips to bars
     const applyTooltipsToNewBars = useCallback(() => {
       const bars = document.querySelectorAll(".wx-gantt .wx-bar");
-      
+
       bars.forEach((bar) => {
         // Skip bars that already have tooltip listeners
         if (bar.hasAttribute("data-tooltip-applied")) return;
-        
+
         const taskId = bar.getAttribute("data-id");
         if (taskId) {
           const task = tasks.find((t) => String(t.id) === String(taskId));
@@ -499,36 +834,58 @@ const BSGanttChart = forwardRef(
             const startDate = startDateValue
               ? new Date(startDateValue).toLocaleDateString(
                   lang === "en" ? "en-US" : "th-TH",
-                  { year: "numeric", month: "short", day: "numeric" }
+                  { year: "numeric", month: "short", day: "numeric" },
                 )
               : "-";
             const endDate = endDateValue
               ? new Date(endDateValue).toLocaleDateString(
                   lang === "en" ? "en-US" : "th-TH",
-                  { year: "numeric", month: "short", day: "numeric" }
+                  { year: "numeric", month: "short", day: "numeric" },
                 )
               : "-";
             // Format manday values with thousand separators
-            const manDay = task.man_day ? parseFloat(task.man_day).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
-            const actualManDay = task.actual_man_day ? parseFloat(task.actual_man_day).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
+            const manDay = task.man_day
+              ? parseFloat(task.man_day).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "-";
+            const actualManDay = task.actual_man_day
+              ? parseFloat(task.actual_man_day).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "-";
 
             const tooltipText = `${task.text}\n${localeText.bsStartDate || "Start"}: ${startDate}\n${localeText.bsEndDate || "End"}: ${endDate}\n${localeText.bsColumnManDay || "Man Day"}: ${manDay}\n${localeText.bsColumnActualManDay || "Actual Man Day"}: ${actualManDay}`;
             bar.setAttribute("data-tooltip", tooltipText);
             bar.setAttribute("data-tooltip-applied", "true");
             bar.removeAttribute("title");
 
-            bar.addEventListener("mouseenter", () => {
-              setTooltipContent(tooltipText);
-              setTooltipVisible(true);
-            }, true);
+            bar.addEventListener(
+              "mouseenter",
+              () => {
+                setTooltipContent(tooltipText);
+                setTooltipVisible(true);
+              },
+              true,
+            );
 
-            bar.addEventListener("mousemove", (e) => {
-              setTooltipPosition({ x: e.clientX + 15, y: e.clientY + 15 });
-            }, true);
+            bar.addEventListener(
+              "mousemove",
+              (e) => {
+                setTooltipPosition({ x: e.clientX + 15, y: e.clientY + 15 });
+              },
+              true,
+            );
 
-            bar.addEventListener("mouseleave", () => {
-              setTooltipVisible(false);
-            }, true);
+            bar.addEventListener(
+              "mouseleave",
+              () => {
+                setTooltipVisible(false);
+              },
+              true,
+            );
           }
         }
       });
@@ -564,16 +921,116 @@ const BSGanttChart = forwardRef(
       };
     }, [tasks, lang, localeText, applyTooltipsToNewBars]);
 
-    // Highlight weekends using official SVAR highlightTime prop
-    const highlightTime = useCallback((date, unit) => {
-      if (unit === "day") {
-        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-          return "wx-weekend";
-        }
+    // Debug: Log when holidayDates changes
+    useEffect(() => {
+      if (holidayDates.size > 0) {
+        Logger.log(
+          "BSGanttChart: holidayDates updated, size:",
+          holidayDates.size,
+          "keys:",
+          Array.from(holidayDates.keys()).slice(0, 5),
+        );
       }
-      return "";
-    }, []);
+    }, [holidayDates]);
+
+    // Apply holiday highlighting via DOM manipulation - using cell position calculation
+    useEffect(() => {
+      if (!showHolidays || holidayDates.size === 0) return;
+
+      const applyHolidayHighlighting = () => {
+        console.warn("[BSGanttChart] DOM Highlight: Starting with", holidayDates.size, "holidays");
+        
+        // Method 1: Find scale header cells and match by position/text
+        const ganttEl = document.querySelector(".wx-gantt");
+        if (!ganttEl) {
+          console.warn("[BSGanttChart] DOM Highlight: .wx-gantt not found");
+          return;
+        }
+
+        // Find all cells in the timeline grid area
+        const allCells = ganttEl.querySelectorAll('[class*="cell"]');
+        console.warn("[BSGanttChart] DOM Highlight: Found", allCells.length, "cells total");
+        
+        // Log structure of first few cells
+        allCells.forEach((cell, i) => {
+          if (i < 3) {
+            console.warn(`[BSGanttChart] Cell ${i}:`, {
+              class: cell.className,
+              text: cell.textContent?.trim()?.substring(0, 20),
+              style: cell.getAttribute("style")?.substring(0, 50),
+              left: cell.style?.left,
+            });
+          }
+        });
+
+        // SVAR Gantt uses CSS left position to place cells
+        // We need to calculate which cell corresponds to which date
+        // Find the scale header row that shows dates
+        const scaleRow = ganttEl.querySelector('.wx-scale');
+        if (scaleRow) {
+          const dateLabels = scaleRow.querySelectorAll('.wx-cell');
+          console.warn("[BSGanttChart] Found", dateLabels.length, "date labels in scale");
+          
+          dateLabels.forEach((label, i) => {
+            if (i < 5) {
+              console.warn(`[BSGanttChart] Scale label ${i}: "${label.textContent?.trim()}"`);
+            }
+          });
+        }
+      };
+
+      // Apply after a delay to ensure Gantt has rendered
+      const timeoutId = setTimeout(applyHolidayHighlighting, 1500);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }, [holidayDates, showHolidays, tasks]);
+
+    // Highlight weekends and holidays using official SVAR highlightTime prop
+    const highlightTime = useCallback(
+      (date, unit) => {
+        if (unit === "day") {
+          // Format date as YYYY-MM-DD for lookup
+          // Note: create keys for both local and ISO dates to handle timezone/midnight edge cases
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const day = String(date.getDate()).padStart(2, "0");
+          const localDateKey = `${year}-${month}-${day}`;
+
+          const isoDateKey = date.toISOString().split("T")[0];
+
+          // Debug log for specific date (New Year 2026)
+          if (localDateKey === "2026-01-01") {
+            console.warn("BSGanttChart highlightTime: Checking New Year 2026", { 
+              localDateKey, 
+              isoDateKey, 
+              inMapLocal: holidayDates.has(localDateKey), 
+              inMapISO: holidayDates.has(isoDateKey), 
+              mapSize: holidayDates.size,
+              showHolidays 
+            });
+          }
+
+          if (showHolidays && holidayDates.size > 0) {
+            if (holidayDates.has(localDateKey)) {
+              return "wx-holiday";
+            }
+            if (holidayDates.has(isoDateKey)) {
+              return "wx-holiday";
+            }
+          }
+
+          // Check if it's a weekend (Saturday or Sunday)
+          const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            return "wx-weekend";
+          }
+        }
+        return "";
+      },
+      [holidayDates, showHolidays],
+    );
 
     // Render error state
     if (error && !loading) {
@@ -601,15 +1058,17 @@ const BSGanttChart = forwardRef(
 
         {/* Toolbar - Made sticky so it doesn't scroll away */}
         {showToolbar && (
-          <Box sx={{ 
-            p: 2, 
-            borderBottom: 1, 
-            borderColor: "divider",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            backgroundColor: theme.palette.background.paper,
-          }}>
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              backgroundColor: theme.palette.background.paper,
+            }}
+          >
             <BSGanttChartToolbar
               // Filter state
               startDate={startDate}
@@ -632,6 +1091,8 @@ const BSGanttChart = forwardRef(
               onScaleChange={setCurrentScale}
               onRefresh={loadData}
               onClearFilters={handleClearFilters}
+              onExpandAll={handleExpandAll}
+              onCollapseAll={handleCollapseAll}
               // Localization
               localeText={localeText}
               // Loading
@@ -681,15 +1142,16 @@ const BSGanttChart = forwardRef(
             },
             // Right-align cell values for man_day and actual_man_day columns (3rd and 4th columns)
             // Target data cells, not header cells
-            "& .wx-gantt .wx-grid .wx-row:not(.wx-header) .wx-cell:nth-child(3), & .wx-gantt .wx-grid .wx-row:not(.wx-header) .wx-cell:nth-child(4)": {
-              textAlign: "right !important",
-            },
+            "& .wx-gantt .wx-grid .wx-row:not(.wx-header) .wx-cell:nth-child(3), & .wx-gantt .wx-grid .wx-row:not(.wx-header) .wx-cell:nth-child(4)":
+              {
+                textAlign: "right !important",
+              },
             // Custom bar colors using SVAR Gantt CSS class pattern: .wx-bar.wx-task.{type}
             // User level - Green (More Saturated)
             "& .wx-gantt .wx-bar.wx-task.user": {
               backgroundColor: "#66bb6a !important", // Green 400
-              borderColor: "#43a047 !important",     // Green 600
-              color: "#ffffff !important",           // Dark Green Text
+              borderColor: "#43a047 !important", // Green 600
+              color: "#ffffff !important", // Dark Green Text
             },
             "& .wx-gantt .wx-bar.wx-task.user .wx-progress-percent": {
               backgroundColor: "#43a047 !important", // Green 600
@@ -697,8 +1159,8 @@ const BSGanttChart = forwardRef(
             // Project level - Blue (More Saturated)
             "& .wx-gantt .wx-bar.wx-task.project": {
               backgroundColor: "#42a5f5 !important", // Blue 400
-              borderColor: "#1e88e5 !important",     // Blue 600
-              color: "#ffffff !important",           // Dark Blue Text
+              borderColor: "#1e88e5 !important", // Blue 600
+              color: "#ffffff !important", // Dark Blue Text
             },
             "& .wx-gantt .wx-bar.wx-task.project .wx-progress-percent": {
               backgroundColor: "#1e88e5 !important", // Blue 600
@@ -706,22 +1168,38 @@ const BSGanttChart = forwardRef(
             // Task level - Orange (More Saturated)
             "& .wx-gantt .wx-bar.wx-task.work_task": {
               backgroundColor: "#ffa726 !important", // Orange 400
-              borderColor: "#fb8c00 !important",     // Orange 600
-              color: "#ffffff !important",           // Dark Orange Text
+              borderColor: "#fb8c00 !important", // Orange 600
+              color: "#ffffff !important", // Dark Orange Text
             },
             "& .wx-gantt .wx-bar.wx-task.work_task .wx-progress-percent": {
               backgroundColor: "#fb8c00 !important", // Orange 600
             },
-            // Weekend highlighting (Saturday/Sunday)
+            // Weekend highlighting (Saturday/Sunday) - Light red
             "& .wx-gantt .wx-cell.weekend, & .wx-gantt .wx-weekend": {
               backgroundColor: "rgba(255, 200, 200, 0.3) !important", // Light red for weekends
             },
             "& .wx-gantt .wx-scale-cell.weekend": {
               backgroundColor: "rgba(255, 200, 200, 0.3) !important",
             },
+            // Holiday highlighting - Purple for holidays
+            // Header cells
+            "& .wx-gantt .wx-scale .wx-cell.wx-holiday": {
+              backgroundColor: "rgba(156, 39, 176, 0.4) !important",
+              background: "rgba(156, 39, 176, 0.4) !important",
+              color: "#4a148c !important",
+              borderBottom: "2px solid rgba(107, 23, 122, 0.4) !important",
+            },
+            // Body cells - fix height/position
+            "& .wx-gantt .wx-gantt-holidays .wx-holiday": {
+              position: "absolute !important",
+              height: "100% !important",
+              top: "0 !important",
+              backgroundColor: "rgba(156, 39, 176, 0.3) !important",
+              background: "rgba(156, 39, 176, 0.3) !important",
+            },
           }}
         >
-          {loading && (
+          {(loading || !holidaysLoaded) && (
             <Box
               sx={{
                 position: "absolute",
@@ -740,7 +1218,7 @@ const BSGanttChart = forwardRef(
             </Box>
           )}
 
-          {!loading && tasks.length === 0 ? (
+          {!loading && holidaysLoaded && tasks.length === 0 && (
             <Box
               sx={{
                 height: "100%",
@@ -753,11 +1231,14 @@ const BSGanttChart = forwardRef(
                 {localeText.bsNoData || "No data available"}
               </Typography>
             </Box>
-          ) : (
-            <>
+          )}
+
+          {!loading && holidaysLoaded && tasks.length > 0 && (
+            <Fullscreen hotkey="ctrl+shift+f">
               {theme.palette.mode === "dark" ? (
                 <WillowDark>
                   <Gantt
+                    key={`gantt-dark-${holidayDates.size}`}
                     tasks={tasks}
                     scales={scales}
                     columns={columns}
@@ -773,6 +1254,7 @@ const BSGanttChart = forwardRef(
               ) : (
                 <Willow>
                   <Gantt
+                    key={`gantt-light-${holidayDates.size}`}
                     tasks={tasks}
                     scales={scales}
                     columns={columns}
@@ -786,7 +1268,7 @@ const BSGanttChart = forwardRef(
                   />
                 </Willow>
               )}
-            </>
+            </Fullscreen>
           )}
         </Box>
 
@@ -797,7 +1279,10 @@ const BSGanttChart = forwardRef(
               position: "fixed",
               left: tooltipPosition.x,
               top: tooltipPosition.y,
-              backgroundColor: theme.palette.mode === "dark" ? "rgba(50,50,50,0.95)" : "rgba(0,0,0,0.85)",
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(50,50,50,0.95)"
+                  : "rgba(0,0,0,0.85)",
               color: "white",
               padding: "8px 12px",
               borderRadius: "6px",

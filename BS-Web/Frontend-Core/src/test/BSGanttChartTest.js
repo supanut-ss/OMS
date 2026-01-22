@@ -28,9 +28,10 @@ const BSGanttChartTest = () => {
       <Typography variant="h4" gutterBottom>
         BSGanttChart Test Page
       </Typography>
-      
+
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Testing with stored procedure: <code>tmt.usp_tmt_dashboard_project_timeline</code>
+        Testing with stored procedure:{" "}
+        <code>tmt.usp_tmt_dashboard_project_timeline</code>
       </Typography>
 
       <Box sx={{ mb: 4 }}>
@@ -38,24 +39,24 @@ const BSGanttChartTest = () => {
           // Data source
           procedureName="usp_tmt_dashboard_project_timeline"
           preObj="tmt"
-          
           // Display options
           title="Project Timeline - Employee Gantt View"
           // height={700}
-          
+
           // Filter options
           showDateFilter={true}
           showEmployeeFilter={true}
-          
           // Initial scale settings
-          initialCellWidth={60}
+          initialCellWidth={30}
           initialScale="day"
-          
+          // Holiday highlighting - query from tmt.t_tmt_holiday table directly
+          holidayTableName="t_tmt_holiday"
+          holidayPreObj="tmt"
+          showHolidays={true}
           // Events
           onTaskClick={handleTaskClick}
           onDataLoad={handleDataLoad}
           onError={handleError}
-          
           // Styling
           sx={{ boxShadow: 2 }}
         />
@@ -67,12 +68,14 @@ const BSGanttChartTest = () => {
       <Box component="ul" sx={{ pl: 2 }}>
         <li>
           <Typography variant="body2">
-            <strong>Green bars</strong>: Project level (min_task_start_date to max_task_end_date)
+            <strong>Green bars</strong>: Project level (min_task_start_date to
+            max_task_end_date)
           </Typography>
         </li>
         <li>
           <Typography variant="body2">
-            <strong>Blue bars</strong>: Task level (task_start_date to task_end_date)
+            <strong>Blue bars</strong>: Task level (task_start_date to
+            task_end_date)
           </Typography>
         </li>
         <li>
