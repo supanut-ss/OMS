@@ -25,6 +25,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import GroupIcon from '@mui/icons-material/Group';
 import StarIcon from '@mui/icons-material/Star';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import { useAuth } from "../contexts/AuthContext";
 
 const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
@@ -83,7 +84,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
     const favoriteMenu = (data || [])
       .map(m => (m.submenu || []).filter(x => x.favorite))
       .flat();
-    
+
     // Always include Favorite section at index 0 (use hidden flag to control visibility)
     data = [{
       text: "Favorite",
@@ -92,7 +93,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
       submenu: favoriteMenu,
       hidden: favoriteMenu.length === 0  // Hide when no favorites
     }, ...data];
-    
+
     setFilteredMenu(data);
   };
 
@@ -121,6 +122,8 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         return <ImportExportIcon />
       case 5:
         return <LocalOfferIcon />
+      case 7:
+        return <QueryStatsIcon />
       default:
         return <MenuOpenIcon />
     }

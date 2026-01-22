@@ -109,12 +109,8 @@ export default function AppRoutes() {
           <Route path="my-task" element={<MyTaskPage lang={lang} />} />
           <Route path="manpower" element={<ManPowerPage lang={lang} />} />
         </Route>
-
-        {/* Test routes - accessible without permission check */}
-        <Route path="test">
-          <Route path="gantt" element={<BSGanttChartTest />} />
-        </Route>
       </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
