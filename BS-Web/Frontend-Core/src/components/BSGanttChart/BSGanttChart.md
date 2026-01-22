@@ -22,6 +22,7 @@
 ## Installation
 
 Component นี้อยู่ใน folder:
+
 ```
 src/components/BSGanttChart/
 ├── BSGanttChart.js          # Main component
@@ -70,52 +71,62 @@ function MyGanttPage() {
 
 ### Data Source Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `procedureName` | `string` | `""` | ชื่อ Stored Procedure สำหรับดึงข้อมูล |
-| `procedureParams` | `object` | `{}` | Parameters เพิ่มเติมสำหรับ SP |
-| `preObj` | `object` | `null` | Schema mapping object |
+| Prop              | Type     | Default | Description                           |
+| ----------------- | -------- | ------- | ------------------------------------- |
+| `procedureName`   | `string` | `""`    | ชื่อ Stored Procedure สำหรับดึงข้อมูล |
+| `procedureParams` | `object` | `{}`    | Parameters เพิ่มเติมสำหรับ SP         |
+| `preObj`          | `object` | `null`  | Schema mapping object                 |
 
 ### Filter Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `showDateFilter` | `boolean` | `true` | แสดง/ซ่อน Date Filter |
-| `showEmployeeFilter` | `boolean` | `true` | แสดง/ซ่อน Employee Filter |
-| `dateFilterField` | `string` | `"max_task_end_date"` | Field สำหรับ filter due date |
-| `initialStartDate` | `Date` | `null` | วันเริ่มต้นเริ่มแรก (default: วันแรกของเดือนปัจจุบัน) |
-| `initialEndDate` | `Date` | `null` | วันสิ้นสุดเริ่มแรก (default: วันสุดท้ายของเดือนปัจจุบัน) |
-| `initialSelectedEmployees` | `array` | `[]` | รายชื่อพนักงานที่เลือกเริ่มแรก |
+| Prop                       | Type      | Default               | Description                                              |
+| -------------------------- | --------- | --------------------- | -------------------------------------------------------- |
+| `showDateFilter`           | `boolean` | `true`                | แสดง/ซ่อน Date Filter                                    |
+| `showEmployeeFilter`       | `boolean` | `true`                | แสดง/ซ่อน Employee Filter                                |
+| `dateFilterField`          | `string`  | `"max_task_end_date"` | Field สำหรับ filter due date                             |
+| `initialStartDate`         | `Date`    | `null`                | วันเริ่มต้นเริ่มแรก (default: วันแรกของเดือนปัจจุบัน)    |
+| `initialEndDate`           | `Date`    | `null`                | วันสิ้นสุดเริ่มแรก (default: วันสุดท้ายของเดือนปัจจุบัน) |
+| `initialSelectedEmployees` | `array`   | `[]`                  | รายชื่อพนักงานที่เลือกเริ่มแรก                           |
 
 ### Display Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `columns` | `array` | `null` | Custom columns configuration |
-| `scales` | `array` | `null` | Custom scales configuration |
-| `initialCellWidth` | `number` | `60` | ความกว้างเริ่มต้นของ cell (pixels) |
-| `initialCellHeight` | `number` | `38` | ความสูงเริ่มต้นของ cell (pixels) |
-| `initialScaleHeight` | `number` | `40` | ความสูงเริ่มต้นของ scale header (pixels) |
-| `initialScale` | `string` | `"day"` | มุมมองเริ่มต้น: `"day"`, `"week"`, `"month"` |
-| `height` | `number` | `600` | ความสูงของ Gantt Chart (pixels) |
+| Prop                 | Type     | Default | Description                                  |
+| -------------------- | -------- | ------- | -------------------------------------------- |
+| `columns`            | `array`  | `null`  | Custom columns configuration                 |
+| `scales`             | `array`  | `null`  | Custom scales configuration                  |
+| `initialCellWidth`   | `number` | `60`    | ความกว้างเริ่มต้นของ cell (pixels)           |
+| `initialCellHeight`  | `number` | `38`    | ความสูงเริ่มต้นของ cell (pixels)             |
+| `initialScaleHeight` | `number` | `40`    | ความสูงเริ่มต้นของ scale header (pixels)     |
+| `initialScale`       | `string` | `"day"` | มุมมองเริ่มต้น: `"day"`, `"week"`, `"month"` |
+| `height`             | `number` | `600`   | ความสูงของ Gantt Chart (pixels)              |
 
 ### Appearance Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `title` | `string` | `null` | หัวข้อแสดงด้านบน |
-| `showToolbar` | `boolean` | `true` | แสดง/ซ่อน Toolbar |
-| `readonly` | `boolean` | `true` | โหมด read-only (ไม่สามารถลาก/แก้ไข) |
-| `resourceGroup` | `string` | `null` | Resource group สำหรับ localization |
-| `sx` | `object` | `{}` | Custom MUI sx styles |
+| Prop            | Type      | Default | Description                         |
+| --------------- | --------- | ------- | ----------------------------------- |
+| `title`         | `string`  | `null`  | หัวข้อแสดงด้านบน                    |
+| `showToolbar`   | `boolean` | `true`  | แสดง/ซ่อน Toolbar                   |
+| `readonly`      | `boolean` | `true`  | โหมด read-only (ไม่สามารถลาก/แก้ไข) |
+| `resourceGroup` | `string`  | `null`  | Resource group สำหรับ localization  |
+| `sx`            | `object`  | `{}`    | Custom MUI sx styles                |
 
 ### Event Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `onTaskClick` | `function` | `null` | Callback เมื่อคลิกที่ task |
-| `onDataLoad` | `function` | `null` | Callback เมื่อโหลดข้อมูลเสร็จ |
-| `onError` | `function` | `null` | Callback เมื่อเกิด error |
+| Prop          | Type       | Default | Description                   |
+| ------------- | ---------- | ------- | ----------------------------- |
+| `onTaskClick` | `function` | `null`  | Callback เมื่อคลิกที่ task    |
+| `onDataLoad`  | `function` | `null`  | Callback เมื่อโหลดข้อมูลเสร็จ |
+| `onError`     | `function` | `null`  | Callback เมื่อเกิด error      |
+
+### Holiday Props
+
+| Prop                   | Type      | Default | Description                                                       |
+| ---------------------- | --------- | ------- | ----------------------------------------------------------------- |
+| `holidays`             | `array`   | `[]`    | Array of holiday dates (strings หรือ objects)                     |
+| `holidayTableName`     | `string`  | `null`  | ชื่อ Table สำหรับ fetch holidays โดยตรง (e.g., `"t_tmt_holiday"`) |
+| `holidayProcedureName` | `string`  | `null`  | ชื่อ SP สำหรับ fetch holidays (e.g., `"usp_tmt_get_holidays"`)    |
+| `holidayPreObj`        | `string`  | `null`  | Schema prefix สำหรับ holiday table/SP (e.g., `"tmt"`)             |
+| `showHolidays`         | `boolean` | `true`  | แสดง/ซ่อน holiday highlighting                                    |
 
 ---
 
@@ -127,14 +138,15 @@ function MyGanttPage() {
 const ganttRef = useRef(null);
 
 // ใช้งาน
-ganttRef.current.refresh();           // รีเฟรชข้อมูล
-ganttRef.current.clearFilters();      // ล้าง filters ทั้งหมด
-ganttRef.current.getTasks();          // ดึง tasks ปัจจุบัน
-ganttRef.current.getAllTasks();       // ดึง tasks ทั้งหมด
-ganttRef.current.setFilters({         // ตั้งค่า filters
+ganttRef.current.refresh(); // รีเฟรชข้อมูล
+ganttRef.current.clearFilters(); // ล้าง filters ทั้งหมด
+ganttRef.current.getTasks(); // ดึง tasks ปัจจุบัน
+ganttRef.current.getAllTasks(); // ดึง tasks ทั้งหมด
+ganttRef.current.setFilters({
+  // ตั้งค่า filters
   startDate: new Date(),
   endDate: new Date(),
-  employees: []
+  employees: [],
 });
 ```
 
@@ -207,11 +219,11 @@ const customColumns = [
     header: "Man Day",
     align: "center",
     width: 100,
-    template: (value) => value ? parseFloat(value).toFixed(2) : "-",
+    template: (value) => (value ? parseFloat(value).toFixed(2) : "-"),
   },
 ];
 
-<BSGanttChart columns={customColumns} />
+<BSGanttChart columns={customColumns} />;
 ```
 
 ---
@@ -224,7 +236,7 @@ const customScales = [
   { unit: "day", step: 1, format: "d" },
 ];
 
-<BSGanttChart scales={customScales} />
+<BSGanttChart scales={customScales} />;
 ```
 
 ---
@@ -241,7 +253,7 @@ const handleTaskClick = (task) => {
   setDialogOpen(true);
 };
 
-<BSGanttChart onTaskClick={handleTaskClick} />
+<BSGanttChart onTaskClick={handleTaskClick} />;
 ```
 
 ### onDataLoad
@@ -252,7 +264,7 @@ const handleDataLoad = (rawData) => {
   // ทำอะไรบางอย่างกับ raw data
 };
 
-<BSGanttChart onDataLoad={handleDataLoad} />
+<BSGanttChart onDataLoad={handleDataLoad} />;
 ```
 
 ### onError
@@ -263,7 +275,7 @@ const handleError = (error) => {
   showSnackbar("เกิดข้อผิดพลาด: " + error.message, "error");
 };
 
-<BSGanttChart onError={handleError} />
+<BSGanttChart onError={handleError} />;
 ```
 
 ---
@@ -304,11 +316,11 @@ export default {
 
 สีถูกกำหนดตาม `type` ของ task:
 
-| Type | สี | Hex Code |
-|------|-----|----------|
-| `user` | เขียว | `#66bb6a` |
-| `project` | ฟ้า | `#42a5f5` |
-| `work_task` | ส้ม | `#ffa726` |
+| Type        | สี    | Hex Code  |
+| ----------- | ----- | --------- |
+| `user`      | เขียว | `#66bb6a` |
+| `project`   | ฟ้า   | `#42a5f5` |
+| `work_task` | ส้ม   | `#ffa726` |
 
 ### Custom Styling with sx
 
@@ -326,6 +338,69 @@ export default {
 
 วันเสาร์-อาทิตย์จะถูกไฮไลท์ด้วยสีแดงอ่อน อัตโนมัติ
 
+### Holiday Highlighting
+
+วันหยุดจะถูกไฮไลท์ด้วยสีม่วงอ่อน มี 3 วิธีในการส่งข้อมูลวันหยุด:
+
+**วิธีที่ 1: ส่ง Array ผ่าน props โดยตรง**
+
+```jsx
+// Array of date strings
+<BSGanttChart
+  holidays={['2026-01-01', '2026-04-13', '2026-04-14', '2026-04-15']}
+  showHolidays={true}
+/>
+
+// Array of objects with date and name
+<BSGanttChart
+  holidays={[
+    { date: '2026-01-01', name: 'วันขึ้นปีใหม่' },
+    { date: '2026-04-13', name: 'วันสงกรานต์' },
+    { date: '2026-04-14', name: 'วันสงกรานต์' },
+    { date: '2026-04-15', name: 'วันสงกรานต์' },
+  ]}
+  showHolidays={true}
+/>
+```
+
+**วิธีที่ 2: Query จาก Table โดยตรง (แนะนำ)**
+
+```jsx
+<BSGanttChart
+  holidayTableName="t_tmt_holiday"
+  holidayPreObj="tmt"
+  showHolidays={true}
+/>
+```
+
+Table structure:
+
+```sql
+CREATE TABLE [tmt].[t_tmt_holiday](
+  [holiday_id] INT IDENTITY(1,1) PRIMARY KEY,
+  [holiday_date] DATE NOT NULL,
+  [holiday_name] NVARCHAR(100) NOT NULL,
+  [description] NVARCHAR(255) NULL,
+  [is_active] VARCHAR(3) NOT NULL,  -- 'Y' or 'N'
+  ...
+)
+```
+
+**วิธีที่ 3: Query จาก Stored Procedure**
+
+```jsx
+<BSGanttChart
+  holidayProcedureName="usp_tmt_get_holidays"
+  holidayPreObj="tmt"
+  showHolidays={true}
+/>
+```
+
+SP ต้อง return fields:
+
+- `holiday_date` หรือ `date` - วันที่ (DATE)
+- `holiday_name` หรือ `name` - ชื่อวันหยุด (NVARCHAR)
+
 ---
 
 ## API Endpoint
@@ -337,6 +412,7 @@ POST /api/Gantt/timeline
 ```
 
 Request Body:
+
 ```json
 {
   "startDate": "2026-01-01",
@@ -388,6 +464,10 @@ function ProjectTimeline() {
         initialCellWidth={60}
         showToolbar={true}
         readonly={true}
+        // Holiday highlighting from SP
+        holidayProcedureName="usp_tmt_get_holidays"
+        holidayPreObj="tmt"
+        showHolidays={true}
         onTaskClick={handleTaskClick}
         onDataLoad={(data) => console.log("Loaded:", data.length)}
         onError={(err) => console.error("Error:", err)}
@@ -443,10 +523,10 @@ export default ProjectTimeline;
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2026-01-20 | Initial release |
-| 1.1.0 | 2026-01-21 | Added tooltip, weekend highlighting, zoom |
+| Version | Date       | Changes                                   |
+| ------- | ---------- | ----------------------------------------- |
+| 1.0.0   | 2026-01-20 | Initial release                           |
+| 1.1.0   | 2026-01-21 | Added tooltip, weekend highlighting, zoom |
 
 ---
 
