@@ -91,7 +91,7 @@ const BSGanttChart = forwardRef(
   ) => {
     // Debug: Check if component receives props
     if (holidayTableName) {
-      console.warn(
+      Logger.debug(
         "BSGanttChart: Rendered with holidayTableName:",
         holidayTableName,
       );
@@ -158,7 +158,7 @@ const BSGanttChart = forwardRef(
           }
         `;
         document.head.appendChild(style);
-        console.warn(
+        Logger.debug(
           "BSGanttChart: Injected global holiday styles successfully",
         );
 
@@ -585,7 +585,7 @@ const BSGanttChart = forwardRef(
               ? `${holidayPreObj}.${holidayProcedureName}`
               : holidayProcedureName;
 
-            console.warn(
+            Logger.debug(
               "BSGanttChart: Fetching holidays from SP",
               fullProcedureName,
             );
@@ -627,14 +627,14 @@ const BSGanttChart = forwardRef(
                 holidayMap.set(dateKey, nameValue);
                 // Log first few holidays
                 if (holidayMap.size <= 3) {
-                  console.warn(
+                  Logger.debug(
                     `BSGanttChart: Parsed holiday: ${dateKey} - ${nameValue}`,
                   );
                 }
               }
             });
 
-            console.warn(
+            Logger.debug(
               "BSGanttChart: Total holidays loaded:",
               holidayMap.size,
             );
@@ -651,12 +651,12 @@ const BSGanttChart = forwardRef(
               prevMap.forEach((value, key) => {
                 mergedMap.set(key, value);
               });
-              console.warn("BSGanttChart: Holiday map updated, size:", mergedMap.size);
+              Logger.debug("BSGanttChart: Holiday map updated, size:", mergedMap.size);
               return mergedMap;
             });
             setHolidaysLoaded(true); // Mark holidays as loaded after fetch completes
           } else {
-            console.warn(
+            Logger.debug(
               "BSGanttChart: No valid holiday data found in response",
             );
             setHolidaysLoaded(true); // Mark as loaded even if no data found
@@ -949,28 +949,27 @@ const BSGanttChart = forwardRef(
       if (!showHolidays || holidayDates.size === 0) return;
 
       const applyHolidayHighlighting = () => {
-        console.warn("[BSGanttChart] DOM Highlight: Starting with", holidayDates.size, "holidays");
+        // Debug logging removed - use Logger.debug for development
         
         // Method 1: Find scale header cells and match by position/text
         const ganttEl = document.querySelector(".wx-gantt");
         if (!ganttEl) {
-          console.warn("[BSGanttChart] DOM Highlight: .wx-gantt not found");
+          Logger.debug("[BSGanttChart] DOM Highlight: .wx-gantt not found");
           return;
         }
 
         // Find all cells in the timeline grid area
         const allCells = ganttEl.querySelectorAll('[class*="cell"]');
-        console.warn("[BSGanttChart] DOM Highlight: Found", allCells.length, "cells total");
+        // Debug logging removed - too verbose
         
         // Log structure of first few cells
         allCells.forEach((cell, i) => {
           if (i < 3) {
-            console.warn(`[BSGanttChart] Cell ${i}:`, {
+            // Debug logging removed
+            const debugInfo = {
               class: cell.className,
               text: cell.textContent?.trim()?.substring(0, 20),
-              style: cell.getAttribute("style")?.substring(0, 50),
-              left: cell.style?.left,
-            });
+            };
           }
         });
 
@@ -980,13 +979,7 @@ const BSGanttChart = forwardRef(
         const scaleRow = ganttEl.querySelector('.wx-scale');
         if (scaleRow) {
           const dateLabels = scaleRow.querySelectorAll('.wx-cell');
-          console.warn("[BSGanttChart] Found", dateLabels.length, "date labels in scale");
-          
-          dateLabels.forEach((label, i) => {
-            if (i < 5) {
-              console.warn(`[BSGanttChart] Scale label ${i}: "${label.textContent?.trim()}"`);
-            }
-          });
+          // Debug logging removed
         }
       };
 
@@ -997,6 +990,159 @@ const BSGanttChart = forwardRef(
         clearTimeout(timeoutId);
       };
     }, [holidayDates, showHolidays, tasks]);
+
+    // Apply tooltip to holiday header cells using native title attribute
+    const applyHolidayTooltips = useCallback(() => {
+      if (!showHolidays || holidayDates.size === 0) return;
+
+      // Find all holiday cells in the scale header
+      const holidayCells = document.querySelectorAll('.wx-gantt .wx-scale .wx-cell.wx-holiday');
+      if (holidayCells.length === 0) {
+        Logger.debug('[BSGanttChart] applyHolidayTooltips: No holiday cells found');
+        return;
+      }
+
+      Logger.debug('[BSGanttChart] applyHolidayTooltips: Found', holidayCells.length, 'holiday cells');
+
+      // Get the month scale row (first row in scale has months)
+      const scaleRows = document.querySelectorAll('.wx-gantt .wx-scale .wx-row');
+      if (scaleRows.length < 2) {
+        Logger.debug('[BSGanttChart] applyHolidayTooltips: Scale rows not found');
+        return;
+      }
+      
+      const monthRow = scaleRows[0];
+      const monthCells = monthRow ? monthRow.querySelectorAll('.wx-cell') : [];
+
+      // Build a map of left position ranges to month/year
+      const monthRanges = [];
+      monthCells.forEach((cell) => {
+        const left = parseFloat(cell.style.left) || cell.offsetLeft;
+        const width = parseFloat(cell.style.width) || cell.offsetWidth;
+        const text = cell.textContent?.trim() || '';
+        monthRanges.push({ left, right: left + width, text });
+      });
+
+      // Debug logging removed - monthRanges
+
+      holidayCells.forEach((cell) => {
+        // Skip if already applied
+        if (cell.getAttribute('data-holiday-tooltip-applied')) return;
+
+        const cellLeft = parseFloat(cell.style.left) || cell.offsetLeft;
+        const cellText = cell.textContent?.trim() || '';
+
+        // Extract day number from cell text (format like "พฤ.\n1" or just "1")
+        const dayMatch = cellText.match(/(\d+)/);
+        if (!dayMatch) return;
+        const dayNum = parseInt(dayMatch[1], 10);
+
+        // Find which month this cell belongs to - use >= left (inclusive start)
+        let monthText = '';
+        for (const range of monthRanges) {
+          // Cell belongs to month if its left edge is >= month start and < month end
+          if (cellLeft >= range.left && cellLeft < range.right) {
+            monthText = range.text;
+            break;
+          }
+        }
+
+        // If still not found, try the last month (edge case for boundary)
+        if (!monthText && monthRanges.length > 0) {
+          const lastRange = monthRanges[monthRanges.length - 1];
+          if (cellLeft >= lastRange.left) {
+            monthText = lastRange.text;
+          }
+        }
+
+        if (!monthText) {
+          Logger.debug('[BSGanttChart] Could not find month for cell at left:', cellLeft);
+          return;
+        }
+
+        // Parse month from text
+        const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const enMonths = ['january', 'february', 'march', 'april', 'may', 'june',
+                          'july', 'august', 'september', 'october', 'november', 'december'];
+
+        let monthIndex = -1;
+        let yearNum = 0;
+
+        // Try Thai months first
+        for (let i = 0; i < thaiMonths.length; i++) {
+          if (monthText.includes(thaiMonths[i])) {
+            monthIndex = i;
+            const yearMatch = monthText.match(/(\d{4})/);
+            if (yearMatch) {
+              yearNum = parseInt(yearMatch[1], 10) - 543; // Convert BE to CE
+            }
+            break;
+          }
+        }
+
+        // Try English months if Thai didn't match
+        if (monthIndex < 0) {
+          for (let i = 0; i < enMonths.length; i++) {
+            if (monthText.toLowerCase().includes(enMonths[i])) {
+              monthIndex = i;
+              const yearMatch = monthText.match(/(\d{4})/);
+              if (yearMatch) {
+                yearNum = parseInt(yearMatch[1], 10);
+              }
+              break;
+            }
+          }
+        }
+
+        if (monthIndex < 0 || yearNum === 0) {
+          Logger.debug('[BSGanttChart] Could not parse month/year from:', monthText);
+          return;
+        }
+
+        // Construct date key
+        const dateKey = `${yearNum}-${String(monthIndex + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        
+        // Look up the holiday name
+        const holidayName = holidayDates.get(dateKey);
+
+        // Logger.debug('[BSGanttChart] Holiday lookup:', dateKey, holidayName || 'NOT FOUND');
+
+        if (holidayName) {
+          cell.setAttribute('data-holiday-tooltip-applied', 'true');
+          cell.setAttribute('data-holiday-date', dateKey);
+          cell.setAttribute('title', `🎉 ${holidayName}`); // Native tooltip
+          cell.style.cursor = 'help';
+        }
+      });
+    }, [holidayDates, showHolidays]);
+
+    // Apply holiday tooltips after holidays are loaded and Gantt renders
+    // Also reapply when tasks change (e.g., after filtering)
+    useEffect(() => {
+      if (!showHolidays || holidayDates.size === 0) return;
+
+      // Apply after delay to ensure cells are rendered with wx-holiday class
+      const timeoutId = setTimeout(applyHolidayTooltips, 2500);
+
+      // Also observe for DOM changes (e.g., when user scrolls the timeline)
+      const observer = new MutationObserver(() => {
+        // Debounce to avoid rapid calls
+        clearTimeout(window._holidayTooltipDebounce);
+        window._holidayTooltipDebounce = setTimeout(applyHolidayTooltips, 500);
+      });
+
+      const scaleElement = document.querySelector('.wx-gantt .wx-scale');
+      if (scaleElement) {
+        observer.observe(scaleElement, { childList: true, subtree: true });
+      }
+
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(window._holidayTooltipDebounce);
+        observer.disconnect();
+      };
+    }, [holidayDates, showHolidays, tasks, applyHolidayTooltips]);
 
     // Highlight weekends and holidays using official SVAR highlightTime prop
     const highlightTime = useCallback(
@@ -1012,22 +1158,14 @@ const BSGanttChart = forwardRef(
           const isoDateKey = date.toISOString().split("T")[0];
 
           // Debug log for specific date (New Year 2026)
-          if (localDateKey === "2026-01-01") {
-            console.warn("BSGanttChart highlightTime: Checking New Year 2026", { 
-              localDateKey, 
-              isoDateKey, 
-              inMapLocal: holidayDates.has(localDateKey), 
-              inMapISO: holidayDates.has(isoDateKey), 
-              mapSize: holidayDates.size,
-              showHolidays 
-            });
-          }
+          // Commented out for production
+          // if (localDateKey === "2026-01-01") {
+          //   Logger.debug("BSGanttChart highlightTime: Checking New Year 2026", {...});
+          // }
 
           if (showHolidays && holidayDates.size > 0) {
+            // Only use local date key - ISO date can be off by 1 day due to timezone
             if (holidayDates.has(localDateKey)) {
-              return "wx-holiday";
-            }
-            if (holidayDates.has(isoDateKey)) {
               return "wx-holiday";
             }
           }
