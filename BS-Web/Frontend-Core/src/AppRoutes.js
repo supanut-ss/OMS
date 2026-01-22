@@ -25,6 +25,7 @@ import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
 // Test pages
 import BSGanttChartTest from "./test/BSGanttChartTest";
+import GanttChart from "./pages/Gantt/GanttChart";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -112,7 +113,11 @@ export default function AppRoutes() {
         <Route path="test">
           <Route path="gantt" element={<BSGanttChartTest />} />
         </Route>
+        <Route path="gantt" element={<PermissionRoute />}>
+          <Route path="chart" element={<GanttChart />} />
+        </Route>
       </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
