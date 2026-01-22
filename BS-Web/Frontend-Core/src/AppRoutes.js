@@ -23,6 +23,7 @@ import HolidayPage from "./pages/Master/Holiday";
 import SalePage from "./pages/Master/Sale";
 import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
+import ManPowerPage from "./pages/Projects/ManPower";
 // Test pages
 import BSGanttChartTest from "./test/BSGanttChartTest";
 
@@ -106,6 +107,7 @@ export default function AppRoutes() {
           <Route path="" element={<Projects lang={lang} />} />
           <Route path="ma" element={<Projects lang={lang} ma={true} />} />
           <Route path="my-task" element={<MyTaskPage lang={lang} />} />
+          <Route path="manpower" element={<ManPowerPage lang={lang} />} />
         </Route>
 
         {/* Test routes - accessible without permission check */}

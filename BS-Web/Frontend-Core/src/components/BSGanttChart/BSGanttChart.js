@@ -1045,7 +1045,7 @@ const BSGanttChart = forwardRef(
       <Paper
         sx={{
           overflow: "hidden",
-          borderRadius: 2,
+          // borderRadius: 2,
           ...sx,
         }}
       >
