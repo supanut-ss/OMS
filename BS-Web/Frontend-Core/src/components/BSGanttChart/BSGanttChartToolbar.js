@@ -266,7 +266,7 @@ const BSGanttChartToolbar = ({
                </>
              );
           }}
-          sx={{ minWidth: 200 }}
+          sx={{ minWidth: 240 }}
           disabled={loading}
           disableCloseOnSelect
           limitTags={2}
