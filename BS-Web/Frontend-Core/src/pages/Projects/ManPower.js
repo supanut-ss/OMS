@@ -1,5 +1,5 @@
 import React from "react";
-import {Paper,  Box, Typography, Container } from "@mui/material";
+import { Paper, Box, Typography, Container } from "@mui/material";
 import { BSGanttChart } from "../../components/BSGanttChart";
 
 /**
@@ -23,17 +23,15 @@ const ManPowerPage = () => {
   };
 
   return (
-      <> 
-    <Paper sx={{ p: 0, mb: 3 }}>
-  
+    <>
+      <Paper sx={{ p: 0, mb: 0 }}>
         <BSGanttChart
           // Data source
           procedureName="usp_tmt_dashboard_project_timeline"
           preObj="tmt"
           // Display options
           title="Project Timeline - Man Power"
-          height={700}
-
+          height={660}
           // Filter options
           showDateFilter={true}
           showEmployeeFilter={true}
@@ -51,9 +49,8 @@ const ManPowerPage = () => {
           // Styling
           sx={{ boxShadow: 2 }}
         />
- 
-    </Paper>
-     </>
+      </Paper>
+    </>
   );
 };
 
