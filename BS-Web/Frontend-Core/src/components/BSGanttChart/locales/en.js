@@ -6,6 +6,8 @@ export const enLocale = {
   bsDueDateEnd: "Due Date End",
   bsSelectEmployees: "Employees",
   bsAllEmployees: "All Employees",
+  bsSelectProject: "Project",
+  bsAllProjects: "All Projects",
   bsCellWidth: "Cell Width",
   bsScaleHeight: "Scale Height",
   bsScale: "Scale",
@@ -47,6 +49,9 @@ export const enLocale = {
   bsUser: "Employee",
   bsProject: "Project",
   bsTask: "Task",
+  
+  // Fullscreen
+  bsFullscreenHint: "Press ESC to exit fullscreen mode",
 };
 
 export default enLocale;

@@ -190,8 +190,13 @@ const BSGanttChart = forwardRef(
 
         if (document.fullscreenElement === el) {
           el.classList.add("wx-gantt-fullscreen-active");
+          // Show fullscreen hint
+          setShowFullscreenHint(true);
+          // Auto-hide after 3 seconds
+          setTimeout(() => setShowFullscreenHint(false), 4000);
         } else {
           el.classList.remove("wx-gantt-fullscreen-active");
+          setShowFullscreenHint(false);
         }
       };
 
@@ -213,6 +218,7 @@ const BSGanttChart = forwardRef(
     const [scaleHeight, setScaleHeight] = useState(initialScaleHeight);
     const [currentScale, setCurrentScale] = useState(initialScale);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [showFullscreenHint, setShowFullscreenHint] = useState(false);
 
     // Tooltip state
     const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -1536,6 +1542,30 @@ const BSGanttChart = forwardRef(
             >
               <CircularProgress />
             </Box>
+          )}
+
+          {/* Fullscreen hint - shows when entering fullscreen */}
+          {showFullscreenHint && (
+            <Alert
+              severity="info"
+              sx={{
+                position: "absolute",
+                top: 16,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 1000,
+                boxShadow: 3,
+                animation: "fadeInOut 3s ease-in-out",
+                "@keyframes fadeInOut": {
+                  "0%": { opacity: 0 },
+                  "10%": { opacity: 1 },
+                  "80%": { opacity: 1 },
+                  "100%": { opacity: 0 },
+                },
+              }}
+            >
+              {localeText.bsFullscreenHint || "Press ESC to exit fullscreen mode"}
+            </Alert>
           )}
 
           {!loading && holidaysLoaded && tasks.length === 0 && (

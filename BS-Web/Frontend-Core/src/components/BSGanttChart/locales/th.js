@@ -6,6 +6,8 @@ export const thLocale = {
   bsDueDateEnd: "วันที่สิ้นสุด",
   bsSelectEmployees: "เลือกพนักงาน",
   bsAllEmployees: "พนักงานทั้งหมด",
+  bsSelectProject: "เลือกโปรเจค",
+  bsAllProjects: "โปรเจคทั้งหมด",
   bsCellWidth: "ความกว้างเซลล์",
   bsScaleHeight: "ความสูง Scale",
   bsScale: "มาตราส่วน",
@@ -43,10 +45,12 @@ export const thLocale = {
   bsPersonsSelected: "เลือกแล้ว {count} คน",
   bsCompareMode: "โหมดเปรียบเทียบ",
   
-  // Hierarchy labels
   bsUser: "พนักงาน",
   bsProject: "โปรเจค",
   bsTask: "งาน",
+  
+  // Fullscreen
+  bsFullscreenHint: "กด ESC เพื่อออกจากโหมดเต็มหน้าจอ",
 };
 
 export default thLocale;
