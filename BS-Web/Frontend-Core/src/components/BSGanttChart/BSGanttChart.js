@@ -162,7 +162,6 @@ const BSGanttChart = forwardRef(
         Logger.debug(
           "BSGanttChart: Injected global holiday styles successfully",
         );
-
       }
     }, []);
 
@@ -198,7 +197,10 @@ const BSGanttChart = forwardRef(
 
       document.addEventListener("fullscreenchange", handleFullscreenChange);
       return () => {
-        document.removeEventListener("fullscreenchange", handleFullscreenChange);
+        document.removeEventListener(
+          "fullscreenchange",
+          handleFullscreenChange,
+        );
       };
     }, []);
 
@@ -658,7 +660,10 @@ const BSGanttChart = forwardRef(
               prevMap.forEach((value, key) => {
                 mergedMap.set(key, value);
               });
-              Logger.debug("BSGanttChart: Holiday map updated, size:", mergedMap.size);
+              Logger.debug(
+                "BSGanttChart: Holiday map updated, size:",
+                mergedMap.size,
+              );
               return mergedMap;
             });
             setHolidaysLoaded(true); // Mark holidays as loaded after fetch completes
@@ -957,7 +962,7 @@ const BSGanttChart = forwardRef(
 
       const applyHolidayHighlighting = () => {
         // Debug logging removed - use Logger.debug for development
-        
+
         // Method 1: Find scale header cells and match by position/text
         const ganttEl = document.querySelector(".wx-gantt");
         if (!ganttEl) {
@@ -968,7 +973,7 @@ const BSGanttChart = forwardRef(
         // Find all cells in the timeline grid area
         const allCells = ganttEl.querySelectorAll('[class*="cell"]');
         // Debug logging removed - too verbose
-        
+
         // Log structure of first few cells
         allCells.forEach((cell, i) => {
           if (i < 3) {
@@ -983,9 +988,9 @@ const BSGanttChart = forwardRef(
         // SVAR Gantt uses CSS left position to place cells
         // We need to calculate which cell corresponds to which date
         // Find the scale header row that shows dates
-        const scaleRow = ganttEl.querySelector('.wx-scale');
+        const scaleRow = ganttEl.querySelector(".wx-scale");
         if (scaleRow) {
-          const dateLabels = scaleRow.querySelectorAll('.wx-cell');
+          const dateLabels = scaleRow.querySelectorAll(".wx-cell");
           // Debug logging removed
         }
       };
@@ -1003,30 +1008,42 @@ const BSGanttChart = forwardRef(
       if (!showHolidays || holidayDates.size === 0) return;
 
       // Find all holiday cells in the scale header
-      const holidayCells = document.querySelectorAll('.wx-gantt .wx-scale .wx-cell.wx-holiday');
+      const holidayCells = document.querySelectorAll(
+        ".wx-gantt .wx-scale .wx-cell.wx-holiday",
+      );
       if (holidayCells.length === 0) {
-        Logger.debug('[BSGanttChart] applyHolidayTooltips: No holiday cells found');
+        Logger.debug(
+          "[BSGanttChart] applyHolidayTooltips: No holiday cells found",
+        );
         return;
       }
 
-      Logger.debug('[BSGanttChart] applyHolidayTooltips: Found', holidayCells.length, 'holiday cells');
+      Logger.debug(
+        "[BSGanttChart] applyHolidayTooltips: Found",
+        holidayCells.length,
+        "holiday cells",
+      );
 
       // Get the month scale row (first row in scale has months)
-      const scaleRows = document.querySelectorAll('.wx-gantt .wx-scale .wx-row');
+      const scaleRows = document.querySelectorAll(
+        ".wx-gantt .wx-scale .wx-row",
+      );
       if (scaleRows.length < 2) {
-        Logger.debug('[BSGanttChart] applyHolidayTooltips: Scale rows not found');
+        Logger.debug(
+          "[BSGanttChart] applyHolidayTooltips: Scale rows not found",
+        );
         return;
       }
-      
+
       const monthRow = scaleRows[0];
-      const monthCells = monthRow ? monthRow.querySelectorAll('.wx-cell') : [];
+      const monthCells = monthRow ? monthRow.querySelectorAll(".wx-cell") : [];
 
       // Build a map of left position ranges to month/year
       const monthRanges = [];
       monthCells.forEach((cell) => {
         const left = parseFloat(cell.style.left) || cell.offsetLeft;
         const width = parseFloat(cell.style.width) || cell.offsetWidth;
-        const text = cell.textContent?.trim() || '';
+        const text = cell.textContent?.trim() || "";
         monthRanges.push({ left, right: left + width, text });
       });
 
@@ -1034,10 +1051,10 @@ const BSGanttChart = forwardRef(
 
       holidayCells.forEach((cell) => {
         // Skip if already applied
-        if (cell.getAttribute('data-holiday-tooltip-applied')) return;
+        if (cell.getAttribute("data-holiday-tooltip-applied")) return;
 
         const cellLeft = parseFloat(cell.style.left) || cell.offsetLeft;
-        const cellText = cell.textContent?.trim() || '';
+        const cellText = cell.textContent?.trim() || "";
 
         // Extract day number from cell text (format like "พฤ.\n1" or just "1")
         const dayMatch = cellText.match(/(\d+)/);
@@ -1045,7 +1062,7 @@ const BSGanttChart = forwardRef(
         const dayNum = parseInt(dayMatch[1], 10);
 
         // Find which month this cell belongs to - use >= left (inclusive start)
-        let monthText = '';
+        let monthText = "";
         for (const range of monthRanges) {
           // Cell belongs to month if its left edge is >= month start and < month end
           if (cellLeft >= range.left && cellLeft < range.right) {
@@ -1063,15 +1080,42 @@ const BSGanttChart = forwardRef(
         }
 
         if (!monthText) {
-          Logger.debug('[BSGanttChart] Could not find month for cell at left:', cellLeft);
+          Logger.debug(
+            "[BSGanttChart] Could not find month for cell at left:",
+            cellLeft,
+          );
           return;
         }
 
         // Parse month from text
-        const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-                            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        const enMonths = ['january', 'february', 'march', 'april', 'may', 'june',
-                          'july', 'august', 'september', 'october', 'november', 'december'];
+        const thaiMonths = [
+          "มกราคม",
+          "กุมภาพันธ์",
+          "มีนาคม",
+          "เมษายน",
+          "พฤษภาคม",
+          "มิถุนายน",
+          "กรกฎาคม",
+          "สิงหาคม",
+          "กันยายน",
+          "ตุลาคม",
+          "พฤศจิกายน",
+          "ธันวาคม",
+        ];
+        const enMonths = [
+          "january",
+          "february",
+          "march",
+          "april",
+          "may",
+          "june",
+          "july",
+          "august",
+          "september",
+          "october",
+          "november",
+          "december",
+        ];
 
         let monthIndex = -1;
         let yearNum = 0;
@@ -1103,23 +1147,26 @@ const BSGanttChart = forwardRef(
         }
 
         if (monthIndex < 0 || yearNum === 0) {
-          Logger.debug('[BSGanttChart] Could not parse month/year from:', monthText);
+          Logger.debug(
+            "[BSGanttChart] Could not parse month/year from:",
+            monthText,
+          );
           return;
         }
 
         // Construct date key
-        const dateKey = `${yearNum}-${String(monthIndex + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-        
+        const dateKey = `${yearNum}-${String(monthIndex + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+
         // Look up the holiday name
         const holidayName = holidayDates.get(dateKey);
 
         // Logger.debug('[BSGanttChart] Holiday lookup:', dateKey, holidayName || 'NOT FOUND');
 
         if (holidayName) {
-          cell.setAttribute('data-holiday-tooltip-applied', 'true');
-          cell.setAttribute('data-holiday-date', dateKey);
-          cell.setAttribute('title', `🎉 ${holidayName}`); // Native tooltip
-          cell.style.cursor = 'help';
+          cell.setAttribute("data-holiday-tooltip-applied", "true");
+          cell.setAttribute("data-holiday-date", dateKey);
+          cell.setAttribute("title", `🎉 ${holidayName}`); // Native tooltip
+          cell.style.cursor = "help";
         }
       });
     }, [holidayDates, showHolidays]);
@@ -1139,7 +1186,7 @@ const BSGanttChart = forwardRef(
         window._holidayTooltipDebounce = setTimeout(applyHolidayTooltips, 500);
       });
 
-      const scaleElement = document.querySelector('.wx-gantt .wx-scale');
+      const scaleElement = document.querySelector(".wx-gantt .wx-scale");
       if (scaleElement) {
         observer.observe(scaleElement, { childList: true, subtree: true });
       }
@@ -1159,7 +1206,7 @@ const BSGanttChart = forwardRef(
 
       const findChartElement = () => {
         // Find the chart area that has horizontal scroll
-        const chartEl = document.querySelector('.wx-gantt .wx-chart');
+        const chartEl = document.querySelector(".wx-gantt .wx-chart");
         return chartEl;
       };
 
@@ -1192,16 +1239,25 @@ const BSGanttChart = forwardRef(
           });
         };
 
-        chartEl.addEventListener('scroll', handleChartScroll, { passive: true });
+        chartEl.addEventListener("scroll", handleChartScroll, {
+          passive: true,
+        });
         if (stickyScrollRef.current) {
-          stickyScrollRef.current.addEventListener('scroll', handleStickyScrollLocal, { passive: true });
+          stickyScrollRef.current.addEventListener(
+            "scroll",
+            handleStickyScrollLocal,
+            { passive: true },
+          );
         }
 
         // Return cleanup function
         return () => {
-          chartEl.removeEventListener('scroll', handleChartScroll);
+          chartEl.removeEventListener("scroll", handleChartScroll);
           if (stickyScrollRef.current) {
-            stickyScrollRef.current.removeEventListener('scroll', handleStickyScrollLocal);
+            stickyScrollRef.current.removeEventListener(
+              "scroll",
+              handleStickyScrollLocal,
+            );
           }
         };
       };
@@ -1218,7 +1274,7 @@ const BSGanttChart = forwardRef(
 
     // Handle sticky scrollbar scroll → sync to chart (backup handler for JSX onScroll)
     const handleStickyScroll = useCallback((e) => {
-      const chartEl = document.querySelector('.wx-gantt .wx-chart');
+      const chartEl = document.querySelector(".wx-gantt .wx-chart");
       if (chartEl) {
         requestAnimationFrame(() => {
           chartEl.scrollLeft = e.target.scrollLeft;
@@ -1354,7 +1410,10 @@ const BSGanttChart = forwardRef(
             "&::-webkit-scrollbar-thumb": {
               background: theme.palette.mode === "dark" ? "#666" : "#b0b0b0",
               borderRadius: "7px",
-              border: theme.palette.mode === "dark" ? "3px solid #333" : "3px solid #f1f1f1",
+              border:
+                theme.palette.mode === "dark"
+                  ? "3px solid #333"
+                  : "3px solid #f1f1f1",
               "&:hover": {
                 background: theme.palette.mode === "dark" ? "#888" : "#909090",
               },
@@ -1494,8 +1553,10 @@ const BSGanttChart = forwardRef(
             </Box>
           )}
 
-          {!loading && holidaysLoaded && tasks.length > 0 && (
-            theme.palette.mode === "dark" ? (
+          {!loading &&
+            holidaysLoaded &&
+            tasks.length > 0 &&
+            (theme.palette.mode === "dark" ? (
               <WillowDark>
                 <Gantt
                   key={`gantt-dark-${holidayDates.size}`}
@@ -1527,8 +1588,7 @@ const BSGanttChart = forwardRef(
                   highlightTime={highlightTime}
                 />
               </Willow>
-            )
-          )}
+            ))}
         </Box>
 
         {/* Sticky Horizontal Scrollbar - Synced with chart */}
@@ -1544,7 +1604,8 @@ const BSGanttChart = forwardRef(
               height: "20px",
               overflowX: "auto",
               overflowY: "hidden",
-              backgroundColor: theme.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
+              backgroundColor:
+                theme.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
               borderTop: `1px solid ${theme.palette.divider}`,
               zIndex: 100,
               // Custom scrollbar styling
@@ -1558,9 +1619,13 @@ const BSGanttChart = forwardRef(
               "&::-webkit-scrollbar-thumb": {
                 background: theme.palette.mode === "dark" ? "#666" : "#9e9e9e",
                 borderRadius: "8px",
-                border: theme.palette.mode === "dark" ? "3px solid #333" : "3px solid #e0e0e0",
+                border:
+                  theme.palette.mode === "dark"
+                    ? "3px solid #333"
+                    : "3px solid #e0e0e0",
                 "&:hover": {
-                  background: theme.palette.mode === "dark" ? "#888" : "#757575",
+                  background:
+                    theme.palette.mode === "dark" ? "#888" : "#757575",
                 },
               },
             }}
