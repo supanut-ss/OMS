@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   forwardRef,
   useImperativeHandle,
 } from "react";
@@ -219,6 +220,12 @@ const BSGanttChart = forwardRef(
     // Holiday state
     const [holidayDates, setHolidayDates] = useState(new Map()); // Map<dateString, holidayName>
     const [holidaysLoaded, setHolidaysLoaded] = useState(false); // Track if holidays have been loaded
+
+    // Sticky scrollbar state
+    const stickyScrollRef = useRef(null);
+    const [chartScrollWidth, setChartScrollWidth] = useState(0);
+    const [chartClientWidth, setChartClientWidth] = useState(0);
+    const [isScrollSyncing, setIsScrollSyncing] = useState(false);
 
     // Hooks
     const theme = useTheme();
@@ -1144,6 +1151,81 @@ const BSGanttChart = forwardRef(
       };
     }, [holidayDates, showHolidays, tasks, applyHolidayTooltips]);
 
+    // Sticky scrollbar: Sync with inner chart horizontal scroll
+    useEffect(() => {
+      if (!tasks || tasks.length === 0) return;
+
+      let isSyncing = false; // Use local variable instead of state for performance
+
+      const findChartElement = () => {
+        // Find the chart area that has horizontal scroll
+        const chartEl = document.querySelector('.wx-gantt .wx-chart');
+        return chartEl;
+      };
+
+      const setupScrollSync = () => {
+        const chartEl = findChartElement();
+        if (!chartEl) return;
+
+        // Update scroll dimensions
+        setChartScrollWidth(chartEl.scrollWidth);
+        setChartClientWidth(chartEl.clientWidth);
+
+        // Sync: Chart scroll → Sticky scrollbar (use requestAnimationFrame for smooth sync)
+        const handleChartScroll = () => {
+          if (isSyncing) return;
+          const stickyEl = stickyScrollRef.current;
+          if (stickyEl) {
+            requestAnimationFrame(() => {
+              stickyEl.scrollLeft = chartEl.scrollLeft;
+            });
+          }
+        };
+
+        // Sync: Sticky scrollbar → Chart
+        const handleStickyScrollLocal = () => {
+          if (isSyncing) return;
+          isSyncing = true;
+          requestAnimationFrame(() => {
+            chartEl.scrollLeft = stickyScrollRef.current?.scrollLeft || 0;
+            isSyncing = false;
+          });
+        };
+
+        chartEl.addEventListener('scroll', handleChartScroll, { passive: true });
+        if (stickyScrollRef.current) {
+          stickyScrollRef.current.addEventListener('scroll', handleStickyScrollLocal, { passive: true });
+        }
+
+        // Return cleanup function
+        return () => {
+          chartEl.removeEventListener('scroll', handleChartScroll);
+          if (stickyScrollRef.current) {
+            stickyScrollRef.current.removeEventListener('scroll', handleStickyScrollLocal);
+          }
+        };
+      };
+
+      // Wait for chart to render
+      const timeoutId = setTimeout(() => {
+        setupScrollSync();
+      }, 2000);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }, [tasks]);
+
+    // Handle sticky scrollbar scroll → sync to chart (backup handler for JSX onScroll)
+    const handleStickyScroll = useCallback((e) => {
+      const chartEl = document.querySelector('.wx-gantt .wx-chart');
+      if (chartEl) {
+        requestAnimationFrame(() => {
+          chartEl.scrollLeft = e.target.scrollLeft;
+        });
+      }
+    }, []);
+
     // Highlight weekends and holidays using official SVAR highlightTime prop
     const highlightTime = useCallback(
       (date, unit) => {
@@ -1255,19 +1337,47 @@ const BSGanttChart = forwardRef(
         <Box
           ref={chartContainerRef}
           sx={{
+            // Use maxHeight to constrain and enable scrolling within the visible area
             height: height,
+            maxHeight: height,
             position: "relative",
-            overflow: "auto", // Ensure scrollbars are visible
-            "& .wx-gantt": {
-              height: "100% !important",
-              overflow: "auto !important", // Show scrollbars in Gantt
+            overflow: "auto", // Enable scrollbars - SVAR handles scroll sync internally
+            // Custom scrollbar styling for the main container
+            "&::-webkit-scrollbar": {
+              width: "14px",
+              height: "14px",
             },
-            // Ensure scrollbars are always visible
-            // "& .wx-gantt .wx-chart": {
-            //   overflow: "auto !important",
-            // },
-            "& .wx-gantt .wx-grid": {
-              overflow: "auto !important",
+            "&::-webkit-scrollbar-track": {
+              background: theme.palette.mode === "dark" ? "#333" : "#f1f1f1",
+              borderRadius: "7px",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: theme.palette.mode === "dark" ? "#666" : "#b0b0b0",
+              borderRadius: "7px",
+              border: theme.palette.mode === "dark" ? "3px solid #333" : "3px solid #f1f1f1",
+              "&:hover": {
+                background: theme.palette.mode === "dark" ? "#888" : "#909090",
+              },
+            },
+            // Let SVAR Gantt handle its own layout and scrolling
+            "& .wx-gantt": {
+              height: "100%",
+            },
+            // Only style scrollbars, don't override scroll behavior
+            "& .wx-gantt ::-webkit-scrollbar": {
+              width: "12px",
+              height: "12px",
+            },
+            "& .wx-gantt ::-webkit-scrollbar-track": {
+              background: theme.palette.mode === "dark" ? "#333" : "#f1f1f1",
+              borderRadius: "6px",
+            },
+            "& .wx-gantt ::-webkit-scrollbar-thumb": {
+              background: theme.palette.mode === "dark" ? "#666" : "#c1c1c1",
+              borderRadius: "6px",
+              "&:hover": {
+                background: theme.palette.mode === "dark" ? "#888" : "#a1a1a1",
+              },
             },
             // Enable text wrapping in scale cells (timeline header) for day name/number format
             "& .wx-gantt .wx-scale .wx-cell": {
@@ -1420,6 +1530,45 @@ const BSGanttChart = forwardRef(
             )
           )}
         </Box>
+
+        {/* Sticky Horizontal Scrollbar - Synced with chart */}
+        {chartScrollWidth > chartClientWidth && tasks.length > 0 && (
+          <Box
+            ref={stickyScrollRef}
+            onScroll={handleStickyScroll}
+            sx={{
+              position: "sticky",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "20px",
+              overflowX: "auto",
+              overflowY: "hidden",
+              backgroundColor: theme.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
+              borderTop: `1px solid ${theme.palette.divider}`,
+              zIndex: 100,
+              // Custom scrollbar styling
+              "&::-webkit-scrollbar": {
+                height: "16px",
+              },
+              "&::-webkit-scrollbar-track": {
+                background: theme.palette.mode === "dark" ? "#333" : "#e0e0e0",
+                borderRadius: "8px",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                background: theme.palette.mode === "dark" ? "#666" : "#9e9e9e",
+                borderRadius: "8px",
+                border: theme.palette.mode === "dark" ? "3px solid #333" : "3px solid #e0e0e0",
+                "&:hover": {
+                  background: theme.palette.mode === "dark" ? "#888" : "#757575",
+                },
+              },
+            }}
+          >
+            {/* Inner div with same width as chart scroll area */}
+            <div style={{ width: chartScrollWidth, height: "1px" }} />
+          </Box>
+        )}
 
         {/* Custom Mouse-Following Tooltip */}
         {tooltipVisible && (
