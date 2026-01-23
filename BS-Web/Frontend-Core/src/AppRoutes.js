@@ -24,8 +24,6 @@ import SalePage from "./pages/Master/Sale";
 import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
 import ManPowerPage from "./pages/Projects/ManPower";
-// Test pages
-import BSGanttChartTest from "./test/BSGanttChartTest";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");

@@ -1,5 +1,5 @@
 import React from "react";
-import { Paper, Box, Typography, Container } from "@mui/material";
+import { Paper } from "@mui/material";
 import { BSGanttChart } from "../../components/BSGanttChart";
 
 /**
