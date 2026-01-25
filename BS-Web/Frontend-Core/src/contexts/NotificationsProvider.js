@@ -142,7 +142,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
           anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
           sx={{ mb: `${index * 64}px` }}
         >
-          <Alert severity={s.severity} variant="filled">
+          <Alert severity={s.severity} >
             {s.message}
           </Alert>
         </Snackbar>

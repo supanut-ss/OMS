@@ -298,7 +298,7 @@ namespace ApiCore.Services.Implementation
                 using var conn = new SqlConnection(_connectionString);
                 await conn.OpenAsync();
                 var sql = @$"SELECT project_task_id, project_header_id, project_task_phase_id, task_no, task_name, task_description, task_status, 
-                                   issue_type, priority, manday, start_date, end_date, sequence, remark , close_by, close_date, close_remark, is_incident, incident_no, response_time,
+                                   issue_type, priority, manday, start_date, end_date,end_date_extend, sequence, remark , close_by, close_date, close_remark, is_incident, incident_no, response_time,
                                    resolve_duration ,start_incident_date,response_date, resolve_duration_date,plan_response_date,plan_resolve_duration_date,create_by, create_date, update_by, update_date
                             FROM tmt.t_tmt_project_task
                             WHERE project_task_id = @ProjectTaskId";
@@ -320,24 +320,25 @@ namespace ApiCore.Services.Implementation
                         response.manday = reader.IsDBNull(9) ? (decimal?)null : reader.GetDecimal(9);
                         response.start_date = reader.GetDateTime(10);
                         response.end_date = reader.GetDateTime(11);
-                        response.sequence = reader.GetInt32(12);
-                        response.remark = reader.GetString(13);
-                        response.close_by = reader.IsDBNull(14) ? null : reader.GetString(14);
-                        response.close_date = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15);
-                        response.close_remark = reader.IsDBNull(16) ? null : reader.GetString(16);
-                        response.is_incident = reader.GetString(17);
-                        response.incident_no = reader.IsDBNull(18) ? null : reader.GetString(18);
-                        response.response_time = reader.IsDBNull(19) ? (int?)null : reader.GetInt32(19);
-                        response.resolve_duration = reader.IsDBNull(20) ? (int?)null : reader.GetInt32(20);
-                        response.start_incident_date = reader.IsDBNull(21) ? (DateTime?)null : reader.GetDateTime(21);
-                        response.response_date = reader.IsDBNull(22) ? (DateTime?)null : reader.GetDateTime(22);
-                        response.resolve_duration_date = reader.IsDBNull(23) ? (DateTime?)null : reader.GetDateTime(23);
-                        response.plan_response_date = reader.IsDBNull(24) ? (DateTime?)null : reader.GetDateTime(24);
-                        response.plan_resolve_duration_date = reader.IsDBNull(25) ? (DateTime?)null : reader.GetDateTime(25);
-                        response.create_by = reader.GetString(26);
-                        response.create_date = reader.GetDateTime(27);
-                        response.update_by = reader.IsDBNull(28) ? null : reader.GetString(28);
-                        response.update_date = reader.IsDBNull(29) ? (DateTime?)null : reader.GetDateTime(29);
+                        response.end_date_extend = reader.GetDateTime(12);
+                        response.sequence = reader.GetInt32(13);
+                        response.remark = reader.GetString(14);
+                        response.close_by = reader.IsDBNull(15) ? null : reader.GetString(15);
+                        response.close_date = reader.IsDBNull(16) ? (DateTime?)null : reader.GetDateTime(16);
+                        response.close_remark = reader.IsDBNull(17) ? null : reader.GetString(17);
+                        response.is_incident = reader.GetString(18);
+                        response.incident_no = reader.IsDBNull(19) ? null : reader.GetString(19);
+                        response.response_time = reader.IsDBNull(20) ? (int?)null : reader.GetInt32(20);
+                        response.resolve_duration = reader.IsDBNull(21) ? (int?)null : reader.GetInt32(21);
+                        response.start_incident_date = reader.IsDBNull(22) ? (DateTime?)null : reader.GetDateTime(22);
+                        response.response_date = reader.IsDBNull(23) ? (DateTime?)null : reader.GetDateTime(23);
+                        response.resolve_duration_date = reader.IsDBNull(24) ? (DateTime?)null : reader.GetDateTime(24);
+                        response.plan_response_date = reader.IsDBNull(25) ? (DateTime?)null : reader.GetDateTime(25);
+                        response.plan_resolve_duration_date = reader.IsDBNull(26) ? (DateTime?)null : reader.GetDateTime(26);
+                        response.create_by = reader.GetString(27);
+                        response.create_date = reader.GetDateTime(28);
+                        response.update_by = reader.IsDBNull(29) ? null : reader.GetString(28);
+                        response.update_date = reader.IsDBNull(30) ? (DateTime?)null : reader.GetDateTime(30);
                     }
                 }
                 return response;

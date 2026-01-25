@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging;
 var builder = Host.CreateApplicationBuilder(args);
 
 // 🔐 Load .env
-DotNetEnv.Env.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"));
-//DotNetEnv.Env.Load();
+//DotNetEnv.Env.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env"));
+DotNetEnv.Env.Load();
 // 🪟 Windows Service
 builder.Services.AddWindowsService(o =>
 {

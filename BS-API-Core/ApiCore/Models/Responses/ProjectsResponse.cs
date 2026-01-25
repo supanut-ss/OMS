@@ -59,6 +59,7 @@
         public decimal? manday { get; set; }
         public DateTime start_date { get; set; }
         public DateTime end_date { get; set; }
+        public DateTime end_date_extend { get; set; }
         public int sequence { get; set; }
         public string remark { get; set; }
         public string close_by { get; set; }

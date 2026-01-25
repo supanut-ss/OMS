@@ -13,10 +13,12 @@ namespace ApiCore.Controllers
     public class MyTaskController : ControllerResponse
     {
         private readonly IMyTaskService _myTaskService;
+        private readonly IDashboard _dashboardService;
 
-        public MyTaskController(IMyTaskService myTaskService)
+        public MyTaskController(IMyTaskService myTaskService, IDashboard dashboard)
         {
             _myTaskService = myTaskService;
+            _dashboardService = dashboard;
         }
 
         /// <summary>
@@ -185,6 +187,24 @@ namespace ApiCore.Controllers
                 {
                     return ResponseSuccess("failed", "Task not found " + projectTaskId, 1);
                 }
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+        }
+        [HttpGet("dashboard/stats")]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            try
+            {
+                var userId = User.FindFirst("UserId")?.Value ?? "";
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return ResponseSuccess("failed", "User not authenticated", 1);
+                }
+                var res = await _dashboardService.GetDashboard(userId);
+                return AccessResponseDataSuccess("success", res, 0);
             }
             catch (Exception ex)
             {

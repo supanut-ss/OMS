@@ -65,6 +65,8 @@ namespace ApiCore.Services.Implementation
                         project_name = reader.IsDBNull(reader.GetOrdinal("project_name")) ? null : reader.GetString(reader.GetOrdinal("project_name")),
                         project_type = reader.IsDBNull(reader.GetOrdinal("project_type")) ? null : reader.GetString(reader.GetOrdinal("project_type")),
                         assignee = reader.IsDBNull(reader.GetOrdinal("assignee")) ? null : reader.GetString(reader.GetOrdinal("assignee")),
+                        assignee_list = reader.IsDBNull(reader.GetOrdinal("assignee_list")) ? null : reader.GetString(reader.GetOrdinal("assignee_list")),
+                        task_tracking_count = reader.GetInt32(reader.GetOrdinal("task_tracking_count")),
                         create_by = reader.IsDBNull(reader.GetOrdinal("create_by")) ? null : reader.GetString(reader.GetOrdinal("create_by")),
                         create_date = reader.IsDBNull(reader.GetOrdinal("create_date")) ? null : reader.GetDateTime(reader.GetOrdinal("create_date")),
                         update_by = reader.IsDBNull(reader.GetOrdinal("update_by")) ? null : reader.GetString(reader.GetOrdinal("update_by")),

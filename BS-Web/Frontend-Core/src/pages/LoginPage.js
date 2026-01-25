@@ -87,6 +87,8 @@ export default function LoginPage({ setLang }) {
           }
         }
         await getNotifications(10);
+
+        window.open("https://www.ogawms.com", "_blank", "noopener,noreferrer");
       } else {
         setError(data.message)
       }

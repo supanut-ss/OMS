@@ -21,6 +21,8 @@ namespace ApiCore.Models.Responses
         public string? project_name { get; set; }
         public string? project_type { get; set; }
         public string? assignee { get; set; }
+        public string? assignee_list { get; set; }
+        public int? task_tracking_count { get; set; }
         public string? create_by { get; set; }
         public DateTime? create_date { get; set; }
         public string? update_by { get; set; }

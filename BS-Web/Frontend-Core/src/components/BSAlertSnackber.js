@@ -15,7 +15,9 @@ const BSAlertSnackbar = ({
     severity = "info",
     onClose,
     vertical = "center",
-    horizontal = "center"
+    horizontal = "center",
+    variant = "filled",
+    sx={}
 }) => {
     const handleClose = (_, reason) => {
         if (reason === "clickaway") return;
@@ -32,8 +34,8 @@ const BSAlertSnackbar = ({
             <Alert
                 onClose={handleClose}
                 severity={severity}
-                sx={{ width: "100%", minWidth: 300, textAlign: "center" }}
-                variant="filled"
+                sx={sx}
+                variant={variant}
             >
                 {message}
             </Alert>
