@@ -337,7 +337,7 @@ namespace ApiCore.Services.Implementation
                         response.plan_resolve_duration_date = reader.IsDBNull(26) ? (DateTime?)null : reader.GetDateTime(26);
                         response.create_by = reader.GetString(27);
                         response.create_date = reader.GetDateTime(28);
-                        response.update_by = reader.IsDBNull(29) ? null : reader.GetString(28);
+                        response.update_by = reader.IsDBNull(29) ? null : reader.GetString(29);
                         response.update_date = reader.IsDBNull(30) ? (DateTime?)null : reader.GetDateTime(30);
                     }
                 }
