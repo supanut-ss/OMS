@@ -103,71 +103,156 @@ const BSGanttChart = forwardRef(
     const [startDate, setStartDate] = useState(initialStartDate);
     const [endDate, setEndDate] = useState(initialEndDate);
 
-    // Initial style injection (Force apply styles globally to bypass specificity/shadow DOM issues)
-    useEffect(() => {
-      const styleId = "bs-gantt-holiday-global-styles";
-      if (!document.getElementById(styleId)) {
-        const style = document.createElement("style");
-        style.id = styleId;
-        style.textContent = `
-          /* Holiday Header - Purple background */
-          body .wx-gantt .wx-scale .wx-cell.wx-holiday {
-            background-color: rgba(156, 39, 176, 0.4) !important;
-            background: rgba(156, 39, 176, 0.4) !important;
-            color: #4a148c !important;
-            font-weight: bold !important;
-          }
-          /* Holiday Body Cells - Fix height/position and apply purple background */
-          body .wx-gantt .wx-gantt-holidays .wx-holiday {
-            position: absolute !important;
-            height: 100% !important;
-            top: 0 !important;
-            background-color: rgba(156, 39, 176, 0.3) !important;
-            background: rgba(156, 39, 176, 0.3) !important;
-          }
-          /* Fullscreen button - Fixed position at bottom-right of viewport */
-          .wx-fullscreen .wx-fullscreen-button {
-            position: fixed !important;
-            bottom: 60px !important;
-            right: 40px !important;
-            top: auto !important;
-            z-index: 1000 !important;
-            background: rgba(255, 255, 255, 0.45) !important;
-            border-radius: 8px !important;
-            padding: 8px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-            border: 1px solid rgba(0,0,0,0.1) !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-          }
-          .wx-fullscreen .wx-fullscreen-button .wx-fullscreen-icon {
-            margin: 0 !important;
-            padding: 0 !important;
-            line-height: 1 !important;
-            display: block !important;
-          }
-          .wx-fullscreen .wx-fullscreen-button:hover {
-            background: rgba(255, 255, 255, 1) !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
-            transform: scale(1.05);
-          }
-          /* Fullscreen mode - Enable scrolling */
-          .wx-fullscreen-scroll-fix {
-            overflow: auto !important;
-            height: 100vh !important;
-          }
-        `;
-        document.head.appendChild(style);
-        Logger.debug(
-          "BSGanttChart: Injected global holiday styles successfully",
-        );
-      }
-    }, []);
+    const [selectedEmployees, setSelectedEmployees] = useState(
+      initialSelectedEmployees,
+    );
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [cellWidth, setCellWidth] = useState(initialCellWidth);
+    const [cellHeight, setCellHeight] = useState(initialCellHeight);
+    const [scaleHeight, setScaleHeight] = useState(initialScaleHeight);
+    const [currentScale, setCurrentScale] = useState(initialScale);
+    const [isInitialized, setIsInitialized] = useState(false);
+    const [showFullscreenHint, setShowFullscreenHint] = useState(false);
+
+    // Tooltip state
+    const [tooltipVisible, setTooltipVisible] = useState(false);
+    const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+    const [tooltipContent, setTooltipContent] = useState("");
+
+    // Holiday state
+    const [holidayDates, setHolidayDates] = useState(new Map()); // Map<dateString, holidayName>
+    const [holidaysLoaded, setHolidaysLoaded] = useState(false); // Track if holidays have been loaded
+
+    // Sticky scrollbar state
+    const stickyScrollRef = useRef(null);
+    const [chartScrollWidth, setChartScrollWidth] = useState(0);
+    const [chartClientWidth, setChartClientWidth] = useState(0);
+    const [isScrollSyncing, setIsScrollSyncing] = useState(false);
+
+    // Hooks - MUST be called before any useEffect that uses them
+    const theme = useTheme();
+    const lang = SecureStorage.get("lang");
+    const localeText = useMemo(() => getLocaleText(), [lang]); // Re-fetch when lang changes
+    const { getResources } = useResource();
+    const {
+      loading,
+      error,
+      employees,
+      projects,
+      fetchData,
+      getFilteredTasks,
+      allTasks,
+    } = useGanttData();
 
     // Refs
     const chartContainerRef = React.useRef(null);
     const ganttInstance = React.useRef(null);
+
+    // Inject global styles - updates when theme changes
+    useEffect(() => {
+      const styleId = "bs-gantt-global-styles";
+
+      // Remove existing style to update with new theme colors
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+
+      // Determine colors based on theme
+      const isDark = theme.palette.mode === "dark";
+      const headerBgColor = isDark ? "#1e1e1e" : "#ffffff";
+      const headerTextColor = isDark ? "#ffffff" : "#000000";
+      const shadowColor = isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.1)";
+
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        /* ===== STICKY HEADER STYLES (JavaScript-controlled via transform) ===== */
+        /* Headers need solid background to cover content when "sticky" via transform */
+        body .wx-gantt .wx-grid .wx-header,
+        body .wx-gantt .wx-header {
+          background-color: ${headerBgColor} !important;
+          color: ${headerTextColor} !important;
+          box-shadow: 0 2px 4px ${shadowColor} !important;
+        }
+        
+        body .wx-gantt .wx-area .wx-scale,
+        body .wx-gantt .wx-scale {
+          background-color: ${headerBgColor} !important;
+          color: ${headerTextColor} !important;
+          box-shadow: 0 2px 4px ${shadowColor} !important;
+        }
+        
+        /* Header cells also need background */
+        body .wx-gantt .wx-header .wx-cell,
+        body .wx-gantt .wx-scale .wx-cell {
+          background-color: ${headerBgColor} !important;
+          color: ${headerTextColor} !important;
+        }
+        
+        /* ===== HOLIDAY STYLES ===== */
+        /* Holiday Header - Purple background */
+        body .wx-gantt .wx-scale .wx-cell.wx-holiday {
+          background-color: rgba(156, 39, 176, 0.4) !important;
+          background: rgba(156, 39, 176, 0.4) !important;
+          color: ${isDark ? "#e1bee7" : "#4a148c"} !important;
+          font-weight: bold !important;
+        }
+        /* Holiday Body Cells - Fix height/position and apply purple background */
+        body .wx-gantt .wx-gantt-holidays .wx-holiday {
+          position: absolute !important;
+          height: 100% !important;
+          top: 0 !important;
+          background-color: rgba(156, 39, 176, 0.3) !important;
+          background: rgba(156, 39, 176, 0.3) !important;
+        }
+        /* Fullscreen button - Fixed position at bottom-right of viewport */
+        .wx-fullscreen .wx-fullscreen-button {
+          position: fixed !important;
+          bottom: 60px !important;
+          right: 40px !important;
+          top: auto !important;
+          z-index: 1000 !important;
+          background: ${isDark ? "rgba(30,30,30,0.9)" : "rgba(255, 255, 255, 0.45)"} !important;
+          border-radius: 8px !important;
+          padding: 8px !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+          border: 1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .wx-fullscreen .wx-fullscreen-button .wx-fullscreen-icon {
+          margin: 0 !important;
+          padding: 0 !important;
+          line-height: 1 !important;
+          display: block !important;
+        }
+        .wx-fullscreen .wx-fullscreen-button:hover {
+          background: ${isDark ? "rgba(50,50,50,1)" : "rgba(255, 255, 255, 1)"} !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+          transform: scale(1.05);
+        }
+        /* Fullscreen mode - Enable scrolling */
+        .wx-fullscreen-scroll-fix {
+          overflow: auto !important;
+          height: 100vh !important;
+        }
+      `;
+      document.head.appendChild(style);
+      Logger.debug(
+        "BSGanttChart: Injected global styles for theme:",
+        theme.palette.mode,
+      );
+
+      // Cleanup on unmount
+      return () => {
+        const styleToRemove = document.getElementById(styleId);
+        if (styleToRemove) {
+          styleToRemove.remove();
+        }
+      };
+    }, [theme.palette.mode]);
 
     // Fullscreen Handler
     const handleToggleFullscreen = useCallback(() => {
@@ -208,47 +293,6 @@ const BSGanttChart = forwardRef(
         );
       };
     }, []);
-
-    const [selectedEmployees, setSelectedEmployees] = useState(
-      initialSelectedEmployees,
-    );
-    const [selectedProject, setSelectedProject] = useState(null);
-    const [cellWidth, setCellWidth] = useState(initialCellWidth);
-    const [cellHeight, setCellHeight] = useState(initialCellHeight);
-    const [scaleHeight, setScaleHeight] = useState(initialScaleHeight);
-    const [currentScale, setCurrentScale] = useState(initialScale);
-    const [isInitialized, setIsInitialized] = useState(false);
-    const [showFullscreenHint, setShowFullscreenHint] = useState(false);
-
-    // Tooltip state
-    const [tooltipVisible, setTooltipVisible] = useState(false);
-    const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-    const [tooltipContent, setTooltipContent] = useState("");
-
-    // Holiday state
-    const [holidayDates, setHolidayDates] = useState(new Map()); // Map<dateString, holidayName>
-    const [holidaysLoaded, setHolidaysLoaded] = useState(false); // Track if holidays have been loaded
-
-    // Sticky scrollbar state
-    const stickyScrollRef = useRef(null);
-    const [chartScrollWidth, setChartScrollWidth] = useState(0);
-    const [chartClientWidth, setChartClientWidth] = useState(0);
-    const [isScrollSyncing, setIsScrollSyncing] = useState(false);
-
-    // Hooks
-    const theme = useTheme();
-    const lang = SecureStorage.get("lang");
-    const localeText = useMemo(() => getLocaleText(), [lang]); // Re-fetch when lang changes
-    const { getResources } = useResource();
-    const {
-      loading,
-      error,
-      employees,
-      projects,
-      fetchData,
-      getFilteredTasks,
-      allTasks,
-    } = useGanttData();
 
     // Generate scales based on current scale setting
     const scales = useMemo(() => {
@@ -950,6 +994,143 @@ const BSGanttChart = forwardRef(
       };
     }, [tasks, lang, localeText, applyTooltipsToNewBars]);
 
+    // ===== STICKY HEADER IMPLEMENTATION via JavaScript =====
+    // SVAR Gantt has nested scroll containers that prevent CSS sticky from working
+    // This effect manually synchronizes header position when scrolling vertically
+    useEffect(() => {
+      if (!tasks || tasks.length === 0) return;
+
+      let animationFrameId = null;
+      let cleanupFn = null;
+
+      // Determine background color based on theme
+      const headerBgColor =
+        theme.palette.mode === "dark" ? "#1e1e1e" : "#ffffff";
+      const headerTextColor =
+        theme.palette.mode === "dark" ? "#ffffff" : "#000000";
+
+      const applyStickyHeaders = () => {
+        const containerEl = chartContainerRef.current;
+        if (!containerEl) return null;
+
+        const ganttEl = containerEl.querySelector(".wx-gantt");
+        if (!ganttEl) {
+          console.log("[StickyHeader] .wx-gantt not found");
+          return null;
+        }
+
+        // Debug: Log DOM structure (only once)
+        // console.log("[StickyHeader] SVAR Gantt DOM structure:");
+        // console.log("  - ganttEl children:", Array.from(ganttEl.children).map(c => c.className));
+
+        // Find all possible scroll containers
+        const possibleContainers = [
+          containerEl, // The outer Box container
+          ganttEl.querySelector(".wx-content"),
+          ganttEl.querySelector(".wx-layout"),
+          ganttEl.querySelector(".wx-body"),
+          ganttEl,
+        ].filter(Boolean);
+
+        // Find the actual scroll container (the one that has scrollHeight > clientHeight)
+        let scrollContainer = possibleContainers.find(
+          (c) => c.scrollHeight > c.clientHeight,
+        );
+
+        // If no scrollable container found, use the outer container
+        if (!scrollContainer) {
+          scrollContainer = containerEl;
+        }
+
+        // Find header elements - try multiple selectors
+        const gridHeader =
+          ganttEl.querySelector(".wx-grid .wx-header") ||
+          ganttEl.querySelector(".wx-header");
+        const timelineScale =
+          ganttEl.querySelector(".wx-area .wx-scale") ||
+          ganttEl.querySelector(".wx-scale") ||
+          ganttEl.querySelector(".wx-timeline .wx-scale");
+
+        if (!gridHeader && !timelineScale) {
+          console.log("[StickyHeader] No headers found!");
+          return null;
+        }
+
+        // Apply initial styles for theme
+        const applyHeaderStyles = (scrollTop) => {
+          if (gridHeader) {
+            gridHeader.style.transform = `translateY(${scrollTop}px)`;
+            gridHeader.style.zIndex = "100";
+            gridHeader.style.position = "relative";
+            gridHeader.style.backgroundColor = headerBgColor;
+            gridHeader.style.color = headerTextColor;
+          }
+
+          if (timelineScale) {
+            timelineScale.style.transform = `translateY(${scrollTop}px)`;
+            timelineScale.style.zIndex = "100";
+            timelineScale.style.position = "relative";
+            timelineScale.style.backgroundColor = headerBgColor;
+            timelineScale.style.color = headerTextColor;
+          }
+        };
+
+        const handleScroll = () => {
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
+
+          animationFrameId = requestAnimationFrame(() => {
+            const scrollTop = scrollContainer.scrollTop;
+            applyHeaderStyles(scrollTop);
+          });
+        };
+
+        // Attach scroll listener
+        scrollContainer.addEventListener("scroll", handleScroll, {
+          passive: true,
+        });
+
+        // Initial positioning with current scroll position
+        applyHeaderStyles(scrollContainer.scrollTop);
+
+        // Return cleanup function
+        return () => {
+          scrollContainer.removeEventListener("scroll", handleScroll);
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
+          // Reset styles
+          if (gridHeader) {
+            gridHeader.style.transform = "";
+            gridHeader.style.zIndex = "";
+            gridHeader.style.position = "";
+            gridHeader.style.backgroundColor = "";
+            gridHeader.style.color = "";
+          }
+          if (timelineScale) {
+            timelineScale.style.transform = "";
+            timelineScale.style.zIndex = "";
+            timelineScale.style.position = "";
+            timelineScale.style.backgroundColor = "";
+            timelineScale.style.color = "";
+          }
+        };
+      };
+
+      // Wait for Gantt to render
+      const timeoutId = setTimeout(() => {
+        cleanupFn = applyStickyHeaders();
+      }, 800);
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (cleanupFn) {
+          cleanupFn();
+        }
+      };
+    }, [tasks, theme.palette.mode]); // Re-run when theme changes
+
     // Debug: Log when holidayDates changes
     useEffect(() => {
       if (holidayDates.size > 0) {
@@ -1008,6 +1189,167 @@ const BSGanttChart = forwardRef(
         clearTimeout(timeoutId);
       };
     }, [holidayDates, showHolidays, tasks]);
+
+    // ===== WEEKEND HEADER HIGHLIGHTING via DOM manipulation =====
+    // SVAR Gantt's highlightTime only applies to body cells, not header/scale cells
+    // This effect adds wx-weekend class to scale header cells for weekends
+    useEffect(() => {
+      if (!tasks || tasks.length === 0) return;
+
+      const applyWeekendHeaderHighlighting = () => {
+        const ganttEl = document.querySelector(".wx-gantt");
+        if (!ganttEl) return;
+
+        // Get the scale rows - typically 2 rows: month row and day row
+        const scaleRows = ganttEl.querySelectorAll(".wx-scale .wx-row");
+        if (scaleRows.length < 2) return;
+
+        // Day row is usually the second row (index 1)
+        const dayRow = scaleRows[1];
+        if (!dayRow) return;
+
+        // Get the month row to determine which month each day belongs to
+        const monthRow = scaleRows[0];
+        const monthCells = monthRow?.querySelectorAll(".wx-cell") || [];
+
+        // Build month ranges
+        const monthRanges = [];
+        monthCells.forEach((cell) => {
+          const left = parseFloat(cell.style.left) || cell.offsetLeft;
+          const width = parseFloat(cell.style.width) || cell.offsetWidth;
+          const text = cell.textContent?.trim() || "";
+          monthRanges.push({ left, right: left + width, text });
+        });
+
+        // Thai and English month names
+        const thaiMonths = [
+          "มกราคม",
+          "กุมภาพันธ์",
+          "มีนาคม",
+          "เมษายน",
+          "พฤษภาคม",
+          "มิถุนายน",
+          "กรกฎาคม",
+          "สิงหาคม",
+          "กันยายน",
+          "ตุลาคม",
+          "พฤศจิกายน",
+          "ธันวาคม",
+        ];
+        const enMonths = [
+          "january",
+          "february",
+          "march",
+          "april",
+          "may",
+          "june",
+          "july",
+          "august",
+          "september",
+          "october",
+          "november",
+          "december",
+        ];
+
+        // Get all day cells
+        const dayCells = dayRow.querySelectorAll(".wx-cell");
+
+        dayCells.forEach((cell) => {
+          // Skip if already processed
+          if (cell.getAttribute("data-weekend-checked")) return;
+          cell.setAttribute("data-weekend-checked", "true");
+
+          const cellLeft = parseFloat(cell.style.left) || cell.offsetLeft;
+          const cellText = cell.textContent?.trim() || "";
+
+          // Extract day number from cell text
+          const dayMatch = cellText.match(/(\d+)/);
+          if (!dayMatch) return;
+          const dayNum = parseInt(dayMatch[1], 10);
+
+          // Find which month this cell belongs to
+          let monthText = "";
+          for (const range of monthRanges) {
+            if (cellLeft >= range.left && cellLeft < range.right) {
+              monthText = range.text;
+              break;
+            }
+          }
+
+          if (!monthText && monthRanges.length > 0) {
+            monthText = monthRanges[monthRanges.length - 1].text;
+          }
+
+          if (!monthText) return;
+
+          // Parse month and year from monthText
+          let monthIndex = -1;
+          let yearNum = 0;
+
+          // Try Thai months first
+          for (let i = 0; i < thaiMonths.length; i++) {
+            if (monthText.includes(thaiMonths[i])) {
+              monthIndex = i;
+              const yearMatch = monthText.match(/(\d{4})/);
+              if (yearMatch) {
+                yearNum = parseInt(yearMatch[1], 10);
+                if (yearNum > 2500) yearNum -= 543; // Convert Buddhist year
+              }
+              break;
+            }
+          }
+
+          // Try English months if Thai didn't match
+          if (monthIndex < 0) {
+            const lowerMonth = monthText.toLowerCase();
+            for (let i = 0; i < enMonths.length; i++) {
+              if (lowerMonth.includes(enMonths[i])) {
+                monthIndex = i;
+                const yearMatch = monthText.match(/(\d{4})/);
+                if (yearMatch) yearNum = parseInt(yearMatch[1], 10);
+                break;
+              }
+            }
+          }
+
+          if (monthIndex < 0 || yearNum === 0) return;
+
+          // Create date and check if weekend
+          const date = new Date(yearNum, monthIndex, dayNum);
+          const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            // Add weekend class
+            if (!cell.classList.contains("wx-weekend")) {
+              cell.classList.add("wx-weekend");
+            }
+          }
+        });
+      };
+
+      // Apply after delay to ensure Gantt has rendered
+      const timeoutId = setTimeout(applyWeekendHeaderHighlighting, 1500);
+
+      // Also observe for DOM changes (e.g., when user scrolls the timeline)
+      const observer = new MutationObserver(() => {
+        clearTimeout(window._weekendHighlightDebounce);
+        window._weekendHighlightDebounce = setTimeout(
+          applyWeekendHeaderHighlighting,
+          300,
+        );
+      });
+
+      const scaleElement = document.querySelector(".wx-gantt .wx-scale");
+      if (scaleElement) {
+        observer.observe(scaleElement, { childList: true, subtree: true });
+      }
+
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(window._weekendHighlightDebounce);
+        observer.disconnect();
+      };
+    }, [tasks]);
 
     // Apply tooltip to holiday header cells using native title attribute
     const applyHolidayTooltips = useCallback(() => {
@@ -1427,6 +1769,8 @@ const BSGanttChart = forwardRef(
             // Let SVAR Gantt handle its own layout and scrolling
             "& .wx-gantt": {
               height: "100%",
+              display: "flex",
+              flexDirection: "column",
             },
             // Only style scrollbars, don't override scroll behavior
             "& .wx-gantt ::-webkit-scrollbar": {
@@ -1444,6 +1788,29 @@ const BSGanttChart = forwardRef(
                 background: theme.palette.mode === "dark" ? "#888" : "#a1a1a1",
               },
             },
+            // ===== STICKY HEADER STYLES (controlled via JavaScript transform) =====
+            // Headers need solid background to cover content when transformed
+            "& .wx-gantt .wx-grid .wx-header": {
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "#1e1e1e !important"
+                  : "#ffffff !important",
+              boxShadow:
+                theme.palette.mode === "dark"
+                  ? "0 2px 4px rgba(0,0,0,0.3) !important"
+                  : "0 2px 4px rgba(0,0,0,0.15) !important",
+            },
+            "& .wx-gantt .wx-area .wx-scale": {
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "#1e1e1e !important"
+                  : "#ffffff !important",
+              boxShadow:
+                theme.palette.mode === "dark"
+                  ? "0 2px 4px rgba(0,0,0,0.3) !important"
+                  : "0 2px 4px rgba(0,0,0,0.15) !important",
+            },
+
             // Enable text wrapping in scale cells (timeline header) for day name/number format
             "& .wx-gantt .wx-scale .wx-cell": {
               whiteSpace: "pre-line !important",
@@ -1501,18 +1868,27 @@ const BSGanttChart = forwardRef(
               backgroundColor: "#fb8c00 !important", // Orange 600
             },
             // Weekend highlighting (Saturday/Sunday) - Light red
-            "& .wx-gantt .wx-cell.weekend, & .wx-gantt .wx-weekend": {
+            // Body cells (applied by highlightTime)
+            "& .wx-gantt .wx-cell.wx-weekend, & .wx-gantt .wx-weekend": {
               backgroundColor: "rgba(255, 200, 200, 0.3) !important", // Light red for weekends
             },
-            "& .wx-gantt .wx-scale-cell.weekend": {
-              backgroundColor: "rgba(255, 200, 200, 0.3) !important",
+            // Header/Scale cells (applied via DOM manipulation)
+            "& .wx-gantt .wx-scale .wx-cell.wx-weekend": {
+              backgroundColor: "rgba(255, 200, 200, 0.4) !important", // Slightly more visible on header
+              color:
+                theme.palette.mode === "dark"
+                  ? "#ffcdd2 !important"
+                  : "#c62828 !important", // Red text
             },
             // Holiday highlighting - Purple for holidays
             // Header cells
             "& .wx-gantt .wx-scale .wx-cell.wx-holiday": {
               backgroundColor: "rgba(156, 39, 176, 0.4) !important",
               background: "rgba(156, 39, 176, 0.4) !important",
-              color: "#4a148c !important",
+              color:
+                theme.palette.mode === "dark"
+                  ? "#e1bee7 !important"
+                  : "#4a148c !important",
               borderBottom: "2px solid rgba(107, 23, 122, 0.4) !important",
             },
             // Body cells - fix height/position
@@ -1564,7 +1940,8 @@ const BSGanttChart = forwardRef(
                 },
               }}
             >
-              {localeText.bsFullscreenHint || "Press ESC to exit fullscreen mode"}
+              {localeText.bsFullscreenHint ||
+                "Press ESC to exit fullscreen mode"}
             </Alert>
           )}
 
