@@ -60,228 +60,326 @@ export const useGanttData = () => {
   }, []);
 
   /**
+   * Normalize date string to local date (extract date part only, ignore time)
+   * SQL Server dates may come as "2026-01-13T00:00:00" (local) or "2026-01-13T00:00:00Z" (UTC)
+   * We want to extract just the date part: 2026-01-13
+   * @param {string|Date} dateStr - Date string or Date object
+   * @returns {Date} Local date at midnight
+   */
+  const normalizeDate = useCallback((dateStr) => {
+    if (!dateStr) return null;
+
+    // If it's a string, parse the date part directly to avoid timezone issues
+    if (typeof dateStr === "string") {
+      // Extract YYYY-MM-DD from string like "2026-01-13T00:00:00" or "2026-01-13"
+      const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1; // Month is 0-indexed
+        const day = parseInt(match[3], 10);
+        return new Date(year, month, day);
+      }
+    }
+
+    // Fallback for Date objects - use local components
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }, []);
+
+  /**
+   * Add one day to date for SVAR Gantt end date (exclusive)
+   * SVAR Gantt treats end date as exclusive, so we need to add 1 day
+   * to display the bar including the end date
+   * @param {Date} date - Date to adjust (should already be normalized)
+   * @returns {Date} Date with 1 day added
+   */
+  const adjustEndDateForGantt = useCallback((date) => {
+    if (!date) return null;
+    const adjusted = new Date(date);
+    adjusted.setDate(adjusted.getDate() + 1);
+    return adjusted;
+  }, []);
+
+  /**
    * Transform flat SP result to hierarchical SVAR Gantt format
    * @param {Array} data - Raw data from stored procedure
    * @returns {Array} Tasks array in SVAR Gantt format
    */
-  const transformToGanttTasks = useCallback((data) => {
-    if (!data || data.length === 0) return [];
+  const transformToGanttTasks = useCallback(
+    (data) => {
+      if (!data || data.length === 0) return [];
 
-    const tasks = [];
-    const userMap = new Map();
+      const tasks = [];
+      const userMap = new Map();
 
-    // Debug: Log first row to understand data structure
-    if (data.length > 0) {
-      Logger.log("🔍 Sample row data:", JSON.stringify(data[0], null, 2));
-    }
-
-    // First pass: Group by user and project
-    data.forEach((row) => {
-      // Use name-based key since user_id may be 0 for all records
-      const userName = `${row.first_name || ""} ${row.last_name || ""}`.trim();
-      const projectId = row.project_header_id;
-
-      // Skip rows without user name
-      if (!userName || userName === "system system") return;
-
-      // Create unique user key based on name
-      const userKey = userName.toLowerCase().replace(/\s+/g, "_");
-
-      // Create user entry
-      if (!userMap.has(userKey)) {
-        userMap.set(userKey, {
-          id: `user_${userKey}`,
-          text: userName,
-          type: "user", // Custom type for CSS styling - Green
-          css: "bs-gantt-item-user", // Explicit CSS class
-          open: true,
-          parent: 0,
-          // Initialize man_day totals for user level (will be summed from projects)
-          man_day: 0,
-          actual_man_day: 0,
-          barColor: "#66bb6a", // Green 400
-          data: {
-            level: "user",
-            userId: row.user_id || userKey,
-            barColor: "#66bb6a",
-          },
-          projects: new Map(),
-        });
+      // Debug: Log first row to understand data structure
+      if (data.length > 0) {
+        Logger.log("🔍 Sample row data:", JSON.stringify(data[0], null, 2));
       }
 
-      const user = userMap.get(userKey);
+      // First pass: Group by user and project
+      data.forEach((row) => {
+        // Use name-based key since user_id may be 0 for all records
+        const userName =
+          `${row.first_name || ""} ${row.last_name || ""}`.trim();
+        const projectId = row.project_header_id;
 
-      // Skip if no project
-      if (!projectId) return;
+        // Skip rows without user name
+        if (!userName || userName === "system system") return;
 
-      // Create project entry under user
-      const projectKey = `${userKey}_${projectId}`;
-      if (!user.projects.has(projectKey)) {
-        user.projects.set(projectKey, {
-          id: `proj_${projectKey}`,
-          text: row.project_name || row.project_no || `Project ${projectId}`,
-          type: "project", // Custom type for CSS styling - Blue
-          css: "bs-gantt-item-project", // Explicit CSS class
-          open: false,
-          parent: `user_${userKey}`,
-          start: row.min_task_start_date
-            ? new Date(row.min_task_start_date)
-            : null,
-          end: row.max_task_end_date ? new Date(row.max_task_end_date) : null,
-          progress: 0,
-          // Add man_day and actual_man_day at root level for SVAR Gantt column access
-          man_day: row.total_task_plan_manday || 0,
-          actual_man_day: row.total_actual_work || 0,
-          barColor: "#42a5f5", // Blue 400
-          data: {
-            level: "project",
-            projectId: projectId,
-            projectNo: row.project_no,
-            totalPlanManday: row.total_task_plan_manday,
-            totalActualWork: row.total_actual_work,
-            barColor: "#42a5f5",
-          },
-          tasks: [],
-        });
-      }
+        // Create unique user key based on name
+        const userKey = userName.toLowerCase().replace(/\s+/g, "_");
 
-      const project = user.projects.get(projectKey);
-
-      // Create task entry under project
-      if (row.task_no) {
-        const taskId = `task_${userKey}_${projectId}_${row.task_no}`;
-        // Avoid duplicate tasks
-        if (!project.tasks.find((t) => t.id === taskId)) {
-          project.tasks.push({
-            id: taskId,
-            text: row.task_name || `Task ${row.task_no}`,
-            type: "work_task",
-            css: "bs-gantt-item-task", // Keep as backup
-            parent: `proj_${projectKey}`,
-            start: row.task_start_date ? new Date(row.task_start_date) : null,
-            end: row.task_end_date ? new Date(row.task_end_date) : null,
-            progress: 0,
-            // Add man_day and actual_man_day at root level for SVAR Gantt column access
-            man_day: row.task_plan_manday || 0,
-            actual_man_day: row.actual_work || 0,
-            barColor: "#ffa726", // Orange 400
+        // Create user entry
+        if (!userMap.has(userKey)) {
+          userMap.set(userKey, {
+            id: `user_${userKey}`,
+            text: userName,
+            type: "user", // Custom type for CSS styling - Green
+            css: "bs-gantt-item-user", // Explicit CSS class
+            open: true,
+            parent: 0,
+            // Initialize man_day totals for user level (will be summed from projects)
+            man_day: 0,
+            actual_man_day: 0,
+            barColor: "#66bb6a", // Green 400
             data: {
-              level: "task",
-              taskNo: row.task_no,
-              taskDescription: row.task_description,
-              planManday: row.task_plan_manday,
-              actualWork: row.actual_work,
-              barColor: "#ffa726",
+              level: "user",
+              userId: row.user_id || userKey,
+              barColor: "#66bb6a",
             },
+            projects: new Map(),
           });
         }
-      }
-    });
 
-    // Default date range for summary tasks without dates
-    const defaultStart = new Date();
-    const defaultEnd = new Date();
-    defaultEnd.setMonth(defaultEnd.getMonth() + 1);
+        const user = userMap.get(userKey);
 
-    userMap.forEach((user) => {
-      // Calculate user date range from all projects
-      let userStart = null;
-      let userEnd = null;
-      let hasValidProjects = false;
+        // Skip if no project
+        if (!projectId) return;
 
-      user.projects.forEach((project) => {
-        // Check if project has dates or tasks
-        const hasProjectDates = project.start && project.end;
-        const hasTasks = project.tasks && project.tasks.length > 0;
+        // Create project entry under user
+        const projectKey = `${userKey}_${projectId}`;
+        if (!user.projects.has(projectKey)) {
+          const projStartDate = normalizeDate(row.min_task_start_date);
+          const projEndDateOriginal = normalizeDate(row.max_task_end_date);
+          const projEndDate = projEndDateOriginal
+            ? adjustEndDateForGantt(projEndDateOriginal)
+            : null;
 
-        if (hasProjectDates || hasTasks) {
-          hasValidProjects = true;
-          if (project.start && (!userStart || project.start < userStart)) {
-            userStart = project.start;
-          }
-          if (project.end && (!userEnd || project.end > userEnd)) {
-            userEnd = project.end;
+          user.projects.set(projectKey, {
+            id: `proj_${projectKey}`,
+            text: row.project_name || row.project_no || `Project ${projectId}`,
+            type: "project", // Custom type for CSS styling - Blue
+            css: "bs-gantt-item-project", // Explicit CSS class
+            open: false,
+            parent: `user_${userKey}`,
+            start: projStartDate,
+            end: projEndDate,
+            progress: 0,
+            // Add man_day and actual_man_day at root level for SVAR Gantt column access
+            man_day: row.total_task_plan_manday || 0,
+            actual_man_day: row.total_actual_work || 0,
+            barColor: "#42a5f5", // Blue 400
+            // Store original dates at root level (SVAR Gantt overwrites 'data' property)
+            originalStartDate: projStartDate,
+            originalEndDate: projEndDateOriginal,
+            data: {
+              level: "project",
+              projectId: projectId,
+              projectNo: row.project_no,
+              totalPlanManday: row.total_task_plan_manday,
+              totalActualWork: row.total_actual_work,
+              barColor: "#42a5f5",
+            },
+            tasks: [],
+          });
+        }
+
+        const project = user.projects.get(projectKey);
+
+        // Create task entry under project
+        if (row.task_no) {
+          const taskId = `task_${userKey}_${projectId}_${row.task_no}`;
+          // Avoid duplicate tasks
+          if (!project.tasks.find((t) => t.id === taskId)) {
+            const taskStartDate = normalizeDate(row.task_start_date);
+            const taskEndDateNormalized = normalizeDate(row.task_end_date);
+            const taskEndDateAdjusted = taskEndDateNormalized
+              ? adjustEndDateForGantt(taskEndDateNormalized)
+              : null;
+
+            // Debug log to verify date normalization and adjustment
+            if (row.task_end_date && taskEndDateAdjusted) {
+              Logger.log(
+                `📅 Task ${row.task_no}: Raw="${row.task_end_date}", Normalized=${taskEndDateNormalized?.toLocaleDateString()}, Adjusted=${taskEndDateAdjusted?.toLocaleDateString()}`,
+              );
+            }
+
+            project.tasks.push({
+              id: taskId,
+              text: row.task_name || `Task ${row.task_no}`,
+              type: "work_task",
+              css: "bs-gantt-item-task", // Keep as backup
+              parent: `proj_${projectKey}`,
+              start: taskStartDate,
+              end: taskEndDateAdjusted,
+              progress: 0,
+              // Add man_day and actual_man_day at root level for SVAR Gantt column access
+              man_day: row.task_plan_manday || 0,
+              actual_man_day: row.actual_work || 0,
+              barColor: "#ffa726", // Orange 400
+              // Store original dates at root level (SVAR Gantt overwrites 'data' property)
+              originalStartDate: taskStartDate,
+              originalEndDate: taskEndDateNormalized,
+              data: {
+                level: "task",
+                taskNo: row.task_no,
+                taskDescription: row.task_description,
+                planManday: row.task_plan_manday,
+                actualWork: row.actual_work,
+                barColor: "#ffa726",
+              },
+            });
           }
         }
       });
 
-      // Skip users with no valid projects
-      if (!hasValidProjects) return;
+      // Default date range for summary tasks without dates
+      const defaultStart = new Date();
+      const defaultEnd = new Date();
+      defaultEnd.setMonth(defaultEnd.getMonth() + 1);
+      // Adjust default end for Gantt display
+      const adjustedDefaultEnd = adjustEndDateForGantt(defaultEnd);
 
-      // Ensure user has dates (required for summary tasks)
-      const finalUserStart = userStart || defaultStart;
-      const finalUserEnd = userEnd || defaultEnd;
+      userMap.forEach((user) => {
+        // Calculate user date range from all projects
+        let userStart = null;
+        let userEnd = null;
+        let userOriginalStart = null;
+        let userOriginalEnd = null;
+        let hasValidProjects = false;
 
-      // Calculate user totals from all projects
-      let userManDay = 0;
-      let userActualManDay = 0;
-      user.projects.forEach((project) => {
-        userManDay += parseFloat(project.man_day) || 0;
-        userActualManDay += parseFloat(project.actual_man_day) || 0;
-      });
+        user.projects.forEach((project) => {
+          // Check if project has dates or tasks
+          const hasProjectDates = project.start && project.end;
+          const hasTasks = project.tasks && project.tasks.length > 0;
 
-      // Add user task
-      tasks.push({
-        id: user.id,
-        text: user.text,
-        type: user.type,
-        open: user.open,
-        parent: user.parent,
-        start: finalUserStart,
-        end: finalUserEnd,
-        progress: 0,
-        man_day: userManDay,
-        actual_man_day: userActualManDay,
-        barColor: user.barColor, // Green for user
-        data: user.data,
-      });
-
-      // Add project tasks
-      user.projects.forEach((project) => {
-        const hasProjectDates = project.start && project.end;
-        const hasTasks = project.tasks && project.tasks.length > 0;
-
-        // Skip projects without dates and without tasks
-        if (!hasProjectDates && !hasTasks) return;
-
-        // Ensure project has dates
-        const finalProjectStart = project.start || finalUserStart;
-        const finalProjectEnd = project.end || finalUserEnd;
-
-        tasks.push({
-          id: project.id,
-          text: project.text,
-          type: project.type,
-          open: project.open,
-          parent: project.parent,
-          start: finalProjectStart,
-          end: finalProjectEnd,
-          progress: project.progress,
-          man_day: project.man_day,
-          actual_man_day: project.actual_man_day,
-          barColor: project.barColor, // Blue for project
-          data: project.data,
-        });
-
-        // Add task tasks
-        project.tasks.forEach((task) => {
-          // Ensure task has dates
-          if (task.start && task.end) {
-            tasks.push(task);
-          } else {
-            tasks.push({
-              ...task,
-              start: task.start || finalProjectStart,
-              end: task.end || finalProjectEnd,
-            });
+          if (hasProjectDates || hasTasks) {
+            hasValidProjects = true;
+            if (project.start && (!userStart || project.start < userStart)) {
+              userStart = project.start;
+            }
+            if (project.end && (!userEnd || project.end > userEnd)) {
+              userEnd = project.end;
+            }
+            // Track original dates for display (now at project root level)
+            const projOriginalStart = project.originalStartDate || project.start;
+            const projOriginalEnd = project.originalEndDate;
+            if (
+              projOriginalStart &&
+              (!userOriginalStart || projOriginalStart < userOriginalStart)
+            ) {
+              userOriginalStart = projOriginalStart;
+            }
+            if (
+              projOriginalEnd &&
+              (!userOriginalEnd || projOriginalEnd > userOriginalEnd)
+            ) {
+              userOriginalEnd = projOriginalEnd;
+            }
           }
         });
-      });
-    });
 
-    Logger.log("📊 Transformed Gantt tasks:", tasks);
-    return tasks;
-  }, []);
+        // Skip users with no valid projects
+        if (!hasValidProjects) return;
+
+        // Ensure user has dates (required for summary tasks)
+        // Note: userEnd is already adjusted since it comes from project.end which is adjusted
+        const finalUserStart = userStart || defaultStart;
+        const finalUserEnd = userEnd || adjustedDefaultEnd;
+
+        // Calculate user totals from all projects
+        let userManDay = 0;
+        let userActualManDay = 0;
+        user.projects.forEach((project) => {
+          userManDay += parseFloat(project.man_day) || 0;
+          userActualManDay += parseFloat(project.actual_man_day) || 0;
+        });
+
+        // Add user task
+        tasks.push({
+          id: user.id,
+          text: user.text,
+          type: user.type,
+          open: user.open,
+          parent: user.parent,
+          start: finalUserStart,
+          end: finalUserEnd,
+          progress: 0,
+          man_day: userManDay,
+          actual_man_day: userActualManDay,
+          barColor: user.barColor, // Green for user
+          // Store original dates at root level (SVAR Gantt overwrites 'data' property)
+          originalStartDate: userOriginalStart || finalUserStart,
+          originalEndDate: userOriginalEnd || defaultEnd,
+          data: user.data,
+        });
+
+        // Add project tasks
+        user.projects.forEach((project) => {
+          const hasProjectDates = project.start && project.end;
+          const hasTasks = project.tasks && project.tasks.length > 0;
+
+          // Skip projects without dates and without tasks
+          if (!hasProjectDates && !hasTasks) return;
+
+          // Ensure project has dates
+          const finalProjectStart = project.start || finalUserStart;
+          const finalProjectEnd = project.end || finalUserEnd;
+
+          tasks.push({
+            id: project.id,
+            text: project.text,
+            type: project.type,
+            open: project.open,
+            parent: project.parent,
+            start: finalProjectStart,
+            end: finalProjectEnd,
+            progress: project.progress,
+            man_day: project.man_day,
+            actual_man_day: project.actual_man_day,
+            barColor: project.barColor, // Blue for project
+            // Include original dates from project root level
+            originalStartDate: project.originalStartDate || finalProjectStart,
+            originalEndDate: project.originalEndDate,
+            data: project.data,
+          });
+
+          // Add task tasks
+          project.tasks.forEach((task) => {
+            // Ensure task has dates - original dates are already at task root level
+            if (task.start && task.end) {
+              tasks.push(task);
+            } else {
+              tasks.push({
+                ...task,
+                start: task.start || finalProjectStart,
+                end: task.end || finalProjectEnd,
+                // Preserve original dates, use fallbacks if needed
+                originalStartDate: task.originalStartDate || task.start || finalProjectStart,
+                originalEndDate: task.originalEndDate || project.originalEndDate,
+              });
+            }
+          });
+        });
+      });
+
+      Logger.log("📊 Transformed Gantt tasks:", tasks);
+      return tasks;
+    },
+    [adjustEndDateForGantt, normalizeDate],
+  );
 
   /**
    * Extract unique employees from data for filter dropdown

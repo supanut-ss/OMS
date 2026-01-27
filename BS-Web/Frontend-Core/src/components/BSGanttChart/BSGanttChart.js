@@ -127,6 +127,7 @@ const BSGanttChart = forwardRef(
     const stickyScrollRef = useRef(null);
     const [chartScrollWidth, setChartScrollWidth] = useState(0);
     const [chartClientWidth, setChartClientWidth] = useState(0);
+    const [gridWidth, setGridWidth] = useState(0); // Track grid panel width for scrollbar offset
     const [isScrollSyncing, setIsScrollSyncing] = useState(false);
 
     // Hooks - MUST be called before any useEffect that uses them
@@ -387,7 +388,17 @@ const BSGanttChart = forwardRef(
           align: "center",
           width: 180, // Increased from 180 to 250
           template: (value, row, col) => {
-            if (!row.start || !row.end) return "-";
+            // DEBUG: Log row data to understand structure
+            console.log("📅 Column row:", row.text, {
+              "row.start": row.start,
+              "row.end": row.end,
+              "row.originalStartDate": row.originalStartDate,
+              "row.originalEndDate": row.originalEndDate,
+            });
+            // Use original dates from root level for display, fall back to row dates
+            const displayStart = row.originalStartDate || row.start;
+            const displayEnd = row.originalEndDate || row.end;
+            if (!displayStart || !displayEnd) return "-";
             const formatDate = (date) => {
               const d = new Date(date);
               const day = String(d.getDate()).padStart(2, "0");
@@ -395,7 +406,7 @@ const BSGanttChart = forwardRef(
               const year = d.getFullYear();
               return `${day}/${month}/${year}`;
             };
-            return `${formatDate(row.start)} - ${formatDate(row.end)}`;
+            return `${formatDate(displayStart)} - ${formatDate(displayEnd)}`;
           },
         },
         {
@@ -436,7 +447,10 @@ const BSGanttChart = forwardRef(
     const tooltipTemplate = useCallback(
       (task) => {
         // console.log("Tooltip called for:", task);
-        const startDate = new Date(task.start_date).toLocaleDateString(
+        // Use original dates from root level for display, fall back to task dates
+        const displayStart = task.originalStartDate || task.start_date;
+        const displayEnd = task.originalEndDate || task.end_date;
+        const startDate = new Date(displayStart).toLocaleDateString(
           lang === "en" ? "en-US" : "th-TH",
           {
             year: "numeric",
@@ -444,7 +458,7 @@ const BSGanttChart = forwardRef(
             day: "numeric",
           },
         );
-        const endDate = new Date(task.end_date).toLocaleDateString(
+        const endDate = new Date(displayEnd).toLocaleDateString(
           lang === "en" ? "en-US" : "th-TH",
           {
             year: "numeric",
@@ -1551,6 +1565,9 @@ const BSGanttChart = forwardRef(
       if (!tasks || tasks.length === 0) return;
 
       let isSyncing = false; // Use local variable instead of state for performance
+      let resizeObserver = null;
+      let mutationObserver = null;
+      let cleanupFn = null;
 
       const findChartElement = () => {
         // Find the chart area that has horizontal scroll
@@ -1558,13 +1575,54 @@ const BSGanttChart = forwardRef(
         return chartEl;
       };
 
+      const updateScrollDimensions = (chartEl) => {
+        if (chartEl) {
+          const newScrollWidth = chartEl.scrollWidth;
+          const newClientWidth = chartEl.clientWidth;
+          // Also find the grid panel width
+          const gridEl = document.querySelector(".wx-gantt .wx-grid");
+          const newGridWidth = gridEl ? gridEl.offsetWidth : 0;
+          
+          console.log("📏 Scroll Dimensions:", {
+            scrollWidth: newScrollWidth,
+            clientWidth: newClientWidth,
+            gridWidth: newGridWidth,
+            maxScrollLeft: newScrollWidth - newClientWidth,
+            currentScrollLeft: chartEl.scrollLeft,
+          });
+          setChartScrollWidth(newScrollWidth);
+          setChartClientWidth(newClientWidth);
+          setGridWidth(newGridWidth);
+        }
+      };
+
       const setupScrollSync = () => {
         const chartEl = findChartElement();
         if (!chartEl) return;
 
-        // Update scroll dimensions
-        setChartScrollWidth(chartEl.scrollWidth);
-        setChartClientWidth(chartEl.clientWidth);
+        // Update scroll dimensions initially
+        updateScrollDimensions(chartEl);
+
+        // Set up ResizeObserver to update dimensions when chart resizes
+        resizeObserver = new ResizeObserver(() => {
+          requestAnimationFrame(() => {
+            updateScrollDimensions(chartEl);
+          });
+        });
+        resizeObserver.observe(chartEl);
+
+        // Set up MutationObserver to update dimensions when chart content changes
+        mutationObserver = new MutationObserver(() => {
+          requestAnimationFrame(() => {
+            updateScrollDimensions(chartEl);
+          });
+        });
+        mutationObserver.observe(chartEl, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['style', 'class']
+        });
 
         // Sync: Chart scroll → Sticky scrollbar (use requestAnimationFrame for smooth sync)
         const handleChartScroll = () => {
@@ -1599,7 +1657,7 @@ const BSGanttChart = forwardRef(
         }
 
         // Return cleanup function
-        return () => {
+        cleanupFn = () => {
           chartEl.removeEventListener("scroll", handleChartScroll);
           if (stickyScrollRef.current) {
             stickyScrollRef.current.removeEventListener(
@@ -1615,8 +1673,20 @@ const BSGanttChart = forwardRef(
         setupScrollSync();
       }, 2000);
 
+      // Also update dimensions periodically to catch any missed updates
+      const intervalId = setInterval(() => {
+        const chartEl = findChartElement();
+        if (chartEl) {
+          updateScrollDimensions(chartEl);
+        }
+      }, 3000);
+
       return () => {
         clearTimeout(timeoutId);
+        clearInterval(intervalId);
+        if (resizeObserver) resizeObserver.disconnect();
+        if (mutationObserver) mutationObserver.disconnect();
+        if (cleanupFn) cleanupFn();
       };
     }, [tasks]);
 
@@ -2008,6 +2078,8 @@ const BSGanttChart = forwardRef(
               bottom: 0,
               left: 0,
               right: 0,
+              marginLeft: `${gridWidth}px`, // Offset by grid panel width
+              width: `calc(100% - ${gridWidth}px)`, // Only cover chart area
               height: "20px",
               overflowX: "auto",
               overflowY: "hidden",
