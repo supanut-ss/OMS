@@ -1,6 +1,6 @@
 USE [Timesheet]
 GO
-/****** Object:  StoredProcedure [tmt].[usp_tmt_my_task]    Script Date: 13/01/2026 14:12:38 ******/
+/****** Object:  StoredProcedure [tmt].[usp_tmt_my_task]    Script Date: 27/01/2026 14:20:34 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -114,6 +114,7 @@ BEGIN
                     t.task_description,
                     t.start_date,
                     t.end_date,
+					t.end_date_extend,
                     t.priority,
                     CASE t.priority WHEN ''High'' THEN 1 WHEN ''Medium'' THEN 2 WHEN ''Low'' THEN 3 ELSE 4 END AS priority_order,
                     t.manday,
@@ -157,6 +158,7 @@ BEGIN
             task_description NVARCHAR(MAX),
             start_date DATETIME,
             end_date DATETIME,
+            end_date_extend DATETIME,
             priority NVARCHAR(50),
             priority_order INT,
             manday DECIMAL(18,2),
