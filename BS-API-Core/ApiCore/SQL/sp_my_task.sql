@@ -56,17 +56,30 @@ BEGIN
                 SET @OrderByClause = @in_vchOrderBy;
             ELSE IF @in_vchTaskStatus = 'Close'
                 SET @OrderByClause = 'task_no ASC, end_date ASC';
+            ELSE IF @in_vchTaskStatus = 'OverDue'
+                SET @OrderByClause = 'end_date ASC, priority_order ASC';
             ELSE
                 SET @OrderByClause = 'priority_order ASC, end_date ASC';
 
         -- Filter by Task Status (case-insensitive, handle various status formats)
         IF @in_vchTaskStatus IS NOT NULL AND @in_vchTaskStatus != ''
         BEGIN
-            -- Try exact match first, then partial match for flexibility
-            SET @WhereClause = @WhereClause + ' AND (
-                t.task_status = ''' + REPLACE(@in_vchTaskStatus, '''', '''''') + '''
-                OR UPPER(t.task_status) = UPPER(''' + REPLACE(@in_vchTaskStatus, '''', '''''') + ''')
-            )';
+            -- Special handling for OverDue: Get OPEN and IN_PROCESS where end_date < today
+            IF @in_vchTaskStatus = 'OverDue'
+            BEGIN
+                SET @WhereClause = @WhereClause + ' AND (
+                    t.task_status IN (''Open'', ''In Process'')
+                    AND t.end_date < CAST(GETDATE() AS DATE)
+                )';
+            END
+            ELSE
+            BEGIN
+                -- Try exact match first, then partial match for flexibility
+                SET @WhereClause = @WhereClause + ' AND (
+                    t.task_status = ''' + REPLACE(@in_vchTaskStatus, '''', '''''') + '''
+                    OR UPPER(t.task_status) = UPPER(''' + REPLACE(@in_vchTaskStatus, '''', '''''') + ''')
+                )';
+            END
         END
 
         -- Filter by User (member of task) - only if provided (use EXISTS subquery)

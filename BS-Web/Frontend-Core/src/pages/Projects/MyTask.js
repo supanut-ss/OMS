@@ -15,13 +15,14 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
+import { useRef, useState, useMemo, useCallback, memo } from "react";
 import { useResource } from "../../hooks/useResource";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import AssignmentLateIcon from "@mui/icons-material/AssignmentLate";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FlagIcon from "@mui/icons-material/Flag";
 import { Visibility } from "@mui/icons-material";
 import { SvgIcon } from "@mui/material";
@@ -33,9 +34,18 @@ import { useOutletContext } from "react-router-dom";
 
 // ============ Task Status Constants ============
 const TASK_STATUS = {
-  OPEN: "Open",
+  OVER_DUE: "Over Due",
+  OPEN: "Opened",
   IN_PROCESS: "In Process",
-  CLOSE: "Close",
+  CLOSE: "Closed",
+};
+
+// Database values for stored procedure (must match database)
+const DB_STATUS = {
+  [TASK_STATUS.OVER_DUE]: "OverDue",
+  [TASK_STATUS.OPEN]: "Open",
+  [TASK_STATUS.IN_PROCESS]: "In Process",
+  [TASK_STATUS.CLOSE]: "Close",
 };
 
 // ============ Helper Functions ============
@@ -152,17 +162,13 @@ const InfoField = ({ label, value, children, fullWidth = false, theme }) => (
 );
 
 // ============ Task Detail Dialog ============
-const TaskDetailDialog = ({
-  open,
-  onClose,
-  taskData,
-  lang,
-  resourceData
-}) => {
+const TaskDetailDialog = ({ open, onClose, taskData, lang, resourceData }) => {
   const theme = useTheme();
   const { getResourceByGroupAndName } = useResource();
   // Helper function to get resource with fallback
-  const r = (key, fallback) => getResourceByGroupAndName("usp_tmt_my_task", key)?.resource_value || fallback;
+  const r = (key, fallback) =>
+    getResourceByGroupAndName("usp_tmt_my_task", key)?.resource_value ||
+    fallback;
 
   return (
     <>
@@ -252,7 +258,7 @@ const TaskDetailDialog = ({
                 <InfoField
                   label={r("due_date", "Due Date")}
                   value={`${formatDate(taskData?.start_date)} - ${formatDate(
-                    taskData?.end_date
+                    taskData?.end_date,
                   )}`}
                   theme={theme}
                 />
@@ -304,6 +310,197 @@ const TaskDetailDialog = ({
   );
 };
 
+// ============ Over Due Section (Accordion) ============
+// This section shows tasks from OPEN and IN_PROCESS where end_date < today
+const OverDueSection = memo(function OverDueSection({
+  color,
+  lang,
+  onViewTask,
+  expanded,
+  onToggle,
+  gridRef,
+  onDataBind: onDataBindProp,
+}) {
+  const { permission } = useOutletContext();
+  const theme = useTheme();
+  const dataGridRef = useRef();
+  const [count, setCount] = useState(0);
+
+  const effectiveGridRef = gridRef || dataGridRef;
+
+  // Icon for Over Due section
+  const icon = useMemo(() => {
+    const isDark = theme.palette.mode === "dark";
+    return <WarningAmberIcon sx={{ color: isDark ? "#FF6B6B" : "#d32f2f" }} />;
+  }, [theme.palette.mode]);
+
+  // Handle data loaded - filter for overdue items and notify parent
+  const handleDataLoaded = useCallback(
+    (data) => {
+      const overDueCount = data?.length || 0;
+      setCount(overDueCount);
+      // Notify parent about data count for auto-expand logic
+      if (onDataBindProp) {
+        onDataBindProp(overDueCount);
+      }
+    },
+    [onDataBindProp],
+  );
+
+  // For Over Due, we pass special parameter to get OPEN and IN_PROCESS with overdue filter
+  const storedProcedureParams = useMemo(
+    () => ({ in_vchTaskStatus: "OverDue" }),
+    [],
+  );
+
+  // Memoize bsRowConfig to prevent re-renders
+  const infoMainColor = theme.palette.info.main;
+  const greyColor = theme.palette.grey[400];
+
+  const rowConfig = useCallback(
+    (row) => ({
+      add: permission.is_add,
+      edit: permission.is_edit,
+      delete: permission.is_delete,
+      viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
+      viewIconColor: row.task_tracking_count > 0 ? infoMainColor : greyColor,
+    }),
+    [infoMainColor, greyColor],
+  );
+
+  // Memoize column definitions
+  const priorityColors = useMemo(
+    () => ({
+      urgent: theme.palette.custom?.priority?.urgent || "#d32f2f",
+      high: theme.palette.custom?.priority?.high || "#ed6c02",
+      normal: theme.palette.custom?.priority?.normal || "#0288d1",
+      low: theme.palette.custom?.priority?.low || "#9e9e9e",
+    }),
+    [theme.palette.mode],
+  );
+
+  const columnDefs = useMemo(
+    () => [
+      {
+        field: "task_status",
+        width: 120,
+        renderCell: (params) => (
+          <Chip
+            label={params.value}
+            color={getStatusColor(params.value)}
+            size="small"
+          />
+        ),
+      },
+      {
+        field: "assignee_list",
+        type: "stringAvatar",
+        showTooltip: true,
+      },
+      {
+        field: "start_date",
+        type: "date",
+        dateFormat: "dd/MM/yyyy",
+      },
+      {
+        field: "end_date",
+        type: "date",
+        dateFormat: "dd/MM/yyyy",
+      },
+      {
+        field: "priority",
+        width: 120,
+        renderCell: (params) => {
+          const priority = params.value?.toLowerCase();
+          let color = priorityColors.low;
+          if (priority === "urgent") color = priorityColors.urgent;
+          else if (priority === "high") color = priorityColors.high;
+          else if (priority === "normal" || priority === "medium")
+            color = priorityColors.normal;
+
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <FlagIcon sx={{ color }} />
+              <span>{params.value || "-"}</span>
+            </Box>
+          );
+        },
+      },
+    ],
+    [priorityColors],
+  );
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={onToggle}
+      sx={{
+        mb: 2,
+        "&:before": { display: "none" },
+        borderRadius: "12px !important",
+        overflow: "hidden",
+        "&:first-of-type": {
+          borderTopLeftRadius: "12px !important",
+          borderTopRightRadius: "12px !important",
+        },
+        "&:last-of-type": {
+          borderBottomLeftRadius: "12px !important",
+          borderBottomRightRadius: "12px !important",
+        },
+        "&.Mui-expanded": {
+          borderRadius: "12px !important",
+        },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        sx={{
+          backgroundColor: color,
+          "&:hover": { backgroundColor: color, filter: "brightness(0.95)" },
+          borderRadius: expanded ? "12px 12px 0 0" : "12px",
+          transition: "border-radius 0.15s ease",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {icon}
+          <Typography
+            variant="h6"
+            fontWeight="medium"
+            sx={{
+              color: theme.palette.mode === "dark" ? "#FF6B6B" : "#d32f2f",
+            }}
+          >
+            {TASK_STATUS.OVER_DUE} ({count})
+          </Typography>
+        </Box>
+      </AccordionSummary>
+
+      <AccordionDetails sx={{ p: 2, display: expanded ? "block" : "none" }}>
+        <BSDataGrid
+          ref={effectiveGridRef}
+          bsLocale={lang}
+          bsStoredProcedure="usp_tmt_my_task"
+          bsStoredProcedureSchema="tmt"
+          bsCols="project_no,application_type,customer_name,project_name,task_name,task_status,assignee_list,start_date,end_date,manday,priority,project_type,create_by"
+          bsStoredProcedureParams={storedProcedureParams}
+          bsShowRowNumber={true}
+          showAdd={false}
+          bsVisibleEdit={false}
+          bsVisibleDelete={permission?.is_delete}
+          bsAllowDelete={permission?.is_delete}
+          bsVisibleView={permission?.is_view}
+          onView={onViewTask}
+          bsKeyId="project_task_id"
+          bsFilterMode="client"
+          onDataBind={handleDataLoaded}
+          bsRowConfig={rowConfig}
+          bsColumnDefs={columnDefs}
+        />
+      </AccordionDetails>
+    </Accordion>
+  );
+});
+
 // ============ Task Status Section (Accordion) ============
 const TaskStatusSection = memo(function TaskStatusSection({
   status,
@@ -350,9 +547,10 @@ const TaskStatusSection = memo(function TaskStatusSection({
   }, []);
 
   // Memoize stored procedure params to prevent BSDataGrid from re-loading
+  // Use DB_STATUS mapping to convert display name to database value
   const storedProcedureParams = useMemo(
-    () => ({ in_vchTaskStatus: status }),
-    [status]
+    () => ({ in_vchTaskStatus: DB_STATUS[status] || status }),
+    [status],
   );
 
   // Memoize bsRowConfig to prevent re-renders
@@ -368,7 +566,7 @@ const TaskStatusSection = memo(function TaskStatusSection({
       viewIcon: row.task_tracking_count > 0 ? Visibility : EyeCloseIcon,
       viewIconColor: row.task_tracking_count > 0 ? infoMainColor : greyColor,
     }),
-    [infoMainColor, greyColor]
+    [infoMainColor, greyColor],
   );
 
   // Memoize column definitions to prevent re-renders
@@ -380,7 +578,7 @@ const TaskStatusSection = memo(function TaskStatusSection({
       normal: theme.palette.custom?.priority?.normal || "#0288d1",
       low: theme.palette.custom?.priority?.low || "#9e9e9e",
     }),
-    [theme.palette.mode]
+    [theme.palette.mode],
   ); // Only rebuild when theme mode changes
 
   const columnDefs = useMemo(
@@ -420,7 +618,7 @@ const TaskStatusSection = memo(function TaskStatusSection({
         },
       },
     ],
-    [priorityColors]
+    [priorityColors],
   );
 
   return (
@@ -458,40 +656,35 @@ const TaskStatusSection = memo(function TaskStatusSection({
           transition: "border-radius 0.15s ease",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {icon}
           <Typography variant="h6" fontWeight="medium">
-            {status}
+            {status} ({count})
           </Typography>
-          <Badge badgeContent={count} color="primary" max={999}>
-            <Box sx={{ width: 8 }} />
-          </Badge>
         </Box>
       </AccordionSummary>
 
-      <AccordionDetails sx={{ p: 2 }}>
-        {expanded && (
-          <BSDataGrid
-            ref={effectiveGridRef}
-            bsLocale={lang}
-            bsStoredProcedure="usp_tmt_my_task"
-            bsStoredProcedureSchema="tmt"
-            bsCols="project_no,application_type,customer_name,project_name,task_name,assignee_list,start_date,end_date,manday,priority,project_type,create_by"
-            bsStoredProcedureParams={storedProcedureParams}
-            bsShowRowNumber={true}
-            showAdd={false}
-            bsVisibleEdit={false}
-            bsVisibleDelete={permission?.is_delete}
-            bsAllowDelete={permission?.is_delete}
-            bsVisibleView={permission?.is_view}
-            onView={onViewTask}
-            bsKeyId="project_task_id"
-            bsFilterMode="client"
-            onDataLoaded={handleDataLoaded}
-            bsRowConfig={rowConfig}
-            bsColumnDefs={columnDefs}
-          />
-        )}
+      <AccordionDetails sx={{ p: 2, display: expanded ? "block" : "none" }}>
+        <BSDataGrid
+          ref={effectiveGridRef}
+          bsLocale={lang}
+          bsStoredProcedure="usp_tmt_my_task"
+          bsStoredProcedureSchema="tmt"
+          bsCols="project_no,application_type,customer_name,project_name,task_name,assignee_list,start_date,end_date,manday,priority,project_type,create_by"
+          bsStoredProcedureParams={storedProcedureParams}
+          bsShowRowNumber={true}
+          showAdd={false}
+          bsVisibleEdit={false}
+          bsVisibleDelete={permission?.is_delete}
+          bsAllowDelete={permission?.is_delete}
+          bsVisibleView={permission?.is_view}
+          onView={onViewTask}
+          bsKeyId="project_task_id"
+          bsFilterMode="client"
+          onDataBind={handleDataLoaded}
+          bsRowConfig={rowConfig}
+          bsColumnDefs={columnDefs}
+        />
       </AccordionDetails>
     </Accordion>
   );
@@ -502,6 +695,13 @@ const getSectionConfigs = (theme) => {
   const isDark = theme.palette.mode === "dark";
 
   return [
+    {
+      status: TASK_STATUS.OVER_DUE,
+      color: isDark
+        ? theme.palette.custom?.sectionOverDue || "rgba(255, 107, 107, 0.15)"
+        : "#ffebee",
+      isOverDue: true,
+    },
     {
       status: TASK_STATUS.OPEN,
       color: isDark
@@ -529,6 +729,7 @@ const MyTaskPage = (props) => {
   const theme = useTheme();
   const { getResourceByGroupAndName } = useResource();
   // Keep refs to each section grid so we can refresh after closing the dialog
+  const overDueGridRef = useRef(null);
   const openGridRef = useRef(null);
   const inProcessGridRef = useRef(null);
   const closeGridRef = useRef(null);
@@ -536,15 +737,17 @@ const MyTaskPage = (props) => {
   // Memoize sectionGridRefs to prevent unnecessary re-renders
   const sectionGridRefs = useMemo(
     () => ({
+      [TASK_STATUS.OVER_DUE]: overDueGridRef,
       [TASK_STATUS.OPEN]: openGridRef,
       [TASK_STATUS.IN_PROCESS]: inProcessGridRef,
       [TASK_STATUS.CLOSE]: closeGridRef,
     }),
-    []
+    [],
   );
 
   // State for expanded sections
   const [expandedSections, setExpandedSections] = useState({
+    [TASK_STATUS.OVER_DUE]: true, // Start expanded to load data, will collapse if no data
     [TASK_STATUS.OPEN]: true,
     [TASK_STATUS.IN_PROCESS]: true,
     [TASK_STATUS.CLOSE]: false, // Close section collapsed by default
@@ -555,6 +758,13 @@ const MyTaskPage = (props) => {
   const [selectedTask, setSelectedTask] = useState(null);
 
   // Memoize toggle handlers for each status to prevent re-renders
+  const handleToggleOverDue = useCallback(() => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [TASK_STATUS.OVER_DUE]: !prev[TASK_STATUS.OVER_DUE],
+    }));
+  }, []);
+
   const handleToggleOpen = useCallback(() => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -579,12 +789,26 @@ const MyTaskPage = (props) => {
   // Map status to toggle handler
   const toggleHandlers = useMemo(
     () => ({
+      [TASK_STATUS.OVER_DUE]: handleToggleOverDue,
       [TASK_STATUS.OPEN]: handleToggleOpen,
       [TASK_STATUS.IN_PROCESS]: handleToggleInProcess,
       [TASK_STATUS.CLOSE]: handleToggleClose,
     }),
-    [handleToggleOpen, handleToggleInProcess, handleToggleClose]
+    [
+      handleToggleOverDue,
+      handleToggleOpen,
+      handleToggleInProcess,
+      handleToggleClose,
+    ],
   );
+
+  // Handle Over Due data loaded - auto expand if has data
+  const handleOverDueDataLoaded = useCallback((count) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [TASK_STATUS.OVER_DUE]: count > 0,
+    }));
+  }, []);
 
   // Handle view task detail - memoized
   const handleViewTask = useCallback((taskData) => {
@@ -599,6 +823,7 @@ const MyTaskPage = (props) => {
 
     // Refresh visible task lists so data is up-to-date after closing
     // (e.g., when tracking was added/edited inside the dialog)
+    overDueGridRef.current?.forceRefresh?.();
     openGridRef.current?.forceRefresh?.();
     inProcessGridRef.current?.forceRefresh?.();
     closeGridRef.current?.forceRefresh?.();
@@ -607,7 +832,7 @@ const MyTaskPage = (props) => {
   // Memoize theme-aware section configurations to prevent re-renders
   const sections = useMemo(
     () => getSectionConfigs(theme),
-    [theme.palette.mode]
+    [theme.palette.mode],
   );
 
   return (
@@ -625,8 +850,9 @@ const MyTaskPage = (props) => {
         // Subtle glass border
         border:
           t.palette.mode === "dark"
-            ? `1px solid ${t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
-            }`
+            ? `1px solid ${
+                t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
+              }`
             : "none",
         // Rounded corners
         borderRadius: 3,
@@ -655,21 +881,36 @@ const MyTaskPage = (props) => {
           color: t.palette.mode === "dark" ? "transparent" : "inherit",
         })}
       >
-        {getResourceByGroupAndName("usp_tmt_my_task", "my_tasks")?.resource_value || "My Tasks"}
+        {getResourceByGroupAndName("usp_tmt_my_task", "my_tasks")
+          ?.resource_value || "My Tasks"}
       </Typography>
 
-      {sections.map((section) => (
-        <TaskStatusSection
-          key={section.status}
-          status={section.status}
-          color={section.color}
-          lang={lang}
-          onViewTask={handleViewTask}
-          expanded={expandedSections[section.status]}
-          onToggle={toggleHandlers[section.status]}
-          gridRef={sectionGridRefs[section.status]}
-        />
-      ))}
+      {/* Over Due Section - rendered separately */}
+      <OverDueSection
+        color={sections.find((s) => s.status === TASK_STATUS.OVER_DUE)?.color}
+        lang={lang}
+        onViewTask={handleViewTask}
+        expanded={expandedSections[TASK_STATUS.OVER_DUE]}
+        onToggle={toggleHandlers[TASK_STATUS.OVER_DUE]}
+        gridRef={sectionGridRefs[TASK_STATUS.OVER_DUE]}
+        onDataBind={handleOverDueDataLoaded}
+      />
+
+      {/* Other Task Status Sections */}
+      {sections
+        .filter((s) => !s.isOverDue)
+        .map((section) => (
+          <TaskStatusSection
+            key={section.status}
+            status={section.status}
+            color={section.color}
+            lang={lang}
+            onViewTask={handleViewTask}
+            expanded={expandedSections[section.status]}
+            onToggle={toggleHandlers[section.status]}
+            gridRef={sectionGridRefs[section.status]}
+          />
+        ))}
 
       {/* Task Detail Dialog */}
       {openTaskDialog && (
