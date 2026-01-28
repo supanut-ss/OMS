@@ -475,7 +475,7 @@ const OverDueSection = memo(function OverDueSection({
         </Box>
       </AccordionSummary>
 
-      <AccordionDetails sx={{ p: 2, display: expanded ? "block" : "none" }}>
+      <AccordionDetails sx={{ p: 2 }}>
         <BSDataGrid
           ref={effectiveGridRef}
           bsLocale={lang}
@@ -664,7 +664,7 @@ const TaskStatusSection = memo(function TaskStatusSection({
         </Box>
       </AccordionSummary>
 
-      <AccordionDetails sx={{ p: 2, display: expanded ? "block" : "none" }}>
+      <AccordionDetails sx={{ p: 2 }}>
         <BSDataGrid
           ref={effectiveGridRef}
           bsLocale={lang}
