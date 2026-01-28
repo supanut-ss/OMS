@@ -109,7 +109,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const [isSaving, setIsSaving] = useState(false);
   const { formData, errors, updateField, validate, setFormData } = useForm(
     defaultTrackingData,
-    requiredTrackingFields
+    requiredTrackingFields,
   );
 
   // Helper: Get resource with fallback - returns fallback if resource returns same as key
@@ -131,7 +131,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
   const handleSaveTracking = async () => {
     if (isSaving) return;
     if (!validate()) return;
-    setIsSaving(true)
+    setIsSaving(true);
     // Get assignee_user_id - BSAutoComplete (single mode) returns object { code, label, ... }
     // So we need to extract the code value
     let assigneeValue = formData.assignee_user_id;
@@ -142,8 +142,8 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     // Use assignee_user_id from form, fallback to current user only if null/undefined/empty
     const assigneeUserId =
       assigneeValue !== null &&
-        assigneeValue !== undefined &&
-        assigneeValue !== ""
+      assigneeValue !== undefined &&
+      assigneeValue !== ""
         ? assigneeValue
         : getCurrentUserId();
 
@@ -175,13 +175,13 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         // Warning - show with confirm button
         BSAlertSwal2.show(
           "warning",
-          res.data.message_text || r("Save_Failed", "Save failed")
+          res.data.message_text || r("Save_Failed", "Save failed"),
         );
       }
     } catch (error) {
       BSAlertSwal2.show(
         "error",
-        r("Save_Error", "An error occurred while saving")
+        r("Save_Error", "An error occurred while saving"),
       );
     } finally {
       setIsSaving(false);
@@ -222,7 +222,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
       title: r("Delete_Confirm_Title", "Delete Data?"),
       text: r(
         "Delete_Confirm_Text",
-        "Are you sure you want to delete this data?"
+        "Are you sure you want to delete this data?",
       ),
       icon: "warning",
       showCancelButton: true,
@@ -232,7 +232,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         const res = await AxiosMaster.post("/mytask/tracking/delete/" + id);
         BSAlertSwal2.show(
           res.data.message_code === 0 ? "success" : "warning",
-          res.data.message_text ?? ""
+          res.data.message_text ?? "",
         );
         trackingGridRef.current?.refreshData();
       }
@@ -242,7 +242,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     setFormData(view);
     setShowView(true);
     setOpenTrackingDialog(true);
-  }
+  };
   const toDateOnly = (d) => {
     const date = new Date(d);
     date.setHours(0, 0, 0, 0);
@@ -252,8 +252,9 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     const today = toDateOnly(new Date());
     setCurrentDate(
       toDateOnly(taskData.start_date) <= today &&
-      new Date() <= new Date(taskData.end_date_extend))
-  }, [])
+        new Date() <= new Date(taskData.end_date_extend),
+    );
+  }, []);
   return (
     <>
       {/* Task Tracking Grid */}
@@ -300,14 +301,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             in_intProjectTaskId: projectTaskId,
             in_vchUserId: showOnlyMe ? getCurrentUserId() : null,
           }}
+          bsFilterMode="client"
           showAdd={currentDate}
           bsAllowAdd={currentDate}
           bsAllowEdit={showOnlyMe && currentDate}
           bsAllowDelete={showOnlyMe && currentDate}
-          bsVisibleEdit={
-            showOnlyMe &&
-            currentDate
-          }
+          bsVisibleEdit={showOnlyMe && currentDate}
           bsVisibleDelete={showOnlyMe && currentDate}
           bsVisibleView={true}
           onView={handleViewTracking}
@@ -362,13 +361,19 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
         fullWidth
       >
         <DialogTitle>
-          {showView ? (lang === 'th' ? "ดูรายละเอียด" : "View") :
-            (formData.project_task_tracking_id
+          {showView
+            ? lang === "th"
+              ? "ดูรายละเอียด"
+              : "View"
+            : formData.project_task_tracking_id
               ? r("Edit_Form", "Edit Task Tracking")
-              : r("Add_Form", "Add Task Tracking"))}
+              : r("Add_Form", "Add Task Tracking")}
         </DialogTitle>
         <IconButton
-          onClick={() => { setOpenTrackingDialog(false); setShowView(false); }}
+          onClick={() => {
+            setOpenTrackingDialog(false);
+            setShowView(false);
+          }}
           sx={{ position: "absolute", right: 8, top: 8 }}
         >
           <CloseIcon />
@@ -395,11 +400,12 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                         { field: "last_name", display: true },
                       ],
                       bsObjBy: "first_name asc",
-                      bsObjWh: `project_header_id=${taskData?.project_header_id || 0
-                        } AND project_task_id=${projectTaskId || 0}`,
+                      bsObjWh: `project_header_id=${
+                        taskData?.project_header_id || 0
+                      } AND project_task_id=${projectTaskId || 0}`,
                       required: false,
                       readOnly: showView,
-                      disabled: showView
+                      disabled: showView,
                     },
                     formData,
                     errors,
@@ -443,7 +449,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     component: "BSTextField",
                     type: "decimal",
                     required: true,
-                    disabled: showView
+                    disabled: showView,
                   },
                   formData,
                   errors,
@@ -465,7 +471,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     // Validate: ไม่เกิน due date range ของ task
                     minDate: taskData?.start_date,
                     maxDate: taskData?.end_date,
-                    disabled: showView
+                    disabled: showView,
                   },
                   formData,
                   errors,
@@ -486,7 +492,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                     minRows: 4,
                     maxRows: 12,
                     showCharacterCount: true,
-                    disabled: showView
+                    disabled: showView,
                   },
                   formData,
                   errors,
@@ -508,11 +514,15 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           >
             Close
           </BSCloseOutlinedButton>
-          {!showView &&
-            <BSSaveOutlinedButton onClick={handleSaveTracking} variant="outlined" disabled={isSaving}>
+          {!showView && (
+            <BSSaveOutlinedButton
+              onClick={handleSaveTracking}
+              variant="outlined"
+              disabled={isSaving}
+            >
               {isSaving ? "Saving..." : "Save"}
             </BSSaveOutlinedButton>
-          }
+          )}
         </DialogActions>
       </Dialog>
     </>

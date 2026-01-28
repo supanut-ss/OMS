@@ -3347,7 +3347,18 @@ const BSDataGrid = forwardRef(
                   }))
                 : [], // Only send sort for server-side mode
             filterModel:
-              bsFilterMode === "server" ? currentFilterModel : { items: [] }, // Only send filters for server-side mode
+              bsFilterMode === "server"
+                ? {
+                    items: currentFilterModel.items || [],
+                    logicOperator: currentFilterModel.logicOperator || "and",
+                    // Convert quickFilterValues array to string for backend compatibility
+                    quickFilterValues:
+                      currentFilterModel.quickFilterValues &&
+                      Array.isArray(currentFilterModel.quickFilterValues)
+                        ? currentFilterModel.quickFilterValues.join(" ")
+                        : currentFilterModel.quickFilterValues || "",
+                  }
+                : { items: [] }, // Only send filters for server-side mode
             parameters: {
               ...bsStoredProcedureParams,
               // Add any additional parameters here

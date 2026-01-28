@@ -27,7 +27,7 @@ const AssignTeam = (props) => {
       in_intProjectTaskId: project_task_id,
       in_intProjectHeaderId: project_header_id,
     }),
-    [project_task_id, project_header_id]
+    [project_task_id, project_header_id],
   );
 
   // Memoize column definitions
@@ -65,7 +65,7 @@ const AssignTeam = (props) => {
       update_by: { hide: true },
       update_date: { hide: true },
     }),
-    []
+    [],
   );
 
   // Memoize comboBox configuration
@@ -82,7 +82,7 @@ const AssignTeam = (props) => {
         ObjBy: "first_name asc",
       },
     ],
-    [project_header_id]
+    [project_header_id],
   );
 
   // Memoize bulk mode configuration
@@ -90,11 +90,11 @@ const AssignTeam = (props) => {
     () => ({
       enable: true,
       addInline: true, // Add new rows inline
-      edit: true
+      edit: true,
       //   showCheckbox: true,
       //   showSplitButton: true,
     }),
-    []
+    [],
   );
 
   return (
@@ -116,6 +116,7 @@ const AssignTeam = (props) => {
         bsKeyId="project_task_member_id"
         bsCols="task_member_user_id,manday,actual_work"
         bsStoredProcedureParams={storedProcedureParams}
+        bsFilterMode="client"
         bsColumnDefs={columnDefs}
         bsComboBox={comboBoxConfig}
         bsShowRowNumber={true}
