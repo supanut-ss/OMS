@@ -66,11 +66,12 @@ function StoredProcedureMode() {
 
 ### Enhanced Stored Procedure Properties
 
-| Property                  | Type   | Default | Description                                          |
-| ------------------------- | ------ | ------- | ---------------------------------------------------- |
-| `bsStoredProcedure`       | string | -       | ชื่อ Stored Procedure (เช่น "usp_tmt_my_task")       |
-| `bsStoredProcedureSchema` | string | "dbo"   | Schema ของ SP (เช่น "tmt", "dbo")                    |
-| `bsStoredProcedureParams` | object | {}      | Parameters ที่ส่งไป SP (เช่น { TaskStatus: "Open" }) |
+| Property                  | Type    | Default | Description                                          |
+| ------------------------- | ------- | ------- | ---------------------------------------------------- |
+| `bsStoredProcedure`       | string  | -       | ชื่อ Stored Procedure (เช่น "usp_tmt_my_task")       |
+| `bsStoredProcedureSchema` | string  | "dbo"   | Schema ของ SP (เช่น "tmt", "dbo")                    |
+| `bsStoredProcedureParams` | object  | {}      | Parameters ที่ส่งไป SP (เช่น { TaskStatus: "Open" }) |
+| `bsStoredProcedureCrud`   | boolean | false   | ใช้ SP สำหรับ CRUD operations (INSERT/UPDATE/DELETE) |
 
 ### Display Properties
 
@@ -80,7 +81,7 @@ function StoredProcedureMode() {
 | `bsShowDescColumn`     | boolean | true                  | แสดงคอลัมน์ description         |
 | `bsShowCheckbox`       | boolean | false                 | แสดง checkbox สำหรับเลือกแถว    |
 | `bsShowCharacterCount` | boolean | false                 | แสดงจำนวนตัวอักษรใน text fields |
-| `bsRowPerPage`         | number  | 25                    | จำนวนแถวต่อหน้า                 |
+| `bsRowPerPage`         | number  | 20                    | จำนวนแถวต่อหน้า                 |
 | `bsPageSizeOptions`    | array   | [20,100,200,500,1000] | ตัวเลือกจำนวนแถวต่อหน้า         |
 | `showToolbar`          | boolean | true                  | แสดง toolbar                    |
 | `showAdd`              | boolean | true                  | แสดงปุ่ม Add                    |
@@ -103,6 +104,23 @@ function StoredProcedureMode() {
 | `bsBulkAddInline`       | boolean | false   | เพิ่มแถวใน grid แทน dialog               |
 | `bsEnableBulkMode`      | boolean | false   | เปิดโหมด bulk edit เมื่อเลือกแถว         |
 | `bsShowBulkSplitButton` | boolean | false   | แสดง split button สำหรับ bulk operations |
+| `bsBulkMode`            | object  | null    | Consolidated bulk mode configuration     |
+
+**bsBulkMode Object Configuration:**
+
+```jsx
+bsBulkMode={{
+  enable: true,          // เปิดใช้งานโหมด bulk
+  add: true,             // เปิดใช้งาน bulk add
+  edit: true,            // เปิดใช้งาน bulk edit
+  delete: true,          // เปิดใช้งาน bulk delete
+  addInline: true,       // เพิ่มแถวใน grid แทน dialog
+  showCheckbox: true,    // แสดง checkbox สำหรับเลือกแถว
+  showSplitButton: false // แสดง split button
+}}
+```
+
+> **Note:** `bsBulkMode` รวมการตั้งค่า bulk ทั้งหมดในที่เดียว และมี priority สูงกว่า individual props
 
 ### Column Configuration
 
@@ -142,6 +160,35 @@ function StoredProcedureMode() {
 | Property           | Type   | Default | Description                     |
 | ------------------ | ------ | ------- | ------------------------------- |
 | `bsExportFileName` | string | -       | ชื่อไฟล์ export (ไม่รวมนามสกุล) |
+
+### Permission Configuration
+
+| Property           | Type    | Default | Description                                          |
+| ------------------ | ------- | ------- | ---------------------------------------------------- |
+| `bsAutoPermission` | boolean | true    | Auto-apply permissions จาก menu settings             |
+| `bsCellTooltip`    | boolean | true    | แสดง tooltip เมื่อ cell text ถูก truncate (overflow) |
+
+**bsAutoPermission Configuration:**
+
+เมื่อเปิดใช้งาน `bsAutoPermission={true}` (default):
+
+- จะใช้ permissions จาก `usePermission()` hook โดยอัตโนมัติ
+- `canView`, `canAdd`, `canEdit`, `canDelete` จะถูกนำมาใช้กับ visibility settings
+- Bulk operations ก็จะถูก restrict ตาม permissions ด้วย
+
+```jsx
+// ใช้ permissions จาก menu settings อัตโนมัติ (default)
+<BSDataGrid bsAutoPermission={true} bsObj="t_wms_customer" />
+
+// ปิด auto permission (ตั้งค่าเอง)
+<BSDataGrid
+  bsAutoPermission={false}
+  showAdd={true}
+  bsVisibleEdit={true}
+  bsVisibleDelete={false}
+  bsObj="t_wms_customer"
+/>
+```
 
 ### Validation
 
@@ -1004,3 +1051,62 @@ const [filterValues, setFilterValues] = useState([]);
 ```
 
 ---
+
+## Changelog
+
+### v1.3.0 (January 2026)
+
+- ✨ **NEW:** `bsBulkMode` - Consolidated bulk mode configuration object
+- ✨ **NEW:** `bsAutoPermission` - Auto-apply permissions from menu settings (default: true)
+- ✨ **NEW:** `bsCellTooltip` - Show tooltip when cell text overflows (default: true)
+- ✨ **NEW:** `bsStoredProcedureCrud` - Use stored procedure for CRUD operations
+- ✨ **NEW:** `bsRowConfig` - Function to configure each row dynamically (showView, showEdit, showDelete, disabled)
+- 🐛 **FIX:** `quickFilterValues` array to string conversion for API compatibility
+- 🐛 **FIX:** Column width calculation issue when grid is initially collapsed in Accordion
+- 📝 **DOC:** Added Permission Configuration section
+- 📝 **DOC:** Added bsBulkMode object configuration documentation
+
+### v1.2.0 (December 2025)
+
+- ✨ **NEW:** Enhanced Stored Procedure support with `bsStoredProcedure`, `bsStoredProcedureSchema`, `bsStoredProcedureParams`
+- ✨ **NEW:** `bsKeyId` for manual primary key specification
+- ✨ **NEW:** `bsChildGrids` for Master-Detail hierarchical data
+- ✨ **NEW:** `bsDialogTab` for organized form tabs
+- ✨ **NEW:** `stringAvatar` column type for displaying avatars from comma-separated names
+- ✨ **NEW:** `attachFile` column type with file management dialog
+- ✨ **NEW:** `bsUserLookup` for user lookup fields (audit fields)
+- ✨ **NEW:** `bsParentRecordLabel` for custom parent record accordion label
+- 🔧 **IMPROVE:** Bulk operations performance optimization
+
+### v1.1.0 (October 2025)
+
+- ✨ **NEW:** `bsFilterMode` - Server/Client side filtering
+- ✨ **NEW:** `bsCustomFilters` integration with BSFilterCustom component
+- ✨ **NEW:** `bsComboBox` for dropdown columns with API integration
+- ✨ **NEW:** `bsColumnDefs` for custom column definitions (override metadata)
+- ✨ **NEW:** Export functionality with `bsExportFileName`
+- ✨ **NEW:** `bsUniqueFields` for unique field validation
+- ✨ **NEW:** `onDataBind` and `onFilteredDataChange` callbacks
+- 🔧 **IMPROVE:** Column visibility model from bsColumnDefs (hide: true)
+
+### v1.0.0 (September 2025)
+
+#### Initial Release
+
+- ✨ BSDataGrid component based on MUI X DataGrid Pro
+- ✨ Dynamic table generation from metadata
+- ✨ BS Platform properties support (`bsPreObj`, `bsObj`, `bsCols`, `bsObjBy`, `bsObjWh`)
+- ✨ Bulk operations (Add, Edit, Delete) via dedicated API endpoints
+- ✨ Column pinning (`bsPinColsLeft`, `bsPinColsRight`)
+- ✨ Localization support (Thai/English) via `bsLocale`
+- ✨ ComboBox columns integration
+- ✨ Required field validation with red header indicator
+- ✨ Action buttons (View, Edit, Delete) with visibility control
+- ✨ Checkbox selection with `onCheckBoxSelected` callback
+- ✨ Auto-endpoint selection (BS vs Standard)
+
+---
+
+**Version:** 1.3.0  
+**Last Updated:** January 2026  
+**Maintainer:** BS Platform Team
