@@ -243,17 +243,16 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
     setShowView(true);
     setOpenTrackingDialog(true);
   };
-  const toDateOnly = (d) => {
-    const date = new Date(d);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
-  };
+
   useEffect(() => {
-    const today = toDateOnly(new Date());
-    setCurrentDate(
-      toDateOnly(taskData.start_date) <= today &&
-        new Date() <= new Date(taskData.end_date_extend),
-    );
+     const toThaiDate = (dateStr) =>
+      new Date(dateStr.replace('Z', '') + '+07:00');
+    const start = toThaiDate(taskData.start_date);         
+    const end = toThaiDate(taskData.end_date_extend ?? taskData.end_date);     
+    const now = new Date(); // เครื่องไหนก็ได้
+
+    const isValid = start <= now && now <= end;
+    setCurrentDate(isValid)
   }, []);
   return (
     <>
