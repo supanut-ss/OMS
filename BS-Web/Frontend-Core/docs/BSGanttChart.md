@@ -16,6 +16,10 @@
 - ✅ **Dark Mode**: รองรับ Theme มืด
 - ✅ **Custom Tooltips**: แสดง Tooltip ตามเมาส์
 - ✅ **Weekend Highlighting**: ไฮไลท์วันเสาร์-อาทิตย์
+- ✅ **Holiday Highlighting**: ไฮไลท์วันหยุด (สีม่วง)
+- ✅ **Fullscreen Mode**: ดูแบบเต็มหน้าจอได้
+- ✅ **Expand/Collapse All**: ขยาย/ยุบข้อมูลทั้งหมด
+- ✅ **Sticky Headers**: Header ติดอยู่ด้านบนเมื่อ scroll
 
 ---
 
@@ -94,7 +98,7 @@ function MyGanttPage() {
 | -------------------- | -------- | ------- | -------------------------------------------- |
 | `columns`            | `array`  | `null`  | Custom columns configuration                 |
 | `scales`             | `array`  | `null`  | Custom scales configuration                  |
-| `initialCellWidth`   | `number` | `60`    | ความกว้างเริ่มต้นของ cell (pixels)           |
+| `initialCellWidth`   | `number` | `30`    | ความกว้างเริ่มต้นของ cell (pixels)           |
 | `initialCellHeight`  | `number` | `38`    | ความสูงเริ่มต้นของ cell (pixels)             |
 | `initialScaleHeight` | `number` | `40`    | ความสูงเริ่มต้นของ scale header (pixels)     |
 | `initialScale`       | `string` | `"day"` | มุมมองเริ่มต้น: `"day"`, `"week"`, `"month"` |
@@ -138,9 +142,9 @@ function MyGanttPage() {
 const ganttRef = useRef(null);
 
 // ใช้งาน
-ganttRef.current.refresh(); // รีเฟรชข้อมูล
-ganttRef.current.clearFilters(); // ล้าง filters ทั้งหมด
-ganttRef.current.getTasks(); // ดึง tasks ปัจจุบัน
+ganttRef.current.refresh(); // รีเฟรชข้อมูล (re-fetch จาก SP)
+ganttRef.current.clearFilters(); // ล้าง filters ทั้งหมดและ reset เป็น default
+ganttRef.current.getTasks(); // ดึง tasks ที่แสดงอยู่ปัจจุบัน
 ganttRef.current.getAllTasks(); // ดึง tasks ทั้งหมด
 ganttRef.current.setFilters({
   // ตั้งค่า filters
@@ -172,19 +176,75 @@ ganttRef.current.setFilters({
   text: "Task Name",        // ชื่อที่แสดง
   type: "work_task",        // ประเภท: "user" | "project" | "work_task"
   parent: "proj_xxx",       // Parent ID (0 = root)
-  start: new Date(),        // วันเริ่มต้น
-  end: new Date(),          // วันสิ้นสุด
-  progress: 0,              // ความคืบหน้า (0-100)
+  start: new Date(),        // วันเริ่มต้น (adjusted for Gantt)
+  end: new Date(),          // วันสิ้นสุด (adjusted for Gantt +1 day)
+  progress: 0,              // ความคืบหน้า (0-1)
   open: true,               // เปิด/ปิด children
   man_day: 8.5,             // Man Day (Hours)
   actual_man_day: 6.0,      // Actual Man Day (Hours)
+  originalStartDate: Date,  // วันเริ่มต้นจริง (สำหรับแสดงใน column)
+  originalEndDate: Date,    // วันสิ้นสุดจริง (สำหรับแสดงใน column)
+  barColor: "#ffa726",      // สี bar
   data: {
     level: "task",          // ระดับ: "user" | "project" | "task"
     taskNo: "T001",
+    taskId: 123,
+    barColor: "#ffa726",
     // ... custom fields
   }
 }
 ```
+
+### Stored Procedure Requirements
+
+SP ต้อง return fields ดังนี้:
+
+```sql
+-- User fields
+user_id, first_name, last_name
+
+-- Project fields
+project_header_id, project_no, project_name
+min_task_start_date, max_task_end_date
+total_task_plan_manday, total_actual_work
+
+-- Task fields
+project_task_id, task_no, task_name, task_description
+task_start_date, task_end_date
+task_plan_manday, actual_work
+```
+
+### SP Parameters
+
+SP รับ parameters ดังนี้:
+
+```sql
+@in_dtStartDate       DATE        -- วันเริ่มต้น (required)
+@in_dtEndDate         DATE        -- วันสิ้นสุด (required)
+@in_vchProjectHeaderID INT        -- Project Header ID (optional)
+@in_xmlUserID         XML         -- XML list ของ user_id (optional)
+```
+
+XML Format สำหรับ user filter:
+
+```xml
+<XMLData>
+  <data_read>user1</data_read>
+  <data_read>user2</data_read>
+  <data_read>user3</data_read>
+</XMLData>
+```
+
+---
+
+## Default Columns
+
+| Column ID        | Header                 | Width | Description                        |
+| ---------------- | ---------------------- | ----- | ---------------------------------- |
+| `text`           | ชื่อ                   | 250   | ชื่อ User/Project/Task             |
+| `duration`       | Start - End Date       | 180   | วันที่เริ่ม - สิ้นสุด (DD/MM/YYYY) |
+| `man_day`        | Man Day (Hours)        | 80    | Plan Man Day                       |
+| `actual_man_day` | Actual Man Day (Hours) | 80    | Actual Man Day                     |
 
 ---
 
@@ -206,12 +266,14 @@ const customColumns = [
     align: "center",
     width: 180,
     template: (value, row, col) => {
-      if (!row.start || !row.end) return "-";
+      const displayStart = row.originalStartDate || row.start;
+      const displayEnd = row.originalEndDate || row.end;
+      if (!displayStart || !displayEnd) return "-";
       const formatDate = (date) => {
         const d = new Date(date);
         return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
       };
-      return `${formatDate(row.start)} - ${formatDate(row.end)}`;
+      return `${formatDate(displayStart)} - ${formatDate(displayEnd)}`;
     },
   },
   {
@@ -239,6 +301,33 @@ const customScales = [
 <BSGanttChart scales={customScales} />;
 ```
 
+### Built-in Scale Configurations
+
+| Scale   | Level 1      | Level 2     |
+| ------- | ------------ | ----------- |
+| `day`   | Month + Year | Day + Name  |
+| `week`  | Month + Year | Week Number |
+| `month` | Year         | Month Short |
+
+---
+
+## Toolbar Features
+
+Toolbar มีฟีเจอร์ดังนี้:
+
+| Feature             | Description                      |
+| ------------------- | -------------------------------- |
+| Date Range Picker   | เลือกช่วงวันที่ Start - End      |
+| Employee Filter     | Multi-select พนักงาน             |
+| Project Filter      | เลือก Project                    |
+| Scale Selector      | เปลี่ยนมุมมอง Day/Week/Month     |
+| Zoom In/Out         | ซูมเข้า-ออก (ปรับ Cell Width)    |
+| Settings Popover    | ปรับ Cell Width และ Scale Height |
+| Expand/Collapse All | ขยาย/ยุบข้อมูลทั้งหมด            |
+| Fullscreen Toggle   | เปิด/ปิดโหมดเต็มหน้าจอ           |
+| Refresh Button      | รีเฟรชข้อมูล                     |
+| Clear Filters       | ล้าง filters ทั้งหมด             |
+
 ---
 
 ## Events
@@ -261,7 +350,7 @@ const handleTaskClick = (task) => {
 ```jsx
 const handleDataLoad = (rawData) => {
   console.log("Data loaded:", rawData.length, "rows");
-  // ทำอะไรบางอย่างกับ raw data
+  // rawData คือข้อมูลดิบจาก SP ก่อน transform
 };
 
 <BSGanttChart onDataLoad={handleDataLoad} />;
@@ -284,18 +373,15 @@ const handleError = (error) => {
 
 ### Supported Languages
 
-- Thai (`th`)
+- Thai (`th`) - Default
 - English (`en`)
 
 ระบบจะใช้ภาษาจาก `SecureStorage.get("lang")` อัตโนมัติ
 
-### Custom Locale Text
-
-สร้างไฟล์ใน `locales/` folder:
+### Available Locale Keys
 
 ```javascript
-// locales/th.js
-export default {
+{
   bsColumnName: "ชื่อ",
   bsColumnDuration: "ระยะเวลา",
   bsColumnManDay: "Man Day (ชม.)",
@@ -304,8 +390,14 @@ export default {
   bsStartDate: "เริ่ม",
   bsEndDate: "สิ้นสุด",
   bsProgress: "ความคืบหน้า",
+  bsLoading: "กำลังโหลด...",
+  bsError: "เกิดข้อผิดพลาด",
+  bsRefresh: "รีเฟรช",
+  bsClearFilters: "ล้างตัวกรอง",
+  bsExpandAll: "ขยายทั้งหมด",
+  bsCollapseAll: "ยุบทั้งหมด",
   // ... more
-};
+}
 ```
 
 ---
@@ -314,13 +406,13 @@ export default {
 
 ### Task Bar Colors
 
-สีถูกกำหนดตาม `type` ของ task:
+สีถูกกำหนดตาม `type` และ `data.level` ของ task:
 
-| Type        | สี    | Hex Code  |
-| ----------- | ----- | --------- |
-| `user`      | เขียว | `#66bb6a` |
-| `project`   | ฟ้า   | `#42a5f5` |
-| `work_task` | ส้ม   | `#ffa726` |
+| Level   | Type        | สี    | Hex Code  |
+| ------- | ----------- | ----- | --------- |
+| User    | `user`      | เขียว | `#66bb6a` |
+| Project | `project`   | ฟ้า   | `#42a5f5` |
+| Task    | `work_task` | ส้ม   | `#ffa726` |
 
 ### Custom Styling with sx
 
@@ -381,10 +473,12 @@ CREATE TABLE [tmt].[t_tmt_holiday](
   [holiday_date] DATE NOT NULL,
   [holiday_name] NVARCHAR(100) NOT NULL,
   [description] NVARCHAR(255) NULL,
-  [is_active] VARCHAR(3) NOT NULL,  -- 'Y' or 'N'
+  [is_active] VARCHAR(3) NOT NULL,  -- 'YES' or 'NO'
   ...
 )
 ```
+
+API จะ query ด้วย condition `is_active = 'YES'`
 
 **วิธีที่ 3: Query จาก Stored Procedure**
 
@@ -401,26 +495,14 @@ SP ต้อง return fields:
 - `holiday_date` หรือ `date` - วันที่ (DATE)
 - `holiday_name` หรือ `name` - ชื่อวันหยุด (NVARCHAR)
 
----
+### Dark Mode Support
 
-## API Endpoint
+Component รองรับ Dark Mode อัตโนมัติ โดยจะปรับ:
 
-Component ใช้ endpoint:
-
-```
-POST /api/Gantt/timeline
-```
-
-Request Body:
-
-```json
-{
-  "startDate": "2026-01-01",
-  "endDate": "2026-01-31",
-  "projectHeaderId": null,
-  "xmlUserIds": "<XMLData><data_read>1</data_read></XMLData>"
-}
-```
+- Header background color
+- Scale background color
+- Holiday highlight color (ม่วง)
+- Fullscreen button style
 
 ---
 
@@ -461,11 +543,11 @@ function ProjectTimeline() {
         title="Project Timeline"
         height={700}
         initialScale="day"
-        initialCellWidth={60}
+        initialCellWidth={30}
         showToolbar={true}
         readonly={true}
-        // Holiday highlighting from SP
-        holidayProcedureName="usp_tmt_get_holidays"
+        // Holiday highlighting from Table
+        holidayTableName="t_tmt_holiday"
         holidayPreObj="tmt"
         showHolidays={true}
         onTaskClick={handleTaskClick}
@@ -494,7 +576,8 @@ export default ProjectTimeline;
 
 1. ตรวจสอบว่า `procedureName` ถูกต้อง
 2. ตรวจสอบ Console สำหรับ error
-3. ตรวจสอบว่า API endpoint `/api/Gantt/timeline` ทำงานได้
+3. ตรวจสอบว่า SP return ข้อมูลถูกต้อง
+4. ตรวจสอบว่า SP parameters ถูกส่งไปถูกต้อง
 
 ### สีไม่เปลี่ยน
 
@@ -506,10 +589,22 @@ export default ProjectTimeline;
 1. รอให้ render เสร็จก่อน (มี delay 500ms)
 2. ตรวจสอบว่า tasks มี `start` และ `end` dates
 
+### วันที่แสดงผิด
+
+1. SP ต้อง return DATE type ไม่ใช่ DATETIME
+2. Component จะ normalize date โดยดึงเฉพาะ date part จาก string
+
+### Holiday ไม่แสดง
+
+1. ตรวจสอบว่า `showHolidays={true}`
+2. ตรวจสอบว่า table มี field `is_active = 'YES'`
+3. ตรวจสอบว่า date format ถูกต้อง (YYYY-MM-DD)
+
 ### Performance ช้า
 
 1. จำกัดช่วงวันที่ให้แคบลง
 2. ใช้ `initialScale="month"` สำหรับข้อมูลจำนวนมาก
+3. ลดจำนวน employees ที่เลือก
 
 ---
 
@@ -517,16 +612,20 @@ export default ProjectTimeline;
 
 - `@svar-ui/react-gantt` - SVAR React Gantt (MIT)
 - `@mui/material` - Material UI
+- `@mui/x-date-pickers` - MUI Date Pickers
+- `dayjs` - Date library
 - `react` - React 18+
 
 ---
 
 ## Version History
 
-| Version | Date       | Changes                                   |
-| ------- | ---------- | ----------------------------------------- |
-| 1.0.0   | 2026-01-20 | Initial release                           |
-| 1.1.0   | 2026-01-21 | Added tooltip, weekend highlighting, zoom |
+| Version | Date       | Changes                                        |
+| ------- | ---------- | ---------------------------------------------- |
+| 1.0.0   | 2026-01-20 | Initial release                                |
+| 1.1.0   | 2026-01-21 | Added tooltip, weekend highlighting, zoom      |
+| 1.2.0   | 2026-01-25 | Added holiday highlighting, fullscreen mode    |
+| 1.3.0   | 2026-01-28 | Fixed multi-user XML parameter, sticky headers |
 
 ---
 
