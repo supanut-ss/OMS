@@ -34,17 +34,17 @@ import { useOutletContext } from "react-router-dom";
 
 // ============ Task Status Constants ============
 const TASK_STATUS = {
-  OVER_DUE: "Over Due",
   OPEN: "Opened",
   IN_PROCESS: "In Process",
+  OVER_DUE: "Over Due",
   CLOSE: "Closed",
 };
 
 // Database values for stored procedure (must match database)
 const DB_STATUS = {
-  [TASK_STATUS.OVER_DUE]: "OverDue",
   [TASK_STATUS.OPEN]: "Open",
   [TASK_STATUS.IN_PROCESS]: "In Process",
+  [TASK_STATUS.OVER_DUE]: "OverDue",
   [TASK_STATUS.CLOSE]: "Close",
 };
 
@@ -850,9 +850,8 @@ const MyTaskPage = (props) => {
         // Subtle glass border
         border:
           t.palette.mode === "dark"
-            ? `1px solid ${
-                t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
-              }`
+            ? `1px solid ${t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
+            }`
             : "none",
         // Rounded corners
         borderRadius: 3,
