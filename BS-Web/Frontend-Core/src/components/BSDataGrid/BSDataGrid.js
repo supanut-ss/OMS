@@ -11470,6 +11470,8 @@ ${errorInfo.originalError}
                 sx={{
                   position: "relative",
                   width: `calc(100%)`,
+                  minWidth: "82vw",
+                  minHeight: "280px",
                   height: filteredRows.length >= paginationModel.pageSize ? `calc(100vh - ${theme.spacing(20)})` : "auto",
                   //  -- flex: height === "auto" ? 1 : "none",
                   //   display: "flex",

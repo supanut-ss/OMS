@@ -3,8 +3,8 @@ import BSDataGrid from "../../components/BSDataGrid";
 import { useOutletContext } from "react-router-dom";
 
 const Combobox = (props) => {
-   const { permission } = useOutletContext();
-    return <Paper sx={{ p: 2, mb: 3 }}>
+    const { permission } = useOutletContext();
+    return <Paper sx={{ p: 2, mb: 3, width: "100%" }}>
         <BSDataGrid
             bsLocale={props.lang}
             bsPreObj="sec"
