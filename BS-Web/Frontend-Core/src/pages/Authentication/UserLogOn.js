@@ -63,22 +63,22 @@ const UserLogOnPage = (props) => {
     setMapPoint({ lat, lon, acc, last_alive_time: row.last_alive_time || null });
     setMapOpen(true);
   };
+ 
 
   return (
-    <>
-      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
-        <Button
-          variant="contained"
-          color="info"
-          sx={{ height: "6vh", width: "20%" }}
-          onClick={async () => {
-            await handleClearLogons();
-          }}
-          startIcon={<PersonRemoveIcon />}
-        >
-          {getResourceByGroupAndName("v_com_user_alive", "ClearLoggedOnUsers", locale_id)?.resource_value || "Clear Logged On Users"}
-        </Button>
-
+    <Paper sx={{ p: 2, width: "100%", height: "100%" }}>
+      <Button
+        variant="contained"
+        color="info"
+        sx={{ height: "6vh", width: "20%" }}
+        onClick={async () => {
+          await handleClearLogons();
+        }}
+        startIcon={<PersonRemoveIcon />}
+      >
+        {getResourceByGroupAndName("v_com_user_alive", "ClearLoggedOnUsers", locale_id)?.resource_value || "Clear Logged On Users"}
+      </Button>
+      <Box height={"85vh"}>
         <BSDataGrid
           ref={gridRef}
           bsLocale={locale_id}
@@ -111,7 +111,7 @@ const UserLogOnPage = (props) => {
             return {};
           }}
         />
-      </Paper>
+      </Box>
       <Dialog
         open={mapOpen}
         onClose={() => setMapOpen(false)}
@@ -146,7 +146,7 @@ const UserLogOnPage = (props) => {
           <Button onClick={() => setMapOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Paper>
   );
 };
 
