@@ -134,7 +134,7 @@ const ProjectTask = (props) => {
         p: 2,
         backgroundColor:
           theme.palette.custom?.paperBackground ||
-          theme.palette.background.paper,
+          theme.palette.background.paper, width: "100%"
       }}
     >
       {taskPhases.length === 0 && !loading && (

@@ -279,9 +279,8 @@ const stringAvatar = (name) => {
   const nameParts = trimmedName.split(" ").filter((part) => part.length > 0);
   let initials;
   if (nameParts.length >= 2) {
-    initials = `${nameParts[0][0]}${
-      nameParts[nameParts.length - 1][0]
-    }`.toUpperCase();
+    initials = `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]
+      }`.toUpperCase();
   } else if (nameParts.length === 1) {
     initials = nameParts[0].substring(0, 2).toUpperCase();
   } else {
@@ -2270,8 +2269,8 @@ const BSDataGrid = forwardRef(
               if (tabItem.Tab) {
                 const columns = tabItem.Tab.Column
                   ? tabItem.Tab.Column.split(",")
-                      .map((c) => c.trim())
-                      .filter(Boolean)
+                    .map((c) => c.trim())
+                    .filter(Boolean)
                   : [];
                 tabs.push({
                   name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
@@ -2621,12 +2620,12 @@ const BSDataGrid = forwardRef(
     const [filterModel, setFilterModel] = useState(() => ({
       items: bsObjWh
         ? [
-            {
-              field: "custom_where",
-              operator: "custom",
-              value: bsObjWh,
-            },
-          ]
+          {
+            field: "custom_where",
+            operator: "custom",
+            value: bsObjWh,
+          },
+        ]
         : [],
     }));
 
@@ -3172,21 +3171,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-              bsCustomFilters &&
-              bsCustomFilters.length > 0
+                bsCustomFilters &&
+                bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields (optional until backend is ready)
             userLookup: bsUserLookup
               ? {
-                  table: bsUserLookup.table || "sec.t_com_user",
-                  idField: bsUserLookup.idField || "user_id",
-                  displayFields: bsUserLookup.displayFields || [
-                    "first_name",
-                    "last_name",
-                  ],
-                  separator: bsUserLookup.separator || " ",
-                }
+                table: bsUserLookup.table || "sec.t_com_user",
+                idField: bsUserLookup.idField || "user_id",
+                displayFields: bsUserLookup.displayFields || [
+                  "first_name",
+                  "last_name",
+                ],
+                separator: bsUserLookup.separator || " ",
+              }
               : undefined,
           };
 
@@ -3342,22 +3341,22 @@ const BSDataGrid = forwardRef(
             sortModel:
               bsFilterMode === "server"
                 ? currentSortModel.map((sort) => ({
-                    field: sort.field,
-                    sort: sort.sort,
-                  }))
+                  field: sort.field,
+                  sort: sort.sort,
+                }))
                 : [], // Only send sort for server-side mode
             filterModel:
               bsFilterMode === "server"
                 ? {
-                    items: currentFilterModel.items || [],
-                    logicOperator: currentFilterModel.logicOperator || "and",
-                    // Convert quickFilterValues array to string for backend compatibility
-                    quickFilterValues:
-                      currentFilterModel.quickFilterValues &&
+                  items: currentFilterModel.items || [],
+                  logicOperator: currentFilterModel.logicOperator || "and",
+                  // Convert quickFilterValues array to string for backend compatibility
+                  quickFilterValues:
+                    currentFilterModel.quickFilterValues &&
                       Array.isArray(currentFilterModel.quickFilterValues)
-                        ? currentFilterModel.quickFilterValues.join(" ")
-                        : currentFilterModel.quickFilterValues || "",
-                  }
+                      ? currentFilterModel.quickFilterValues.join(" ")
+                      : currentFilterModel.quickFilterValues || "",
+                }
                 : { items: [] }, // Only send filters for server-side mode
             parameters: {
               ...bsStoredProcedureParams,
@@ -3366,21 +3365,21 @@ const BSDataGrid = forwardRef(
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
-              bsCustomFilters &&
-              bsCustomFilters.length > 0
+                bsCustomFilters &&
+                bsCustomFilters.length > 0
                 ? bsCustomFilters
                 : undefined,
             // User lookup configuration for audit fields
             userLookup: bsUserLookup
               ? {
-                  table: bsUserLookup.table || "sec.t_com_user",
-                  idField: bsUserLookup.idField || "user_id",
-                  displayFields: bsUserLookup.displayFields || [
-                    "first_name",
-                    "last_name",
-                  ],
-                  separator: bsUserLookup.separator || " ",
-                }
+                table: bsUserLookup.table || "sec.t_com_user",
+                idField: bsUserLookup.idField || "user_id",
+                displayFields: bsUserLookup.displayFields || [
+                  "first_name",
+                  "last_name",
+                ],
+                separator: bsUserLookup.separator || " ",
+              }
               : undefined,
             userId: getUserId(),
           };
@@ -3747,8 +3746,7 @@ const BSDataGrid = forwardRef(
           const resourceText = getResource(resourceData, columnName);
           // Debug: Log resource lookup
           Logger.log(
-            `🌐 formatColumnName: columnName="${columnName}", resourceText="${resourceText}", resourceDataLength=${
-              resourceData?.length || 0
+            `🌐 formatColumnName: columnName="${columnName}", resourceText="${resourceText}", resourceDataLength=${resourceData?.length || 0
             }`,
           );
           // If resource found and different from original, use it
@@ -4305,10 +4303,9 @@ const BSDataGrid = forwardRef(
         htmlContent += `
           <details style="text-align: left; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
             <summary style="cursor: pointer; padding: 8px 12px; background: #f5f5f5; font-size: 13px; color: #666; user-select: none;">
-              ${
-                currentLocaleText.bsViewExceptionDetails ||
-                "View Exception Details"
-              }
+              ${currentLocaleText.bsViewExceptionDetails ||
+          "View Exception Details"
+          }
             </summary>
             <div style="padding: 12px; background: #fafafa; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; color: #333;">
 ${errorInfo.originalError}
@@ -4382,7 +4379,7 @@ ${errorInfo.originalError}
           const allPrimaryKeys = [
             ...metadataPrimaryKeys,
             ...(detectedPrimaryKey &&
-            !metadataPrimaryKeys.includes(detectedPrimaryKey)
+              !metadataPrimaryKeys.includes(detectedPrimaryKey)
               ? [detectedPrimaryKey]
               : []),
           ];
@@ -5291,8 +5288,7 @@ ${errorInfo.originalError}
                 errors.push(
                   `${formatColumnName(
                     columnName,
-                  )}: Maximum ${maxLength} characters allowed (current: ${
-                    stringValue.length
+                  )}: Maximum ${maxLength} characters allowed (current: ${stringValue.length
                   })`,
                 );
               }
@@ -6522,8 +6518,8 @@ ${errorInfo.originalError}
             inputProps={{
               ...(maxLength > 0 &&
                 (inputType === "text" || multiline) && {
-                  maxLength: maxLength,
-                }),
+                maxLength: maxLength,
+              }),
               ...buildNumberInputProps(),
             }}
             error={maxLength > 0 && String(displayVal).length > maxLength}
@@ -7233,9 +7229,9 @@ ${errorInfo.originalError}
             // This prevents losing data when user saves one row while other rows are still being edited
             const currentRows = apiRef.current?.getAllRowIds
               ? apiRef.current
-                  .getAllRowIds()
-                  .map((id) => apiRef.current.getRow(id))
-                  .filter(Boolean)
+                .getAllRowIds()
+                .map((id) => apiRef.current.getRow(id))
+                .filter(Boolean)
               : rows;
 
             // Get edit values from DataGrid internal state for other rows
@@ -7688,11 +7684,11 @@ ${errorInfo.originalError}
           const defaultFormat =
             customDef.type === "dateTime"
               ? DATETIME_FORMAT.toLowerCase()
-                  .replace("dd", "dd")
-                  .replace("mm", "MM")
+                .replace("dd", "dd")
+                .replace("mm", "MM")
               : DATE_FORMAT.toLowerCase()
-                  .replace("dd", "dd")
-                  .replace("mm", "MM");
+                .replace("dd", "dd")
+                .replace("mm", "MM");
           const dateFormat =
             customDef.dateFormat || customDef.dateTimeFormat || defaultFormat;
           const includeTime = customDef.type === "dateTime";
@@ -7924,7 +7920,7 @@ ${errorInfo.originalError}
                   hasPrimaryKey
                     ? localeText.bsAttachFiles || "Attach Files"
                     : localeText.bsSaveRecordFirst ||
-                      "Save record first to attach files"
+                    "Save record first to attach files"
                 }
                 arrow
               >
@@ -8079,10 +8075,10 @@ ${errorInfo.originalError}
       const resourceContentKey =
         resourceData && Array.isArray(resourceData)
           ? resourceData.length +
-            "-" +
-            resourceData
-              .map((r) => `${r.resource_name || ""}:${r.resource_value || ""}`)
-              .join("|")
+          "-" +
+          resourceData
+            .map((r) => `${r.resource_name || ""}:${r.resource_value || ""}`)
+            .join("|")
           : "";
 
       return `${stableMetadataKey}::${storedProcKey}::${firstRowKey}::${configKey}::${visibilityKey}::${colsKey}::${hiddenKey}::${comboBoxKeys}::${comboBoxDataKey}::${lookupDataKey}::${rowModesModelKey}::${localeKey}::${resourceContentKey}`;
@@ -9589,9 +9585,9 @@ ${errorInfo.originalError}
         if (rowConfig.showCheckbox === false) {
           bsLog("🚫 Hiding checkbox for row:", rowId);
           styles[`${rowSelector} .MuiDataGrid-cellCheckbox .MuiCheckbox-root`] =
-            {
-              visibility: "hidden",
-            };
+          {
+            visibility: "hidden",
+          };
         }
 
         // Apply background and text colors
@@ -9794,10 +9790,10 @@ ${errorInfo.originalError}
             firstRowAllIds:
               rows.length > 0
                 ? {
-                    id: rows[0].id,
-                    Id: rows[0].Id,
-                    [primaryKey]: rows[0][primaryKey],
-                  }
+                  id: rows[0].id,
+                  Id: rows[0].Id,
+                  [primaryKey]: rows[0][primaryKey],
+                }
                 : "NO ROWS",
           });
 
@@ -10060,9 +10056,8 @@ ${errorInfo.originalError}
         // Generate filename - use bsExportFileName prop if provided, otherwise use table name
         const exportFileName =
           bsExportFileName || effectiveTableName || "export";
-        const filename = `${exportFileName}_${
-          new Date().toISOString().split("T")[0]
-        }.xlsx`;
+        const filename = `${exportFileName}_${new Date().toISOString().split("T")[0]
+          }.xlsx`;
 
         // Trigger download
         XLSX.writeFile(workbook, filename);
@@ -10104,9 +10099,8 @@ ${errorInfo.originalError}
             delimiter: ";",
             utf8WithBom: true,
             escapeFormulas: false,
-            fileName: `${exportFileName}_${
-              new Date().toISOString().split("T")[0]
-            }`,
+            fileName: `${exportFileName}_${new Date().toISOString().split("T")[0]
+              }`,
           });
           bsLog("✅ CSV export triggered");
         }
@@ -10174,9 +10168,8 @@ ${errorInfo.originalError}
                 .join("");
               return `
                 <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                  <strong style="color: #c0392b;">📋 ${
-                    localeText.bsRow || "Row"
-                  } ${item.rowNumber}</strong>
+                  <strong style="color: #c0392b;">📋 ${localeText.bsRow || "Row"
+                } ${item.rowNumber}</strong>
                   <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
                 </div>`;
             })
@@ -10712,9 +10705,8 @@ ${errorInfo.originalError}
                 .join("");
               return `
                 <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                  <strong style="color: #c0392b;">📋 ${
-                    localeText.bsRow || "Row"
-                  } ${item.rowNumber}</strong>
+                  <strong style="color: #c0392b;">📋 ${localeText.bsRow || "Row"
+                } ${item.rowNumber}</strong>
                   <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
                 </div>`;
             })
@@ -10775,9 +10767,8 @@ ${errorInfo.originalError}
                   .join("");
                 return `
                   <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                    <strong style="color: #c0392b;">📋 ${
-                      localeText.bsRow || "Row"
-                    } ${item.rowNumber}</strong>
+                    <strong style="color: #c0392b;">📋 ${localeText.bsRow || "Row"
+                  } ${item.rowNumber}</strong>
                     <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
                   </div>`;
               })
@@ -11106,8 +11097,7 @@ ${errorInfo.originalError}
 
         if (!canEditThisRow) {
           Logger.warn(
-            `⚠️ Cannot edit ${
-              isNewRow ? "new" : "existing"
+            `⚠️ Cannot edit ${isNewRow ? "new" : "existing"
             } row - permission denied`,
           );
           // Prevent entering edit mode
@@ -11348,8 +11338,8 @@ ${errorInfo.originalError}
               columnsValid: Array.isArray(columns) && columns.length > 0,
               sampleColumns: Array.isArray(columns)
                 ? columns
-                    .slice(0, 2)
-                    .map((c) => ({ field: c.field, type: c.type }))
+                  .slice(0, 2)
+                  .map((c) => ({ field: c.field, type: c.type }))
                 : "N/A",
               metadataExists: !!metadata,
               metadataColumnsCount: metadata?.columns?.length,
@@ -11478,9 +11468,12 @@ ${errorInfo.originalError}
             return (
               <Box
                 sx={{
-                  flex: height === "auto" ? 1 : "none",
-                  display: "flex",
-                  flexDirection: "column",
+                  position: "relative",
+                  width: `calc(100%)`,
+                  height: filteredRows.length >= paginationModel.pageSize ? `calc(100vh - ${theme.spacing(20)})` : "auto",
+                  //  -- flex: height === "auto" ? 1 : "none",
+                  //   display: "flex",
+                  //   flexDirection: "column",
                 }}
               >
                 <DataGridPro
@@ -11500,12 +11493,10 @@ ${errorInfo.originalError}
                   // Use stable key that forces re-mount when combobox data loads or language changes
                   // This ensures columns are rebuilt with correct valueOptions and localized headers
                   // Also include resourceData hash to force re-mount when translations load
-                  key={`datagrid-${effectiveTableName}-${effectiveLang}-comboReady-${
-                    !comboBoxLoading &&
+                  key={`datagrid-${effectiveTableName}-${effectiveLang}-comboReady-${!comboBoxLoading &&
                     Object.keys(comboBoxValueOptions).length > 0
-                  }-res-${resourceData?.length || 0}-${
-                    resourceData?.[0]?.resource_value || ""
-                  }`}
+                    }-res-${resourceData?.length || 0}-${resourceData?.[0]?.resource_value || ""
+                    }`}
                   // Editing - only enable if bulk edit mode is enabled
                   // Only set editMode="row" if effectiveBulkEdit or effectiveBulkAddInline is enabled
                   // This prevents double-click from entering edit mode when editing is not allowed
@@ -11632,38 +11623,48 @@ ${errorInfo.originalError}
                   slotProps={
                     showToolbar
                       ? {
-                          toolbar: {
-                            onAdd: handleDialogAdd,
-                            onInlineAdd: handleInlineAdd,
-                            showAdd: effectiveShowAdd,
-                            headerFiltersEnabled,
-                            onToggleHeaderFilters: handleToggleHeaderFilters,
-                            bsBulkEdit: effectiveBulkEdit,
-                            bsBulkAdd: effectiveBulkAdd,
-                            bsBulkDelete: effectiveBulkDelete,
-                            bsEnableBulkMode: resolvedBulkEnable,
-                            bsShowBulkSplitButton: effectiveShowSplitButton,
-                            selectedRowCount: rowSelectionModel.length,
-                            onBulkEdit: handleBulkEdit,
-                            onBulkDelete: handleBulkDelete,
-                            onBulkAdd: handleBulkAdd,
-                            showBulkDelete: effectiveBulkDelete,
-                            onRefresh: () => refreshData(true),
-                            onExportExcel: handleExportExcel,
-                            onExportCsv: handleExportCsv,
-                            onPrint: handlePrint,
-                            localeText,
-                            apiRef,
-                            quickFilterValue: quickFilterInputValue,
-                            onQuickFilterChange: setQuickFilterInputValue,
-                            bulkEditMode,
-                            onBulkSave: handleBulkSaveChanges,
-                            onBulkDiscard: handleBulkDiscardChanges,
-                            hasUnsavedChanges,
-                            formLoading,
-                            changesCount: Object.keys(unsavedChangesRef.current)
-                              .length,
-                          },
+                        toolbar: {
+                          onAdd: handleDialogAdd,
+                          onInlineAdd: handleInlineAdd,
+                          showAdd: effectiveShowAdd,
+                          headerFiltersEnabled,
+                          onToggleHeaderFilters: handleToggleHeaderFilters,
+                          bsBulkEdit: effectiveBulkEdit,
+                          bsBulkAdd: effectiveBulkAdd,
+                          bsBulkDelete: effectiveBulkDelete,
+                          bsEnableBulkMode: resolvedBulkEnable,
+                          bsShowBulkSplitButton: effectiveShowSplitButton,
+                          selectedRowCount: rowSelectionModel.length,
+                          onBulkEdit: handleBulkEdit,
+                          onBulkDelete: handleBulkDelete,
+                          onBulkAdd: handleBulkAdd,
+                          showBulkDelete: effectiveBulkDelete,
+                          onRefresh: () => refreshData(true),
+                          onExportExcel: handleExportExcel,
+                          onExportCsv: handleExportCsv,
+                          onPrint: handlePrint,
+                          localeText,
+                          apiRef,
+                          quickFilterValue: quickFilterInputValue,
+                          onQuickFilterChange: setQuickFilterInputValue,
+                          bulkEditMode,
+                          onBulkSave: handleBulkSaveChanges,
+                          onBulkDiscard: handleBulkDiscardChanges,
+                          hasUnsavedChanges,
+                          formLoading,
+                          changesCount: Object.keys(unsavedChangesRef.current)
+                            .length,
+                        },
+                        headerFilterCell: {
+                          showClearIcon: true,
+                        },
+                        pagination: {
+                          showFirstButton: true,
+                          showLastButton: true,
+                        },
+                      }
+                      : headerFiltersEnabled
+                        ? {
                           headerFilterCell: {
                             showClearIcon: true,
                           },
@@ -11672,22 +11673,12 @@ ${errorInfo.originalError}
                             showLastButton: true,
                           },
                         }
-                      : headerFiltersEnabled
-                        ? {
-                            headerFilterCell: {
-                              showClearIcon: true,
-                            },
-                            pagination: {
-                              showFirstButton: true,
-                              showLastButton: true,
-                            },
-                          }
                         : {
-                            pagination: {
-                              showFirstButton: true,
-                              showLastButton: true,
-                            },
-                          }
+                          pagination: {
+                            showFirstButton: true,
+                            showLastButton: true,
+                          },
+                        }
                   }
                   // Styling with required field indicator and custom row styles
                   sx={(theme) => ({
@@ -11714,9 +11705,9 @@ ${errorInfo.originalError}
                     },
                     // Force header text bold
                     "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle":
-                      {
-                        fontWeight: "bold",
-                      },
+                    {
+                      fontWeight: "bold",
+                    },
                     // Required field styling
                     "& .required-field .MuiDataGrid-columnHeaderTitle": {
                       color: "error.main",
@@ -11772,11 +11763,10 @@ ${errorInfo.originalError}
                     },
                     // Header filter styling
                     [`& .MuiDataGrid-headerFilterRow`]: {
-                      backgroundColor: `${
-                        theme.palette.mode === "dark"
-                          ? theme.palette.grey[200]
-                          : "#E0DEDEFF"
-                      } !important`,
+                      backgroundColor: `${theme.palette.mode === "dark"
+                        ? theme.palette.grey[200]
+                        : "#E0DEDEFF"
+                        } !important`,
                       borderBottom: `1px solid ${theme.palette.divider} !important`,
                       minHeight: "30px !important",
                       maxHeight: "46px !important",
@@ -11833,11 +11823,10 @@ ${errorInfo.originalError}
                     },
                     // Edit mode cell input styling - add subtle border to show it's editable
                     "& .MuiDataGrid-cell--editing": {
-                      backgroundColor: `${
-                        theme.palette.mode === "dark"
-                          ? theme.palette.grey[800]
-                          : "#fafafa"
-                      } !important`,
+                      backgroundColor: `${theme.palette.mode === "dark"
+                        ? theme.palette.grey[800]
+                        : "#fafafa"
+                        } !important`,
                       "& .MuiInputBase-root": {
                         border: `1px solid ${theme.palette.divider}`,
                         borderRadius: "4px",
@@ -11857,11 +11846,10 @@ ${errorInfo.originalError}
                     },
                     // New row styling
                     "& .MuiDataGrid-row--editing": {
-                      backgroundColor: `${
-                        theme.palette.mode === "dark"
-                          ? theme.palette.grey[800]
-                          : "#f5f9ff"
-                      } !important`,
+                      backgroundColor: `${theme.palette.mode === "dark"
+                        ? theme.palette.grey[800]
+                        : "#f5f9ff"
+                        } !important`,
                       boxShadow: `inset 0 0 0 1px ${theme.palette.primary.main}`,
                     },
                   })}
@@ -12076,16 +12064,16 @@ ${errorInfo.originalError}
                 )}
               </Box>
             ) : // Standard Mode - no child grids
-            metadata?.columns || bsStoredProcedure ? (
-              renderFormFields()
-            ) : (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <CircularProgress />
-                <Typography variant="body2" sx={{ mt: 2 }}>
-                  {localeText.bsLoadingMetadata}
-                </Typography>
-              </Box>
-            )}
+              metadata?.columns || bsStoredProcedure ? (
+                renderFormFields()
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ mt: 2 }}>
+                    {localeText.bsLoadingMetadata}
+                  </Typography>
+                </Box>
+              )}
           </DialogContent>
           <DialogActions>
             <BSCloseOutlinedButton
@@ -12101,9 +12089,9 @@ ${errorInfo.originalError}
               {formLoading
                 ? localeText.bsSaving
                 : bsChildGrids &&
-                    bsChildGrids.length > 0 &&
-                    dialogMode === "add" &&
-                    !isParentSaved
+                  bsChildGrids.length > 0 &&
+                  dialogMode === "add" &&
+                  !isParentSaved
                   ? localeText.bsSaveAndContinue || "Save & Continue"
                   : localeText.bsSave}
             </BSSaveOutlinedButton>
@@ -12518,8 +12506,8 @@ ${errorInfo.originalError}
                                 inputProps={{
                                   ...(maxLength > 0 &&
                                     (inputType === "text" || multiline) && {
-                                      maxLength: maxLength,
-                                    }),
+                                    maxLength: maxLength,
+                                  }),
                                 }}
                                 error={
                                   maxLength > 0 &&

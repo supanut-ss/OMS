@@ -22,7 +22,7 @@ const HolidayPage = (props) => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Typography variant="h6" gutterBottom>
           {getResourceByGroupAndName("MasterHoliday", "Master Holiday", locale_id)?.resource_value || "Master Holiday"}
         </Typography>

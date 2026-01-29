@@ -24,14 +24,14 @@ const ManPowerPage = () => {
 
   return (
     <>
-      <Paper sx={{ p: 0, mb: 0 }}>
+      <Paper sx={{ p: 0, mb: 0,width:"100%" }}>
         <BSGanttChart
           // Data source
           procedureName="usp_tmt_dashboard_project_timeline"
           preObj="tmt"
           // Display options
           title="Project Timeline - Man Power"
-          height={660}
+          height={700}
           // Filter options
           showDateFilter={true}
           showEmployeeFilter={true}

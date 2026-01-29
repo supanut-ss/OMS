@@ -16,7 +16,7 @@ const MenuPage = (props) => {
 
   return (
     <>
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <BSDataGrid
           bsLocale={locale_id}
           bsPreObj="sec"

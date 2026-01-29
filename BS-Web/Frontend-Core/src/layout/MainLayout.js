@@ -349,7 +349,7 @@ export default function MainLayout({ lang, onChangeLang }) {
     <Box
       sx={{
         display: "flex",
-        minHeight: "100vh",
+        // minHeight: "100vh",
         bgcolor: "background.default",
       }}
     >
@@ -673,12 +673,13 @@ export default function MainLayout({ lang, onChangeLang }) {
       <Box
         component="main"
         sx={{
+          display: "flex",
           flexGrow: 1,
           p: { xs: 0, sm: 3, md: 1 },
           mt: 8,
           width: {
-            xs: "100%",
-            md: `calc(100% - ${open ? drawerWidth : collapsedWidth}px)`,
+            xs: 0,
+            md: `calc(100% - (${open ? drawerWidth : collapsedWidth}) px )`,
           },
           transition: theme.transitions.create("width", {
             easing: theme.transitions.easing.sharp,

@@ -255,7 +255,7 @@ const MenuTreeView = (props) => {
   return (
     <>
       <BSFullScreenLoader open={loading} />
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, width: "100%" }}>
         <Box display="flex" gap={3} alignItems="center">
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete

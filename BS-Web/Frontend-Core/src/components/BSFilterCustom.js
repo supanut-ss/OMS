@@ -179,7 +179,7 @@ const BSFilterCustom = ({
   };
 
   return (
-    <Paper sx={{ p: { xs: 1, md: 2 } }}>
+    <Paper sx={{ p: { xs: 1, md: 2 }, width: "100%" }}>
       <Stack spacing={2}>
         <Grid container spacing={spacing}>
           {defaultField.map((field, index) => (

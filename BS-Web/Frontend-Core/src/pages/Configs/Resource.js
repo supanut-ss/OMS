@@ -140,7 +140,7 @@ const Resource = (props) => {
   return (
     <Box>
       <BSFullScreenLoader open={loading} />
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <BSDataGrid
           ref={dataGridRef}
           bsLocale={lang}

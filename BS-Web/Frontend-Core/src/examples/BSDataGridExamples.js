@@ -10,7 +10,7 @@ const BSDataGridExamples = () => {
 
   // ตัวอย่าง 1: การใช้งานพื้นฐาน
   const BasicExample = () => (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
       <Typography variant="h6" gutterBottom>
         1. การใช้งานพื้นฐาน
       </Typography>
@@ -52,7 +52,7 @@ const BSDataGridExamples = () => {
 
   // ตัวอย่าง 2: การใช้งานแบบเต็มรูปแบบ
   const AdvancedExample = () => (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
       <Typography variant="h6" gutterBottom>
         2. การใช้งานแบบเต็มรูปแบบ
       </Typography>
@@ -100,7 +100,7 @@ const BSDataGridExamples = () => {
 
   // ตัวอย่าง 3: ใช้กับ Legacy API
   const LegacyExample = () => (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
       <Typography variant="h6" gutterBottom>
         3. ใช้กับ Legacy API (เก่า)
       </Typography>
@@ -116,7 +116,7 @@ const BSDataGridExamples = () => {
 
   // ตัวอย่าง 4: Read-only mode
   const ReadOnlyExample = () => (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
       <Typography variant="h6" gutterBottom>
         4. Read-only Mode
       </Typography>
@@ -132,7 +132,7 @@ const BSDataGridExamples = () => {
 
   // ตัวอย่าง 5: Bulk Operations
   const BulkExample = () => (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
       <Typography variant="h6" gutterBottom>
         5. Bulk Operations
       </Typography>

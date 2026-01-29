@@ -28,7 +28,7 @@ const SchemaMappingDemo = () => {
       <Divider sx={{ mb: 3 }} />
 
       {/* Test 1: Using dbo schema (should work) */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Typography variant="h6" gutterBottom>
           Test 1: bsPreObj="dbo" (t_com_user table exists in dbo schema)
         </Typography>
@@ -40,7 +40,7 @@ const SchemaMappingDemo = () => {
       </Paper>
 
       {/* Test 2: Using default mapping */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Typography variant="h6" gutterBottom>
           Test 2: bsPreObj="default" (maps to tmt schema)
         </Typography>
@@ -52,7 +52,7 @@ const SchemaMappingDemo = () => {
       </Paper>
 
       {/* Test 3: Original problem case */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Typography variant="h6" gutterBottom>
           Test 3: bsPreObj="sec" (The original problematic case)
         </Typography>

@@ -14,7 +14,7 @@ const TestBSDataGrid = () => {
         versions of MUI X.
       </Typography>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Typography variant="h6" gutterBottom>
           Test 1: Basic BSDataGrid with Backend API
         </Typography>
@@ -40,7 +40,7 @@ const TestBSDataGrid = () => {
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Typography variant="h6" gutterBottom>
           Test 2: BSDataGrid with Limited Columns
         </Typography>

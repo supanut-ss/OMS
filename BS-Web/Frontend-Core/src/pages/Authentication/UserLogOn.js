@@ -66,7 +66,7 @@ const UserLogOnPage = (props) => {
 
   return (
     <>
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
         <Button
           variant="contained"
           color="info"

@@ -839,6 +839,7 @@ const MyTaskPage = (props) => {
     <Paper
       elevation={0}
       sx={(t) => ({
+        height: "auto",
         p: 3,
         // Glassmorphism background
         backgroundColor:
@@ -861,7 +862,7 @@ const MyTaskPage = (props) => {
             ? t.palette.custom?.glass?.shadow || "0 8px 32px rgba(0, 0, 0, 0.4)"
             : undefined,
         // Smooth transition
-        transition: "all 0.3s ease",
+        transition: "all 0.3s ease", width: "100%"
       })}
     >
       <Typography

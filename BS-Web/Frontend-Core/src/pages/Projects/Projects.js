@@ -61,8 +61,8 @@ const Projects = (props) => {
   useEffect(() => {
     dataGridRef.current?.refreshData();
   }, [props.ma]);
-  return (
-    <Paper sx={{ p: 2, mb: 3 }}>
+ return (
+    <Paper  sx={{ p: 2, mb: 3, width: "100%" }}>
       <BSDataGrid
         bsLocale={lang}
         ref={dataGridRef}

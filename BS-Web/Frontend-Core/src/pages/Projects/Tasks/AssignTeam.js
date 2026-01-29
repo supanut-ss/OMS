@@ -101,11 +101,12 @@ const AssignTeam = (props) => {
     <Paper
       elevation={3}
       sx={{
-        p: 2,
+        p: 2, width: "100%",
         backgroundColor:
           theme.palette.custom?.paperBackground ||
           theme.palette.background.paper,
       }}
+
     >
       <BSDataGrid
         ref={dataRef}
