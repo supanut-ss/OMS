@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useState } from "react";
+import React, { createContext, useContext, useCallback, useState, useRef, useEffect } from "react";
 import {
   Snackbar,
   Alert,
@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import cat from "../assets/images/nyan-cat.gif";
 import NotifyContext from "./NotifyContext";
+import useNotificationSound from "../hooks/useNotificationSound";
 const NotificationsContext = createContext(null);
 export const useNotifications = () => useContext(NotificationsContext);
 
@@ -19,7 +20,14 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
   const [notifications, setNotifications] = useState([]);
   const [total, setTotal] = useState(-1);
   const [totalUnread, setTotalUnread] = useState(0);
+  const prevUnreadRef = useRef(0);
+  useNotificationSound(
+    totalUnread > prevUnreadRef.current
+  );
 
+  useEffect(() => {
+    prevUnreadRef.current = totalUnread;
+  }, [totalUnread]);
   //----------Notification ----------
   const getNotifications = useCallback(async (limit) => {
     const response = await getNotify(limit);
@@ -56,7 +64,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
   }, [deleteNotify]);
 
   const clearAll = useCallback(async () => {
-    console.log("delete all",notifications);
+    console.log("delete all", notifications);
     notifications.forEach(async (notification) => {
       await deleteNotify(notification.id);
     })
