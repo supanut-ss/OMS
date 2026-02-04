@@ -163,7 +163,6 @@ const ImportExcel = (props) => {
         borderBottom: 1,
         borderColor: "divider",
         backgroundColor: "background.paper",
-        borderRadius: 2,
       }}
     >
       {/* แถวบน: AutoComplete + ปุ่ม */}

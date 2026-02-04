@@ -1,4 +1,5 @@
 import { Box, Typography, Button } from "@mui/material";
+import Config from "../utils/Config";
 
 const NotFound = () => {
     return (
@@ -22,7 +23,7 @@ const NotFound = () => {
                 ขออภัย ไม่พบหน้าที่คุณต้องการ
             </Typography>
             <Button
-                href="/"
+                href={Config.BASE_URL+"/"}
                 variant="contained"
                 sx={{
                     background: "#6366f1",

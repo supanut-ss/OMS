@@ -691,7 +691,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           overflow: "auto",
         }}
       >
-        <Outlet />
+        <Outlet  />
       </Box>
       {/* Reset Password Dialog */}
       <ResetPasswordDialog

@@ -76,3 +76,9 @@ code {
   background-color: #2D2D2D !important;
   color: #F14C4C !important;
 }
+
+main>.MuiBox-root {
+  width: 100% !important;
+  height: calc(100vh - 80px);
+
+}
