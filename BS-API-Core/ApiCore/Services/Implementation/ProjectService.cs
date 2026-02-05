@@ -2,6 +2,8 @@
 using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using Sprache;
 using System;
 using System.Data;
 using System.Runtime.InteropServices;
@@ -582,6 +584,97 @@ namespace ApiCore.Services.Implementation
                     message_code = "999",
                     message_text = ex.Message
                 });
+            }
+        }
+
+        public async Task<List<ProjectIncentiveResponse>> GetProjectIncentiveByIdAsync(string projectId, string year)
+        {
+            try
+            {
+                var result = new List<ProjectIncentiveResponse>();
+                using var conn = new SqlConnection(_connectionString) ;
+
+                    using var cmd = new SqlCommand(
+                    "[tmt].[usp_calculate_project_incentive]",
+                    conn
+                );
+
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue(
+                    "@in_intProjectHeaderId",
+                    (object?)projectId ?? DBNull.Value
+                );
+                cmd.Parameters.AddWithValue(
+                    "@in_intYear",
+                    (object?)year ?? DBNull.Value
+                );
+
+                await conn.OpenAsync();
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    ProjectIncentiveResponse projectIncentive = new ProjectIncentiveResponse();
+                    projectIncentive.project_header_id = reader.GetInt32(0);
+                    projectIncentive.project_no = reader.GetString(1);
+                    projectIncentive.project_name = reader.GetString(2);
+
+                    projectIncentive.plan_project_start =
+                        reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy-MM-dd");
+
+                    projectIncentive.plan_project_end =
+                        reader.IsDBNull(4) ? null : reader.GetDateTime(4).ToString("yyyy-MM-dd");
+
+                    projectIncentive.incentive_year = reader.GetInt32(5);
+
+                    projectIncentive.user_id = reader.GetString(6);
+                    projectIncentive.first_name = reader.GetString(7);
+                    projectIncentive.last_name = reader.GetString(8);
+                    projectIncentive.role = reader.GetString(9);
+
+                    projectIncentive.project_value =
+                        reader.IsDBNull(10) ? 0 : reader.GetDecimal(10);
+
+                    projectIncentive.collected_amount =
+                        reader.IsDBNull(11) ? 0 : reader.GetDecimal(11);
+
+                    projectIncentive.role_percentage =
+                        reader.IsDBNull(12) ? 0 : reader.GetDecimal(12);
+
+                    projectIncentive.role_member_count =
+                        reader.GetInt32(13);   // ✅ FIX
+
+                    projectIncentive.percentage_per_person =
+                        reader.IsDBNull(14) ? 0 : reader.GetDecimal(14);
+
+                    projectIncentive.assign_manday =
+                        reader.IsDBNull(15) ? 0 : reader.GetDecimal(15);
+
+                    projectIncentive.total_project_manday =
+                        reader.IsDBNull(16) ? 0 : reader.GetDecimal(16);
+
+                    projectIncentive.actual_work_hour =
+                        reader.IsDBNull(17) ? 0 : reader.GetDecimal(17);
+
+                    projectIncentive.total_actual_work =
+                        reader.IsDBNull(18) ? 0 : reader.GetDecimal(18);
+
+                    projectIncentive.incentive_by_manday =
+                        reader.IsDBNull(19) ? 0 : reader.GetDecimal(19);
+
+                    projectIncentive.incentive_by_actual_work =
+                        reader.IsDBNull(20) ? 0 : reader.GetDecimal(20);
+
+                    result.Add(projectIncentive);
+
+
+                }
+                return result;
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
             }
         }
     }

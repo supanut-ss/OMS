@@ -1,7 +1,6 @@
 import { Box, useTheme } from "@mui/material";
-import MyTaskPage from "./Projects/MyTask";
 import { useOutletContext } from "react-router-dom";
-
+import Incentive from "./Incentive";
 const Home = (props) => {
   const { lang, } = props;
   const theme = useTheme();
@@ -13,7 +12,8 @@ const Home = (props) => {
         minHeight: `calc(95vh - ${theme.spacing(8)})`,
       }}
     >
-      <MyTaskPage lang={lang} permission={permission} />
+      <Incentive lang={lang} permission={permission} />
+      {/* <MyTaskPage lang={lang} permission={permission} /> */}
     </Box>
   );
 };

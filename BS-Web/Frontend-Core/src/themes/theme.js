@@ -240,16 +240,16 @@ export const getTheme = (mode) =>
       },
 
       body1: {
-        fontSize: "clamp(0.95rem, 1.1vw, 1rem)",
+        fontSize: "clamp(0.875rem, 1vw, 0.9375rem)",
         lineHeight: 1.6,
       },
       body2: {
-        fontSize: "clamp(0.85rem, 1vw, 0.9rem)",
+        fontSize: "clamp(0.8rem, 0.9vw, 0.8125rem)",
         lineHeight: 1.5,
       },
 
       button: {
-        fontSize: "clamp(0.8rem, 1vw, 0.875rem)",
+        fontSize: "clamp(0.75rem, 0.9vw, 0.8125rem)",
         fontWeight: 600,
         textTransform: "none",
         letterSpacing: "0.01em",

@@ -116,7 +116,21 @@ const ProjectsDialog = (props) => {
     if (isSaving) return;
     if (!validate()) return;
     setIsSaving(true);
-    let body = { ...formData, master_project_id: formData.master_project_id !== "" ? formData.master_project_id : null }
+    let body = { 
+      ...formData, 
+      master_project_id: formData.master_project_id !== "" ? formData.master_project_id : null,
+      // 🔥 ตรวจสอบ iso_type_id ว่ามีค่าหรือไม่ ถ้าไม่มีให้ใช้ค่า default จาก defaultData
+      iso_type_id: formData.iso_type_id || (props.ma ? 29 : null)
+    }
+    
+    // 🔥 Debug log เพื่อตรวจสอบค่าก่อนส่ง
+    console.log('📤 Saving project with body:', {
+      ...body,
+      iso_type_id: body.iso_type_id,
+      project_type: body.project_type,
+      record_type: body.record_type
+    });
+    
     try {
       const response = await AxiosMaster.post("/projects", body);
 

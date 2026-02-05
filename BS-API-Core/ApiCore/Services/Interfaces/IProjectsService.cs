@@ -15,5 +15,6 @@ namespace ApiCore.Services.Interfaces
         Task<ProjectsResponse> InsertProjecHeaderAsync(InsertProjectHeader project, string userId);
         Task<List<ProjectTaskPhaseResponse>> GetProjectTaskPhasesByIdAsync(int projectId);
         Task<ProjectsResponse> GetProjectsByIdAsync(int projectId);
+        Task<List<ProjectIncentiveResponse>> GetProjectIncentiveByIdAsync(string? projectId, string year);
     }
 }

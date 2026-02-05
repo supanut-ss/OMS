@@ -1,11 +1,15 @@
 ﻿using ApiCore.Models.Requests;
 using ApiCore.Models.Responses;
+using ApiCore.Services.Implementation;
 using ApiCore.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Sprache;
+using System.Data;
 
 namespace ApiCore.Controllers
 {
@@ -224,5 +228,134 @@ namespace ApiCore.Controllers
                 return ResponseError(ex.Message);
             }
         }
+        [HttpGet("incentive")]
+        public async Task<IActionResult> GetProjectIncentive(
+    [FromQuery] string? project_header_id,
+    string year
+)
+        {
+            var flatData = await projectsService
+                .GetProjectIncentiveByIdAsync(project_header_id, year);
+
+            if (flatData == null || flatData.Count == 0)
+            {
+                return Ok(new ApiResponse<List<ProjectIncentiveProjectResponse>>
+                {
+                    message_code = 1,
+                    message_text = "Project incentive not found",
+                    data = new List<ProjectIncentiveProjectResponse>()
+                });
+            }
+
+            var groupedData = flatData
+                .GroupBy(p => new
+                {
+                    p.project_header_id,
+                    p.project_no,
+                    p.project_name,
+                    p.plan_project_start,
+                    p.plan_project_end,
+                    p.project_value,
+                    p.collected_amount,
+                    p.incentive_year
+                })
+                .Select(projectGroup =>
+                {
+                    /* =========================
+                       1) รวม incentive ต่อคน
+                       ========================= */
+                    var memberTotals = projectGroup
+                        .GroupBy(m => new
+                        {
+                            m.user_id,
+                            m.first_name,
+                            m.last_name
+                        })
+                        .Select(g => new
+                        {
+                            g.Key.user_id,
+                            incentive_total =
+                                g.Sum(x =>
+                                    (x.incentive_by_manday ?? 0)
+                                  + (x.incentive_by_actual_work ?? 0)
+                                )
+                        })
+                        .OrderByDescending(x => x.incentive_total)
+                        .ToList();
+
+                    /* =========================
+                       2) ทำ Dense Rank
+                       ========================= */
+                    var rankMap = memberTotals
+                        .Select((x, index) => new
+                        {
+                            x.user_id,
+                            Rank = memberTotals
+                                .Take(index + 1)
+                                .Select(t => t.incentive_total)
+                                .Distinct()
+                                .Count()
+                        })
+                        .ToDictionary(x => x.user_id, x => x.Rank);
+
+                    /* =========================
+                       3) Build Response
+                       ========================= */
+                    return new ProjectIncentiveProjectResponse
+                    {
+                        project_header_id = projectGroup.Key.project_header_id,
+                        project_no = projectGroup.Key.project_no,
+                        project_name = projectGroup.Key.project_name,
+                        project_value = projectGroup.Key.project_value,
+                        collected_amount = projectGroup.Key.collected_amount,
+                        plan_project_start = projectGroup.Key.plan_project_start,
+                        plan_project_end = projectGroup.Key.plan_project_end,
+                        incentive_year = projectGroup.Key.incentive_year,
+
+                        roles = projectGroup
+                            .GroupBy(r => new
+                            {
+                                r.role,
+                                r.role_percentage
+                            })
+                            .Select(roleGroup => new ProjectIncentiveRoleResponse
+                            {
+                                role = roleGroup.Key.role,
+                                role_percentage = roleGroup.Key.role_percentage,
+
+                                member = roleGroup.Select(m => new ProjectIncentiveMemberResponse
+                                {
+                                    user_id = m.user_id,
+                                    first_name = m.first_name,
+                                    last_name = m.last_name,
+
+                                    assign_manday = m.assign_manday,
+                                    actual_work_hour = m.actual_work_hour,
+                                    total_project_manday = m.total_project_manday,
+                                    total_actual_work = m.total_actual_work,
+
+                                    incentive_by_manday = m.incentive_by_manday,
+                                    incentive_by_actual_work = m.incentive_by_actual_work,
+
+                                    incentive_total =
+                                        (m.incentive_by_manday ?? 0)
+                                      + (m.incentive_by_actual_work ?? 0),
+
+                                    rank = rankMap[m.user_id]
+                                }).ToList()
+                            })
+                            .ToList()
+                    };
+                })
+                .ToList();
+
+            return Ok(new ApiResponse<List<ProjectIncentiveProjectResponse>>
+            {
+                message_code = 0,
+                message_text = "success",
+                data = groupedData
+            });
+        }
+
     }
 }
