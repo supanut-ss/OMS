@@ -3,7 +3,8 @@ import {
     Box, Card, CardContent, Typography, Grid, useTheme, useMediaQuery,
     Skeleton, Divider, Stack, Paper, Chip, Alert, TextField, MenuItem,
     Select, FormControl, InputLabel, Fade, Dialog, DialogTitle, DialogContent,
-    IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+    IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    InputAdornment
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -11,6 +12,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import PendingIcon from '@mui/icons-material/Pending';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
+import SearchIcon from '@mui/icons-material/Search';
 import { Line, Doughnut, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -47,6 +49,7 @@ const Incentive = () => {
     const [year, setYear] = useState(new Date().getFullYear());
     const [data, setData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const searchInputRef = React.useRef(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedProject, setSelectedProject] = useState(null);
@@ -74,6 +77,20 @@ const Incentive = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            if (event.key === 'Escape') {
+                setSearchTerm('');
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('th-TH', {
@@ -264,6 +281,15 @@ const Incentive = () => {
             project.name?.toLowerCase().includes(q)
         );
     }, [metrics.projectData, searchTerm]);
+
+    const filteredZeroIncentiveProjects = useMemo(() => {
+        if (!searchTerm.trim()) return metrics.zeroIncentiveProjects;
+        const q = searchTerm.trim().toLowerCase();
+        return metrics.zeroIncentiveProjects.filter((project) =>
+            project.projectNo?.toLowerCase().includes(q) ||
+            project.name?.toLowerCase().includes(q)
+        );
+    }, [metrics.zeroIncentiveProjects, searchTerm]);
 
     // Chart configurations
     const lineChartData = {
@@ -557,7 +583,7 @@ const Incentive = () => {
                 background: isDark
                     ? 'linear-gradient(135deg, rgba(18, 18, 30, 1) 0%, rgba(28, 28, 40, 1) 100%)'
                     : 'linear-gradient(135deg, rgba(245, 247, 255, 1) 0%, rgba(250, 250, 250, 1) 100%)',
-               // p: { xs: 2, sm: 3, md: 4 }
+                p: { xs: 2 }
             }}
         >
             <Box sx={{ width: '100%' }}>
@@ -605,15 +631,37 @@ const Incentive = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="รหัส/ชื่อโปรเจกต์"
                                 size="medium"
+                                inputRef={searchInputRef}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon sx={{ color: 'rgba(255,255,255,0.8)' }} />
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: searchTerm ? (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                aria-label="clear search"
+                                                size="small"
+                                                onClick={() => setSearchTerm('')}
+                                                sx={{ color: 'rgba(255,255,255,0.8)' }}
+                                            >
+                                                <CloseIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null
+                                }}
                                 sx={{
                                     minWidth: { xs: '100%', sm: 280 },
                                     '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.8)' },
+                                    '& .MuiInputLabel-root.Mui-focused': { color: '#ffffff' },
                                     '& .MuiOutlinedInput-root': {
                                         color: 'white',
                                         '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                                        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                                        '&.Mui-focused fieldset': { borderColor: 'white' }
+                                        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.6)' },
+                                        '&.Mui-focused fieldset': { borderColor: '#ffffff', borderWidth: 2 }
                                     },
+                                    '& .MuiOutlinedInput-input::selection': { backgroundColor: 'rgba(255,255,255,0.35)' },
                                     '& input::placeholder': { color: 'rgba(255,255,255,0.5)' }
                                 }}
                             />
@@ -748,7 +796,7 @@ const Incentive = () => {
                                 </Stack>
                                 <Grid container spacing={2}>
                                     {rankDashboard.map((item, index) => (
-                                        <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={item.user_id}>
+                                        <Grid size={{ xs: 6, sm: 4, md: 3, lg: 3 }} key={item.user_id}>
                                             <Box
                                                 sx={{
                                                     p: 2.5,
@@ -924,69 +972,75 @@ const Incentive = () => {
                                 />
                             </Stack>
                             <Divider sx={{ mb: 3 }} />
-                            <Stack spacing={1.5}>
-                                {metrics.zeroIncentiveProjects.map((project, index) => (
-                                    <Paper
-                                        key={index}
-                                        onClick={() => handleProjectClick(project.projectNo)}
-                                        sx={{
-                                            p: 2.5,
-                                            borderRadius: 3.5,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 2,
-                                            cursor: 'pointer',
-                                            bgcolor: isDark ? 'rgba(255, 152, 0, 0.05)' : 'rgba(255, 152, 0, 0.03)',
-                                            border: '1px solid',
-                                            borderColor: isDark ? 'rgba(255, 152, 0, 0.3)' : 'rgba(255, 152, 0, 0.2)',
-                                            transition: 'all 0.3s ease',
-                                            boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.08)',
-                                            '&:hover': {
-                                                bgcolor: isDark ? 'rgba(255, 152, 0, 0.08)' : 'rgba(255, 152, 0, 0.05)',
-                                                borderColor: 'warning.main',
-                                                transform: 'translateX(8px)',
-                                                boxShadow: isDark ? '0 8px 16px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.12)'
-                                            }
-                                        }}
-                                        elevation={0}
-                                    >
-                                        <Chip
-                                            label={`#${index + 1}`}
-                                            size="medium"
-                                            color="warning"
-                                            variant="outlined"
-                                            sx={{ minWidth: 50, fontWeight: 700, fontSize: '0.95rem' }}
-                                        />
-                                        <Box flex={1}>
-                                            <Typography variant="body1" fontWeight={600} gutterBottom>
-                                                {project.projectNo && `${project.projectNo} - `}{project.name}
-                                            </Typography>
-                                            <Stack direction="row" spacing={2} mt={1} flexWrap="wrap" gap={0.5}>
-                                                <Chip
-                                                    label={`Value: ฿${formatCurrency(project.projectValue)}`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    color="default"
-                                                />
-                                                <Chip
-                                                    label={`Collected: ฿${formatCurrency(project.collectedAmount)}`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    color="info"
-                                                />
-                                            </Stack>
-                                        </Box>
-                                        <Box sx={{ textAlign: 'right', minWidth: { xs: '100px', md: '150px' } }}>
+                            {filteredZeroIncentiveProjects.length === 0 && searchTerm.trim() ? (
+                                <Alert severity="info">
+                                    {`ไม่พบโปรเจกต์ที่ค้นหา: ${searchTerm}`}
+                                </Alert>
+                            ) : (
+                                <Stack spacing={1.5}>
+                                    {filteredZeroIncentiveProjects.map((project, index) => (
+                                        <Paper
+                                            key={index}
+                                            onClick={() => handleProjectClick(project.projectNo)}
+                                            sx={{
+                                                p: 2.5,
+                                                borderRadius: 3.5,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                cursor: 'pointer',
+                                                bgcolor: isDark ? 'rgba(255, 152, 0, 0.05)' : 'rgba(255, 152, 0, 0.03)',
+                                                border: '1px solid',
+                                                borderColor: isDark ? 'rgba(255, 152, 0, 0.3)' : 'rgba(255, 152, 0, 0.2)',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.08)',
+                                                '&:hover': {
+                                                    bgcolor: isDark ? 'rgba(255, 152, 0, 0.08)' : 'rgba(255, 152, 0, 0.05)',
+                                                    borderColor: 'warning.main',
+                                                    transform: 'translateX(8px)',
+                                                    boxShadow: isDark ? '0 8px 16px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.12)'
+                                                }
+                                            }}
+                                            elevation={0}
+                                        >
                                             <Chip
-                                                label="No Incentive"
+                                                label={`#${index + 1}`}
+                                                size="medium"
                                                 color="warning"
-                                                size="small"
-                                                sx={{ fontWeight: 600 }}
+                                                variant="outlined"
+                                                sx={{ minWidth: 50, fontWeight: 700, fontSize: '0.95rem' }}
                                             />
-                                        </Box>
-                                    </Paper>
-                                ))}
-                            </Stack>
+                                            <Box flex={1}>
+                                                <Typography variant="body1" fontWeight={600} gutterBottom>
+                                                    {project.projectNo && `${project.projectNo} - `}{project.name}
+                                                </Typography>
+                                                <Stack direction="row" spacing={2} mt={1} flexWrap="wrap" gap={0.5}>
+                                                    <Chip
+                                                        label={`Value: ฿${formatCurrency(project.projectValue)}`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="default"
+                                                    />
+                                                    <Chip
+                                                        label={`Collected: ฿${formatCurrency(project.collectedAmount)}`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="info"
+                                                    />
+                                                </Stack>
+                                            </Box>
+                                            <Box sx={{ textAlign: 'right', minWidth: { xs: '100px', md: '150px' } }}>
+                                                <Chip
+                                                    label="No Incentive"
+                                                    color="warning"
+                                                    size="small"
+                                                    sx={{ fontWeight: 600 }}
+                                                />
+                                            </Box>
+                                        </Paper>
+                                    ))}
+                                </Stack>
+                            )}
                         </CardContent>
                     </Card>
                 )}

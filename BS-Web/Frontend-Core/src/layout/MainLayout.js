@@ -679,7 +679,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           mt: 8,
           width: {
             xs: 0,
-            md: `calc(100% - (${open ? drawerWidth : collapsedWidth}) px )`,
+            md: `calc(100% - ${open ? drawerWidth : collapsedWidth}px)`,
           },
           transition: theme.transitions.create("width", {
             easing: theme.transitions.easing.sharp,

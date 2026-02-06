@@ -220,7 +220,7 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         component="form"
         sx={{
           p: "2px 4px",
-          display: "flex",
+          display: open ? "flex" : "none",
           alignItems: "center",
           width: "auto",
           borderRadius: "unset"
