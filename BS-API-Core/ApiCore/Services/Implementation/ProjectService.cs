@@ -677,5 +677,51 @@ namespace ApiCore.Services.Implementation
                 return null;
             }
         }
+
+        public async Task<List<MonthlyPerformanceInvoiceDto>> GetMonthlyPerformanceInvoicesAsync(int year, int month)
+        {
+            try
+            {
+                var result = new List<MonthlyPerformanceInvoiceDto>();
+
+                using (var conn = new SqlConnection(_connectionString))
+                using (var cmd = new SqlCommand(
+                    "tmt.usp_calculate_monthly_performance_voice", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@in_intYear", year);
+                    cmd.Parameters.AddWithValue("@in_intMonth", month);
+
+                    await conn.OpenAsync();
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            result.Add(new MonthlyPerformanceInvoiceDto
+                            {
+                                incentive_year = reader.GetInt32(0),
+                                incentive_month = reader.GetInt32(1),
+                                project_header_id = reader.GetInt32(2),
+                                project_no = reader.GetString(3),
+                                project_name = reader.GetString(4),
+                                role = reader.GetString(5),
+                                role_percentage = reader.GetDecimal(6),
+                                total_invoice = reader.GetDecimal(7),
+                                incentive_amount = reader.GetDecimal(8),
+                            });
+                        }
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
+            }
+        }
     }
 }

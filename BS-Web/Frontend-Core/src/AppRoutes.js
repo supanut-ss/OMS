@@ -25,6 +25,7 @@ import IsoPage from "./pages/Master/Iso";
 import PermissionRoute from "./components/Router/PermissionRoute";
 import ManPowerPage from "./pages/Projects/ManPower";
 import Incentive from "./pages/Incentive";
+import Performance from "./pages/Performance";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -108,6 +109,10 @@ export default function AppRoutes() {
           <Route path="ma" element={<Projects lang={lang} ma={true} />} />
           <Route path="my-task" element={<MyTaskPage lang={lang} />} />
           <Route path="manpower" element={<ManPowerPage lang={lang} />} />
+        </Route>
+        <Route path="performance" element={<PermissionRoute />}>
+          <Route path="" element={<Performance lang={lang} />} />
+          <Route path="incentive" element={<Incentive lang={lang} />} />
         </Route>
       </Route>
 

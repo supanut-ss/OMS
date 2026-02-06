@@ -26,6 +26,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import GroupIcon from '@mui/icons-material/Group';
 import StarIcon from '@mui/icons-material/Star';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useAuth } from "../contexts/AuthContext";
 
 const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
@@ -124,6 +125,8 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         return <LocalOfferIcon />
       case 7:
         return <QueryStatsIcon />
+      case 8:
+        return <EmojiEventsIcon />
       default:
         return <MenuOpenIcon />
     }

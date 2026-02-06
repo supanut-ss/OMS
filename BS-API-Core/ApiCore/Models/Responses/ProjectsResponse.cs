@@ -168,5 +168,38 @@
         public string message_text { get; set; }
         public T data { get; set; }
     }
+    public class MonthlyPerformanceInvoiceDto
+    {
+        public int incentive_year { get; set; }
+        public int incentive_month { get; set; }
+        public int project_header_id { get; set; }
+
+        public string project_no { get; set; }
+        public string project_name { get; set; }
+
+        public string role { get; set; }
+
+        public decimal role_percentage { get; set; }
+        public decimal total_invoice { get; set; }
+        public decimal incentive_amount { get; set; }
+    }
+    public class PerformanceRoleDto
+    {
+        public string role { get; set; }
+        public decimal role_percentage { get; set; }
+        public decimal incentive_amount { get; set; }
+    }
+    public class PerformanceProjectDto
+    {
+        public int project_header_id { get; set; }
+        public string project_no { get; set; }
+        public string project_name { get; set; }
+        public decimal total_invoice { get; set; }
+        public List<PerformanceRoleDto> roles { get; set; }
+    }
+    public class PerformanceProjectWrapperDto
+    {
+        public PerformanceProjectDto project { get; set; }
+    }
 
 }

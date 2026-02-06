@@ -16,5 +16,6 @@ namespace ApiCore.Services.Interfaces
         Task<List<ProjectTaskPhaseResponse>> GetProjectTaskPhasesByIdAsync(int projectId);
         Task<ProjectsResponse> GetProjectsByIdAsync(int projectId);
         Task<List<ProjectIncentiveResponse>> GetProjectIncentiveByIdAsync(string? projectId, string year);
+        Task<List<MonthlyPerformanceInvoiceDto>> GetMonthlyPerformanceInvoicesAsync(int year, int month);
     }
 }

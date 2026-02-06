@@ -356,6 +356,57 @@ namespace ApiCore.Controllers
                 data = groupedData
             });
         }
+        [HttpGet("performance")]
+        public async Task<IActionResult> GetProjectPerformanceReport([FromQuery] int year, [FromQuery] int? month)
+        {
+            int monthValue = month ?? 0;
+            if (monthValue < 0 || monthValue > 12)
+            {
+                return BadRequest(new
+                {
+                    message = "month must be between 0 and 12 (0 = yearly)"
+                });
+            }
+            try
+            {
+                var result = await projectsService.GetMonthlyPerformanceInvoicesAsync(year, monthValue);
+                var groupedData = result
+                    .GroupBy(x => new
+                    {
+                        x.project_header_id,
+                        x.project_no,
+                        x.project_name,
+                        x.total_invoice
+                    })
+                    .Select(g => new PerformanceProjectDto
+                    {
+                      
+                            project_header_id = g.Key.project_header_id,
+                            project_no = g.Key.project_no,
+                            project_name = g.Key.project_name,
+                            total_invoice = g.Key.total_invoice,
+                            roles = g.Select(r => new PerformanceRoleDto
+                            {
+                                role = r.role,
+                                role_percentage = r.role_percentage,
+                                incentive_amount = r.incentive_amount
+                            }).ToList()
+                        
+                    })
+                    .ToList();
+                var response = new ApiResponse<List<PerformanceProjectDto>>
+                {
+                    message_code = 0,
+                    message_text = "success",
+                    data = groupedData
+                };
 
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return ResponseError(ex.Message);
+            }
+         }
+        }
     }
-}
