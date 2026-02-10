@@ -30,7 +30,7 @@ namespace ReportViewer
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField lblReportTitle;
+        protected global::System.Web.UI.WebControls.Label lblReportTitle;
 
         /// <summary>
         /// MainContent control.

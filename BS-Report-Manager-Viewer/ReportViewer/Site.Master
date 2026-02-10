@@ -1,4 +1,5 @@
 ﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.Master.cs" Inherits="ReportViewer.SiteMaster" %>
+
 <!DOCTYPE html>
 <html lang="th">
 <head runat="server">
@@ -12,18 +13,18 @@
     <form runat="server">
         <asp:ScriptManager runat="server" />
         <!-- Header -->
-        <%--<div class="header">
+        <div class="header">
             <div class="header-inner">
                 <span class="header-logo">&#x1F4CA;</span>
                 <span class="header-title">BS Report Viewer</span>
                 <asp:Label ID="lblReportTitle" runat="server" CssClass="header-report-title" />
             </div>
-        </div>--%>
-        <asp:HiddenField ID="lblReportTitle" runat="server" />
+        </div>
+        <%--   <asp:HiddenField ID="lblReportTitle" runat="server" />--%>
 
         <!-- Content -->
         <div class="content-wrapper">
-            
+
             <asp:ContentPlaceHolder ID="MainContent" runat="server" />
         </div>
     </form>
