@@ -10,8 +10,8 @@ namespace ReportViewer
         /// </summary>
         public string ReportTitle
         {
-            get { return lblReportTitle.Text; }
-            set { lblReportTitle.Text = value; }
+            get { return lblReportTitle.Value; }
+            set { lblReportTitle.Value = value; }
         }
 
         protected void Page_Load(object sender, EventArgs e)

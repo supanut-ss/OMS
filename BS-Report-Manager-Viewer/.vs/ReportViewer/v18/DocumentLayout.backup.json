@@ -3,12 +3,36 @@
   "WorkspaceRootPath": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\default.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\site.master||{B30AFBFF-D992-43B7-B62D-2642580A2883}",
+      "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\site.master||{B30AFBFF-D992-43B7-B62D-2642580A2883}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\site.master.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\site.master.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\reportviewer\\default.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\default.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\web.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\crystalreportviewer.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\crystalreportviewer.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\ssrsreportviewer.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\ssrsreportviewer.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\rdlcreportviewer.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\rdlcreportviewer.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|d:\\onedrive - oga.co.th\\bs_platform\\bs-platform\\bs-report-manager-viewer\\reportviewer\\config\\appconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|ReportViewer\\ReportViewer.csproj|solutionrelative:reportviewer\\config\\appconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,7 +42,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 21,
+          "SelectedChildIndex": 22,
           "Children": [
             {
               "$type": "Bookmark",
@@ -106,7 +130,33 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Site.Master.cs",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Site.Master.cs",
+              "RelativeDocumentMoniker": "ReportViewer\\Site.Master.cs",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Site.Master.cs",
+              "RelativeToolTip": "ReportViewer\\Site.Master.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-10T04:16:32.482Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Site.Master",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Site.Master",
+              "RelativeDocumentMoniker": "ReportViewer\\Site.Master",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Site.Master",
+              "RelativeToolTip": "ReportViewer\\Site.Master",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-10T04:13:11.761Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "Default.aspx",
               "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Default.aspx",
               "RelativeDocumentMoniker": "ReportViewer\\Default.aspx",
@@ -119,13 +169,65 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
+              "Title": "CrystalReportViewer.aspx",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\CrystalReportViewer.aspx",
+              "RelativeDocumentMoniker": "ReportViewer\\CrystalReportViewer.aspx",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\CrystalReportViewer.aspx",
+              "RelativeToolTip": "ReportViewer\\CrystalReportViewer.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-10T04:02:25.805Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "RdlcReportViewer.aspx",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\RdlcReportViewer.aspx",
+              "RelativeDocumentMoniker": "ReportViewer\\RdlcReportViewer.aspx",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\RdlcReportViewer.aspx",
+              "RelativeToolTip": "ReportViewer\\RdlcReportViewer.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-10T04:02:21.221Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "SsrsReportViewer.aspx",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\SsrsReportViewer.aspx",
+              "RelativeDocumentMoniker": "ReportViewer\\SsrsReportViewer.aspx",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\SsrsReportViewer.aspx",
+              "RelativeToolTip": "ReportViewer\\SsrsReportViewer.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-10T04:02:13.676Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "AppConfig.cs",
+              "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Config\\AppConfig.cs",
+              "RelativeDocumentMoniker": "ReportViewer\\Config\\AppConfig.cs",
+              "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Config\\AppConfig.cs",
+              "RelativeToolTip": "ReportViewer\\Config\\AppConfig.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-10T04:00:37.976Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "Web.config",
               "DocumentMoniker": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Web.config",
               "RelativeDocumentMoniker": "ReportViewer\\Web.config",
               "ToolTip": "D:\\OneDrive - oga.co.th\\BS_Platform\\BS-Platform\\BS-Report-Manager-Viewer\\ReportViewer\\Web.config",
               "RelativeToolTip": "ReportViewer\\Web.config",
-              "ViewState": "AgIAABUAAAAAAAAAAAAAADcAAAATAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000601|",
               "WhenOpened": "2026-02-10T03:17:35.75Z",
               "EditorCaption": ""

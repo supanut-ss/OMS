@@ -110,30 +110,35 @@
     </Compile>
     <Compile Include="Site.Master.cs">
       <DependentUpon>Site.Master</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="Site.Master.designer.cs">
       <DependentUpon>Site.Master</DependentUpon>
     </Compile>
     <Compile Include="Default.aspx.cs">
       <DependentUpon>Default.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="Default.aspx.designer.cs">
       <DependentUpon>Default.aspx</DependentUpon>
     </Compile>
     <Compile Include="CrystalReportViewer.aspx.cs">
       <DependentUpon>CrystalReportViewer.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="CrystalReportViewer.aspx.designer.cs">
       <DependentUpon>CrystalReportViewer.aspx</DependentUpon>
     </Compile>
     <Compile Include="RdlcReportViewer.aspx.cs">
       <DependentUpon>RdlcReportViewer.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="RdlcReportViewer.aspx.designer.cs">
       <DependentUpon>RdlcReportViewer.aspx</DependentUpon>
     </Compile>
     <Compile Include="SsrsReportViewer.aspx.cs">
       <DependentUpon>SsrsReportViewer.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="SsrsReportViewer.aspx.designer.cs">
       <DependentUpon>SsrsReportViewer.aspx</DependentUpon>
