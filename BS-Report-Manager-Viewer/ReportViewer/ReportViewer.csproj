@@ -101,6 +101,8 @@
     <Content Include="CrystalReportViewer.aspx" />
     <Content Include="RdlcReportViewer.aspx" />
     <Content Include="SsrsReportViewer.aspx" />
+    <Content Include="ReportExport.ashx" />
+    <Content Include="ReportFileHandler.ashx" />
     <Content Include="Styles\Site.css" />
   </ItemGroup>
   <ItemGroup>
@@ -144,6 +146,22 @@
       <DependentUpon>SsrsReportViewer.aspx</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <!-- Models -->
+    <Compile Include="Models\ReportConfig.cs" />
+    <Compile Include="Models\ReportRequest.cs" />
+    <!-- Services -->
+    <Compile Include="Services\ReportConfigService.cs" />
+    <Compile Include="Services\ReportDataService.cs" />
+    <Compile Include="Services\CrystalReportEngine.cs" />
+    <Compile Include="Services\RdlcReportEngine.cs" />
+    <Compile Include="Services\SsrsReportEngine.cs" />
+    <!-- API Handler -->
+    <Compile Include="ReportExport.ashx.cs">
+      <DependentUpon>ReportExport.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="ReportFileHandler.ashx.cs">
+      <DependentUpon>ReportFileHandler.ashx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="CrystalReports\" />

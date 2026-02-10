@@ -1,73 +1,56 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
-using System.Web;
 using System.Web.UI;
 using CrystalDecisions.CrystalReports.Engine;
-using ReportViewer.Config;
+using ReportViewer.Models;
+using ReportViewer.Services;
 
 namespace ReportViewer
 {
+    /// <summary>
+    /// Config-driven Crystal Report Viewer
+    /// Reads config from rpt.t_com_config_report, executes SQL, assigns DataSource
+    /// </summary>
     public partial class CrystalReportViewerPage : Page
     {
-        private ReportDocument rpt = new ReportDocument();
-
         protected void Page_Init(object sender, EventArgs e)
         {
             if (!IsPostBack)
             {
                 try
                 {
-                    // Set Report Title
+                    string reportCode = Request.QueryString["report_code"];
+                    if (string.IsNullOrEmpty(reportCode))
+                    {
+                        ShowError("report_code is required");
+                        return;
+                    }
+
+                    // Get report config from DB
+                    ReportConfig config = ReportConfigService.GetConfig(reportCode);
+
+                    // Set title
                     SiteMaster master = (SiteMaster)this.Master;
-                    string reportTitle = Request.QueryString["_app_Reporttitle"];
-                    if (!string.IsNullOrEmpty(reportTitle))
+                    if (!string.IsNullOrEmpty(config.ReportName))
                     {
-                        master.ReportTitle = Server.UrlDecode(reportTitle);
-                        Page.Title = Server.UrlDecode(reportTitle);
+                        master.ReportTitle = config.ReportName;
+                        Page.Title = config.ReportName;
                     }
 
-                    // Get Report Path
-                    string reportPath = Request.QueryString["_app_reportpath"];
-                    if (string.IsNullOrEmpty(reportPath))
-                    {
-                        ShowError("Report Path is required (_app_reportpath)");
-                        return;
-                    }
+                    // Get parameters from query string
+                    Dictionary<string, string> parameters = GetParametersFromQueryString();
 
-                    // Load Report
-                    string fullPath = Server.MapPath("~/CrystalReports/" + reportPath);
-                    if (!System.IO.File.Exists(fullPath))
-                    {
-                        ShowError("Report file not found: " + reportPath);
-                        return;
-                    }
-
-                    rpt.Load(fullPath);
-
-                    // Set Parameters from query string
-                    SetParametersFromQueryString(rpt);
-
-                    // Set Database Connection
-                    string server = Request.QueryString["_db_server"];
-                    string database = Request.QueryString["_db_name"];
-                    string user = Request.QueryString["_db_user"];
-                    string pass = Request.QueryString["_db_pass"];
-
-                    // Use query string values if provided, otherwise fall back to config
-                    server = !string.IsNullOrEmpty(server) ? server : AppConfig.Instance.CrtServer;
-                    database = !string.IsNullOrEmpty(database) ? database : AppConfig.Instance.CrtDatabase;
-                    user = !string.IsNullOrEmpty(user) ? user : AppConfig.Instance.CrtUser;
-                    pass = !string.IsNullOrEmpty(pass) ? pass : AppConfig.Instance.CrtPass;
-
-                    rpt.DataSourceConnections[0].SetConnection(server, database, user, pass);
+                    // Load report with data source assigned
+                    ReportDocument rptDoc = CrystalReportEngine.LoadReport(config, parameters);
 
                     // Assign to viewer
-                    CrystalReportViewer1.ReportSource = rpt;
-                    CrystalReportViewer1.Zoom(AppConfig.Instance.CrtZoomDefault);
+                    CrystalReportViewer1.ReportSource = rptDoc;
 
                     // Store in session for postback
-                    Session["CrystalReportDocument"] = rpt;
+                    Session["CrystalReportDocument"] = rptDoc;
+                    Session["ReportConfig"] = config;
                 }
                 catch (Exception ex)
                 {
@@ -77,7 +60,7 @@ namespace ReportViewer
             }
             else
             {
-                // Postback — restore from session
+                // Postback: restore from session
                 ReportDocument doc = Session["CrystalReportDocument"] as ReportDocument;
                 if (doc != null)
                 {
@@ -87,29 +70,19 @@ namespace ReportViewer
         }
 
         /// <summary>
-        /// Parse query string parameters and set them on the report.
-        /// Skip internal parameters that start with _app_ or _report_ or _db_ or _ssrs_
+        /// Get parameters from query string, excluding internal keys
         /// </summary>
-        private void SetParametersFromQueryString(ReportDocument report)
+        private Dictionary<string, string> GetParametersFromQueryString()
         {
-            string[] internalPrefixes = { "_app_", "_report_", "_db_", "_ssrs_" };
-
+            var parameters = new Dictionary<string, string>();
             foreach (string key in Request.QueryString.AllKeys)
             {
                 if (string.IsNullOrEmpty(key)) continue;
-                if (internalPrefixes.Any(p => key.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
+                if (key.Equals("report_code", StringComparison.OrdinalIgnoreCase)) continue;
 
-                string value = Server.UrlDecode(Request.QueryString[key]);
-
-                try
-                {
-                    report.SetParameterValue(key, value);
-                }
-                catch
-                {
-                    // Parameter not found in report — skip silently
-                }
+                parameters[key] = Request.QueryString[key];
             }
+            return parameters;
         }
 
         private void ShowError(string message)

@@ -1,32 +1,35 @@
 # BS Report Manager Viewer
 
 Web Report Viewer application built on **ASP.NET Web Forms (.NET Framework 4.8)**.  
-Supports **Crystal Report (.rpt)**, **Microsoft RDLC (.rdlc)**, and **SSRS** reports in a single unified viewer.
+Config-driven report rendering — supports **Crystal Report (.rpt)**, **Microsoft RDLC (.rdlc)**, and **SSRS** reports.
+
+Report configuration is stored in database table `rpt.t_com_config_report`.  
+Frontend/API sends `report_code` + JSON parameters to view or export reports.
 
 ---
 
 ## Features
 
-| Report Type | Viewer Control | Description |
+| Report Type | Engine | Description |
 |---|---|---|
-| **Crystal Report** (`.rpt`) | SAP Crystal Reports Viewer 13.0 | Load `.rpt` files, set parameters, connect to SQL Server, export to PDF/Word/Excel/CSV |
-| **RDLC Report** (`.rdlc`) | Microsoft ReportViewer 15.0 | Local report processing with stored procedure data source support |
-| **SSRS Report** | Microsoft ReportViewer 15.0 (Remote) | Connect to SQL Server Reporting Services with credential support |
+| **RPT** (Crystal Report) | `CrystalReportEngine` | Load .rpt, execute SQL, assign DataSource, view or export PDF/Word/Excel/CSV |
+| **RDLC** (Report Definition) | `RdlcReportEngine` | Load .rdlc, execute SQL, assign DataSet by `rdlc_dataset_name`, view or render PDF |
+| **SSRS** (Reporting Services) | `SsrsReportEngine` | Connect to SSRS server, redirect to viewer URL or export PDF via HTTP render |
 
-### Additional Features
-- **Auto-detect report type** from file extension (`.rpt` → Crystal, `.rdlc` → RDLC)
-- **Query string API** — open reports via URL with parameters
-- **Configurable database connection** — via `Web.config` or query string override
-- **Export support** — PDF, Word, Excel, CSV (Crystal Reports)
-- **Session-based postback** — maintains report state across postbacks
+### Key Features
+- **Config-driven** from `rpt.t_com_config_report` database table
+- **SQL parameter replacement** — View pattern (WHERE append) and Stored Procedure pattern (`{field}` placeholder)
+- **PDF Export API** — `ReportExport.ashx` endpoint returns PDF/Excel/Word binary
+- **CORS support** — API callable from React frontend
+- **Auto-detect router** — `Default.aspx?report_code=XXX` routes to correct viewer
 
 ---
 
 ## Prerequisites
 
 1. **Visual Studio 2019+** with ASP.NET and web development workload
-2. **SAP Crystal Reports Runtime** (v13.0) — [Download](https://www.sap.com/cmp/td/sap-crystal-reports-visual-studio-702702702702702702.html)
-3. **SQL Server** for report data source
+2. **SAP Crystal Reports Runtime** (v13.0) installed on server
+3. **SQL Server** with `Timesheet` database containing `rpt.t_com_config_report` table
 4. **.NET Framework 4.8** Developer Pack
 
 ---
@@ -39,115 +42,109 @@ Open `ReportViewer.sln` in Visual Studio.
 
 ### 2. NuGet Restore
 
-Right-click solution → **Restore NuGet Packages**  
-This installs `Microsoft.ReportingServices.ReportViewerControl.WebForms` (v150.1537.0).
+Right-click solution > **Restore NuGet Packages**
 
 ### 3. Configure Web.config
 
-Edit `ReportViewer/Web.config` and update the database connection settings:
+#### Connection Strings
 
 ```xml
-<appSettings>
-    <add key="crtServer"   value="YOUR_SQL_SERVER" />
-    <add key="crtUser"     value="sa" />
-    <add key="crtPass"     value="YOUR_PASSWORD" />
-    <add key="crtDatabase" value="YOUR_DATABASE" />
-</appSettings>
+<connectionStrings>
+    <!-- For executing sql_command from config -->
+    <add name="ReportDB" connectionString="Data Source=YOUR_SERVER;Initial Catalog=YOUR_DB;User ID=sa;Password=YOUR_PASS;" />
+    <!-- For reading rpt.t_com_config_report -->
+    <add name="ReportConfigDb" connectionString="Data Source=YOUR_SERVER;Initial Catalog=Timesheet;User ID=sa;Password=YOUR_PASS;" />
+</connectionStrings>
 ```
 
-For SSRS reports, also configure:
+#### Application Server Path
 
 ```xml
-<add key="ssrsUrl"    value="http://your-ssrs-server/reportserver" />
-<add key="ssrsUser"   value="ssrs_user" />
-<add key="ssrsPass"   value="ssrs_password" />
-<add key="ssrsDomain" value="YOUR_DOMAIN" />
+<add key="AppServerPath" value="D:\Reports" />
 ```
 
-### 4. Place Report Files
+This replaces `@app_server_path` in `report_path` column values.
 
-- Crystal Reports (`.rpt`) → `ReportViewer/CrystalReports/`
-- RDLC Reports (`.rdlc`) → `ReportViewer/RdlcReports/`
+### 4. Create Config Table
+
+Run the SQL script to create `rpt.t_com_config_report` table in your Timesheet database.
 
 ### 5. Build & Run
 
-Press **F5** or **Ctrl+F5** in Visual Studio to build and run with IIS Express.
+Press **F5** in Visual Studio.
 
 ---
 
-## Usage — URL API
+## Usage
 
-### Crystal Report
-
-```
-/Default.aspx?_app_reportpath=MyReport.rpt&_app_Reporttitle=My Report&param1=value1&param2=value2
-```
-
-### RDLC Report
+### View Report (Browser)
 
 ```
-/Default.aspx?_app_reportpath=MyReport.rdlc&_app_Reporttitle=My Report&_app_storedproc=sp_GetData&param1=value1
+GET /Default.aspx?report_code=SLAReport&FilterConditionString=sla_time='10:30'
 ```
 
-### SSRS Report
+### Export PDF (API)
+
+```http
+POST /ReportExport.ashx
+Content-Type: application/json
+
+{
+  "report_code": "SLAReport",
+  "parameters": {
+    "FilterConditionString": "sla_time = '10:30'",
+    "filter_value_sla_time": "10:30"
+  },
+  "output_format": "pdf"
+}
+```
+
+Returns: `application/pdf` binary
+
+### Get Report Config (API)
 
 ```
-/Default.aspx?_report_type=ssrs&_ssrs_url=http://server/reportserver&_ssrs_path=/Reports/MyReport&param1=value1
+GET /ReportExport.ashx?action=config&report_code=SLAReport
 ```
 
-### Direct Page Access
-
-You can also access viewer pages directly:
-
-```
-/CrystalReportViewer.aspx?_app_reportpath=MyReport.rpt&_app_Reporttitle=My Report
-/RdlcReportViewer.aspx?_app_reportpath=MyReport.rdlc&_app_Reporttitle=My Report
-/SsrsReportViewer.aspx?_ssrs_url=http://server/reportserver&_ssrs_path=/Reports/MyReport
-```
+Returns JSON with config including `json_parameter` for frontend UI rendering.
 
 ---
 
-## Query String Parameters
+## SQL Parameter Replacement
 
-### Common Parameters
+### Pattern 1: View (`sql_object_type = "View"`)
 
-| Parameter | Required | Description |
-|---|---|---|
-| `_report_type` | No | Report type: `crystal`, `rdlc`, `ssrs`. Auto-detected from file extension if not specified |
-| `_app_reportpath` | Yes* | Report file name (e.g. `MyReport.rpt`, `MyReport.rdlc`) |
-| `_app_Reporttitle` | No | Display title in the header |
+```sql
+-- sql_command in DB:
+SELECT * FROM Tmt.v_tmt_man_power WHERE 1=1
 
-### Database Override (Crystal/RDLC)
+-- Parameter: { "FilterConditionString": "owner = 'xxx' AND status = 'Active'" }
+-- Result:
+SELECT * FROM Tmt.v_tmt_man_power WHERE 1=1 AND owner = 'xxx' AND status = 'Active'
+```
 
-| Parameter | Description |
-|---|---|
-| `_db_server` | SQL Server hostname (overrides `Web.config`) |
-| `_db_name` | Database name |
-| `_db_user` | SQL username |
-| `_db_pass` | SQL password |
+### Pattern 2: Stored Procedure (`sql_object_type = "Stored Procedure"`)
 
-### RDLC Specific
+```sql
+-- sql_command in DB:
+EXEC [tmt].[usp_calc_sla_target]
+  @in_vchFilterCondition = N'{FilterConditionString}',
+  @in_vchOperatorSLATime = N'{filter_operator_sla_time}',
+  @in_vchValueSLATime = N'{filter_value_sla_time}'
 
-| Parameter | Description |
-|---|---|
-| `_app_datasource` | DataSource name in RDLC (default: `DataSet1`) |
-| `_app_storedproc` | Stored procedure name for data retrieval |
+-- Parameters: {
+--   "FilterConditionString": "sla_time = '10:30'",
+--   "filter_operator_sla_time": "=",
+--   "filter_value_sla_time": "10:30"
+-- }
 
-### SSRS Specific
-
-| Parameter | Required | Description |
-|---|---|---|
-| `_ssrs_url` | Yes | SSRS Report Server URL |
-| `_ssrs_path` | Yes | Report path on SSRS (e.g. `/Reports/MyReport`) |
-| `_ssrs_user` | No | SSRS username (overrides `Web.config`) |
-| `_ssrs_pass` | No | SSRS password |
-| `_ssrs_domain` | No | SSRS domain |
-
-### Report Parameters
-
-Any query string parameter **not** starting with `_app_`, `_report_`, `_db_`, or `_ssrs_` will be passed as a **report parameter**.
-
-Example: `&StartDate=2026-01-01&EndDate=2026-01-31` → sets report parameters `StartDate` and `EndDate`.
+-- Result (single quotes escaped):
+EXEC [tmt].[usp_calc_sla_target]
+  @in_vchFilterCondition = N'sla_time = ''10:30''',
+  @in_vchOperatorSLATime = N'=',
+  @in_vchValueSLATime = N'10:30'
+```
 
 ---
 
@@ -155,94 +152,82 @@ Example: `&StartDate=2026-01-01&EndDate=2026-01-31` → sets report parameters `
 
 ```
 BS-Report-Manager-Viewer/
-├── ReportViewer.sln                    # Solution file
-├── nuget.exe                           # NuGet CLI (for package restore)
-├── packages/                           # NuGet packages
-└── ReportViewer/
-    ├── ReportViewer.csproj             # Project file (.NET Framework 4.8)
-    ├── Web.config                      # Configuration
-    ├── packages.config                 # NuGet package references
-    ├── Global.asax / .cs               # Application startup
-    ├── Site.Master / .cs               # Master page layout
-    ├── Default.aspx / .cs              # Landing page & auto-router
-    ├── CrystalReportViewer.aspx / .cs  # Crystal Report viewer
-    ├── RdlcReportViewer.aspx / .cs     # RDLC Report viewer
-    ├── SsrsReportViewer.aspx / .cs     # SSRS Report viewer
-    ├── Config/
-    │   └── AppConfig.cs                # Singleton config helper
-    ├── Styles/
-    │   └── Site.css                    # CSS styles
-    ├── Properties/
-    │   └── AssemblyInfo.cs
-    ├── CrystalReports/                 # Place .rpt files here
-    └── RdlcReports/                    # Place .rdlc files here
++-- ReportViewer.sln
++-- ReportViewer/
+    +-- ReportViewer.csproj             (.NET Framework 4.8)
+    +-- Web.config                      (Connection strings, settings)
+    +-- Global.asax / .cs
+    +-- Site.Master / .cs
+    +-- Default.aspx / .cs              (Auto-router by report_code)
+    +-- CrystalReportViewer.aspx / .cs  (Crystal Report viewer)
+    +-- RdlcReportViewer.aspx / .cs     (RDLC Report viewer)
+    +-- SsrsReportViewer.aspx / .cs     (SSRS Report viewer)
+    +-- ReportExport.ashx / .cs         (PDF Export API)
+    +-- Models/
+    |   +-- ReportConfig.cs             (DB table model)
+    |   +-- ReportRequest.cs            (API request model)
+    +-- Services/
+    |   +-- ReportConfigService.cs      (Read config from DB)
+    |   +-- ReportDataService.cs        (SQL execution + parameter replacement)
+    |   +-- CrystalReportEngine.cs      (RPT load + SetDataSource + export)
+    |   +-- RdlcReportEngine.cs         (RDLC load + Assign DataSet + render)
+    |   +-- SsrsReportEngine.cs         (SSRS URL build + HTTP render)
+    +-- Config/
+    |   +-- AppConfig.cs                (Singleton config helper)
+    +-- Styles/
+    |   +-- Site.css
+    +-- Properties/
+        +-- AssemblyInfo.cs
 ```
 
 ---
 
-## Troubleshooting
+## Database: rpt.t_com_config_report
 
-### Crystal Reports Runtime not found
-
-Install **SAP Crystal Reports Runtime** (SP36 or later) for .NET Framework.  
-Ensure the version in `Web.config` assemblies matches the installed version (default: `13.0.4000.0`).
-
-### Microsoft.ReportViewer.WebForms not found
-
-Run NuGet Restore in Visual Studio or:
-
-```bash
-nuget.exe restore ReportViewer\packages.config -PackagesDirectory packages
-```
-
-### WebApplication.targets not found
-
-Ensure the **ASP.NET and web development** workload is installed in Visual Studio Installer.
-
----
-
-## Technology Stack
-
-| Component | Version |
-|---|---|
-| .NET Framework | 4.8 |
-| ASP.NET Web Forms | 4.8 |
-| SAP Crystal Reports | 13.0.4000.0 |
-| Microsoft ReportViewer | 15.0.0.0 |
-| NuGet Package | Microsoft.ReportingServices.ReportViewerControl.WebForms 150.1537.0 |
+| Column | Type | Description |
+|---|---|---|
+| `report_code` | varchar(50) PK | Unique report code |
+| `report_name` | varchar(100) | Display name |
+| `report_type` | varchar(10) | RPT, RDLC, SSRS, HTML, BarTender |
+| `report_path` | nvarchar(150) | File path (supports `@app_server_path`) |
+| `rdlc_dataset_name` | varchar(25) | RDLC DataSet name for binding |
+| `ssrs_server_url` | varchar(50) | SSRS Report Server URL |
+| `ssrs_report_path` | nvarchar(150) | SSRS report path |
+| `ssrs_username/password/domain_name` | varchar | SSRS credentials |
+| `run_as` | varchar(25) | PDF Viewer / Report Viewer / Text Viewer |
+| `sql_object_type` | varchar(25) | View / Stored Procedure |
+| `sql_command` | nvarchar(max) | SQL with `{field}` placeholders |
+| `json_parameter` | nvarchar(max) | UI parameter definition (JSON) |
+| `is_active` | varchar(3) | YES / NO |
 
 ---
 
 ## Changelog
 
+### v2.0.0 — 2026-02-10
+
+**Config-Driven Redesign**
+
+- Reports configured via `rpt.t_com_config_report` database table
+- Frontend sends `report_code` + JSON parameters instead of file paths
+- SQL parameter replacement: View (WHERE append) and Stored Procedure (`{field}` placeholder)
+- Crystal Report uses API Assign DataSource (SetDataSource with DataTable)
+- Added `ReportExport.ashx` API endpoint for PDF/Excel/Word export
+- Added `ReportConfigService` for reading config from Timesheet DB
+- Added `ReportDataService` for SQL execution with parameter replacement
+- Added `CrystalReportEngine`, `RdlcReportEngine`, `SsrsReportEngine`
+- CORS support for cross-origin API calls from React frontend
+- Two connection strings: `ReportConfigDb` (config) and `ReportDB` (data)
+- `AppServerPath` setting for resolving `@app_server_path` in report paths
+
 ### v1.0.0 — 2026-02-10
 
 **Initial Release**
 
-- Created ASP.NET Web Forms project targeting .NET Framework 4.8
-- Crystal Report Viewer (`CrystalReportViewer.aspx`)
-  - Load `.rpt` files from `CrystalReports/` folder
-  - Set report parameters from query string
-  - Connect to SQL Server via `Web.config` or query string override
-  - Support export to PDF, Word, Excel, CSV
-  - Session-based report document for postback handling
-- RDLC Report Viewer (`RdlcReportViewer.aspx`)
-  - Load `.rdlc` files from `RdlcReports/` folder
-  - Local report processing with `Microsoft.Reporting.WebForms.ReportViewer`
-  - Data loading from stored procedures via `SqlDataAdapter`
-  - Set report parameters from query string
-- SSRS Report Viewer (`SsrsReportViewer.aspx`)
-  - Remote report processing connecting to SSRS server
-  - Custom `IReportServerCredentials` implementation for authentication
-  - Set report parameters from query string
-- Auto-detect router (`Default.aspx`)
-  - Auto-detect report type from file extension (`.rpt` / `.rdlc`)
-  - Redirect to appropriate viewer page with all query parameters preserved
-- Landing page with report type info cards
-- Unified `Site.Master` layout with gradient header
-- `AppConfig.cs` singleton configuration helper
-- UTF-8 encoding support with `globalization` settings
-- Responsive CSS design
+- ASP.NET Web Forms project targeting .NET Framework 4.8
+- Crystal Report, RDLC, and SSRS viewers
+- Query string based parameter passing
+- Auto-detect router (Default.aspx)
 
 ---
 

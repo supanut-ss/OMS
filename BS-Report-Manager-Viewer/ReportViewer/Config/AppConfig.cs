@@ -38,10 +38,24 @@ namespace ReportViewer.Config
 
         #region Application Settings
         public string AppTitle => ConfigurationManager.AppSettings["AppTitle"] ?? "BS Report Viewer";
+        public string AppServerPath => ConfigurationManager.AppSettings["AppServerPath"] ?? "";
         #endregion
 
-        #region Connection String
+        #region Connection Strings
+        /// <summary>
+        /// Connection string for report data queries (sql_command execution)
+        /// </summary>
         public string ReportDbConnectionString => ConfigurationManager.ConnectionStrings["ReportDB"]?.ConnectionString ?? "";
+
+        /// <summary>
+        /// Connection string for reading rpt.t_com_config_report (Timesheet DB)
+        /// </summary>
+        public string ReportConfigConnectionString => ConfigurationManager.ConnectionStrings["ReportConfigDb"]?.ConnectionString ?? "";
+
+        /// <summary>
+        /// Connection string for report data — defaults to ReportDB, can be overridden
+        /// </summary>
+        public string ReportDataConnectionString => ConfigurationManager.ConnectionStrings["ReportDB"]?.ConnectionString ?? "";
         #endregion
     }
 }

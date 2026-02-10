@@ -1,12 +1,17 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Net;
 using System.Web.UI;
 using Microsoft.Reporting.WebForms;
-using ReportViewer.Config;
+using ReportViewer.Models;
+using ReportViewer.Services;
 
 namespace ReportViewer
 {
+    /// <summary>
+    /// Config-driven SSRS Report Viewer
+    /// Reads config from rpt.t_com_config_report, connects to SSRS server
+    /// </summary>
     public partial class SsrsReportViewerPage : Page
     {
         protected void Page_Load(object sender, EventArgs e)
@@ -15,55 +20,50 @@ namespace ReportViewer
             {
                 try
                 {
-                    // Set Report Title
-                    SiteMaster master = (SiteMaster)this.Master;
-                    string reportTitle = Request.QueryString["_app_Reporttitle"];
-                    if (!string.IsNullOrEmpty(reportTitle))
+                    string reportCode = Request.QueryString["report_code"];
+                    if (string.IsNullOrEmpty(reportCode))
                     {
-                        master.ReportTitle = Server.UrlDecode(reportTitle);
-                        Page.Title = Server.UrlDecode(reportTitle);
-                    }
-
-                    // Get SSRS URL and Report Path
-                    string ssrsUrl = Request.QueryString["_ssrs_url"];
-                    string ssrsPath = Request.QueryString["_ssrs_path"];
-
-                    if (string.IsNullOrEmpty(ssrsUrl))
-                        ssrsUrl = AppConfig.Instance.SsrsUrl;
-
-                    if (string.IsNullOrEmpty(ssrsUrl))
-                    {
-                        ShowError("SSRS URL is required (_ssrs_url)");
+                        ShowError("report_code is required");
                         return;
                     }
 
-                    if (string.IsNullOrEmpty(ssrsPath))
+                    // Get report config from DB
+                    ReportConfig config = ReportConfigService.GetConfig(reportCode);
+
+                    // Set title
+                    SiteMaster master = (SiteMaster)this.Master;
+                    if (!string.IsNullOrEmpty(config.ReportName))
                     {
-                        ShowError("SSRS Report Path is required (_ssrs_path)");
+                        master.ReportTitle = config.ReportName;
+                        Page.Title = config.ReportName;
+                    }
+
+                    // Validate SSRS config
+                    if (string.IsNullOrEmpty(config.SsrsServerUrl))
+                    {
+                        ShowError("ssrs_server_url is not configured for report: " + reportCode);
+                        return;
+                    }
+
+                    if (string.IsNullOrEmpty(config.SsrsReportPath))
+                    {
+                        ShowError("ssrs_report_path is not configured for report: " + reportCode);
                         return;
                     }
 
                     // Configure Remote Report
                     SsrsReportViewer1.ProcessingMode = ProcessingMode.Remote;
-                    SsrsReportViewer1.ServerReport.ReportServerUrl = new Uri(ssrsUrl);
-                    SsrsReportViewer1.ServerReport.ReportPath = ssrsPath;
+                    SsrsReportViewer1.ServerReport.ReportServerUrl = new Uri(config.SsrsServerUrl);
+                    SsrsReportViewer1.ServerReport.ReportPath = config.SsrsReportPath;
 
-                    // Set SSRS Credentials
-                    string ssrsUser = Request.QueryString["_ssrs_user"];
-                    string ssrsPass = Request.QueryString["_ssrs_pass"];
-                    string ssrsDomain = Request.QueryString["_ssrs_domain"];
-
-                    ssrsUser = !string.IsNullOrEmpty(ssrsUser) ? ssrsUser : AppConfig.Instance.SsrsUser;
-                    ssrsPass = !string.IsNullOrEmpty(ssrsPass) ? ssrsPass : AppConfig.Instance.SsrsPass;
-                    ssrsDomain = !string.IsNullOrEmpty(ssrsDomain) ? ssrsDomain : AppConfig.Instance.SsrsDomain;
-
-                    if (!string.IsNullOrEmpty(ssrsUser))
+                    // Set credentials from config
+                    if (!string.IsNullOrEmpty(config.SsrsUsername))
                     {
                         SsrsReportViewer1.ServerReport.ReportServerCredentials =
-                            new SsrsCredentials(ssrsUser, ssrsPass, ssrsDomain);
+                            new SsrsCredentials(config.SsrsUsername, config.SsrsPassword, config.SsrsDomainName);
                     }
 
-                    // Set Parameters from query string
+                    // Set parameters from query string
                     SetParametersFromQueryString();
 
                     SsrsReportViewer1.ServerReport.Refresh();
@@ -76,20 +76,18 @@ namespace ReportViewer
         }
 
         /// <summary>
-        /// Set report parameters from query string, skipping internal parameters
+        /// Set SSRS report parameters from query string
         /// </summary>
         private void SetParametersFromQueryString()
         {
-            string[] internalPrefixes = { "_app_", "_report_", "_db_", "_ssrs_" };
-
-            var reportParams = new System.Collections.Generic.List<ReportParameter>();
+            var reportParams = new List<ReportParameter>();
 
             foreach (string key in Request.QueryString.AllKeys)
             {
                 if (string.IsNullOrEmpty(key)) continue;
-                if (internalPrefixes.Any(p => key.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
+                if (key.Equals("report_code", StringComparison.OrdinalIgnoreCase)) continue;
 
-                string value = Server.UrlDecode(Request.QueryString[key]);
+                string value = Request.QueryString[key];
                 reportParams.Add(new ReportParameter(key, value));
             }
 
@@ -101,7 +99,7 @@ namespace ReportViewer
                 }
                 catch
                 {
-                    // Some parameters may not exist — skip
+                    // Parameters may not exist in SSRS report — skip
                 }
             }
         }
@@ -134,7 +132,7 @@ namespace ReportViewer
         public ICredentials NetworkCredentials =>
             new NetworkCredential(_username, _password, _domain);
 
-        public bool GetFormsCredentials(out Cookie authCookie, out string userName, out string password, out string authority)
+        public bool GetFormsCredentials(out System.Net.Cookie authCookie, out string userName, out string password, out string authority)
         {
             authCookie = null;
             userName = _username;
