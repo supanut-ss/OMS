@@ -242,7 +242,7 @@ const Performance = () => {
                                 Executive Performance Dashboard
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                                สรุปภาพรวมโครงการและ Incentive ตามข้อมูลที่ให้มา (ปี {year}, เดือน {monthLabel})
+                                สรุปภาพรวมโครงการและ Performance ตามข้อมูลที่ให้มา (ปี {year}, เดือน {monthLabel})
                             </Typography>
                         </Box>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
@@ -297,7 +297,7 @@ const Performance = () => {
             )}
 
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                {["Total Projects", "Total Invoice", "Total Incentive", "Incentive Rate"].map((label, index) => (
+                {["Total Projects", "Total Invoice", "Total Performance", "Performance Rate"].map((label, index) => (
                     <Grid key={label} size={{ xs: 12, sm: 6, md: 3 }}>
                         <Card sx={{ borderRadius: 1, height: "100%", background: cardBg, border: `1px solid ${cardBorder}`, boxShadow: cardShadow }}>
                             <CardContent>
@@ -380,7 +380,7 @@ const Performance = () => {
                                                         <Grid container spacing={1}>
                                                             <Grid size={{ xs: "auto", md: "auto" }}>
                                                                 <Chip
-                                                                    label={`Incentive ฿${formatCurrency(project.totalIncentive)}`}
+                                                                    label={`Performance ฿${formatCurrency(project.totalIncentive)}`}
                                                                     variant="outlined"
                                                                     sx={{ borderColor: cardBorder, color: softChipColor, fontWeight: 600 }}
                                                                 />
