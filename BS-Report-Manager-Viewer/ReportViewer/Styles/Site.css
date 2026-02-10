@@ -1,0 +1,167 @@
+/* ===================================
+   BS Report Viewer — Styles
+   =================================== */
+
+/* Reset */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f2f5;
+    color: #333;
+    min-height: 100vh;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+    color: #fff;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.header-inner {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-logo {
+    font-size: 24px;
+}
+
+.header-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.header-report-title {
+    font-size: 14px;
+    font-weight: 400;
+    opacity: 0.85;
+    margin-left: 8px;
+    padding-left: 12px;
+    border-left: 1px solid rgba(255,255,255,0.3);
+}
+
+/* Content */
+.content-wrapper {
+    padding: 0;
+    width: 100%;
+}
+
+/* Alert / Error Box */
+.alert-box {
+    background: #fff3f3;
+    border: 1px solid #ffcdd2;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 20px;
+    color: #c62828;
+    font-size: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.alert-box .alert-icon { font-size: 20px; }
+.alert-box .alert-text { flex: 1; }
+
+/* Info Box */
+.info-box {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 20px;
+    color: #1565c0;
+    font-size: 14px;
+}
+
+/* Report Viewer Container */
+.report-container {
+    width: 100%;
+    min-height: calc(100vh - 52px);
+    background: #fff;
+}
+
+/* Crystal Report Viewer overrides for better appearance */
+.report-container .CrystalReportViewer {
+    width: 100% !important;
+}
+
+/* Microsoft Report Viewer overrides */
+.report-container .MicrosoftReportViewer {
+    width: 100% !important;
+}
+
+/* Landing Page */
+.landing {
+    max-width: 800px;
+    margin: 60px auto;
+    text-align: center;
+}
+
+.landing h1 {
+    font-size: 32px;
+    color: #1a237e;
+    margin-bottom: 8px;
+}
+
+.landing .subtitle {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 40px;
+}
+
+.report-types {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.report-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px 24px;
+    width: 220px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border: 1px solid #e0e0e0;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.report-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.report-card .card-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.report-card h3 {
+    font-size: 18px;
+    color: #1a237e;
+    margin-bottom: 8px;
+}
+
+.report-card p {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .report-types { flex-direction: column; align-items: center; }
+    .report-card { width: 100%; max-width: 300px; }
+}
