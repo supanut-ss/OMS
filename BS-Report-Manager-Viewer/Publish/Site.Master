@@ -1,0 +1,32 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.Master.cs" Inherits="ReportViewer.SiteMaster" %>
+
+<!DOCTYPE html>
+<html lang="th">
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%: Page.Title %> - BS Report Viewer</title>
+    <link href="~/Styles/Site.css" rel="stylesheet" type="text/css" />
+    <asp:ContentPlaceHolder ID="HeadContent" runat="server" />
+</head>
+<body>
+    <form runat="server">
+        <asp:ScriptManager runat="server" />
+        <!-- Header -->
+        <div class="header">
+            <div class="header-inner">
+                <span class="header-logo">&#x1F4CA;</span>
+                <span class="header-title">BS Report Viewer</span>
+                <asp:Label ID="lblReportTitle" runat="server" CssClass="header-report-title" />
+            </div>
+        </div>
+        <%--   <asp:HiddenField ID="lblReportTitle" runat="server" />--%>
+
+        <!-- Content -->
+        <div class="content-wrapper">
+
+            <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+        </div>
+    </form>
+</body>
+</html>

@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
+<Project>
+  <PropertyGroup>
+    <_PublishTargetUrl>D:\OneDrive - oga.co.th\BS_Platform\BS-Platform\BS-Report-Manager-Viewer\Publish</_PublishTargetUrl>
+    <History>True|2026-02-11T08:25:01.0024180Z||;True|2026-02-11T14:54:52.7222243+07:00||;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
+  <ItemGroup>
+    <File Include="bin/CrystalDecisions.CrystalReports.Engine.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.ClientDoc.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.CommLayer.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.CommonControls.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.CommonObjectModel.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.Controllers.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.CubeDefModel.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.DataDefModel.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.DataSetConversion.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.ObjectFactory.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.Prompting.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.ReportDefModel.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportAppServer.XmlSerialize.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.ReportSource.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.Shared.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/CrystalDecisions.Web.dll">
+      <publishTime>05/16/2022 20:03:04</publishTime>
+    </File>
+    <File Include="bin/de/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/de/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/de/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/es/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/es/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/es/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/fr/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/fr/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/fr/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/it/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/it/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/it/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ja/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ja/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ja/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ko/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ko/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ko/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/Microsoft.ReportViewer.Common.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/Microsoft.ReportViewer.DataVisualization.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/Microsoft.ReportViewer.ProcessingObjectModel.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/Microsoft.ReportViewer.WebForms.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/pt/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/pt/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/pt/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/Reports/rdlc/Readme.md">
+      <publishTime>02/11/2026 15:34:35</publishTime>
+    </File>
+    <File Include="bin/Reports/rpt/Readme.md">
+      <publishTime>02/11/2026 15:34:36</publishTime>
+    </File>
+    <File Include="bin/ReportViewer.dll">
+      <publishTime>02/11/2026 15:35:22</publishTime>
+    </File>
+    <File Include="bin/ReportViewer.pdb">
+      <publishTime>02/11/2026 15:35:22</publishTime>
+    </File>
+    <File Include="bin/ru/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ru/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/ru/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/stdole.dll">
+      <publishTime>07/07/2015 00:51:38</publishTime>
+    </File>
+    <File Include="bin/zh-CHS/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/zh-CHS/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/zh-CHS/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/zh-CHT/Microsoft.ReportViewer.Common.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/zh-CHT/Microsoft.ReportViewer.DataVisualization.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="bin/zh-CHT/Microsoft.ReportViewer.WebForms.resources.dll">
+      <publishTime>08/28/2022 04:03:58</publishTime>
+    </File>
+    <File Include="CrystalReports/Readme.md">
+      <publishTime>02/11/2026 15:24:37</publishTime>
+    </File>
+    <File Include="CrystalReportViewer.aspx">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="Default.aspx">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="Global.asax">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="RdlcReports/Readme.md">
+      <publishTime>02/11/2026 15:24:51</publishTime>
+    </File>
+    <File Include="RdlcReportViewer.aspx">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="ReportExport.ashx">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="ReportFileHandler.ashx">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="Reports/rdlc/Readme.md">
+      <publishTime>02/11/2026 15:34:35</publishTime>
+    </File>
+    <File Include="Reports/rpt/Readme.md">
+      <publishTime>02/11/2026 15:34:36</publishTime>
+    </File>
+    <File Include="Site.Master">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="SsrsReportViewer.aspx">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="Styles/Site.css">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="Web.config">
+      <publishTime>02/11/2026 14:54:51</publishTime>
+    </File>
+    <File Include="Web.Debug.config">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+    <File Include="Web.Release.config">
+      <publishTime>02/10/2026 22:07:40</publishTime>
+    </File>
+  </ItemGroup>
+</Project>
