@@ -5,6 +5,7 @@ using System.Linq;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using System.Web.Script.Serialization;
 using ReportViewer.Config;
 using ReportViewer.Models;
 using ReportViewer.Services;
@@ -18,13 +19,19 @@ namespace ReportViewer
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            string reportCode = Request.QueryString["report_code"];
+            // Support both GET and POST for report_code
+            string reportCode = Request.QueryString["report_code"]
+                ?? Request.Form["report_code"];
 
             // If report_code is specified, route to appropriate viewer
             if (!string.IsNullOrEmpty(reportCode))
             {
-                if (!IsPostBack)
+                if (!IsPostBack || Request.HttpMethod == "POST")
+                {
+                    // If POST with json_parameters, parse and store in Session
+                    StorePostParametersInSession();
                     RouteToViewer(reportCode);
+                }
                 return;
             }
 
@@ -53,8 +60,6 @@ namespace ReportViewer
                     Page.Title = config.ReportName;
                 }
 
-                string queryParams = BuildParameterQueryString();
-
                 string targetPage;
                 switch (config.ReportType.ToUpper())
                 {
@@ -68,7 +73,7 @@ namespace ReportViewer
                         string runAs = (config.RunAs ?? "").Trim();
                         if (runAs.Equals("Report Viewer", StringComparison.OrdinalIgnoreCase))
                         {
-                            Dictionary<string, string> parameters = GetParametersFromQueryString();
+                            Dictionary<string, string> parameters = GetAllParameters();
                             string ssrsUrl = SsrsReportEngine.BuildViewerUrl(config, parameters);
                             Response.Redirect(ssrsUrl, false);
                             return;
@@ -80,6 +85,8 @@ namespace ReportViewer
                         return;
                 }
 
+                // Only append query string params (POST params are in Session)
+                string queryParams = BuildParameterQueryString();
                 string redirectUrl = targetPage + "?report_code=" + HttpUtility.UrlEncode(reportCode);
                 if (!string.IsNullOrEmpty(queryParams))
                     redirectUrl += "&" + queryParams;
@@ -92,6 +99,52 @@ namespace ReportViewer
                 pnlFileManager.Visible = false;
                 ShowError(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Parse POST json_parameters and store in Session for viewer pages
+        /// </summary>
+        private void StorePostParametersInSession()
+        {
+            string jsonParams = Request.Form["json_parameters"];
+            if (string.IsNullOrEmpty(jsonParams))
+            {
+                // No POST params — clear session in case of stale data
+                Session.Remove("ReportParameters");
+                return;
+            }
+
+            try
+            {
+                var serializer = new JavaScriptSerializer();
+                var parameters = serializer.Deserialize<Dictionary<string, string>>(jsonParams);
+                Session["ReportParameters"] = parameters;
+            }
+            catch
+            {
+                Session.Remove("ReportParameters");
+            }
+        }
+
+        /// <summary>
+        /// Get parameters from both Session (POST) and query string (GET), merged
+        /// Session (POST) takes priority over query string
+        /// </summary>
+        private Dictionary<string, string> GetAllParameters()
+        {
+            var parameters = GetParametersFromQueryString();
+
+            // Merge Session parameters (from POST) — these take priority
+            var sessionParams = Session["ReportParameters"] as Dictionary<string, string>;
+            if (sessionParams != null)
+            {
+                foreach (var kvp in sessionParams)
+                {
+                    parameters[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return parameters;
         }
 
         private string BuildParameterQueryString()

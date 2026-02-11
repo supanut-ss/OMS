@@ -76,19 +76,37 @@ namespace ReportViewer
         }
 
         /// <summary>
-        /// Set SSRS report parameters from query string
+        /// Set SSRS report parameters from Session (POST) and query string (GET)
         /// </summary>
         private void SetParametersFromQueryString()
         {
-            var reportParams = new List<ReportParameter>();
+            // Collect parameters from both sources
+            var paramDict = new Dictionary<string, string>();
 
+            // 1. Read from query string (GET)
             foreach (string key in Request.QueryString.AllKeys)
             {
                 if (string.IsNullOrEmpty(key)) continue;
                 if (key.Equals("report_code", StringComparison.OrdinalIgnoreCase)) continue;
+                paramDict[key] = Request.QueryString[key];
+            }
 
-                string value = Request.QueryString[key];
-                reportParams.Add(new ReportParameter(key, value));
+            // 2. Merge from Session (POST) — these take priority
+            var sessionParams = Session["ReportParameters"] as Dictionary<string, string>;
+            if (sessionParams != null)
+            {
+                foreach (var kvp in sessionParams)
+                {
+                    paramDict[kvp.Key] = kvp.Value;
+                }
+                Session.Remove("ReportParameters");
+            }
+
+            // Build SSRS ReportParameter list
+            var reportParams = new List<ReportParameter>();
+            foreach (var kvp in paramDict)
+            {
+                reportParams.Add(new ReportParameter(kvp.Key, kvp.Value));
             }
 
             if (reportParams.Count > 0)

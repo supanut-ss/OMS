@@ -62,11 +62,13 @@ namespace ReportViewer
         }
 
         /// <summary>
-        /// Get parameters from query string, excluding internal keys
+        /// Get parameters: Session (POST via Default.aspx) takes priority, then query string (GET)
         /// </summary>
         private Dictionary<string, string> GetParametersFromQueryString()
         {
             var parameters = new Dictionary<string, string>();
+
+            // 1. Read from query string (GET)
             foreach (string key in Request.QueryString.AllKeys)
             {
                 if (string.IsNullOrEmpty(key)) continue;
@@ -74,6 +76,18 @@ namespace ReportViewer
 
                 parameters[key] = Request.QueryString[key];
             }
+
+            // 2. Merge from Session (POST) — these take priority
+            var sessionParams = Session["ReportParameters"] as Dictionary<string, string>;
+            if (sessionParams != null)
+            {
+                foreach (var kvp in sessionParams)
+                {
+                    parameters[kvp.Key] = kvp.Value;
+                }
+                Session.Remove("ReportParameters");
+            }
+
             return parameters;
         }
 

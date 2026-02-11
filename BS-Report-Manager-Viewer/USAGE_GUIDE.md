@@ -67,25 +67,44 @@
 
 ## 2. เรียกดูรายงานจาก Frontend (New Tab)
 
-### URL Pattern
+รองรับ 2 วิธี: **GET** (query string) และ **POST** (hidden form + JSON)
+
+### วิธีที่ 1: GET — ส่ง parameter ผ่าน URL (เหมาะกับ parameter สั้นๆ)
 
 ```
 http://{server}/ReportViewer/Default.aspx?report_code={report_code}&{param1}={value1}&{param2}={value2}
 ```
 
+### วิธีที่ 2: POST — ส่ง parameter ผ่าน hidden form (เหมาะกับ filter ยาว / ข้อมูลเยอะ)
+
+React สร้าง `<form>` ที่มี `target="_blank"` แล้ว submit → เปิด new tab ด้วย POST
+
+```
+POST http://{server}/ReportViewer/Default.aspx
+Form fields:
+  report_code = "RPT_INVOICE"
+  json_parameters = '{"FilterConditionString":"invoice_id = '\''123'\''","status":"Active"}'
+```
+
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `report_code` | ✅ Yes | รหัสรายงาน ตรงกับ PK ใน `rpt.t_com_config_report` |
-| `FilterConditionString` | ❌ Optional | WHERE clause condition (สำหรับ View pattern) |
+| `json_parameters` | ❌ Optional | **POST only** — JSON string ของ parameters ทั้งหมด |
+| `FilterConditionString` | ❌ Optional | WHERE clause condition (ส่งใน json_parameters หรือ query string) |
 | `{field_name}` | ❌ Optional | parameter อื่นๆ ตรงกับ `{field}` ใน `sql_command` |
 
-### React Helper Function
+> **POST ทำงานยังไง?**
+> 1. React สร้าง hidden form → submit ด้วย `target="_blank"` → เปิด new tab
+> 2. `Default.aspx` อ่าน `json_parameters` จาก form → parse JSON → เก็บใน **Session**
+> 3. Redirect ไปหน้า viewer → viewer อ่าน parameters จาก **Session**
+
+### React Helper Function — GET (เดิม)
 
 ```javascript
 /**
- * เปิด Report Viewer ใน New Tab
- * @param {string} reportCode - รหัสรายงานจากตาราง rpt.t_com_config_report
- * @param {object} parameters - พารามิเตอร์สำหรับรายงาน (key-value)
+ * เปิด Report Viewer ใน New Tab (GET — parameter อยู่ใน URL)
+ * @param {string} reportCode - รหัสรายงาน
+ * @param {object} parameters - พารามิเตอร์ (key-value)
  */
 const openReport = (reportCode, parameters = {}) => {
   const baseUrl = "http://your-server/ReportViewer/Default.aspx";
@@ -93,7 +112,6 @@ const openReport = (reportCode, parameters = {}) => {
   const params = new URLSearchParams();
   params.set("report_code", reportCode);
 
-  // เพิ่ม parameters ทั้งหมดลงใน URL
   Object.entries(parameters).forEach(([key, value]) => {
     if (value !== null && value !== undefined && value !== "") {
       params.set(key, value);
@@ -101,11 +119,60 @@ const openReport = (reportCode, parameters = {}) => {
   });
 
   const url = `${baseUrl}?${params.toString()}`;
-  window.open(url, "_blank"); // เปิด new tab
+  window.open(url, "_blank");
 };
 ```
 
-### ตัวอย่างการเรียกใช้
+### React Helper Function — POST (ใหม่ ✨)
+
+```javascript
+/**
+ * เปิด Report Viewer ใน New Tab (POST — parameter ส่งผ่าน hidden form)
+ * เหมาะกับ filter ยาว, ข้อมูลเยอะ, หรือไม่ต้องการให้ข้อมูลโผล่ใน URL
+ * @param {string} reportCode - รหัสรายงาน
+ * @param {object} parameters - พารามิเตอร์ (key-value)
+ */
+const openReportPost = (reportCode, parameters = {}) => {
+  const baseUrl = "http://your-server/ReportViewer/Default.aspx";
+
+  // สร้าง hidden form
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = baseUrl;
+  form.target = "_blank"; // เปิดใน new tab
+  form.style.display = "none";
+
+  // Hidden input: report_code
+  const inputCode = document.createElement("input");
+  inputCode.type = "hidden";
+  inputCode.name = "report_code";
+  inputCode.value = reportCode;
+  form.appendChild(inputCode);
+
+  // Hidden input: json_parameters (JSON string)
+  const inputParams = document.createElement("input");
+  inputParams.type = "hidden";
+  inputParams.name = "json_parameters";
+  inputParams.value = JSON.stringify(parameters);
+  form.appendChild(inputParams);
+
+  // Submit แล้วลบ form ออก
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+};
+```
+
+### เลือกใช้ GET หรือ POST ?
+
+| เงื่อนไข | ใช้ | ฟังก์ชัน |
+|----------|-----|---------|
+| Filter สั้นๆ, parameter น้อย | **GET** | `openReport()` |
+| Filter ยาว, WHERE clause ซับซ้อน | **POST** | `openReportPost()` |
+| ไม่ต้องการ parameter โผล่ใน URL | **POST** | `openReportPost()` |
+| ต้องการ bookmark / แชร์ link ได้ | **GET** | `openReport()` |
+
+### ตัวอย่างการเรียกใช้ — GET
 
 ```javascript
 // เปิดรายงานแบบไม่มี parameter
@@ -115,9 +182,18 @@ openReport("RPT_SUMMARY");
 openReport("RPT_MANPOWER", {
   FilterConditionString: "owner_id = 'EMP001' AND status = 'Active'"
 });
+```
 
-// เปิดรายงานแบบ Stored Procedure + หลาย parameters
-openReport("RPT_SLA_TARGET", {
+### ตัวอย่างการเรียกใช้ — POST
+
+```javascript
+// Filter ยาว — ส่งแบบ POST
+openReportPost("RPT_MANPOWER", {
+  FilterConditionString: "owner_id = 'EMP001' AND department = 'IT' AND status = 'Active' AND YEAR(create_date) = 2026"
+});
+
+// Stored Procedure + หลาย parameters
+openReportPost("RPT_SLA_TARGET", {
   FilterConditionString: "sla_time = '10:30'",
   filter_operator_sla_time: "=",
   filter_value_sla_time: "10:30"
