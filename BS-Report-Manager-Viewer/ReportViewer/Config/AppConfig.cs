@@ -45,7 +45,7 @@ namespace ReportViewer.Config
         /// <summary>
         /// Connection string for report data queries (sql_command execution)
         /// </summary>
-        public string ReportDbConnectionString => ConfigurationManager.ConnectionStrings["ReportDB"]?.ConnectionString ?? "";
+        //public string ReportDbConnectionString => ConfigurationManager.ConnectionStrings["ReportDB"]?.ConnectionString ?? "";
 
         /// <summary>
         /// Connection string for reading rpt.t_com_config_report (Timesheet DB)
@@ -55,7 +55,7 @@ namespace ReportViewer.Config
         /// <summary>
         /// Connection string for report data — defaults to ReportDB, can be overridden
         /// </summary>
-        public string ReportDataConnectionString => ConfigurationManager.ConnectionStrings["ReportDB"]?.ConnectionString ?? "";
+        public string ReportDataConnectionString => ConfigurationManager.ConnectionStrings["ReportConfigDb"]?.ConnectionString ?? "";
         #endregion
     }
 }
