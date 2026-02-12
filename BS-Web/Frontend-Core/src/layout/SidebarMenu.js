@@ -10,9 +10,10 @@ import {
   Paper,
   Box,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
@@ -31,6 +32,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [expanded, setExpanded] = useState({});
   const [search, setSearch] = useState("");
   const { getResource, getResourceDescription, getResources } = useResource();
@@ -141,10 +143,15 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
   const menuDiv = filteredMenu?.map((menu, index) => {
     const key = `${index}-${menu.path}`;
     const hasSubmenu = menu?.submenu?.length > 0;
+    const isChildActive = hasSubmenu
+      ? menu.submenu.some((sub) => sub?.path === location.pathname)
+      : false;
+    const isSelected = (!hasSubmenu && location.pathname === menu.path) || isChildActive;
     return (
       <div key={key} style={{ display: menu.hidden ? 'none' : 'block' }}>
         <Tooltip title={menu.description ?? ""} placement="right" arrow>
           <ListItemButton
+            selected={isSelected}
             onClick={() => {
               if (hasSubmenu) handleExpand(key);
               else {
@@ -154,26 +161,46 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
               }
             }}
             sx={{
-              minHeight: 48,
+              minHeight: 44,
+              position: "relative",
               justifyContent: open ? "initial" : "center",
-              px: 2,
-              py: 1.5,
+              px: 1.5,
+              py: 1,
               mb: 0.5,
-              borderRadius: 2,
-              "&:hover": { bgcolor: theme.palette.action.hover },
+              borderRadius: 1.5,
+              color: theme.palette.text.primary,
+              "&:hover": {
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+              },
               "&.Mui-selected": {
-                bgcolor: theme.palette.primary.main,
-                color: theme.palette.primary.contrastText,
-                "&:hover": { bgcolor: theme.palette.primary.dark },
+                bgcolor: alpha(theme.palette.primary.main, 0.14),
+                color: theme.palette.text.primary,
+                "& .MuiListItemIcon-root": { color: theme.palette.primary.main },
+                "&:hover": {
+                  bgcolor: alpha(theme.palette.primary.main, 0.2),
+                },
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  left: 6,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 4,
+                  height: 20,
+                  borderRadius: 4,
+                  bgcolor: theme.palette.primary.main,
+                },
+              },
+              "& .MuiListItemIcon-root": {
+                color: theme.palette.text.secondary,
               },
             }}
           >
             <ListItemIcon
               sx={{
                 minWidth: 0,
-                mr: open ? 2 : "auto",
+                mr: open ? 1.5 : "auto",
                 justifyContent: "center",
-                color: "inherit",
               }}
             >
               {menu.icon || showIcon(index)}
@@ -183,7 +210,10 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
                 primary={menu.text}
                 sx={{
                   color: "inherit",
-                  "& .MuiTypography-root": { fontWeight: 500 },
+                  "& .MuiTypography-root": {
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                  },
                 }}
               />
             )}
@@ -192,13 +222,14 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
         </Tooltip>
 
         {/* Submenu */}
-        {hasSubmenu && (
-          <Collapse in={expanded[key]} timeout="auto" unmountOnExit>
+        {hasSubmenu && open && (
+          <Collapse in={expanded[key] || isChildActive} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              {menu.submenu.map((sub) => (
+              {menu.submenu.map((sub, subIndex) => (
                 <SidebarSubmenu
                   key={`${key}-${sub.text}`}
                   submenu={sub}
+                  isLast={subIndex === menu.submenu.length - 1}
                   setIsFav={() => {
                     RefreshMenu();
                   }}
@@ -222,28 +253,58 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang }) => {
       <Paper
         component="form"
         sx={{
+          ml: 2,
+          mr: 2,
           p: "2px 4px",
           display: open ? "flex" : "none",
           alignItems: "center",
           width: "auto",
-          borderRadius: "unset"
+          borderRadius: 2,
+          bgcolor: alpha(theme.palette.primary.main, 0.06),
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
         }}
         onSubmit={(e) => e.preventDefault()}
       >
         <InputBase
-          sx={{ ml: 4, flex: 1 }}
+          sx={{ ml: 2, flex: 1, color: theme.palette.text.primary ,}}
           placeholder={open ? "Search" : ""}
           inputProps={{ "aria-label": "search" }}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <IconButton type="button" sx={{ p: "10px" }} aria-label="search">
+        <IconButton
+          type="button"
+          sx={{ p: "10px", color: theme.palette.text.secondary }}
+          aria-label="search"
+        >
           <SearchIcon />
         </IconButton>
       </Paper>
 
       {/* รายการเมนู */}
-      <List sx={{ px: 2, py: 1 }}>
+      <List
+        sx={{
+          px: 2,
+          py: 1,
+          maxHeight: "calc(100vh - 180px)",
+          overflowY: "auto",
+          scrollbarWidth: "thin",
+          scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} transparent`,
+          "&::-webkit-scrollbar": {
+            width: 6,
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "transparent",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.4),
+            borderRadius: 8,
+          },
+          "&::-webkit-scrollbar-thumb:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.6),
+          },
+        }}
+      >
         {menuDiv}
       </List>
     </Box>

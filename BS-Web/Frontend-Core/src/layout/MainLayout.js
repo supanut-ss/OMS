@@ -25,8 +25,10 @@ import {
 import {
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
+  Palette as PaletteIcon,
   Notifications as NotificationsIcon,
   // Settings as SettingsIcon,
   Logout as LogoutIcon,
@@ -62,7 +64,7 @@ const openedMixin = (theme) => ({
   }),
   overflowX: "hidden",
   backgroundColor: theme.palette.background.paper,
-  borderRight: `1px solid ${theme.palette.divider}`,
+  borderRight: "none",
 
   borderRadius: "unset !importent",
 });
@@ -75,7 +77,7 @@ const closedMixin = (theme) => ({
   }),
   overflowX: "hidden",
   backgroundColor: theme.palette.background.paper,
-  borderRight: `1px solid ${theme.palette.divider}`,
+  borderRight: "none",
 });
 
 const DrawerHeader = styled("div")(({ theme }) => ({
@@ -103,7 +105,7 @@ const StyledDrawer = styled(Drawer)(({ theme, open }) => ({
 
 export default function MainLayout({ lang, onChangeLang }) {
   const theme = useTheme();
-  const { toggleColorMode, mode } = useColorMode();
+  const { toggleColorMode, mode, themeName, setThemeName } = useColorMode();
   const { logout } = useAuth();
   const location = useLocation();
 
@@ -113,6 +115,7 @@ export default function MainLayout({ lang, onChangeLang }) {
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [isNotifyDialogOpen, setIsNotifyDialogOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [themePaletteAnchor, setThemePaletteAnchor] = useState(null);
   // const navigate = useNavigate();
   //const apiUrl = Config.API_URL;
   const apiUrl = Config.API_NOTIFY;
@@ -144,6 +147,14 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   const handleUserMenuClose = useCallback(() => {
     setUserMenuAnchor(null);
+  }, []);
+
+  const handleThemePaletteClick = useCallback((event) => {
+    setThemePaletteAnchor(event.currentTarget);
+  }, []);
+
+  const handleThemePaletteClose = useCallback(() => {
+    setThemePaletteAnchor(null);
   }, []);
 
   // Debounce timer for getNotifications to prevent excessive API calls
@@ -345,6 +356,11 @@ export default function MainLayout({ lang, onChangeLang }) {
   useEffect(() => {
     if (total === -1) callGetNoti();
   }, [total, callGetNoti]);
+  useEffect(() => {
+    if (loading) {
+      setLoading(false);
+    }
+  }, [location.pathname, loading]);
   return (
     <Box
       sx={{
@@ -360,9 +376,27 @@ export default function MainLayout({ lang, onChangeLang }) {
         elevation={0}
         sx={{
           zIndex: theme.zIndex.drawer + 1,
-          bgcolor: "background.paper",
-          color: "text.primary",
-          borderBottom: `1px solid ${theme.palette.divider}`,
+          bgcolor: mode === "light" ? theme.palette.primary.main : "background.paper",
+          color: mode === "light" ? "#fff" : "text.primary",
+          borderBottom:
+            mode === "light"
+              ? `1px solid ${theme.palette.primary.dark}`
+              : `1px solid ${theme.palette.divider}`,
+          "& .MuiTypography-root":
+            mode === "light"
+              ? {
+                  color: "#fff",
+                  fontWeight: 700,
+                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
+                }
+              : undefined,
+          "& .MuiIconButton-root":
+            mode === "light"
+              ? {
+                  color: "#fff",
+                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
+                }
+              : undefined,
           backdropFilter: "blur(8px)",
           transition: theme.transitions.create(["width", "margin"], {
             easing: theme.transitions.easing.sharp,
@@ -430,6 +464,17 @@ export default function MainLayout({ lang, onChangeLang }) {
               </IconButton>
             </Tooltip>
 
+            <Tooltip title={lang === "th" ? "ชุดสีธีม" : "Theme palette"}>
+              <IconButton
+                color="inherit"
+                onClick={handleThemePaletteClick}
+                aria-label="theme palette"
+                sx={{ borderRadius: 2, p: 1.5 }}
+              >
+                <PaletteIcon />
+              </IconButton>
+            </Tooltip>
+
             {/* Notifications */}
             <Tooltip title="การแจ้งเตือน">
               <IconButton
@@ -458,9 +503,18 @@ export default function MainLayout({ lang, onChangeLang }) {
                   sx={{
                     width: 40,
                     height: 40,
-                    bgcolor: theme.palette.primary.main,
+                    bgcolor: mode === "light" ? "#fff" : theme.palette.primary.main,
+                    color: mode === "light" ? theme.palette.primary.main : "#fff",
                     fontSize: "0.875rem",
                     fontWeight: 600,
+                    border:
+                      mode === "light"
+                        ? `1px solid ${theme.palette.primary.contrastText}`
+                        : "none",
+                    boxShadow:
+                      mode === "light"
+                        ? "0 2px 6px rgba(0, 0, 0, 0.25)"
+                        : "none",
                   }}
                 >
                   {getInitials(
@@ -471,9 +525,8 @@ export default function MainLayout({ lang, onChangeLang }) {
             </Tooltip>
           </Box>
         </Toolbar>
+        <TopLinearProgress open={loading} placement="below-appbar" />
       </AppBar>
-      {/*liner process*/}
-      <TopLinearProgress open={loading} />
       {/* Notification Menu */}
       <Menu
         anchorEl={notificationAnchor}
@@ -513,6 +566,113 @@ export default function MainLayout({ lang, onChangeLang }) {
             ดูการแจ้งเตือนทั้งหมด
           </Typography>
         </Box>
+      </Menu>
+
+      <Menu
+        anchorEl={themePaletteAnchor}
+        open={Boolean(themePaletteAnchor)}
+        onClose={handleThemePaletteClose}
+        PaperProps={{
+          sx: {
+            minWidth: 200,
+            mt: 1,
+            borderRadius: 2,
+            boxShadow: theme.shadows[8],
+          },
+        }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+      >
+        <MenuItem
+          selected={themeName === "theme-1"}
+          onClick={() => {
+            setThemeName("theme-1");
+            handleThemePaletteClose();
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              bgcolor: "#3f51b5",
+              mr: 1.5,
+            }}
+          />
+          {lang === "th" ? "ธีม อินดิโก้" : "Theme Indigo"}
+        </MenuItem>
+        <MenuItem
+          selected={themeName === "theme-2"}
+          onClick={() => {
+            setThemeName("theme-2");
+            handleThemePaletteClose();
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              bgcolor: "#5677fc",
+              mr: 1.5,
+            }}
+          />
+          {lang === "th" ? "ธีม บลู" : "Theme Blue"}
+        </MenuItem>
+        <MenuItem
+          selected={themeName === "theme-purple"}
+          onClick={() => {
+            setThemeName("theme-purple");
+            handleThemePaletteClose();
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              bgcolor: "#9c27b0",
+              mr: 1.5,
+            }}
+          />
+          {lang === "th" ? "ธีม ม่วง" : "Theme Purple"}
+        </MenuItem>
+        <MenuItem
+          selected={themeName === "theme-teal"}
+          onClick={() => {
+            setThemeName("theme-teal");
+            handleThemePaletteClose();
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              bgcolor: "#009688",
+              mr: 1.5,
+            }}
+          />
+          {lang === "th" ? "ธีม ทีล" : "Theme Teal"}
+        </MenuItem>
+        <MenuItem
+          selected={themeName === "theme-pastel"}
+          onClick={() => {
+            setThemeName("theme-pastel");
+            handleThemePaletteClose();
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              bgcolor: "#9BC2B2",
+              mr: 1.5,
+            }}
+          />
+          {lang === "th" ? "ธีม ซอฟต์พาสเทล" : "Theme Soft Pastel"}
+        </MenuItem>
       </Menu>
 
       {/* User Menu */}
@@ -616,12 +776,12 @@ export default function MainLayout({ lang, onChangeLang }) {
             sx={{
               display: "flex",
               alignItems: "center",
-              justifyContent: open ? "space-between" : "center",
+              justifyContent: "space-between",
               width: "100%",
-              px: open ? 2 : 0,
+              px: open ? 2 : 1,
             }}
           >
-            {open && (
+            {open ? (
               <Box
                 sx={{
                   display: "flex",
@@ -642,23 +802,31 @@ export default function MainLayout({ lang, onChangeLang }) {
                   {Config.APP_NAME}
                 </Typography>
               </Box>
+            ) : (
+              <img
+                src={`${process.env.PUBLIC_URL}/images/logo.svg`}
+                alt="App Logo"
+                style={{ width: 28, height: 28 }}
+              />
             )}
             {!isMobile && (
               <IconButton
                 onClick={toggleDrawer}
-                aria-label="close menu"
+                aria-label={open ? "collapse menu" : "expand menu"}
                 sx={{
-                  borderRadius: 2,
-                  p: 1,
-                  ...(open && { ml: "auto" }),
+                  borderRadius: "999px",
+                  p: 0.75,
+                  border: `1px solid ${theme.palette.divider}`,
+                  bgcolor: theme.palette.background.paper,
+                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
                 }}
               >
-                <ChevronLeftIcon />
+                {open ? <ChevronLeftIcon /> : <ChevronRightIcon />}
               </IconButton>
             )}
           </Box>
         </DrawerHeader>
-        <Divider />
+        <Divider sx={{ display: "none" }} />
         <SidebarMenu
           setLoading={setLoading}
           open={open} // state ที่ควบคุม sidebar เปิด/ปิด
@@ -675,8 +843,9 @@ export default function MainLayout({ lang, onChangeLang }) {
         sx={{
           display: "flex",
           flexGrow: 1,
-          p: { xs: 0, sm: 3, md: 1 },
+          p: { xs: 0, sm: 0, md: 0 },
           mt: 8,
+          borderLeft: { xs: "none", md: `1px solid ${theme.palette.divider}` },
           width: {
             xs: 0,
             md: `calc(100% - ${open ? drawerWidth : collapsedWidth}px)`,

@@ -1,84 +1,182 @@
-import { createTheme } from "@mui/material/styles";
+import { createTheme, alpha } from "@mui/material/styles";
 
-export const getTheme = (mode) =>
+const LIGHT_THEME_PRESETS = {
+  "theme-1": {
+    labelTh: "อินดิโก้",
+    labelEn: "Indigo",
+    shades: {
+      50: "#e8eaf6",
+      100: "#c5cae9",
+      200: "#9fa8da",
+      300: "#7986cb",
+      400: "#5c6bc0",
+      500: "#3f51b5",
+      600: "#3949ab",
+      700: "#303f9f",
+      800: "#283593",
+      900: "#1a237e",
+    },
+  },
+  "theme-2": {
+    labelTh: "บลู",
+    labelEn: "Blue",
+    shades: {
+      50: "#e7e9fd",
+      100: "#d0d9ff",
+      200: "#afbfff",
+      300: "#91a7ff",
+      400: "#738ffe",
+      500: "#5677fc",
+      600: "#4e6cef",
+      700: "#455ede",
+      800: "#3b50ce",
+      900: "#2a36b1",
+    },
+  },
+  "theme-purple": {
+    labelTh: "ม่วง",
+    labelEn: "Purple",
+    shades: {
+      50: "#f3e5f5",
+      100: "#e1bee7",
+      200: "#ce93d8",
+      300: "#ba68c8",
+      400: "#ab47bc",
+      500: "#9c27b0",
+      600: "#8e24aa",
+      700: "#7b1fa2",
+      800: "#6a1b9a",
+      900: "#6a1b9a",
+    },
+  },
+  "theme-teal": {
+    labelTh: "ทีล",
+    labelEn: "Teal",
+    shades: {
+      50: "#e0f2f1",
+      100: "#b2dfdb",
+      200: "#80cbc4",
+      300: "#4db6ac",
+      400: "#26a69a",
+      500: "#009688",
+      600: "#00897b",
+      700: "#00796b",
+      800: "#00695c",
+      900: "#004d40",
+    },
+  },
+  "theme-pastel": {
+    labelTh: "ซอฟต์พาสเทล",
+    labelEn: "Soft Pastel",
+    main: "#9BC2B2",
+    secondary: "#9292D1",
+    shades: {
+      50: "#C5D6BA",
+      100: "#F2E9D3",
+      200: "#F6C8B6",
+      300: "#CA9CAC",
+      400: "#9292D1",
+      500: "#B6BBC7",
+      600: "#D6C3CE",
+      700: "#ECD4D4",
+      800: "#F5EED8",
+      900: "#F5E3CB",
+    },
+  },
+};
+
+const getLightPalette = (themeName) => {
+  const preset = LIGHT_THEME_PRESETS[themeName] || LIGHT_THEME_PRESETS["theme-1"];
+  const shades = preset.shades;
+  const primaryMain = preset.main || shades[500];
+  const primaryLight = preset.light || shades[200];
+  const primaryDark = preset.dark || shades[700];
+  const secondaryMain = preset.secondary || shades[600];
+  const secondaryLight = preset.secondaryLight || shades[300];
+  const secondaryDark = preset.secondaryDark || shades[800];
+
+  return {
+    primary: {
+      main: primaryMain,
+      light: primaryLight,
+      dark: primaryDark,
+      contrastText: "#fff",
+    },
+    secondary: {
+      main: secondaryMain,
+      light: secondaryLight,
+      dark: secondaryDark,
+      contrastText: "#fff",
+    },
+    error: {
+      main: "#EF4444",
+      light: "#F87171",
+      dark: "#DC2626",
+      contrastText: "#fff",
+    },
+    warning: {
+      main: "#F59E0B",
+      light: "#FBBF24",
+      dark: "#D97706",
+      contrastText: "#fff",
+    },
+    info: {
+      main: "#3B82F6",
+      light: "#60A5FA",
+      dark: "#2563EB",
+      contrastText: "#fff",
+    },
+    success: {
+      main: "#10B981",
+      light: "#34D399",
+      dark: "#059669",
+      contrastText: "#fff",
+    },
+    background: {
+      default: "#F6F7FA",
+      paper: "#FFFFFF",
+    },
+    text: {
+      primary: "#1F2937",
+      secondary: "#6B7280",
+    },
+    divider: alpha(primaryMain, 0.18),
+    grey: {
+      50: "#F9FAFB",
+      100: "#F3F4F6",
+      200: "#E5E7EB",
+      300: "#D1D5DB",
+      400: "#9CA3AF",
+      500: "#6B7280",
+      600: "#4B5563",
+      700: "#374151",
+      800: "#1F2937",
+      900: "#111827",
+    },
+    custom: {
+      saveButton: primaryMain,
+      closeButton: "#F33838",
+      addButton: primaryMain,
+      accordionHeader: shades[100],
+      accordionContent: "#fafafa",
+      mainBackground: "#F6F7FA",
+      paperBackground: alpha(primaryMain, 0.04),
+      priority: {
+        urgent: "#d32f2f",
+        high: "#ed6c02",
+        normal: "#0288d1",
+        low: "#9e9e9e",
+      },
+    },
+  };
+};
+
+export const getTheme = (mode, themeName = "theme-1") =>
   createTheme({
     palette: {
       mode,
       ...(mode === "light"
-        ? {
-          primary: {
-            main: "#0B9ED0", // Modern Indigo
-            light: "#8B85FF",
-            dark: "#4F46E5",
-            contrastText: "#fff",
-          },
-          secondary: {
-            main: "#10B981", // Modern Emerald
-            light: "#34D399",
-            dark: "#059669",
-            contrastText: "#fff",
-          },
-          error: {
-            main: "#EF4444", // Modern Red
-            light: "#F87171",
-            dark: "#DC2626",
-            contrastText: "#fff",
-          },
-          warning: {
-            main: "#F59E0B", // Modern Amber
-            light: "#FBBF24",
-            dark: "#D97706",
-            contrastText: "#fff",
-          },
-          info: {
-            main: "#3B82F6", // Modern Blue
-            light: "#60A5FA",
-            dark: "#2563EB",
-            contrastText: "#fff",
-          },
-          success: {
-            main: "#10B981", // Modern Green
-            light: "#34D399",
-            dark: "#059669",
-            contrastText: "#fff",
-          },
-          background: {
-            default: "#FAFBFC", // Ultra Light Gray
-            paper: "#FFFFFF",
-          },
-          text: {
-            primary: "#1F2937", // Dark Gray
-            secondary: "#6B7280", // Medium Gray
-          },
-          divider: "#F3F4F6",
-          grey: {
-            50: "#F9FAFB",
-            100: "#F3F4F6",
-            200: "#E5E7EB",
-            300: "#D1D5DB",
-            400: "#9CA3AF",
-            500: "#6B7280",
-            600: "#4B5563",
-            700: "#374151",
-            800: "#1F2937",
-            900: "#111827",
-          },
-          custom: {
-            saveButton: "#0B9ED0",
-            closeButton: "#F33838",
-            addButton: "#0B9ED0",
-            accordionHeader: "#B2D5D5",
-            accordionContent: "#fafafa",
-            mainBackground: "#F0F8FF",
-            paperBackground: "hsla(215, 15%, 97%, 0.5)",
-            priority: {
-              urgent: "#d32f2f",
-              high: "#ed6c02",
-              normal: "#0288d1",
-              low: "#9e9e9e",
-            },
-          },
-        }
+        ? getLightPalette(themeName)
         : {
           // =========================================
           // Modern Glassmorphism Dark Theme
@@ -332,6 +430,26 @@ export const getTheme = (mode) =>
           },
         },
       },
+      MuiTableHead: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            backgroundColor: alpha(theme.palette.primary.main, 0.06),
+          }),
+        },
+      },
+      MuiDataGrid: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            borderColor: theme.palette.divider,
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.05),
+            },
+            "& .MuiDataGrid-row:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.03),
+            },
+          }),
+        },
+      },
       MuiButton: {
         styleOverrides: {
           root: {
@@ -347,6 +465,20 @@ export const getTheme = (mode) =>
                 "0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06)",
             },
           },
+          containedPrimary: ({ theme }) => ({
+            backgroundColor: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
+            "&:hover": {
+              backgroundColor: theme.palette.primary.dark,
+            },
+          }),
+          containedSecondary: ({ theme }) => ({
+            backgroundColor: theme.palette.secondary.main,
+            color: theme.palette.secondary.contrastText,
+            "&:hover": {
+              backgroundColor: theme.palette.secondary.dark,
+            },
+          }),
         },
       },
       MuiChip: {

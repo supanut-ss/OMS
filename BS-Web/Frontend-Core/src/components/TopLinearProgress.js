@@ -1,21 +1,30 @@
 import { LinearProgress, Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-const TopLinearProgress = ({ open }) => {
+const TopLinearProgress = ({ open, placement = "fixed" }) => {
   const theme = useTheme();
 
   if (!open) return null;
 
+  const containerSx =
+    placement === "below-appbar"
+      ? {
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          width: "100%",
+          zIndex: theme.zIndex.appBar + 1,
+        }
+      : {
+          position: "fixed",
+          top: theme.mixins.toolbar.minHeight,
+          left: 0,
+          width: "100%",
+          zIndex: theme.zIndex.appBar,
+        };
+
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        top: theme.mixins.toolbar.minHeight, // อยู่ใต้ AppBar
-        left: 0,
-        width: "100%",
-        zIndex: theme.zIndex.appBar, // อยู่เหนือเนื้อหา แต่ใต้ AppBar
-      }}
-    >
+    <Box sx={containerSx}>
       <LinearProgress color="primary" />
     </Box>
   );

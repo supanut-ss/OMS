@@ -258,27 +258,56 @@ export default function LoginPage({ setLang }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: `linear-gradient(135deg, ${theme.palette.primary.main}20 0%, ${theme.palette.secondary.main}20 100%)`,
-        p: 2,
+        background: `radial-gradient(1200px 600px at 10% 10%, ${theme.palette.primary.main}1f 0%, transparent 60%),
+          radial-gradient(900px 500px at 90% 20%, ${theme.palette.secondary.main}1f 0%, transparent 60%),
+          linear-gradient(180deg, ${theme.palette.background.default} 0%, ${theme.palette.grey[50]} 100%)`,
+        p: { xs: 2, md: 3 },
+        position: "relative",
+        overflow: "hidden",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          width: 420,
+          height: 420,
+          borderRadius: "50%",
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}26, ${theme.palette.secondary.main}26)`,
+          top: -120,
+          right: -140,
+          filter: "blur(2px)",
+        },
+        "&::after": {
+          content: '""',
+          position: "absolute",
+          width: 520,
+          height: 520,
+          borderRadius: "50%",
+          background: `linear-gradient(135deg, ${theme.palette.secondary.main}1a, ${theme.palette.primary.main}1a)`,
+          bottom: -200,
+          left: -160,
+        },
       }}
     >
       <Card
         elevation={8}
         sx={{
-          maxWidth: 440,
+          maxWidth: 480,
           width: "100%",
-          borderRadius: 3,
+          borderRadius: 4,
           overflow: "hidden",
-          backdropFilter: "blur(10px)",
+          backdropFilter: "blur(12px)",
           backgroundColor: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
+          boxShadow: "0 16px 40px rgba(16, 24, 40, 0.12)",
+          position: "relative",
+          zIndex: 1,
         }}
       >
-        <CardContent sx={{ p: 4 }}>
+        <CardContent sx={{ p: { xs: 3, md: 4 } }}>
           {/* Header */}
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Box
               sx={{
-                width: "50%",
+                width: "56%",
                 height: "auto",
                 mx: "auto",
                 mb: 2,
@@ -289,27 +318,28 @@ export default function LoginPage({ setLang }) {
             >
               <img
                 src={logoSvg}
-                alt="Timesheet Logo"
-                style={{ width: "50%", height: "50%" }}
+                alt="TimeSheet Logo"
+                style={{ width: "60%", height: "60%" }}
               />
             </Box>
             <Typography
-              variant="h4"
+              variant="h3"
               component="h1"
               sx={{
-                fontWeight: 700,
+                fontWeight: 800,
                 color: "text.primary",
-                mb: 1,
+                mb: 1.2,
+                letterSpacing: "-0.02em",
               }}
             >
-              {Config.APP_NAME}
+                 {Config.APP_NAME}
             </Typography>
             <Typography
               variant="body1"
               color="text.secondary"
-              sx={{ fontSize: "1.1rem" }}
+              sx={{ fontSize: "1rem" }}
             >
-              Log in to manage your tasks.
+              {getResourceByGroupAndName("Login", "Please login to your account.")?.resource_value || "Please login to your account."}
             </Typography>
           </Box>
 
@@ -433,15 +463,15 @@ export default function LoginPage({ setLang }) {
               size="large"
               disabled={loading}
               sx={{
-                py: 1.5,
-                borderRadius: 2,
-                fontSize: "1.1rem",
-                fontWeight: 600,
+                py: 1.6,
+                borderRadius: 2.5,
+                fontSize: "1rem",
+                fontWeight: 700,
                 textTransform: "none",
                 mb: 2,
-                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
                 "&:hover": {
-                  background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
+                  background: `linear-gradient(90deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
                 },
               }}
             >

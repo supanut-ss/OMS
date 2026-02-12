@@ -838,34 +838,35 @@ const MyTaskPage = (props) => {
   return (
     <Paper
       elevation={0}
-      sx={(t) => ({
-        height: "auto",
-        p: 3,
-        // Glassmorphism background
-        backgroundColor:
-          t.palette.mode === "dark"
-            ? t.palette.custom?.glass?.background || "rgba(20, 20, 25, 0.6)"
-            : t.palette.custom?.paperBackground || t.palette.background.paper,
-        // Backdrop blur for glass effect
-        backdropFilter: t.palette.mode === "dark" ? "blur(20px)" : "none",
-        // Subtle glass border
-        border:
-          t.palette.mode === "dark"
-            ? `1px solid ${t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
-            }`
-            : "none",
-        // Rounded corners
-        borderRadius: 3,
-        // Glass shadow
-        boxShadow:
-          t.palette.mode === "dark"
-            ? t.palette.custom?.glass?.shadow || "0 8px 32px rgba(0, 0, 0, 0.4)"
-            : undefined,
-        // Smooth transition
-        transition: "all 0.3s ease", width: "100%"
-      })}
+      sx={{ height: "100vh", p: 3, width: "100%" }}
+      // sx={(t) => ({
+      //   height: "auto",
+      //   p: 3,
+      //   // Glassmorphism background
+      //   backgroundColor:
+      //     t.palette.mode === "dark"
+      //       ? t.palette.custom?.glass?.background || "rgba(20, 20, 25, 0.6)"
+      //       : t.palette.custom?.paperBackground || t.palette.background.paper,
+      //   // Backdrop blur for glass effect
+      //   backdropFilter: t.palette.mode === "dark" ? "blur(20px)" : "none",
+      //   // Subtle glass border
+      //   border:
+      //     t.palette.mode === "dark"
+      //       ? `1px solid ${t.palette.custom?.glass?.border || "rgba(255, 255, 255, 0.08)"
+      //       }`
+      //       : "none",
+      //   // Rounded corners
+      //   borderRadius: 3,
+      //   // Glass shadow
+      //   boxShadow:
+      //     t.palette.mode === "dark"
+      //       ? t.palette.custom?.glass?.shadow || "0 8px 32px rgba(0, 0, 0, 0.4)"
+      //       : undefined,
+      //   // Smooth transition
+      //   transition: "all 0.3s ease", width: "100%"
+      // })}
     >
-      <Typography
+      {/* <Typography
         variant="h5"
         fontWeight="bold"
         gutterBottom
@@ -883,7 +884,7 @@ const MyTaskPage = (props) => {
       >
         {getResourceByGroupAndName("usp_tmt_my_task", "my_tasks")
           ?.resource_value || "My Tasks"}
-      </Typography>
+      </Typography> */}
 
       {/* Over Due Section - rendered separately */}
       <OverDueSection

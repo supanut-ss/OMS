@@ -3,13 +3,26 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { getTheme } from './theme';
 import secureStorage from '../utils/SecureStorage';
 
-const ColorModeContext = createContext({ toggleColorMode: () => { }, mode: 'light' });
+const ColorModeContext = createContext({
+  toggleColorMode: () => { },
+  mode: 'light',
+  themeName: 'theme-1',
+  setThemeName: () => { },
+});
 
 export function useColorMode() {
   return useContext(ColorModeContext);
 }
 
 export default function ThemeContextProvider({ children }) {
+  const supportedThemes = new Set([
+    "theme-1",
+    "theme-2",
+    "theme-purple",
+    "theme-teal",
+    "theme-pastel",
+  ]);
+
   // Initialize mode from secureStorage or default to 'light'
   const [mode, setMode] = useState(() => {
     try {
@@ -17,6 +30,16 @@ export default function ThemeContextProvider({ children }) {
       return savedMode === 'dark' ? 'dark' : 'light';
     } catch {
       return 'light';
+    }
+  });
+
+  // Initialize theme palette from secureStorage or default to 'theme-1'
+  const [themeName, setThemeName] = useState(() => {
+    try {
+      const savedTheme = secureStorage.get('theme');
+      return supportedThemes.has(savedTheme) ? savedTheme : 'theme-1';
+    } catch {
+      return 'theme-1';
     }
   });
 
@@ -29,13 +52,24 @@ export default function ThemeContextProvider({ children }) {
     }
   }, [mode]);
 
+  useEffect(() => {
+    try {
+      secureStorage.set('theme', themeName);
+    } catch (error) {
+      console.warn('Failed to save theme palette to secureStorage:', error);
+    }
+  }, [themeName]);
+
   const toggleColorMode = () => {
     setMode(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  const theme = useMemo(() => getTheme(mode), [mode]);
+  const theme = useMemo(() => getTheme(mode, themeName), [mode, themeName]);
 
-  const contextValue = useMemo(() => ({ toggleColorMode, mode }), [mode]);
+  const contextValue = useMemo(
+    () => ({ toggleColorMode, mode, themeName, setThemeName }),
+    [mode, themeName]
+  );
 
   return (
     <ColorModeContext.Provider value={contextValue}>
