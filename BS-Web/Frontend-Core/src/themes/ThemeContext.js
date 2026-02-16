@@ -20,6 +20,7 @@ export default function ThemeContextProvider({ children }) {
     "theme-2",
     "theme-purple",
     "theme-teal",
+    "theme-orange",
     "theme-pastel",
   ]);
 

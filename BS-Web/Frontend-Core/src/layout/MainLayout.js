@@ -656,6 +656,24 @@ export default function MainLayout({ lang, onChangeLang }) {
           {lang === "th" ? "ธีม ทีล" : "Theme Teal"}
         </MenuItem>
         <MenuItem
+          selected={themeName === "theme-orange"}
+          onClick={() => {
+            setThemeName("theme-orange");
+            handleThemePaletteClose();
+          }}
+        >
+          <Box
+            sx={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              bgcolor: "#ff8a4b",
+              mr: 1.5,
+            }}
+          />
+          {lang === "th" ? "ธีม ส้ม" : "Theme Orange"}
+        </MenuItem>
+        <MenuItem
           selected={themeName === "theme-pastel"}
           onClick={() => {
             setThemeName("theme-pastel");

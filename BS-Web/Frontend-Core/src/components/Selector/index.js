@@ -10,10 +10,6 @@ const STATUS = {
         label: "In Process",
         color: "#ff9800",
     },
-    hold: {
-        label: "Hold",
-        color: "#f44336",
-    },
     close: {
         label: "Close",
         color: "#4caf50",
@@ -21,7 +17,10 @@ const STATUS = {
     Cancel: {
         label: "Cancel",
         color: "#90a4ae",
-    },
+    },  hold: {
+        label: "Hold",
+        color: "#f44336",
+    }
 };
 
 export default function Selector({ value, setValue }) {
