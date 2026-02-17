@@ -2,52 +2,6 @@ import Swal from "sweetalert2";
 import secureStorage from "../utils/SecureStorage";
 
 /**
- * Inject CSS for scrollable SweetAlert2 content
- */
-const injectScrollableStyles = () => {
-  const styleId = "bsalert-swal2-scrollable-styles";
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement("style");
-    style.id = styleId;
-    style.textContent = `
-      .swal2-scrollable-content .swal2-html-container {
-        max-height: 60vh !important;
-        overflow-y: auto !important;
-        text-align: center !important;
-        padding: 0 1em !important;
-      }
-      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar {
-        width: 8px;
-      }
-      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
-      }
-      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 4px;
-      }
-      .swal2-scrollable-content .swal2-html-container::-webkit-scrollbar-thumb:hover {
-        background: #555;
-      }
-      .swal2-dark-mode .swal2-html-container::-webkit-scrollbar-track {
-        background: #2d2d2d;
-      }
-      .swal2-dark-mode .swal2-html-container::-webkit-scrollbar-thumb {
-        background: #666;
-      }
-      .swal2-dark-mode .swal2-html-container::-webkit-scrollbar-thumb:hover {
-        background: #888;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-};
-
-// Inject styles on module load
-injectScrollableStyles();
-
-/**
  * Helper function to detect dark mode
  */
 const isDarkMode = () => {
@@ -63,7 +17,7 @@ const getCustomClass = (additionalClasses = {}) => {
   const darkMode = isDarkMode();
   return {
     container: darkMode ? "swal2-dark-mode" : "",
-    popup: `swal2-zindex-override swal2-scrollable-content${darkMode ? " swal2-dark-mode" : ""}`,
+    popup: `swal2-zindex-override${darkMode ? " swal2-dark-mode" : ""}`,
     ...additionalClasses,
   };
 };

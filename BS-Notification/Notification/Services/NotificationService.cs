@@ -378,6 +378,289 @@ namespace Notification.Services
                 req.userId, req.title);
         }
 
+        public async Task<BannerResponse> GetBannerAsync()
+        {
+            var response = new BannerResponse();
+
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var cmd = new SqlCommand("noti.usp_get_banner", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var bannerDict = new Dictionary<int, BannerItem>();
+
+                // ===============================
+                // Result Set 1 : Banner Main
+                // ===============================
+                while (await reader.ReadAsync())
+                {
+                    var banner = new BannerItem
+                    {
+                        id = reader.GetInt32(reader.GetOrdinal("id")),
+                        type = reader["type"]?.ToString() ?? "",
+                        title = reader["title"]?.ToString() ?? "",
+                        description = reader["description"]?.ToString() ?? "",
+                        link = reader["link"]?.ToString(),
+                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
+                        list = new List<BannerLink>()
+                    };
+
+                    bannerDict.Add(banner.id, banner);
+                }
+
+                // ===============================
+                // Result Set 2 : Banner Detail
+                // ===============================
+                if (await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        int bannerId = reader.GetInt32(reader.GetOrdinal("banner_id"));
+
+                        if (bannerDict.ContainsKey(bannerId))
+                        {
+                            bannerDict[bannerId].list.Add(new BannerLink
+                            {
+                                name = reader["name"]?.ToString(),
+                                imageUrl = reader["imageUrl"]?.ToString() ?? ""
+                            });
+                        }
+                    }
+                }
+
+                response.data = bannerDict.Values.ToList();
+                response.message_code = 0;
+                response.message_text = "success";
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BannerResponse
+                {
+                    message_code = 1,
+                    message_text = ex.Message
+                };
+            }
+        }
+        public async Task<BannerResponse> ManageBannerAsync(ManageBannerRequest request)
+        {
+            var response = new BannerResponse();
+
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var cmd = new SqlCommand("noti.usp_manage_banner", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.AddWithValue("@in_vchAction", request.action);
+                cmd.Parameters.AddWithValue("@in_intId", (object?)request.id ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchType", (object?)request.type ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchTitle", (object?)request.title ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchDescription", (object?)request.description ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchLink", (object?)request.link ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchStartDate", (object?)request.start_date ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_vchEndDate", (object?)request.end_date ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@in_intPriority", request.priority);
+                cmd.Parameters.AddWithValue("@in_bitIsActive", request.is_active);
+                cmd.Parameters.AddWithValue("@in_vchUpdateBy", (object?)request.update_by ?? DBNull.Value);
+
+                // ===============================
+                // Table-Valued Parameter
+                // ===============================
+                var table = new DataTable();
+                table.Columns.Add("name", typeof(string));
+                table.Columns.Add("imageUrl", typeof(string));
+                table.Columns.Add("sort_order", typeof(int));
+
+                foreach (var item in request.details)
+                {
+                    table.Rows.Add(item.name, item.imageUrl, item.sort_order);
+                }
+
+                var tvpParam = new SqlParameter("@BannerDetails", table)
+                {
+                    SqlDbType = SqlDbType.Structured,
+                    TypeName = "noti.BannerDetailType"
+                };
+
+                cmd.Parameters.Add(tvpParam);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    response.message_code = Convert.ToInt32(reader["message_code"]);
+                    response.message_text = reader["message_text"].ToString() ?? "";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BannerResponse
+                {
+                    message_code = 1,
+                    message_text = ex.Message
+                };
+            }
+        }
+
+        public async Task<BannerResponse> DeleteBannerAsync(DeleteBannerRequest request)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("noti.usp_delete_banner", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@in_intId", request.id);
+                var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                cmd.Parameters.AddRange(new[] { pOutCode, pOutMsg });
+                await cmd.ExecuteNonQueryAsync();
+                var response = new BannerResponse
+                {
+                    message_code = int.TryParse(pOutCode.Value?.ToString(), out var code) ? code : 0,
+                    message_text = pOutMsg.Value?.ToString() ?? "deleted"
+                };
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BannerResponse
+                {
+                    message_code = 1,
+                    message_text = ex.Message
+                };
+            }
+        }
+
+        public async Task<BannerResponse> GetBannerDetailAsync(int bannerId)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("noti.usp_get_banner_detail", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@in_intId", bannerId);
+                using var reader = await cmd.ExecuteReaderAsync();
+                var response = new BannerResponse();
+                if (await reader.ReadAsync())
+                {
+                    response.message_code = 0;
+                    response.message_text = "success";
+                    response.data.Add(new BannerItem
+                    {
+                        id = reader.GetInt32(reader.GetOrdinal("id")),
+                        type = reader["type"]?.ToString() ?? "",
+                        title = reader["title"]?.ToString() ?? "",
+                        description = reader["description"]?.ToString() ?? "",
+                        link = reader["link"]?.ToString(),
+                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
+                        list = new List<BannerLink>()
+                    });
+                }
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BannerResponse
+                {
+                    message_code = 1,
+                    message_text = ex.Message
+                };
+            }
+        }
+
+        public async Task<BannerResponse> GetBannerByIdAsync(int id)
+        {
+            var response = new BannerResponse();
+
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                using var cmd = new SqlCommand("noti.usp_get_banner_by_id", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                cmd.Parameters.Add("@in_intId", SqlDbType.Int).Value = id;
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                BannerItem? banner = null;
+
+                // -------------------------
+                // Result 1 : Banner Header
+                // -------------------------
+                if (await reader.ReadAsync())
+                {
+                    banner = new BannerItem
+                    {
+                        id = reader.GetInt32(reader.GetOrdinal("id")),
+                        type = reader["type"]?.ToString() ?? "",
+                        title = reader["title"]?.ToString() ?? "",
+                        description = reader["description"]?.ToString() ?? "",
+                        link = reader["link"] as string,
+                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
+                        list = new List<BannerLink>()
+                    };
+
+                    response.data.Add(banner);
+                }
+
+                // -------------------------
+                // Result 2 : Banner Detail
+                // -------------------------
+                if (banner != null && await reader.NextResultAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        banner.list.Add(new BannerLink
+                        {
+                            name = reader["name"]?.ToString(),
+                            imageUrl = reader["imageUrl"]?.ToString() ?? ""
+                        });
+                    }
+                }
+
+                response.message_code = 0;
+                response.message_text = "success";
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                return new BannerResponse
+                {
+                    message_code = 1,
+                    message_text = ex.Message
+                };
+            }
+        }
 
     }
 }

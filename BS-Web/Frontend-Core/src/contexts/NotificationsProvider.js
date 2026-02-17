@@ -14,12 +14,13 @@ const NotificationsContext = createContext(null);
 export const useNotifications = () => useContext(NotificationsContext);
 
 export function NotificationsProvider({ children, maxSnack = 5 }) {
-  const { getNotify, markNotifyAsRead, deleteNotify } = NotifyContext();
+  const { getNotify, markNotifyAsRead, deleteNotify,getBannerNotify } = NotifyContext();
   const [snacks, setSnacks] = useState([]);
   const [alarm, setAlarm] = useState(null); // ⭐ FULLSCREEN ALARM
   const [notifications, setNotifications] = useState([]);
   const [total, setTotal] = useState(-1);
   const [totalUnread, setTotalUnread] = useState(0);
+  const [bannerNotify, setBannerNotify] = useState(null);
   const prevUnreadRef = useRef(0);
   useNotificationSound(
     totalUnread > prevUnreadRef.current
@@ -28,6 +29,16 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
   useEffect(() => {
     prevUnreadRef.current = totalUnread;
   }, [totalUnread]);
+  //---------- Fetch Banner Notify ----------
+  const fetchBannerNotify = useCallback(async () => {
+    const response = await getBannerNotify();
+    if (response?.message_code === 0) {
+      setBannerNotify(response.data);
+    } else {
+      setBannerNotify(null);
+    }
+  }, [getBannerNotify]);
+
   //----------Notification ----------
   const getNotifications = useCallback(async (limit) => {
     const response = await getNotify(limit);
@@ -135,7 +146,7 @@ export function NotificationsProvider({ children, maxSnack = 5 }) {
 
   return (
     <NotificationsContext.Provider value={{
-      enqueue, enqueueAlarm, getNotifications, markAsRead, notifications, totalUnread, total, deleteNotification, clearAll
+      bannerNotify,fetchBannerNotify,enqueue, enqueueAlarm, getNotifications, markAsRead, notifications, totalUnread, total, deleteNotification, clearAll
     }}>
       {children}
 

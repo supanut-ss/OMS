@@ -86,7 +86,7 @@ namespace Notification.Controllers
             if (string.IsNullOrEmpty(fromUser) || string.IsNullOrEmpty(request?.Message))
                 return BadRequest();
 
-            var res = await _service.SaveNotificationToDatabase(fromUser,userId, request);
+            var res = await _service.SaveNotificationToDatabase(fromUser, userId, request);
             if (res.message_code != 0)
             {
                 _logger.LogError("SaveNotificationToDatabase failed for fromUser={FromUser} toUser={ToUser} status={Status} message={Message}", fromUser, request.UserId, res.message_code, res.message_text);
@@ -136,6 +136,73 @@ namespace Notification.Controllers
             await _service.PushToUserAsync(req);
 
             return Ok(new { message = "pushed" });
+        }
+
+        [HttpGet("banner")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> GetBanner()
+        {
+            var res = await _service.GetBannerAsync();
+            if (res.message_code != 0)
+            {
+                _logger.LogError("GetBanner failed status={Status} message={Message}", res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+        }
+        [HttpPost("banner/manage")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> ManageBanner([FromBody] ManageBannerRequest request)
+        {
+            var userId = User?.FindFirst("UserId")?.Value ?? "";
+            request.update_by = userId;
+            var result = await _service.ManageBannerAsync(request);
+            return Ok(result);
+        }
+        [HttpGet("banner/{id}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> GetBannerById(int id)
+        {
+            var res = await _service.GetBannerByIdAsync(id);
+            if (res.message_code != 0)
+            {
+                _logger.LogError("GetBannerById failed for id={Id} status={Status} message={Message}", id, res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+
+        }
+        [HttpGet("banner/detail/{banner_id}")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> GetBannerDetail(int banner_id)
+        {
+            var res = await _service.GetBannerDetailAsync(banner_id);
+            if (res.message_code != 0)
+            {
+                _logger.LogError("GetBannerDetail failed for banner_id={BannerId} status={Status} message={Message}", banner_id, res.message_code, res.message_text);
+                return StatusCode(StatusCodes.Status500InternalServerError, res);
+            }
+            return Ok(res);
+        }
+        [HttpPost("banner/delete")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> DeleteBanner(DeleteBannerRequest request)
+        {
+            try
+            {
+                var res = await _service.DeleteBannerAsync(request);
+                if (res.message_code != 0)
+                {
+                    _logger.LogError("DeleteBanner failed for banner_id={BannerId} status={Status} message={Message}", request, res.message_code, res.message_text);
+                    return StatusCode(StatusCodes.Status500InternalServerError, res);
+                }
+                return Ok(res);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception in DeleteBanner for banner_id={BannerId}", request);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message_code = -1, message_text = "An error occurred while deleting the banner." });
+            }
         }
     }
 }

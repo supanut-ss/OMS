@@ -41,7 +41,7 @@ namespace ApiCore.Services.Implementation
             var configSchemas = _configuration.GetSection("DynamicCrud:AllowedSchemas").Get<string[]>();
             _allowedSchemas = configSchemas != null && configSchemas.Length > 0
                 ? new HashSet<string>(configSchemas, StringComparer.OrdinalIgnoreCase)
-                : new HashSet<string>(new[] { "dbo", "sec", "tmt", "imp", "ams" }, StringComparer.OrdinalIgnoreCase);
+                : new HashSet<string>(new[] { "dbo", "sec", "tmt", "imp", "ams","noti" }, StringComparer.OrdinalIgnoreCase);
 
             // Load forbidden tables from configuration, with fallback defaults
             var configForbidden = _configuration.GetSection("DynamicCrud:ForbiddenTables").Get<string[]>();

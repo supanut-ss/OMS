@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 import CustomBreadcrumbs from "../components/CustomBreadcrumbs";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, use } from "react";
 import {
   Box,
   CssBaseline,
@@ -41,7 +41,6 @@ import { useAuth } from "../contexts/AuthContext";
 
 import { styled, alpha } from "@mui/material/styles";
 //import logoMiniSvg from "../assets/logo.jpg";
-import logoHorizontalSvg from "../assets/logo.png";
 import SidebarMenu from "./SidebarMenu";
 import TopLinearProgress from "../components/TopLinearProgress";
 import SecureStorage from "../utils/SecureStorage";
@@ -53,6 +52,7 @@ import { useNotifications } from "../contexts/NotificationsProvider";
 import ResetPasswordDialog from "./Dialogs/ResetPasswordDialog";
 import NotifyDialog from "./Dialogs/NotifyDialog";
 import MenuNoti from "./MenuNotify";
+import PopupNotification from "./Dialogs/PopupNotification";
 const drawerWidth = 280;
 const collapsedWidth = 72;
 
@@ -119,7 +119,7 @@ export default function MainLayout({ lang, onChangeLang }) {
   // const navigate = useNavigate();
   //const apiUrl = Config.API_URL;
   const apiUrl = Config.API_NOTIFY;
-  const { enqueue, enqueueAlarm, notifications, getNotifications, totalUnread, total } = useNotifications();
+  const { bannerNotify,fetchBannerNotify,enqueue, enqueueAlarm, notifications, getNotifications, totalUnread, total } = useNotifications();
   // ตรวจสอบว่าเป็นหน้า dashboard (home) หรือไม่
   const isDashboard =
     location.pathname === "/" || location.pathname === "/home";
@@ -366,9 +366,15 @@ export default function MainLayout({ lang, onChangeLang }) {
   }, [total, callGetNoti]);
   useEffect(() => {
     if (loading) {
+      fetchBannerNotify();
       setLoading(false);
     }
   }, [location.pathname, loading]);
+  useEffect(() => {
+    if (!bannerNotify) {
+      fetchBannerNotify();
+    }
+  }, [bannerNotify]);
   return (
     <Box
       sx={{
@@ -393,17 +399,17 @@ export default function MainLayout({ lang, onChangeLang }) {
           "& .MuiTypography-root":
             mode === "light"
               ? {
-                  color: "#fff",
-                  fontWeight: 700,
-                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
-                }
+                color: "#fff",
+                fontWeight: 700,
+                textShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
+              }
               : undefined,
           "& .MuiIconButton-root":
             mode === "light"
               ? {
-                  color: "#fff",
-                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
-                }
+                color: "#fff",
+                textShadow: "0 1px 2px rgba(0, 0, 0, 0.35)",
+              }
               : undefined,
           backdropFilter: "blur(8px)",
           transition: theme.transitions.create(["width", "margin"], {
@@ -902,7 +908,7 @@ export default function MainLayout({ lang, onChangeLang }) {
           },
         }}
       >
-        <Outlet  />
+        <Outlet />
       </Box>
       {/* Reset Password Dialog */}
       <ResetPasswordDialog
@@ -917,6 +923,7 @@ export default function MainLayout({ lang, onChangeLang }) {
         open={isNotifyDialogOpen}
         onClose={() => setIsNotifyDialogOpen(false)}
       />
+      <PopupNotification data={bannerNotify} />
       {/* End Main content */}
     </Box>
   );

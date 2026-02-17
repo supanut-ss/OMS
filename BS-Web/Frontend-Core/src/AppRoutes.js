@@ -26,6 +26,7 @@ import PermissionRoute from "./components/Router/PermissionRoute";
 import ManPowerPage from "./pages/Projects/ManPower";
 import Incentive from "./pages/Incentive";
 import Performance from "./pages/Performance";
+import Banner from "./pages/Configs/Banner";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -97,6 +98,7 @@ export default function AppRoutes() {
         <Route path="configs" element={<PermissionRoute />}>
           <Route path="resource" element={<Resource lang={lang} />} />
           <Route path="combobox" element={<Combobox lang={lang} />} />
+          <Route path="banner" element={<Banner lang={lang} />} />
         </Route>
         <Route path="master" element={<PermissionRoute />}>
           <Route path="sale" element={<SalePage lang={lang} />} />
