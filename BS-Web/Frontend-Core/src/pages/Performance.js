@@ -16,7 +16,7 @@ import {
     Stack,
     Typography
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import PaidIcon from "@mui/icons-material/Paid";
 import PercentIcon from "@mui/icons-material/Percent";
@@ -208,12 +208,12 @@ const Performance = () => {
         };
     }, [projectSummaries]);
 
-    const pageBg = isDark ? "rgba(15, 23, 42, 0.6)" : "#f7f8fb";
-    const cardBg = isDark ? "rgba(30, 41, 59, 0.9)" : "#ffffff";
-    const cardBorder = isDark ? "rgba(148, 163, 184, 0.2)" : "rgba(15, 23, 42, 0.08)";
-    const cardShadow = isDark ? "0 10px 28px rgba(0,0,0,0.35)" : "0 10px 28px rgba(15,23,42,0.08)";
-    const softChipBg = isDark ? "rgba(96, 165, 250, 0.2)" : "rgba(59, 130, 246, 0.12)";
-    const softChipColor = isDark ? "#e2e8f0" : "#1e3a8a";
+    const pageBg = theme.palette.background.default;
+    const cardBg = theme.palette.background.paper;
+    const cardBorder = theme.palette.divider;
+    const cardShadow = theme.shadows[6];
+    const softChipBg = alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12);
+    const softChipColor = isDark ? theme.palette.primary.light : theme.palette.primary.dark;
     const monthOptions = [
         { value: 0, label: "All" },
         { value: 1, label: "Jan" },
@@ -238,7 +238,7 @@ const Performance = () => {
                 <CardContent>
                     <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "flex-start", md: "center" }}>
                         <Box flex={1}>
-                            <Typography variant="h4" fontWeight={700} gutterBottom>
+                            <Typography variant="h4" fontWeight={700}  gutterBottom>
                                 Executive Performance Dashboard
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
@@ -452,10 +452,10 @@ const Performance = () => {
                                                     sx={{
                                                         height: 8,
                                                         borderRadius: 1,
-                                                        bgcolor: isDark ? "rgba(148, 163, 184, 0.2)" : "rgba(15, 23, 42, 0.08)",
+                                                        bgcolor: cardBorder,
                                                         "& .MuiLinearProgress-bar": {
                                                             borderRadius: 1,
-                                                            bgcolor: isDark ? "#93c5fd" : "#60a5fa"
+                                                            bgcolor: isDark ? theme.palette.primary.light : theme.palette.primary.main
                                                         }
                                                     }}
                                                 />

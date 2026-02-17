@@ -26,7 +26,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import logoSvg from "../assets/logo.svg";
+import logoSvg from "../assets/logo.png";
 import Config from "../utils/Config";
 import secureStorage from "../utils/SecureStorage";
 import { useResource } from "../hooks/useResource";
@@ -319,25 +319,14 @@ export default function LoginPage({ setLang }) {
               <img
                 src={logoSvg}
                 alt="TimeSheet Logo"
-                style={{ width: "60%", height: "60%" }}
+                style={{ width: "80%", height: "80%" }}
               />
             </Box>
-            <Typography
-              variant="h3"
-              component="h1"
-              sx={{
-                fontWeight: 800,
-                color: "text.primary",
-                mb: 1.2,
-                letterSpacing: "-0.02em",
-              }}
-            >
-                 {Config.APP_NAME}
-            </Typography>
+            
             <Typography
               variant="body1"
               color="text.secondary"
-              sx={{ fontSize: "1rem" }}
+              sx={{ fontSize: "0.8rem" }}
             >
               {getResourceByGroupAndName("Login", "Please login to your account.")?.resource_value || "Please login to your account."}
             </Typography>

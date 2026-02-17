@@ -112,7 +112,8 @@ const getLightPalette = (themeName) => {
   const secondaryMain = preset.secondary || shades[600];
   const secondaryLight = preset.secondaryLight || shades[300];
   const secondaryDark = preset.secondaryDark || shades[800];
-
+  const primaryText = preset.primaryText || "#212121";
+  const secondaryText = preset.secondaryText || "#424242";
   return {
     primary: {
       main: primaryMain,
@@ -155,8 +156,8 @@ const getLightPalette = (themeName) => {
       paper: "#FFFFFF",
     },
     text: {
-      primary: "#1F2937",
-      secondary: "#6B7280",
+      primary: primaryText,
+      secondary: secondaryText,
     },
     divider: alpha(primaryMain, 0.18),
     grey: {

@@ -39,9 +39,9 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useColorMode } from "../themes/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 
-import { styled } from "@mui/material/styles";
+import { styled, alpha } from "@mui/material/styles";
 //import logoMiniSvg from "../assets/logo.jpg";
-import logoHorizontalSvg from "../assets/logo.svg";
+import logoHorizontalSvg from "../assets/logo.png";
 import SidebarMenu from "./SidebarMenu";
 import TopLinearProgress from "../components/TopLinearProgress";
 import SecureStorage from "../utils/SecureStorage";
@@ -215,6 +215,14 @@ export default function MainLayout({ lang, onChangeLang }) {
       setRole("User");
     }
   }, [location]);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.UserId) return;
@@ -435,11 +443,12 @@ export default function MainLayout({ lang, onChangeLang }) {
 
             {(!open || isMobile) && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <img
-                  src={logoHorizontalSvg}
-                  alt={Config.APP_NAME}
-                  style={{ height: 32 }}
-                />
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 600, color: "text.primary" }}
+                >
+                  {Config.APP_NAME}
+                </Typography>
               </Box>
             )}
             {!isDashboard && !isMobile && open && (
@@ -809,9 +818,9 @@ export default function MainLayout({ lang, onChangeLang }) {
                 }}
               >
                 <img
-                  src={`${process.env.PUBLIC_URL}/images/logo.svg`}
+                  src={`${process.env.PUBLIC_URL}/images/logo.png`}
                   alt="App Logo"
-                  style={{ width: 32, height: 32 }}
+                  style={{ width: 50, height: 50 }}
                 />
                 <Typography
                   variant="h6"
@@ -822,9 +831,9 @@ export default function MainLayout({ lang, onChangeLang }) {
               </Box>
             ) : (
               <img
-                src={`${process.env.PUBLIC_URL}/images/logo.svg`}
+                src={`${process.env.PUBLIC_URL}/images/logo.png`}
                 alt="App Logo"
-                style={{ width: 28, height: 28 }}
+                style={{ width: 50, height: 50 }}
               />
             )}
             {!isMobile && (
@@ -876,6 +885,21 @@ export default function MainLayout({ lang, onChangeLang }) {
           height: `calc(100vh - ${theme.spacing(8)})`,
           position: "relative",
           overflow: "auto",
+          scrollbarWidth: "thin",
+          scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} transparent`,
+          "&::-webkit-scrollbar": {
+            width: 8,
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "transparent",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.35),
+            borderRadius: 8,
+          },
+          "&::-webkit-scrollbar-thumb:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.55),
+          },
         }}
       >
         <Outlet  />
