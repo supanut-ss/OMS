@@ -510,6 +510,196 @@ const comboBoxConfig = [
 <BSDataGrid bsObj="t_wms_customer" bsComboBox={comboBoxConfig} />;
 ```
 
+### ComboBox Properties
+
+| Property       | Type   | Required | Description                                                              |
+| -------------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `Column`       | string | ✅       | Column name ที่จะเป็น dropdown                                           |
+| `Display`      | string | ✅       | Column ที่แสดงใน dropdown                                                |
+| `Value`        | string | ✅       | Column ที่เก็บค่า                                                        |
+| `Default`      | string |          | ข้อความตัวเลือกเริ่มต้น (เช่น "--- Select ---")                         |
+| `PreObj`       | string |          | Schema ของ lookup table                                                  |
+| `Obj`          | string | ✅       | Lookup table name                                                        |
+| `ObjWh`        | string |          | WHERE condition (รองรับ `{placeholder}` สำหรับ hierarchy)                 |
+| `ObjBy`        | string |          | ORDER BY clause                                                          |
+| `ObjGrp`       | string |          | GROUP BY clause                                                          |
+| `ParentColumn` | string |          | Column ของ parent ComboBox ที่ต้องเลือกก่อน (สำหรับ hierarchy, optional) |
+| `valueOptions` | array  |          | ตัวเลือกแบบ static (ถ้าไม่ต้องการ fetch จาก API)                         |
+
+---
+
+## Hierarchy ComboBox (ParentColumn)
+
+รองรับ ComboBox แบบ **cascading/hierarchy** — เลือก ComboBox แม่แล้ว ComboBox ลูกจะกรองข้อมูลตามค่าที่เลือก
+
+### คุณสมบัติ
+
+- ✅ Child ComboBox จะ **disabled** จนกว่า parent จะถูกเลือก
+- ✅ Child options จะ **reload อัตโนมัติ** เมื่อ parent เปลี่ยนค่า
+- ✅ Child value จะ **ถูก clear อัตโนมัติ** เมื่อ parent เปลี่ยน (รวม grandchildren)
+- ✅ รองรับ **multi-level** hierarchy (3+ ระดับ)
+- ✅ ทำงานทั้ง **Form Dialog** (Add/Edit) และ **Bulk Add**
+- ✅ แสดงข้อความ helper เมื่อ parent ยังไม่ได้เลือก
+
+### วิธีใช้งาน
+
+เพิ่ม `ParentColumn` ใน config ของ child ComboBox และใช้ `{placeholder}` ใน `ObjWh`:
+
+```jsx
+bsComboBox={[
+  // Parent ComboBox (ไม่มี ParentColumn)
+  {
+    Column: "province_id",
+    Display: "province_name",
+    Value: "province_id",
+    Default: "--- เลือกจังหวัด ---",
+    Obj: "t_province",
+    ObjBy: "province_name asc"
+  },
+  // Child ComboBox (มี ParentColumn)
+  {
+    Column: "district_id",
+    Display: "district_name",
+    Value: "district_id",
+    Default: "--- เลือกอำเภอ ---",
+    Obj: "t_district",
+    ObjBy: "district_name asc",
+    ParentColumn: "province_id",         // ← ชี้ไปที่ Column ของ parent
+    ObjWh: "province_id={province_id}"   // ← {province_id} จะถูกแทนที่ด้วยค่าจริง
+  }
+]}
+```
+
+### ตัวอย่าง: 2 ระดับ (จังหวัด → อำเภอ)
+
+```jsx
+<BSDataGrid
+  bsObj="t_customer_address"
+  bsComboBox={[
+    {
+      Column: "province_id",
+      Display: "province_name",
+      Value: "province_id",
+      Default: "--- เลือกจังหวัด ---",
+      PreObj: "default",
+      Obj: "t_province",
+      ObjBy: "province_name asc"
+    },
+    {
+      Column: "district_id",
+      Display: "district_name",
+      Value: "district_id",
+      Default: "--- เลือกอำเภอ ---",
+      PreObj: "default",
+      Obj: "t_district",
+      ObjBy: "district_name asc",
+      ParentColumn: "province_id",
+      ObjWh: "province_id={province_id}"
+    }
+  ]}
+/>
+```
+
+### ตัวอย่าง: 3 ระดับ (จังหวัด → อำเภอ → ตำบล)
+
+```jsx
+<BSDataGrid
+  bsObj="t_customer_address"
+  bsComboBox={[
+    {
+      Column: "province_id",
+      Display: "province_name",
+      Value: "province_id",
+      Default: "--- เลือกจังหวัด ---",
+      Obj: "t_province",
+      ObjBy: "province_name asc"
+    },
+    {
+      Column: "district_id",
+      Display: "district_name",
+      Value: "district_id",
+      Default: "--- เลือกอำเภอ ---",
+      Obj: "t_district",
+      ObjBy: "district_name asc",
+      ParentColumn: "province_id",
+      ObjWh: "province_id={province_id}"
+    },
+    {
+      Column: "sub_district_id",
+      Display: "sub_district_name",
+      Value: "sub_district_id",
+      Default: "--- เลือกตำบล ---",
+      Obj: "t_sub_district",
+      ObjBy: "sub_district_name asc",
+      ParentColumn: "district_id",
+      ObjWh: "district_id={district_id}"
+    }
+  ]}
+/>
+```
+
+### ตัวอย่าง: Company → Department → Position
+
+```jsx
+<BSDataGrid
+  bsObj="t_employee"
+  bsComboBox={[
+    {
+      Column: "company_id",
+      Display: "company_name",
+      Value: "company_id",
+      Default: "--- Select Company ---",
+      Obj: "t_company"
+    },
+    {
+      Column: "department_id",
+      Display: "department_name",
+      Value: "department_id",
+      Default: "--- Select Department ---",
+      Obj: "t_department",
+      ParentColumn: "company_id",
+      ObjWh: "company_id={company_id}"
+    },
+    {
+      Column: "position_id",
+      Display: "position_name",
+      Value: "position_id",
+      Default: "--- Select Position ---",
+      Obj: "t_position",
+      ParentColumn: "department_id",
+      ObjWh: "department_id={department_id}"
+    }
+  ]}
+/>
+```
+
+### ข้อกำหนดสำคัญ
+
+| # | ข้อกำหนด                           | รายละเอียด                                                                              |
+|---|--------------------------------------|-----------------------------------------------------------------------------------------|
+| 1 | **ประกาศ Parent ก่อน Child**         | ใน `bsComboBox` array ต้องประกาศ parent ComboBox ก่อน child เสมอ                         |
+| 2 | **ParentColumn ต้องตรงกับ Column**   | ค่า `ParentColumn` ของ child ต้องตรงกับ `Column` ของ parent                              |
+| 3 | **ใช้ {placeholder} ใน ObjWh**       | ใช้ `{column_name}` ใน ObjWh เพื่อแทนที่ด้วยค่าจริง เช่น `province_id={province_id}`   |
+| 4 | **Database FK**                      | ตาราง child ต้องมี FK column ที่ชี้ไปหา parent table                                     |
+
+### กลไกการทำงาน
+
+```
+┌─────────────────────┐     เลือก "กรุงเทพ"      ┌──────────────────────────┐
+│  จังหวัด (Parent)    │  ──────────────────────▶ │  อำเภอ (Child)            │
+│  [กรุงเทพ        ▼] │     1. Clear ค่าอำเภอ     │  [เลือกอำเภอ         ▼]  │
+└─────────────────────┘     2. Reload options       └──────────────────────────┘
+                           WHERE province_id=10
+                        3. Enable dropdown
+```
+
+1. **เลือก Parent** → ระบบ clear ค่า child (และ grandchild) ทั้งหมด
+2. **Reload child options** → ส่ง API request พร้อม WHERE condition ที่แทนค่า `{placeholder}` แล้ว
+3. **Enable child dropdown** → child ComboBox พร้อมให้เลือก
+4. **เปลี่ยน Parent** → วนกลับไปข้อ 1
+
+---
+
 ## Advanced Examples
 
 ### 1. Full Configuration
@@ -1054,6 +1244,16 @@ const [filterValues, setFilterValues] = useState([]);
 
 ## Changelog
 
+### v1.4.0 (February 2026)
+
+- ✨ **NEW:** `ParentColumn` - Hierarchy/Cascading ComboBox support
+  - Child ComboBox auto-filters based on parent selection
+  - Auto-clear child values when parent changes (including grandchildren)
+  - Supports multi-level hierarchy (3+ levels)
+  - Works in both Form Dialog and Bulk Add modes
+  - `{placeholder}` syntax in `ObjWh` for dynamic WHERE conditions
+- 📝 **DOC:** Added Hierarchy ComboBox (ParentColumn) documentation
+
 ### v1.3.0 (January 2026)
 
 - ✨ **NEW:** `bsBulkMode` - Consolidated bulk mode configuration object
@@ -1107,6 +1307,6 @@ const [filterValues, setFilterValues] = useState([]);
 
 ---
 
-**Version:** 1.3.0  
-**Last Updated:** January 2026  
+**Version:** 1.4.0  
+**Last Updated:** February 2026  
 **Maintainer:** BS Platform Team
