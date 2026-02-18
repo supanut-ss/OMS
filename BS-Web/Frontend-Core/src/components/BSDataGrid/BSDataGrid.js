@@ -45,6 +45,7 @@ import {
   Avatar,
   AvatarGroup,
   useTheme,
+  alpha,
 } from "@mui/material";
 import {
   DataGridPro,
@@ -248,7 +249,7 @@ const sanitizeDataForApi = (data, columns = []) => {
 const stringAvatar = (name) => {
   if (!name || typeof name !== "string") {
     return {
-      sx: { bgcolor: "#bdbdbd", width: 32, height: 32, fontSize: "0.875rem" },
+      sx: { bgcolor: "grey.400", width: 32, height: 32, fontSize: "0.875rem" },
       children: "?",
     };
   }
@@ -256,7 +257,7 @@ const stringAvatar = (name) => {
   const trimmedName = name.trim();
   if (!trimmedName) {
     return {
-      sx: { bgcolor: "#bdbdbd", width: 32, height: 32, fontSize: "0.875rem" },
+      sx: { bgcolor: "grey.400", width: 32, height: 32, fontSize: "0.875rem" },
       children: "?",
     };
   }
@@ -1497,7 +1498,7 @@ const BulkAddComboBoxField = ({
     <FormControl fullWidth size="small" required={required}>
       <InputLabel>
         {formatColumnName(columnName)}
-        {required && <span style={{ color: "#d32f2f" }}> *</span>}
+        {required && <span style={{ color: "error.main" }}> *</span>}
       </InputLabel>
       <Select
         value={value || ""}
@@ -4428,23 +4429,30 @@ const BSDataGrid = forwardRef(
       (errorInfo) => {
         // Get locale text
         const currentLocaleText = getLocaleText(getEffectiveLocale());
+        
+        // Use theme colors
+        const textSecondary = theme.palette.text.secondary;
+        const dividerColor = theme.palette.divider;
+        const greyBg = theme.palette.mode === "dark" ? theme.palette.grey[800] : theme.palette.grey[100];
+        const greyBgAlt = theme.palette.mode === "dark" ? theme.palette.grey[700] : theme.palette.grey[50];
+        const textPrimary = theme.palette.text.primary;
 
         let htmlContent = `<p style="margin: 0 0 10px 0; font-size: 16px;">${errorInfo.friendlyMessage}</p>`;
 
         if (errorInfo.detailMessage) {
-          htmlContent += `<p style="margin: 0 0 15px 0; font-size: 14px; color: #666;">${errorInfo.detailMessage}</p>`;
+          htmlContent += `<p style="margin: 0 0 15px 0; font-size: 14px; color: ${textSecondary};">${errorInfo.detailMessage}</p>`;
         }
 
         // Add collapsible exception details
         htmlContent += `
-          <details style="text-align: left; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
-            <summary style="cursor: pointer; padding: 8px 12px; background: #f5f5f5; font-size: 13px; color: #666; user-select: none;">
+          <details style="text-align: left; margin-top: 10px; border: 1px solid ${dividerColor}; border-radius: 4px; overflow: hidden;">
+            <summary style="cursor: pointer; padding: 8px 12px; background: ${greyBg}; font-size: 13px; color: ${textSecondary}; user-select: none;">
               ${
                 currentLocaleText.bsViewExceptionDetails ||
                 "View Exception Details"
               }
             </summary>
-            <div style="padding: 12px; background: #fafafa; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; color: #333;">
+            <div style="padding: 12px; background: ${greyBgAlt}; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; color: ${textPrimary};">
 ${errorInfo.originalError}
             </div>
           </details>
@@ -4458,7 +4466,7 @@ ${errorInfo.originalError}
           confirmButtonText: currentLocaleText.bsOk || "OK",
         });
       },
-      [getEffectiveLocale],
+      [getEffectiveLocale, theme],
     );
 
     // Helper: Get effective primary key (from metadata or detected from data)
@@ -9784,7 +9792,7 @@ ${errorInfo.originalError}
             "&:hover": {
               backgroundColor: rowConfig.backgroundColor
                 ? `${rowConfig.backgroundColor}dd` // Slightly darker on hover
-                : "#f9f9f9",
+                : "action.hover",
             },
             "& .MuiDataGrid-cell": {
               color: rowConfig.textColor || "inherit",
@@ -10344,18 +10352,24 @@ ${errorInfo.originalError}
         });
 
         if (validationErrors.length > 0) {
+          // Use theme colors for error messages
+          const textSecondary = theme.palette.text.secondary;
+          const errorBg = theme.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : `${theme.palette.error.light}22`;
+          const errorBorder = theme.palette.error.main;
+          const errorText = theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark;
+          
           // Build user-friendly HTML message
           const errorHtml = validationErrors
             .map((item) => {
               const errorItems = item.errors
                 .map(
                   (err) =>
-                    `<li style="margin: 2px 0; color: #666;">${err}</li>`,
+                    `<li style="margin: 2px 0; color: ${textSecondary};">${err}</li>`,
                 )
                 .join("");
               return `
-                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                  <strong style="color: #c0392b;">📋 ${
+                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${errorBg}; border-radius: 6px; border-left: 3px solid ${errorBorder};">
+                  <strong style="color: ${errorText};">📋 ${
                     localeText.bsRow || "Row"
                   } ${item.rowNumber}</strong>
                   <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
@@ -10400,6 +10414,7 @@ ${errorInfo.originalError}
       validateFormData,
       localeText.bsRow,
       localeText.bsValidationError,
+      theme,
     ]);
 
     const handleBulkDialogClose = useCallback(() => {
@@ -10882,18 +10897,24 @@ ${errorInfo.originalError}
         });
 
         if (validationErrors.length > 0) {
+          // Use theme colors for error messages
+          const textSecondary = theme.palette.text.secondary;
+          const errorBg = theme.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : `${theme.palette.error.light}22`;
+          const errorBorder = theme.palette.error.main;
+          const errorText = theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark;
+          
           // Build user-friendly HTML message
           const errorHtml = validationErrors
             .map((item) => {
               const errorItems = item.errors
                 .map(
                   (err) =>
-                    `<li style="margin: 2px 0; color: #666;">${err}</li>`,
+                    `<li style="margin: 2px 0; color: ${textSecondary};">${err}</li>`,
                 )
                 .join("");
               return `
-                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                  <strong style="color: #c0392b;">📋 ${
+                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${errorBg}; border-radius: 6px; border-left: 3px solid ${errorBorder};">
+                  <strong style="color: ${errorText};">📋 ${
                     localeText.bsRow || "Row"
                   } ${item.rowNumber}</strong>
                   <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
@@ -10945,18 +10966,24 @@ ${errorInfo.originalError}
           }
 
           if (uniqueValidationErrors.length > 0) {
+            // Use theme colors for error messages
+            const textSecondary = theme.palette.text.secondary;
+            const errorBg = theme.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : theme.palette.error.light + "22";
+            const errorBorder = theme.palette.error.main;
+            const errorText = theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark;
+            
             // Build user-friendly HTML message for unique field errors
             const uniqueErrorHtml = uniqueValidationErrors
               .map((item) => {
                 const errorItems = item.errors
                   .map(
                     (err) =>
-                      `<li style="margin: 2px 0; color: #666;">${err}</li>`,
+                      `<li style="margin: 2px 0; color: ${textSecondary};">${err}</li>`,
                   )
                   .join("");
                 return `
-                  <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: #fff5f5; border-radius: 6px; border-left: 3px solid #e74c3c;">
-                    <strong style="color: #c0392b;">📋 ${
+                  <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${errorBg}; border-radius: 6px; border-left: 3px solid ${errorBorder};">
+                    <strong style="color: ${errorText};">📋 ${
                       localeText.bsRow || "Row"
                     } ${item.rowNumber}</strong>
                     <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
@@ -11191,6 +11218,7 @@ ${errorInfo.originalError}
       bsKeyId,
       bsUniqueFields,
       validateUniqueFields,
+      theme,
     ]);
 
     const handleBulkDiscardChanges = useCallback(async () => {
@@ -11937,12 +11965,12 @@ ${errorInfo.originalError}
                         backgroundColor:
                           theme.palette.mode === "dark"
                             ? "rgba(255, 217, 61, 0.15)"
-                            : "#fff3cd",
+                            : theme.palette.warning.light,
                         "&:hover": {
                           backgroundColor:
                             theme.palette.mode === "dark"
                               ? "rgba(255, 217, 61, 0.25)"
-                              : "#ffeaa7",
+                              : theme.palette.warning[200] || theme.palette.warning.light,
                         },
                       },
                       // Selected row styling - primary glow
@@ -11950,12 +11978,12 @@ ${errorInfo.originalError}
                         backgroundColor:
                           theme.palette.mode === "dark"
                             ? "rgba(0, 212, 255, 0.2) !important"
-                            : "#bbdefb !important",
+                            : `${theme.palette.primary.light}33 !important`,
                         "&:hover": {
                           backgroundColor:
                             theme.palette.mode === "dark"
                               ? "rgba(0, 212, 255, 0.3) !important"
-                              : "#90caf9 !important",
+                              : `${theme.palette.primary.light}66 !important`,
                         },
                       },
                     },
@@ -11964,7 +11992,7 @@ ${errorInfo.originalError}
                       backgroundColor: `${
                         theme.palette.mode === "dark"
                           ? theme.palette.grey[200]
-                          : "#E0DEDEFF"
+                          : theme.palette.grey[200]
                       } !important`,
                       borderBottom: `1px solid ${theme.palette.divider} !important`,
                       minHeight: "30px !important",
@@ -12025,7 +12053,7 @@ ${errorInfo.originalError}
                       backgroundColor: `${
                         theme.palette.mode === "dark"
                           ? theme.palette.grey[800]
-                          : "#fafafa"
+                          : theme.palette.grey[50]
                       } !important`,
                       "& .MuiInputBase-root": {
                         border: `1px solid ${theme.palette.divider}`,
@@ -12049,9 +12077,35 @@ ${errorInfo.originalError}
                       backgroundColor: `${
                         theme.palette.mode === "dark"
                           ? theme.palette.grey[800]
-                          : "#f5f9ff"
+                          : theme.palette.primary[50] || "#f5f9ff"
                       } !important`,
                       boxShadow: `inset 0 0 0 1px ${theme.palette.primary.main}`,
+                    },
+                    // Custom scrollbar styling - same as SidebarMenu.js
+                    "& .MuiDataGrid-main": {
+                      overflow: "hidden",
+                    },
+                    "& .MuiDataGrid-scrollbar": {
+                      display: "none",
+                    },
+                    "& .MuiDataGrid-virtualScroller": {
+                      overflow: "auto",
+                      scrollbarWidth: "thin",
+                      scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} transparent`,
+                      "&::-webkit-scrollbar": {
+                        width: 6,
+                        height: 6,
+                      },
+                      "&::-webkit-scrollbar-track": {
+                        background: "transparent",
+                      },
+                      "&::-webkit-scrollbar-thumb": {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.4),
+                        borderRadius: 8,
+                        "&:hover": {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.6),
+                        },
+                      },
                     },
                   })}
                   {...props}
@@ -12123,12 +12177,12 @@ ${errorInfo.originalError}
                       backgroundColor:
                         theme.palette.mode === "dark"
                           ? theme.palette.grey[300]
-                          : "#EBEBEBFF",
+                          : theme.palette.grey[200],
                       "&:hover": {
                         backgroundColor:
                           theme.palette.mode === "dark"
                             ? theme.palette.grey[400]
-                            : "#d5d5d5",
+                            : theme.palette.grey[300],
                       },
                       borderTopLeftRadius: "8px",
                       borderTopRightRadius: "8px",
@@ -12411,7 +12465,7 @@ ${errorInfo.originalError}
                                     <InputLabel>
                                       {formatColumnName(columnName)}
                                       {!isNullable && (
-                                        <span style={{ color: "#d32f2f" }}>
+                                        <span style={{ color: theme.palette.error.main }}>
                                           {" "}
                                           *
                                         </span>
@@ -12423,7 +12477,7 @@ ${errorInfo.originalError}
                                         <>
                                           {formatColumnName(columnName)}
                                           {!isNullable && (
-                                            <span style={{ color: "#d32f2f" }}>
+                                            <span style={{ color: theme.palette.error.main }}>
                                               {" "}
                                               *
                                             </span>
@@ -12578,7 +12632,7 @@ ${errorInfo.originalError}
                                         <>
                                           {formatColumnName(columnName)}
                                           {!isNullable && (
-                                            <span style={{ color: "#d32f2f" }}>
+                                            <span style={{ color: theme.palette.error.main }}>
                                               {" "}
                                               *
                                             </span>
@@ -12629,7 +12683,7 @@ ${errorInfo.originalError}
                                         <>
                                           {formatColumnName(columnName)}
                                           {!isNullable && (
-                                            <span style={{ color: "#d32f2f" }}>
+                                            <span style={{ color: theme.palette.error.main }}>
                                               {" "}
                                               *
                                             </span>
@@ -12687,7 +12741,7 @@ ${errorInfo.originalError}
                                       <>
                                         {formatColumnName(columnName)}
                                         {!isNullable && (
-                                          <span style={{ color: "#d32f2f" }}>
+                                          <span style={{ color: theme.palette.error.main }}>
                                             {" "}
                                             *
                                           </span>
@@ -12722,7 +12776,7 @@ ${errorInfo.originalError}
                                   <>
                                     {formatColumnName(columnName)}
                                     {!isNullable && (
-                                      <span style={{ color: "#d32f2f" }}>
+                                      <span style={{ color: "error.main" }}>
                                         {" "}
                                         *
                                       </span>

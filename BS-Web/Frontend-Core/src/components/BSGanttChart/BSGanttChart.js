@@ -15,6 +15,7 @@ import {
   Alert,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { Gantt, Willow, WillowDark } from "@svar-ui/react-gantt";
 import "@svar-ui/react-gantt/all.css";
 
@@ -1815,25 +1816,23 @@ const BSGanttChart = forwardRef(
             height: height,
             maxHeight: height,
             position: "relative",
-            overflow: "auto", // Enable scrollbars - SVAR handles scroll sync internally
+            overflowY: "auto",
+            overflowX: "hidden", // Hide native horizontal scrollbar; use sticky bar instead
             // Custom scrollbar styling for the main container
+            scrollbarWidth: "thin",
+            scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} transparent`,
             "&::-webkit-scrollbar": {
-              width: "14px",
-              height: "14px",
+              width: 6,
+              height: 6,
             },
             "&::-webkit-scrollbar-track": {
-              background: theme.palette.mode === "dark" ? "#333" : "#f1f1f1",
-              borderRadius: "7px",
+              background: "transparent",
             },
             "&::-webkit-scrollbar-thumb": {
-              background: theme.palette.mode === "dark" ? "#666" : "#b0b0b0",
-              borderRadius: "7px",
-              border:
-                theme.palette.mode === "dark"
-                  ? "3px solid #333"
-                  : "3px solid #f1f1f1",
+              backgroundColor: alpha(theme.palette.primary.main, 0.4),
+              borderRadius: 8,
               "&:hover": {
-                background: theme.palette.mode === "dark" ? "#888" : "#909090",
+                backgroundColor: alpha(theme.palette.primary.main, 0.6),
               },
             },
             // Let SVAR Gantt handle its own layout and scrolling
@@ -1841,21 +1840,22 @@ const BSGanttChart = forwardRef(
               height: "100%",
               display: "flex",
               flexDirection: "column",
+              scrollbarWidth: "thin",
+              scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} transparent`,
             },
             // Only style scrollbars, don't override scroll behavior
             "& .wx-gantt ::-webkit-scrollbar": {
-              width: "12px",
-              height: "12px",
+              width: 6,
+              height: 6,
             },
             "& .wx-gantt ::-webkit-scrollbar-track": {
-              background: theme.palette.mode === "dark" ? "#333" : "#f1f1f1",
-              borderRadius: "6px",
+              background: "transparent",
             },
             "& .wx-gantt ::-webkit-scrollbar-thumb": {
-              background: theme.palette.mode === "dark" ? "#666" : "#c1c1c1",
-              borderRadius: "6px",
+              backgroundColor: alpha(theme.palette.primary.main, 0.4),
+              borderRadius: 8,
               "&:hover": {
-                background: theme.palette.mode === "dark" ? "#888" : "#a1a1a1",
+                backgroundColor: alpha(theme.palette.primary.main, 0.6),
               },
             },
             // ===== STICKY HEADER STYLES (controlled via JavaScript transform) =====
@@ -2083,28 +2083,23 @@ const BSGanttChart = forwardRef(
               height: "20px",
               overflowX: "auto",
               overflowY: "hidden",
-              backgroundColor:
-                theme.palette.mode === "dark" ? "#1a1a1a" : "#f5f5f5",
+              backgroundColor: theme.palette.mode === "dark" ? "#1a1a1a" : "#f9f9f9",
               borderTop: `1px solid ${theme.palette.divider}`,
               zIndex: 100,
               // Custom scrollbar styling
+              scrollbarWidth: "thin",
+              scrollbarColor: `${alpha(theme.palette.primary.main, 0.5)} transparent`,
               "&::-webkit-scrollbar": {
-                height: "16px",
+                height: 6,
               },
               "&::-webkit-scrollbar-track": {
-                background: theme.palette.mode === "dark" ? "#333" : "#e0e0e0",
-                borderRadius: "8px",
+                background: "transparent",
               },
               "&::-webkit-scrollbar-thumb": {
-                background: theme.palette.mode === "dark" ? "#666" : "#9e9e9e",
-                borderRadius: "8px",
-                border:
-                  theme.palette.mode === "dark"
-                    ? "3px solid #333"
-                    : "3px solid #e0e0e0",
+                backgroundColor: alpha(theme.palette.primary.main, 0.4),
+                borderRadius: 8,
                 "&:hover": {
-                  background:
-                    theme.palette.mode === "dark" ? "#888" : "#757575",
+                  backgroundColor: alpha(theme.palette.primary.main, 0.6),
                 },
               },
             }}
