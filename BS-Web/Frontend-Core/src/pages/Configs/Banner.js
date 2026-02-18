@@ -113,7 +113,7 @@ const Banner = (props) => {
     await viewBannerDetails(row.id);
   };
 
-  const handleOpenDelete =async (id) => {
+  const handleOpenDelete = async (id) => {
     await deleteBanner(id);
   };
 
@@ -126,8 +126,8 @@ const Banner = (props) => {
     const payload = {
       action: formData?.id ? "UPDATE" : "INSERT",
       id: formData?.id || 0,
-      ...formData,  
-      is_active: formData?.is_active === "YES" || formData?.is_active === 1 ? true : false,
+      ...formData,
+      is_active: formData?.id ? ((formData?.is_active === "YES" || formData?.is_active === true) ? true : false) : formData?.is_active,
       details: details
         .filter((item) => item.imageUrl || item.name)
         .map((item, idx) => ({
@@ -150,6 +150,7 @@ const Banner = (props) => {
       await BSAlertSwal2.show("error", "Create banner failed.");
     } finally {
       setSubmitting(false);
+      gridRef.current?.refreshData();
     }
   };
   const deleteBanner = async (id) => {
@@ -175,7 +176,7 @@ const Banner = (props) => {
       if (response?.message_code === 0) {
         // Handle both array and single object responses
         const data = Array.isArray(response.data) ? response.data[0] : response.data;
-        
+
         // setFormData(prev => ({
         //   ...prev,
         //   id: data.id,
@@ -189,7 +190,7 @@ const Banner = (props) => {
         //   is_active: data?.is_active !== undefined ? data.is_active : true,
         //   update_by: data?.update_by || "admin",
         // }));
-        
+
         // Map 'list' to 'details' format
         const detailsList = Array.isArray(data.list) && data.list.length > 0
           ? data.list.map((item, idx) => ({
@@ -307,7 +308,7 @@ const Banner = (props) => {
                 />
                 <TextField
                   label="End Date"
-                  type="text"
+                  type="date"
                   value={formData.end_date.toString("yyyy-MM-dd")}
                   onChange={updateForm("end_date")}
                   required

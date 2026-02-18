@@ -365,16 +365,14 @@ export default function MainLayout({ lang, onChangeLang }) {
     if (total === -1) callGetNoti();
   }, [total, callGetNoti]);
   useEffect(() => {
-    if (loading) {
-      fetchBannerNotify();
+    // เรียก fetchBannerNotify เมื่อ component mount หรือ route เปลี่ยน
+     if (loading) {
       setLoading(false);
     }
-  }, [location.pathname, loading]);
-  useEffect(() => {
     if (!bannerNotify) {
       fetchBannerNotify();
     }
-  }, [bannerNotify]);
+  }, [location.pathname, fetchBannerNotify]);
   return (
     <Box
       sx={{
