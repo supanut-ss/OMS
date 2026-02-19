@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   TextField,
   CircularProgress,
@@ -8,9 +8,11 @@ import {
   Typography,
 } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
-import SecureStorage from "../utils/SecureStorage";
 import AxiosMaster from "../utils/AxiosMaster";
 import FlagIcon from "@mui/icons-material/Flag";
+
+const REQUEST_DEDUP_TTL_MS = 1500;
+const sharedRequestMap = new Map();
 
 const getPriorityColor = (priority) => {
   switch (priority?.toLowerCase()) {
@@ -56,6 +58,9 @@ const BSAutoComplete = ({
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(bsData.length > 0);
   const [inputValue, setInputValue] = useState("");
+  const hasInitializedSearch = useRef(false);
+  const hasFetchedInitially = useRef(false);
+  const suppressNextSearch = useRef(false);
   const requestBody = useMemo(
     () => ({
       table: bsObj,
@@ -101,43 +106,100 @@ const BSAutoComplete = ({
   const fetchData = useCallback(
     async (keyword = "") => {
       if (disabled) return;
-      setLoading(true);
-      try {
-        const res = await AxiosMaster.post("/autocomplete", {
-          ...requestBody,
-          keyword,      // "" = default
-          limit: 30,
-        });
 
-        const list =
+      const normalizedKeyword = typeof keyword === "string" ? keyword : "";
+      const payload = {
+        ...requestBody,
+        keyword: normalizedKeyword,
+        limit: 30,
+      };
+      const requestKey = JSON.stringify(payload);
+      const now = Date.now();
+
+      const existing = sharedRequestMap.get(requestKey);
+      if (existing?.promise) {
+        setLoading(true);
+        try {
+          const list = await existing.promise;
+          setOptions(list);
+          setLoaded(true);
+        } catch (err) {
+          console.error("Autocomplete fetch error", err);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (existing?.data && now - existing.timestamp < REQUEST_DEDUP_TTL_MS) {
+        setOptions(existing.data);
+        setLoaded(true);
+        return;
+      }
+
+      setLoading(true);
+      const requestPromise = AxiosMaster.post("/autocomplete", payload).then(
+        (res) =>
           res.data?.data?.map((item) => ({
             code: item.code,
             value: item.value,
             ...item,
-          })) || [];
+          })) || []
+      );
+
+      sharedRequestMap.set(requestKey, {
+        promise: requestPromise,
+        data: existing?.data || null,
+        timestamp: now,
+      });
+
+      try {
+        const list = await requestPromise;
 
         setOptions(list);
         setLoaded(true);
+        sharedRequestMap.set(requestKey, {
+          promise: null,
+          data: list,
+          timestamp: Date.now(),
+        });
       } catch (err) {
+        sharedRequestMap.delete(requestKey);
         console.error("Autocomplete fetch error", err);
       } finally {
         setLoading(false);
       }
     },
-    [requestBody]
+    [requestBody, disabled]
   );
 
   useEffect(() => {
-    if (!bsLoadOnOpen && !loaded) fetchData();
-  }, [fetchData, bsLoadOnOpen, loaded]);
+    hasFetchedInitially.current = false;
+  }, [requestBody]);
 
   useEffect(() => {
+    if (bsLoadOnOpen || loaded || hasFetchedInitially.current) return;
+    hasFetchedInitially.current = true;
+    fetchData("");
+  }, [bsLoadOnOpen, loaded, fetchData]);
+
+  useEffect(() => {
+    if (!hasInitializedSearch.current) {
+      hasInitializedSearch.current = true;
+      return;
+    }
+
+    if (suppressNextSearch.current) {
+      suppressNextSearch.current = false;
+      return;
+    }
+
     const delay = setTimeout(() => {
       fetchData(inputValue);
     }, 300);
 
     return () => clearTimeout(delay);
-  }, [inputValue]);
+  }, [inputValue, fetchData]);
   // ✅ derive value from options + bsValue (NO internal value state)
   const selectedValue = useMemo(() => {
     if (!options.length || bsValue == null) {
@@ -169,7 +231,7 @@ const BSAutoComplete = ({
     disabled,
     onChange: handleChange,
     isOptionEqualToValue: (option, val) => option.code === val.code,
-    onOpen: bsLoadOnOpen ? fetchData : undefined,
+    onOpen: bsLoadOnOpen ? () => fetchData("") : undefined,
     sx: {
       ...(borderLeftRadius && {
         "& .MuiInputBase-root": {
@@ -180,7 +242,7 @@ const BSAutoComplete = ({
     },
   };
   const fetchById = useCallback(async (id) => {
-    if (!id && disabled) return;
+    if (!id || disabled) return;
 
     try {
       const res = await AxiosMaster.post("/autocomplete", {
@@ -204,7 +266,7 @@ const BSAutoComplete = ({
       });
     } catch (err) {
     }
-  }, [requestBody, bsColumes]);
+  }, [requestBody, bsColumes, disabled]);
   useEffect(() => {
     if (!bsValue) return;
 
@@ -218,6 +280,7 @@ const BSAutoComplete = ({
   }, [bsValue, options, fetchById]);
   useEffect(() => {
     if (selectedValue && !multiple) {
+      suppressNextSearch.current = true;
       setInputValue(selectedValue.value || "");
     }
   }, [selectedValue, multiple]);
