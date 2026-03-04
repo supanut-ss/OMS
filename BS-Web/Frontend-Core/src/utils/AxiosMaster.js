@@ -10,6 +10,136 @@ const AxiosMaster = axios.create({
   },
 });
 
+const SENSITIVE_KEYS = [
+  "password",
+  "pass",
+  "token",
+  "access_token",
+  "refresh_token",
+  "authorization",
+  "secret",
+  "pin",
+  "otp",
+];
+
+const isSensitiveKey = (key = "") =>
+  SENSITIVE_KEYS.includes(String(key).toLowerCase());
+
+const sanitizePayload = (value, depth = 0) => {
+  if (depth > 4) return "[MaxDepth]";
+  if (value == null) return value;
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof FormData !== "undefined" && value instanceof FormData) {
+    const formDataObj = {};
+    for (const [key, formValue] of value.entries()) {
+      if (isSensitiveKey(key)) {
+        formDataObj[key] = "[REDACTED]";
+      } else if (typeof File !== "undefined" && formValue instanceof File) {
+        formDataObj[key] = `[File:${formValue.name}]`;
+      } else {
+        formDataObj[key] = formValue;
+      }
+    }
+    return formDataObj;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizePayload(item, depth + 1));
+  }
+
+  if (typeof value === "object") {
+    const output = {};
+    Object.keys(value).forEach((key) => {
+      if (isSensitiveKey(key)) {
+        output[key] = "[REDACTED]";
+      } else {
+        output[key] = sanitizePayload(value[key], depth + 1);
+      }
+    });
+    return output;
+  }
+
+  if (typeof value === "string" && value.length > 1000) {
+    return `${value.slice(0, 1000)}...[TRUNCATED]`;
+  }
+
+  return value;
+};
+
+const safeJsonStringify = (value) => {
+  try {
+    const seen = new WeakSet();
+    return JSON.stringify(value, (key, val) => {
+      if (typeof val === "object" && val !== null) {
+        if (seen.has(val)) return "[Circular]";
+        seen.add(val);
+      }
+      return val;
+    });
+  } catch (e) {
+    return "[UnserializablePayload]";
+  }
+};
+
+const shouldSkipActivityLog = (config = {}) => {
+  const url = String(config.url || "");
+  const skipHeader =
+    config.headers?.["X-Skip-Activity-Log"] ||
+    config.headers?.["x-skip-activity-log"];
+
+  return Boolean(skipHeader) || url.includes("/activity-log");
+};
+
+const sendApiRequestActivityLog = ({ config, token, clientIp }) => {
+  if (shouldSkipActivityLog(config)) return;
+
+  const method = String(config.method || "GET").toUpperCase();
+  const requestData = sanitizePayload(config.data);
+  const requestParams = sanitizePayload(config.params);
+
+  const description = safeJsonStringify({
+    requestData,
+    requestParams,
+  });
+
+  const activityHeaders = {
+    "Content-Type": "application/json",
+    "X-Skip-Activity-Log": "true",
+  };
+
+  if (token) {
+    activityHeaders.Authorization = `Bearer ${token}`;
+  }
+  if (clientIp) {
+    activityHeaders["X-Client-IP"] = clientIp;
+  }
+
+  axios
+    .post(
+      `${Config.API_URL}/activity-log`,
+      {
+        action_type: "API_REQUEST",
+        url: config.url || window.location.pathname,
+        method,
+        entity: config.url || "api",
+        entity_id: "-",
+        description: description || "-",
+        page: window.location.pathname,
+      },
+      {
+        headers: activityHeaders,
+        timeout: 2000,
+      },
+    )
+    .catch((err) => {
+      console.warn("API request activity log failed:", err?.message || err);
+    });
+};
+
 // ---------------------------
 // Client IP header support
 // - fetches public IP from https://api.ipify.org
@@ -73,6 +203,9 @@ const getClientIp = async () => {
 AxiosMaster.interceptors.request.use(
   async (config) => {
     try {
+      const existingAuthHeader =
+        config.headers?.Authorization || config.headers?.authorization;
+
       let token = SecureStorage.get("token");
       if (!token) {
         token =
@@ -92,14 +225,28 @@ AxiosMaster.interceptors.request.use(
       }
 
       // Attach client IP header if available (non-blocking but we await briefly)
+      let clientIp = null;
       try {
-        const clientIp = await getClientIp();
+        clientIp = await getClientIp();
         if (clientIp) {
           config.headers["X-Client-IP"] = clientIp;
         }
       } catch (e) {
         console.warn("Failed to attach client IP header:", e);
       }
+
+      // Auto log outbound API request payload (sanitized)
+      // Use plain axios to avoid interceptor recursion.
+      const tokenForLog =
+        (typeof existingAuthHeader === "string" &&
+          existingAuthHeader.startsWith("Bearer ") &&
+          existingAuthHeader.slice(7)) ||
+        token;
+      sendApiRequestActivityLog({
+        config,
+        token: tokenForLog,
+        clientIp,
+      });
 
       return config;
     } catch (error) {

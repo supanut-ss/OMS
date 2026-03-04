@@ -106,6 +106,7 @@ import { BSSwitchField } from "../BSSwitch";
 import BSSaveOutlinedButton from "../Button/BSSaveOutlinedButton";
 import BSCloseOutlinedButton from "../Button/BSCloseOutlinedButton";
 import secureStorage from "../../utils/SecureStorage";
+import { logActivity } from "../../utils/ActivityLogger";
 
 // BSDataGrid verbose logging (disabled by default)
 // Enable by setting REACT_APP_BSDATAGRID_VERBOSE_LOG=true and rebuilding the frontend.
@@ -2141,6 +2142,22 @@ const BSDataGrid = forwardRef(
 
     // Determine effective table name (bsObj takes priority over tableName)
     const effectiveTableName = bsObj || tableName;
+
+    const logGridActivity = useCallback(
+      (actionType, row, description) => {
+        const entityId =
+          row?.[bsKeyId] || row?.id || row?.Id || row?.ID || row?.uuid || "-";
+
+        logActivity({
+          action_type: actionType,
+          page: window.location.pathname,
+          entity: effectiveTableName || "BSDataGrid",
+          entity_id: entityId,
+          description,
+        });
+      },
+      [bsKeyId, effectiveTableName],
+    );
 
     // ===== Consolidated Bulk Mode Configuration =====
     // Support both new bsBulkMode object and legacy individual props
@@ -8656,7 +8673,14 @@ ${errorInfo.originalError}
                       />
                     }
                     label="View"
-                    onClick={() => onView(params.row)}
+                    onClick={() => {
+                      logGridActivity(
+                        "GRID_VIEW_CLICK",
+                        params.row,
+                        "View action clicked in BSDataGrid",
+                      );
+                      onView(params.row);
+                    }}
                     disabled={rowConfig.disabled}
                     sx={{
                       "&:hover": {
@@ -8809,7 +8833,14 @@ ${errorInfo.originalError}
                       />
                     }
                     label="Edit"
-                    onClick={() => handleEditClick(params.row)}
+                    onClick={() => {
+                      logGridActivity(
+                        "GRID_EDIT_CLICK",
+                        params.row,
+                        "Edit action clicked in BSDataGrid",
+                      );
+                      handleEditClick(params.row);
+                    }}
                     disabled={rowConfig.disabled}
                     sx={{
                       "&:hover": {
@@ -8849,6 +8880,11 @@ ${errorInfo.originalError}
                     }
                     label={localeText.bsDelete}
                     onClick={() => {
+                      logGridActivity(
+                        "GRID_DELETE_CLICK",
+                        params.row,
+                        "Delete action clicked in BSDataGrid",
+                      );
                       bsLog("🗑️ Delete button clicked for row:", params.row);
                       handleDeleteClick(params.row);
                     }}
@@ -9253,7 +9289,14 @@ ${errorInfo.originalError}
                     <ViewIcon htmlColor={iconColor} sx={{ color: iconColor }} />
                   }
                   label="View"
-                  onClick={() => onView(params.row)}
+                  onClick={() => {
+                    logGridActivity(
+                      "GRID_VIEW_CLICK",
+                      params.row,
+                      "View action clicked in BSDataGrid",
+                    );
+                    onView(params.row);
+                  }}
                   disabled={rowConfig.disabled}
                   sx={{
                     "&:hover": {
@@ -9425,7 +9468,14 @@ ${errorInfo.originalError}
                   <GridActionsCellItem
                     icon={<Edit />}
                     label="Edit"
-                    onClick={() => handleEditClick(params.row)}
+                    onClick={() => {
+                      logGridActivity(
+                        "GRID_EDIT_CLICK",
+                        params.row,
+                        "Edit action clicked in BSDataGrid",
+                      );
+                      handleEditClick(params.row);
+                    }}
                     disabled={rowConfig.disabled}
                   />
                 );
@@ -9444,7 +9494,14 @@ ${errorInfo.originalError}
                   <GridActionsCellItem
                     icon={<Delete />}
                     label={localeText.bsDelete}
-                    onClick={() => handleDeleteClick(params.row)}
+                    onClick={() => {
+                      logGridActivity(
+                        "GRID_DELETE_CLICK",
+                        params.row,
+                        "Delete action clicked in BSDataGrid",
+                      );
+                      handleDeleteClick(params.row);
+                    }}
                     disabled={rowConfig.disabled}
                   />
                 );
@@ -11850,8 +11907,22 @@ ${errorInfo.originalError}
                     showToolbar
                       ? {
                           toolbar: {
-                            onAdd: handleDialogAdd,
-                            onInlineAdd: handleInlineAdd,
+                            onAdd: () => {
+                              logGridActivity(
+                                "GRID_ADD_CLICK",
+                                null,
+                                "Add action clicked in BSDataGrid toolbar",
+                              );
+                              handleDialogAdd();
+                            },
+                            onInlineAdd: () => {
+                              logGridActivity(
+                                "GRID_INLINE_ADD_CLICK",
+                                null,
+                                "Inline add action clicked in BSDataGrid toolbar",
+                              );
+                              handleInlineAdd();
+                            },
                             showAdd: effectiveShowAdd,
                             headerFiltersEnabled,
                             onToggleHeaderFilters: handleToggleHeaderFilters,
@@ -11861,21 +11932,84 @@ ${errorInfo.originalError}
                             bsEnableBulkMode: resolvedBulkEnable,
                             bsShowBulkSplitButton: effectiveShowSplitButton,
                             selectedRowCount: rowSelectionModel.length,
-                            onBulkEdit: handleBulkEdit,
-                            onBulkDelete: handleBulkDelete,
-                            onBulkAdd: handleBulkAdd,
+                            onBulkEdit: () => {
+                              logGridActivity(
+                                "GRID_BULK_EDIT_CLICK",
+                                null,
+                                "Bulk edit action clicked in BSDataGrid toolbar",
+                              );
+                              handleBulkEdit();
+                            },
+                            onBulkDelete: () => {
+                              logGridActivity(
+                                "GRID_BULK_DELETE_CLICK",
+                                null,
+                                "Bulk delete action clicked in BSDataGrid toolbar",
+                              );
+                              handleBulkDelete();
+                            },
+                            onBulkAdd: () => {
+                              logGridActivity(
+                                "GRID_BULK_ADD_CLICK",
+                                null,
+                                "Bulk add action clicked in BSDataGrid toolbar",
+                              );
+                              handleBulkAdd();
+                            },
                             showBulkDelete: effectiveBulkDelete,
-                            onRefresh: () => refreshData(true),
-                            onExportExcel: handleExportExcel,
-                            onExportCsv: handleExportCsv,
-                            onPrint: handlePrint,
+                            onRefresh: () => {
+                              logGridActivity(
+                                "GRID_REFRESH_CLICK",
+                                null,
+                                "Refresh action clicked in BSDataGrid toolbar",
+                              );
+                              refreshData(true);
+                            },
+                            onExportExcel: () => {
+                              logGridActivity(
+                                "GRID_EXPORT_EXCEL_CLICK",
+                                null,
+                                "Export Excel action clicked in BSDataGrid toolbar",
+                              );
+                              handleExportExcel();
+                            },
+                            onExportCsv: () => {
+                              logGridActivity(
+                                "GRID_EXPORT_CSV_CLICK",
+                                null,
+                                "Export CSV action clicked in BSDataGrid toolbar",
+                              );
+                              handleExportCsv();
+                            },
+                            onPrint: () => {
+                              logGridActivity(
+                                "GRID_PRINT_CLICK",
+                                null,
+                                "Print action clicked in BSDataGrid toolbar",
+                              );
+                              handlePrint();
+                            },
                             localeText,
                             apiRef,
                             quickFilterValue: quickFilterInputValue,
                             onQuickFilterChange: setQuickFilterInputValue,
                             bulkEditMode,
-                            onBulkSave: handleBulkSaveChanges,
-                            onBulkDiscard: handleBulkDiscardChanges,
+                            onBulkSave: () => {
+                              logGridActivity(
+                                "GRID_BULK_SAVE_CLICK",
+                                null,
+                                "Bulk save action clicked in BSDataGrid toolbar",
+                              );
+                              handleBulkSaveChanges();
+                            },
+                            onBulkDiscard: () => {
+                              logGridActivity(
+                                "GRID_BULK_DISCARD_CLICK",
+                                null,
+                                "Bulk discard action clicked in BSDataGrid toolbar",
+                              );
+                              handleBulkDiscardChanges();
+                            },
                             hasUnsavedChanges,
                             formLoading,
                             changesCount: Object.keys(unsavedChangesRef.current)
