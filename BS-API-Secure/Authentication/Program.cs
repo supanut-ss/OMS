@@ -47,6 +47,7 @@ builder.Services.AddScoped<IClientInfo, ClientInfoService>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
 builder.Services.AddScoped<IMenu, MenuService>();
 builder.Services.AddScoped<IVersionControl, VersionService>();
+builder.Services.AddScoped<IActivityLog, ActivityLogService>();
 builder.Services.AddControllers();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

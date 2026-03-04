@@ -295,7 +295,7 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
           bsLocale={lang}
           bsStoredProcedure="usp_tmt_project_task_tracking"
           bsStoredProcedureSchema="tmt"
-          bsCols="process_update,actual_date,actual_work,issue_type,assignee_list,create_date,create_by,update_date,update_by"
+          bsCols="process_update,total_manday,actual_date,actual_work,issue_type,assignee_list,create_date,create_by,update_date,update_by"
           bsStoredProcedureParams={{
             in_intProjectTaskId: projectTaskId,
             in_vchUserId: showOnlyMe ? getCurrentUserId() : null,
@@ -317,6 +317,10 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
             {
               field: "process_update",
               width: 300,
+            },
+            {
+              field: "total_manday",
+              hide: true,
             },
             {
               field: "assignee_list",
@@ -438,7 +442,21 @@ const TaskTracking = ({ projectTaskId, lang, taskData }) => {
                   updateField,
                 })}
               </Grid>
+          <Grid size={{xs: 12, sm: isAdmin() ? 6 : 4 }}>
+            {renderInput({
+              item: {
+                field:"total_manday",
+                headerName: r("total_manday", "Manday (Hours)"),
+                component: "BSTextField",
+                type: "decimal",
+                disabled: true,
+              },
+              formData,
+              errors,
+              updateField,
 
+            })}
+            </Grid>
               {/* Actual Work (Work Hour) */}
               <Grid size={{ xs: 12, sm: isAdmin() ? 6 : 4 }}>
                 {renderInput({

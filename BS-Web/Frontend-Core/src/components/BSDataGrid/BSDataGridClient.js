@@ -12,6 +12,7 @@ import {
   FilterListOff as FilterListOffIcon,
 } from "@mui/icons-material";
 import Logger from "../../utils/logger";
+import { logActivity } from "../../utils/ActivityLogger";
 
 // Custom Toolbar for client-side DataGrid
 const ClientGridToolbar = ({ headerFiltersEnabled, onToggleHeaderFilters }) => {
@@ -128,6 +129,18 @@ const BSDataGridClient = ({
     bsShowRowNumber,
     height,
   });
+
+  const logGridClientActivity = useCallback((actionType, row, description) => {
+    const entityId = row?.id || row?.Id || row?.ID || row?.uuid || "-";
+
+    logActivity({
+      action_type: actionType,
+      page: window.location.pathname,
+      entity: "BSDataGridClient",
+      entity_id: entityId,
+      description,
+    });
+  }, []);
 
   // Parse BS-specific configurations
   const parsedCols = useMemo(() => {
@@ -457,7 +470,14 @@ const BSDataGridClient = ({
             key="view"
             icon={<Visibility />}
             label="View"
-            onClick={() => onView(params.row)}
+            onClick={() => {
+              logGridClientActivity(
+                "GRID_VIEW_CLICK",
+                params.row,
+                "View action clicked in BSDataGridClient",
+              );
+              onView(params.row);
+            }}
           />,
         ],
       };
@@ -559,6 +579,7 @@ const BSDataGridClient = ({
     getColumnWidth,
     formatCellValue,
     onView,
+    logGridClientActivity,
   ]);
 
   // Handle row selection changes
@@ -618,11 +639,17 @@ const BSDataGridClient = ({
   // Handle row click
   const handleRowClick = useCallback(
     (params) => {
+      logGridClientActivity(
+        "GRID_ROW_CLICK",
+        params.row,
+        "Row clicked in BSDataGridClient",
+      );
+
       if (onRowClick) {
         onRowClick(params.row);
       }
     },
-    [onRowClick]
+    [logGridClientActivity, onRowClick]
   );
 
   // Validate data
