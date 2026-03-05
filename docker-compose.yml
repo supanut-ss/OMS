@@ -119,6 +119,38 @@ services:
     networks:
       - internal
     restart: always
+  bs_oms_api:
+    build:
+      context: .
+      dockerfile: ./BS-OMS-API/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    ports:
+      - "8082:8080"
+    environment:
+      - TZ=Asia/Bangkok
+      - ASPNETCORE_ENVIRONMENT=Production
+      - API_KEY_OMS=BS-OMS-API-Key-2025
+      # Shopee
+      - SHOPEE_PARTNER_ID=your_partner_id
+      - SHOPEE_PARTNER_KEY=your_partner_key
+      - SHOPEE_API_URL=https://partner.shopeemobile.com
+      - SHOPEE_REDIRECT_URL=http://localhost:8082/api/auth/shopee/callback
+      # Lazada
+      - LAZADA_APP_KEY=your_app_key
+      - LAZADA_APP_SECRET=your_app_secret
+      - LAZADA_API_URL=https://api.lazada.co.th/rest
+      - LAZADA_AUTH_URL=https://auth.lazada.com/oauth/authorize
+      - LAZADA_REDIRECT_URL=http://localhost:8082/api/auth/lazada/callback
+      # TikTok Shop
+      - TIKTOK_APP_KEY=your_app_key
+      - TIKTOK_APP_SECRET=your_app_secret
+      - TIKTOK_API_URL=https://open-api.tiktokglobalshop.com
+      - TIKTOK_AUTH_URL=https://services.tiktokshop.com/open/authorize
+      - TIKTOK_REDIRECT_URL=http://localhost:8082/api/auth/tiktok/callback
+    networks:
+      - internal
+    restart: always
 networks:
   internal:
     driver: bridge
