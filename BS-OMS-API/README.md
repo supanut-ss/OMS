@@ -167,6 +167,38 @@ TIKTOK_REDIRECT_URL=http://localhost:5170/api/auth/tiktok/callback
 
 ## API Endpoints
 
+### 📌 สรุป Endpoint ทั้งหมด (Quick Reference)
+
+| Group | Method | Endpoint | Description |
+|-------|--------|----------|-------------|
+| **Auth** | `GET` | `/api/auth/{platform}/authorize` | Redirect ไปหน้า OAuth login ของ platform |
+| **Auth** | `GET` | `/api/auth/{platform}/auth-url` | ดึง OAuth URL (ไม่ redirect) |
+| **Auth** | `GET` | `/api/auth/{platform}/callback` | รับ callback หลัง authorize สำเร็จ |
+| **Auth** | `POST` | `/api/auth/{platform}/refresh` | Refresh token ที่หมดอายุ |
+| **Order** | `POST` | `/api/orders/list` | ดึง Order จากแพลตฟอร์มที่ระบุ |
+| **Order** | `POST` | `/api/orders/all` | ดึง Order จากทุกแพลตฟอร์มรวมกัน |
+| **Order** | `GET` | `/api/orders/{platform}/{orderId}` | ดูรายละเอียด Order |
+| **Order** | `GET` | `/api/orders/{platform}/{orderId}/status` | เช็คสถานะ Order |
+| **Order** | `POST` | `/api/orders/cancellation-deadlines` | ดู Order ที่ใกล้หมดเขตจัดส่ง |
+| **Inventory** | `POST` | `/api/inventory/products` | ดึงสินค้าจาก 1 platform (พร้อมสต๊อก) |
+| **Inventory** | `POST` | `/api/inventory/products/all` | ดึงสินค้าจากทุก platform รวมกัน |
+| **Inventory** | `GET` | `/api/inventory/{platform}/{itemId}` | ดูรายละเอียดสินค้า + สต๊อก |
+| **Inventory** | `POST` | `/api/inventory/low-stock` | ดึงสินค้าที่สต๊อกต่ำ (Low Stock Alert) |
+| **Inventory** | `POST` | `/api/inventory/update-stock` | อัปเดตจำนวนสต๊อก |
+| **Shipping** | `POST` | `/api/shipping/print-label` | ปริ๊นใบปะหน้าพัสดุ |
+| **Shipping** | `POST` | `/api/shipping/print-labels-batch` | ปริ๊นใบปะหน้าแบบ Batch (หลายออเดอร์) |
+| **Shipping** | `POST` | `/api/shipping/arrange` | จัดส่งสินค้า (Ship Order) |
+| **Shipping** | `GET` | `/api/shipping/tracking/{platform}/{orderId}` | ติดตามสถานะพัสดุ |
+| **Shipping** | `GET` | `/api/shipping/providers/{platform}` | ดูผู้ให้บริการขนส่งที่รองรับ |
+| **Chat** | `GET` | `/api/chat/conversations` | 🔜 ดูรายการแชทจากทุกแพลตฟอร์ม |
+| **Chat** | `GET` | `/api/chat/conversations/{id}/messages` | 🔜 ดูข้อความในแชท |
+| **Chat** | `POST` | `/api/chat/conversations/{id}/send` | 🔜 ส่งข้อความ |
+| **Shop** | `GET` | `/api/shop` | ดูรายการร้านค้าที่เชื่อมต่อ |
+
+> `{platform}` = `shopee`, `lazada`, `tiktok` · 🔜 = Placeholder (ยังไม่พร้อมใช้งาน)
+
+---
+
 ### 1. Authentication (OAuth)
 
 ใช้สำหรับ authorize ร้านค้าให้ OMS เข้าถึงข้อมูลได้
