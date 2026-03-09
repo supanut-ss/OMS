@@ -210,8 +210,37 @@ const sanitizeDataForApi = (data, columns = []) => {
       .map((col) => col.columnName),
   );
 
+  // Get numeric column names from metadata
+  const numericColumns = new Set(
+    columns
+      .filter((col) => {
+        const dataType = col.dataType?.toLowerCase() || "";
+        return (
+          dataType.includes("int") ||
+          dataType.includes("decimal") ||
+          dataType.includes("numeric") ||
+          dataType.includes("float") ||
+          dataType.includes("real") ||
+          dataType.includes("money")
+        );
+      })
+      .map((col) => col.columnName),
+  );
+
   Object.keys(sanitized).forEach((key) => {
     const value = sanitized[key];
+
+    // Check if this is a numeric column by metadata
+    const isNumericColumn = numericColumns.has(key);
+
+    // Convert empty strings to null for numeric fields
+    if (
+      isNumericColumn &&
+      (value === "" || value === null || value === undefined)
+    ) {
+      sanitized[key] = null;
+      return;
+    }
 
     // Check if this is a date column by metadata
     const isDateColumn = dateColumns.has(key);
@@ -4446,12 +4475,18 @@ const BSDataGrid = forwardRef(
       (errorInfo) => {
         // Get locale text
         const currentLocaleText = getLocaleText(getEffectiveLocale());
-        
+
         // Use theme colors
         const textSecondary = theme.palette.text.secondary;
         const dividerColor = theme.palette.divider;
-        const greyBg = theme.palette.mode === "dark" ? theme.palette.grey[800] : theme.palette.grey[100];
-        const greyBgAlt = theme.palette.mode === "dark" ? theme.palette.grey[700] : theme.palette.grey[50];
+        const greyBg =
+          theme.palette.mode === "dark"
+            ? theme.palette.grey[800]
+            : theme.palette.grey[100];
+        const greyBgAlt =
+          theme.palette.mode === "dark"
+            ? theme.palette.grey[700]
+            : theme.palette.grey[50];
         const textPrimary = theme.palette.text.primary;
 
         let htmlContent = `<p style="margin: 0 0 10px 0; font-size: 16px;">${errorInfo.friendlyMessage}</p>`;
@@ -10411,10 +10446,16 @@ ${errorInfo.originalError}
         if (validationErrors.length > 0) {
           // Use theme colors for error messages
           const textSecondary = theme.palette.text.secondary;
-          const errorBg = theme.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : `${theme.palette.error.light}22`;
+          const errorBg =
+            theme.palette.mode === "dark"
+              ? "rgba(211, 47, 47, 0.15)"
+              : `${theme.palette.error.light}22`;
           const errorBorder = theme.palette.error.main;
-          const errorText = theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark;
-          
+          const errorText =
+            theme.palette.mode === "dark"
+              ? theme.palette.error.light
+              : theme.palette.error.dark;
+
           // Build user-friendly HTML message
           const errorHtml = validationErrors
             .map((item) => {
@@ -10956,10 +10997,16 @@ ${errorInfo.originalError}
         if (validationErrors.length > 0) {
           // Use theme colors for error messages
           const textSecondary = theme.palette.text.secondary;
-          const errorBg = theme.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : `${theme.palette.error.light}22`;
+          const errorBg =
+            theme.palette.mode === "dark"
+              ? "rgba(211, 47, 47, 0.15)"
+              : `${theme.palette.error.light}22`;
           const errorBorder = theme.palette.error.main;
-          const errorText = theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark;
-          
+          const errorText =
+            theme.palette.mode === "dark"
+              ? theme.palette.error.light
+              : theme.palette.error.dark;
+
           // Build user-friendly HTML message
           const errorHtml = validationErrors
             .map((item) => {
@@ -11025,10 +11072,16 @@ ${errorInfo.originalError}
           if (uniqueValidationErrors.length > 0) {
             // Use theme colors for error messages
             const textSecondary = theme.palette.text.secondary;
-            const errorBg = theme.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : theme.palette.error.light + "22";
+            const errorBg =
+              theme.palette.mode === "dark"
+                ? "rgba(211, 47, 47, 0.15)"
+                : theme.palette.error.light + "22";
             const errorBorder = theme.palette.error.main;
-            const errorText = theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark;
-            
+            const errorText =
+              theme.palette.mode === "dark"
+                ? theme.palette.error.light
+                : theme.palette.error.dark;
+
             // Build user-friendly HTML message for unique field errors
             const uniqueErrorHtml = uniqueValidationErrors
               .map((item) => {
@@ -12104,7 +12157,8 @@ ${errorInfo.originalError}
                           backgroundColor:
                             theme.palette.mode === "dark"
                               ? "rgba(255, 217, 61, 0.25)"
-                              : theme.palette.warning[200] || theme.palette.warning.light,
+                              : theme.palette.warning[200] ||
+                                theme.palette.warning.light,
                         },
                       },
                       // Selected row styling - primary glow
@@ -12237,7 +12291,10 @@ ${errorInfo.originalError}
                         backgroundColor: alpha(theme.palette.primary.main, 0.4),
                         borderRadius: 8,
                         "&:hover": {
-                          backgroundColor: alpha(theme.palette.primary.main, 0.6),
+                          backgroundColor: alpha(
+                            theme.palette.primary.main,
+                            0.6,
+                          ),
                         },
                       },
                     },
@@ -12599,7 +12656,11 @@ ${errorInfo.originalError}
                                     <InputLabel>
                                       {formatColumnName(columnName)}
                                       {!isNullable && (
-                                        <span style={{ color: theme.palette.error.main }}>
+                                        <span
+                                          style={{
+                                            color: theme.palette.error.main,
+                                          }}
+                                        >
                                           {" "}
                                           *
                                         </span>
@@ -12611,7 +12672,11 @@ ${errorInfo.originalError}
                                         <>
                                           {formatColumnName(columnName)}
                                           {!isNullable && (
-                                            <span style={{ color: theme.palette.error.main }}>
+                                            <span
+                                              style={{
+                                                color: theme.palette.error.main,
+                                              }}
+                                            >
                                               {" "}
                                               *
                                             </span>
@@ -12766,7 +12831,11 @@ ${errorInfo.originalError}
                                         <>
                                           {formatColumnName(columnName)}
                                           {!isNullable && (
-                                            <span style={{ color: theme.palette.error.main }}>
+                                            <span
+                                              style={{
+                                                color: theme.palette.error.main,
+                                              }}
+                                            >
                                               {" "}
                                               *
                                             </span>
@@ -12817,7 +12886,11 @@ ${errorInfo.originalError}
                                         <>
                                           {formatColumnName(columnName)}
                                           {!isNullable && (
-                                            <span style={{ color: theme.palette.error.main }}>
+                                            <span
+                                              style={{
+                                                color: theme.palette.error.main,
+                                              }}
+                                            >
                                               {" "}
                                               *
                                             </span>
@@ -12875,7 +12948,11 @@ ${errorInfo.originalError}
                                       <>
                                         {formatColumnName(columnName)}
                                         {!isNullable && (
-                                          <span style={{ color: theme.palette.error.main }}>
+                                          <span
+                                            style={{
+                                              color: theme.palette.error.main,
+                                            }}
+                                          >
                                             {" "}
                                             *
                                           </span>

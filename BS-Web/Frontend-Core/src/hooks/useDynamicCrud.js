@@ -73,7 +73,7 @@ export const useDynamicCrud = (tableName) => {
         Logger.log("✅ Metadata loaded for table:", tableName, response.data);
         Logger.log(
           "✅ useDynamicCrud: Metadata loaded successfully:",
-          response.data
+          response.data,
         );
         return response.data;
       } catch (err) {
@@ -89,7 +89,7 @@ export const useDynamicCrud = (tableName) => {
         setLoading(false);
       }
     },
-    [tableName]
+    [tableName],
   );
 
   // Get table data with DataGrid support (pagination, sorting, filtering)
@@ -166,7 +166,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName]
+    [tableName],
   );
 
   // Helper function to convert Date objects to local date strings to prevent timezone issues
@@ -179,6 +179,13 @@ export const useDynamicCrud = (tableName) => {
     for (const key in result) {
       if (Object.prototype.hasOwnProperty.call(result, key)) {
         const value = result[key];
+
+        // Convert empty strings to null (prevents nvarchar to numeric conversion errors)
+        if (value === "" || value === null || value === undefined) {
+          result[key] = null;
+          continue;
+        }
+
         if (value instanceof Date && !isNaN(value.getTime())) {
           // Format as local datetime: YYYY-MM-DDTHH:mm:ss
           const year = value.getFullYear();
@@ -192,9 +199,13 @@ export const useDynamicCrud = (tableName) => {
           if (hours === "00" && minutes === "00" && seconds === "00") {
             result[key] = `${year}-${month}-${day}`;
           } else {
-            result[key] = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            result[key] =
+              `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
           }
-          Logger.log(`📅 Converted Date field "${key}" to local string:`, result[key]);
+          Logger.log(
+            `📅 Converted Date field "${key}" to local string:`,
+            result[key],
+          );
         }
       }
     }
@@ -276,7 +287,7 @@ export const useDynamicCrud = (tableName) => {
         // Handle specific 500 error that might be routing related
         if (err.response?.status === 500) {
           Logger.warn(
-            "⚠️ Got 500 error - possibly routing issue, but data might have been created"
+            "⚠️ Got 500 error - possibly routing issue, but data might have been created",
           );
           // You could try to refresh the data here to see if the record was actually created
         }
@@ -289,7 +300,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, user, convertDatesToLocalStrings]
+    [tableName, user, convertDatesToLocalStrings],
   );
 
   // Update existing record
@@ -395,7 +406,7 @@ export const useDynamicCrud = (tableName) => {
 
         const response = await AxiosMaster.post(
           "/dynamic/update",
-          requestPayload
+          requestPayload,
         );
 
         Logger.log("✅ Record updated via Gateway:", response.data);
@@ -409,7 +420,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, metadata, user, convertDatesToLocalStrings]
+    [tableName, metadata, user, convertDatesToLocalStrings],
   );
 
   // Delete record
@@ -473,7 +484,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, metadata]
+    [tableName, metadata],
   );
 
   // Execute stored procedure
@@ -504,13 +515,13 @@ export const useDynamicCrud = (tableName) => {
 
         const response = await AxiosMaster.post(
           `/dynamic/procedure/${procName}?schemaName=${schema}`,
-          parameters
+          parameters,
         );
 
         Logger.log(
           "✅ Stored procedure executed via Gateway:",
           procedureName,
-          response.data
+          response.data,
         );
         return response.data;
       } catch (err) {
@@ -522,7 +533,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    []
+    [],
   );
 
   // Execute custom query
@@ -585,7 +596,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName]
+    [tableName],
   );
 
   const bulkUpdate = useCallback(
@@ -629,7 +640,7 @@ export const useDynamicCrud = (tableName) => {
           } catch (e) {
             Logger.warn(
               "Failed to parse user data for bulk update audit fields:",
-              e
+              e,
             );
           }
         }
@@ -639,7 +650,7 @@ export const useDynamicCrud = (tableName) => {
           userId = `test_user_${Date.now()}`;
           Logger.log(
             "🔧 Using fallback userId for bulk update testing:",
-            userId
+            userId,
           );
         }
 
@@ -670,7 +681,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName, user]
+    [tableName, user],
   );
 
   const bulkDelete = useCallback(
@@ -715,7 +726,7 @@ export const useDynamicCrud = (tableName) => {
         throw new Error(errorMsg);
       }
     },
-    [tableName]
+    [tableName],
   );
 
   // ComboBox data fetcher
@@ -761,7 +772,7 @@ export const useDynamicCrud = (tableName) => {
             operator: item.operator,
             value: item.value,
             id: item.id ? String(item.id) : undefined, // Convert number ID to string
-          })
+          }),
         );
 
         // Remove any extra properties like fromInput
@@ -774,11 +785,11 @@ export const useDynamicCrud = (tableName) => {
 
       const response = await AxiosMaster.post(
         "/dynamic/enhanced-procedure",
-        cleanedRequest
+        cleanedRequest,
       );
       Logger.log(
         "✅ Enhanced Stored Procedure executed successfully:",
-        response.data
+        response.data,
       );
       return response.data;
     } catch (err) {
