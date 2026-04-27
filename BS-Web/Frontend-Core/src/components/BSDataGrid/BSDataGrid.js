@@ -8226,7 +8226,14 @@ ${errorInfo.originalError}
 
     // Get current locale text for custom UI elements
     // IMPORTANT: Memoize to prevent infinite re-renders in columns useMemo
-    const localeText = useMemo(() => getLocalization(), [getLocalization]);
+    const localeText = useMemo(() => {
+      const base = getLocalization();
+      const addRecordText = getResource(resourceData, "AddRecord");
+      if (addRecordText) {
+        return { ...base, bsAddRecord: addRecordText };
+      }
+      return base;
+    }, [getLocalization, resourceData, getResource]);
 
     // IMPORTANT: Create a stable key for the column structure based on the keys of the first row
     // This prevents the columns useMemo from recalculating every time rows data changes
