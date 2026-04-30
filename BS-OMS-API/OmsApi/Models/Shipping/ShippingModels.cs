@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using OmsApi.Models.Common;
 
 namespace OmsApi.Models.Shipping
@@ -8,10 +9,16 @@ namespace OmsApi.Models.Shipping
     public class ShippingLabelRequest
     {
         public PlatformType Platform { get; set; }
+
+        [Required]
+        [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
+
         public string? ShopId { get; set; }
 
         /// <summary>รหัส Order</summary>
+        [Required]
+        [StringLength(100)]
         public string OrderId { get; set; } = string.Empty;
 
         /// <summary>รหัส Package (ถ้ามี — TikTok ใช้ package_id)</summary>
@@ -54,8 +61,15 @@ namespace OmsApi.Models.Shipping
     public class ShipOrderRequest
     {
         public PlatformType Platform { get; set; }
+
+        [Required]
+        [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
+
         public string? ShopId { get; set; }
+
+        [Required]
+        [StringLength(100)]
         public string OrderId { get; set; } = string.Empty;
 
         /// <summary>วิธีจัดส่ง: pickup, dropoff, non_integrated</summary>

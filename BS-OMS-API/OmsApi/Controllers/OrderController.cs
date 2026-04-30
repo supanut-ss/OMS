@@ -48,7 +48,7 @@ namespace OmsApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error fetching orders");
-                return BadRequest(ApiResponse<string>.Fail($"Error: {ex.Message}"));
+                return StatusCode(500, ApiResponse<string>.Fail($"Internal error: {ex.Message}"));
             }
         }
 
@@ -79,7 +79,7 @@ namespace OmsApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error fetching orders from all platforms");
-                return BadRequest(ApiResponse<string>.Fail($"Error: {ex.Message}"));
+                return StatusCode(500, ApiResponse<string>.Fail($"Internal error: {ex.Message}"));
             }
         }
 
@@ -114,7 +114,7 @@ namespace OmsApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error fetching order detail");
-                return BadRequest(ApiResponse<string>.Fail($"Error: {ex.Message}"));
+                return StatusCode(500, ApiResponse<string>.Fail($"Internal error: {ex.Message}"));
             }
         }
 
@@ -154,7 +154,7 @@ namespace OmsApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error fetching order status");
-                return BadRequest(ApiResponse<string>.Fail($"Error: {ex.Message}"));
+                return StatusCode(500, ApiResponse<string>.Fail($"Internal error: {ex.Message}"));
             }
         }
 
@@ -182,7 +182,7 @@ namespace OmsApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error fetching cancellation deadlines");
-                return BadRequest(ApiResponse<string>.Fail($"Error: {ex.Message}"));
+                return StatusCode(500, ApiResponse<string>.Fail($"Internal error: {ex.Message}"));
             }
         }
 

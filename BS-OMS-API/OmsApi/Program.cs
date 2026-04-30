@@ -1,18 +1,26 @@
+using OmsApi.Middleware;
 using OmsApi.Services.Interfaces;
 using OmsApi.Services.Implementation;
 using OmsApi.Services.Implementation.Platforms;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
 
 // ─── CORS ───────────────────────────────────────────────
-string corsKey = Environment.GetEnvironmentVariable("API_KEY_OMS") ?? "OMS-API";
+const string corsKey = "OmsApiCors";
+string[] allowedOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+if (allowedOrigins.Length == 0)
+    allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:8080" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: corsKey,
         policy =>
         {
-            policy.WithOrigins("*")
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -51,12 +59,33 @@ builder.Services.AddEndpointsApiExplorer();
 // ─── Swagger ────────────────────────────────────────────
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "BS-OMS-API",
         Version = "v1",
         Description = "Order Management System API for Shopee, Lazada, TikTok Shop integration"
     });
+
+    // API Key security definition
+    options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Description = "API Key — ใส่ใน header: X-Api-Key: {your-key}",
+        Name = "X-Api-Key",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "ApiKeyScheme"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "ApiKey" }
+            },
+            Array.Empty<string>()
+        }
+    });
+
     options.UseAllOfToExtendReferenceSchemas();
 });
 builder.Services.AddOpenApi();
@@ -72,6 +101,7 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseCors(corsKey);
+app.UseMiddleware<ApiKeyMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

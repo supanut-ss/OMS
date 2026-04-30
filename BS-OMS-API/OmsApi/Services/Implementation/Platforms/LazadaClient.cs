@@ -480,16 +480,64 @@ namespace OmsApi.Services.Implementation.Platforms
             catch (Exception ex) { _logger.LogError(ex, "❌ Lazada: Error shipping order"); return false; }
         }
 
-        public Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId)
+        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId)
         {
-            // Lazada shipping providers are pre-configured per seller
-            return Task.FromResult(new List<ShippingProvider>
+            _logger.LogInformation("🏪 Lazada: Getting shipping providers");
+            var client = _httpClientFactory.CreateClient("Lazada");
+            var apiPath = "/logistics/buyer/providers";
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+
+            var parameters = new Dictionary<string, string>
+            {
+                { "app_key", _appKey }, { "timestamp", timestamp },
+                { "access_token", accessToken }, { "sign_method", "sha256" }
+            };
+
+            var sign = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
+            parameters["sign"] = sign;
+            var qs = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+
+            try
+            {
+                var resp = await client.GetAsync($"{apiPath}?{qs}");
+                var content = await resp.Content.ReadAsStringAsync();
+
+                if (resp.IsSuccessStatusCode)
+                {
+                    var json = JsonDocument.Parse(content);
+                    if (json.RootElement.TryGetProperty("data", out var data) &&
+                        data.TryGetProperty("provider_list", out var list))
+                    {
+                        var providers = new List<ShippingProvider>();
+                        foreach (var item in list.EnumerateArray())
+                        {
+                            providers.Add(new ShippingProvider
+                            {
+                                ProviderId = item.TryGetProperty("provider_code", out var code) ? code.GetString() ?? "" : "",
+                                Name = item.TryGetProperty("provider_name", out var name) ? name.GetString() ?? "" : "",
+                                Platform = PlatformType.Lazada,
+                                Enabled = !item.TryGetProperty("is_active", out var active) || active.GetBoolean()
+                            });
+                        }
+                        if (providers.Count > 0) return providers;
+                    }
+                }
+
+                _logger.LogWarning("⚠️ Lazada: Could not fetch shipping providers from API, using fallback list. Response: {Status}", resp.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Lazada: Error fetching shipping providers from API, using fallback list");
+            }
+
+            // Fallback: standard Thai shipping providers
+            return new List<ShippingProvider>
             {
                 new() { ProviderId = "LEX", Name = "Lazada Express (LEX)", Platform = PlatformType.Lazada, Enabled = true },
                 new() { ProviderId = "Kerry", Name = "Kerry Express", Platform = PlatformType.Lazada, Enabled = true },
                 new() { ProviderId = "Flash", Name = "Flash Express", Platform = PlatformType.Lazada, Enabled = true },
                 new() { ProviderId = "ThaiPost", Name = "Thailand Post", Platform = PlatformType.Lazada, Enabled = true }
-            });
+            };
         }
 
         public async Task<TrackingInfo?> GetTrackingInfoAsync(string accessToken, string? shopId, string orderId)

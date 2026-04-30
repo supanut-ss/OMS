@@ -1,4 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using OmsApi.Models.Common;
+using OmsApi.Models.Orders;
 
 namespace OmsApi.Models.Inventory
 {
@@ -92,6 +94,7 @@ namespace OmsApi.Models.Inventory
         public PlatformType? Platform { get; set; }
 
         /// <summary>Access Token</summary>
+        [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 
         /// <summary>Shop ID</summary>
@@ -122,10 +125,20 @@ namespace OmsApi.Models.Inventory
     public class UpdateStockRequest
     {
         public PlatformType Platform { get; set; }
+
+        [Required]
+        [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
+
         public string? ShopId { get; set; }
+
+        [Required]
+        [StringLength(100)]
         public string ItemId { get; set; } = string.Empty;
+
         public string? VariationId { get; set; }
+
+        [Range(0, int.MaxValue)]
         public int NewStock { get; set; }
     }
 }

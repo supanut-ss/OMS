@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using OmsApi.Models.Common;
 
 namespace OmsApi.Models.Orders
@@ -11,6 +12,7 @@ namespace OmsApi.Models.Orders
         public PlatformType? Platform { get; set; }
 
         /// <summary>Access token for the platform</summary>
+        [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 
         /// <summary>Shop ID (required for Shopee)</summary>
@@ -41,7 +43,11 @@ namespace OmsApi.Models.Orders
     public class PlatformCredentialInput
     {
         public PlatformType Platform { get; set; }
+
+        [Required]
+        [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
+
         public string? ShopId { get; set; }
     }
 }

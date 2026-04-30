@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using OmsApi.Models.Common;
 
 namespace OmsApi.Models.Auth
@@ -34,7 +35,10 @@ namespace OmsApi.Models.Auth
     /// </summary>
     public class RefreshTokenRequest
     {
+        [Required]
+        [StringLength(512)]
         public string RefreshToken { get; set; } = string.Empty;
+
         public string? ShopId { get; set; }
     }
 }
