@@ -175,7 +175,7 @@ namespace OmsApi.Services.Implementation.Platforms
         private static UnifiedOrder MapTikTokOrder(JsonElement order)
         {
             var status = order.TryGetProperty("status", out var s) ? s.GetString() ?? "" : "";
-            return new UnifiedOrder
+            var unified = new UnifiedOrder
             {
                 OrderId = order.TryGetProperty("id", out var oid) ? oid.GetString() ?? "" : "",
                 Platform = PlatformType.TikTok,
@@ -189,6 +189,9 @@ namespace OmsApi.Services.Implementation.Platforms
                     : 0,
                 BuyerRemarks = order.TryGetProperty("buyer_message", out var msg) ? msg.GetString() ?? "" : ""
             };
+
+            MapTikTokAddress(order, unified);
+            return unified;
         }
 
         private static UnifiedOrder MapTikTokOrderDetail(JsonElement order)
@@ -273,7 +276,50 @@ namespace OmsApi.Services.Implementation.Platforms
                 }
             }
 
+            MapTikTokAddress(order, unified);
             return unified;
+        }
+
+        private static void MapTikTokAddress(JsonElement order, UnifiedOrder unified)
+        {
+            if (order.TryGetProperty("recipient_address", out var addr) && addr.ValueKind != JsonValueKind.Null)
+            {
+                if (unified.Shipping == null)
+                {
+                    unified.Shipping = new ShippingInfo();
+                }
+
+                var line1 = addr.TryGetProperty("address_line1", out var a1) ? a1.GetString() ?? "" : "";
+                var line2 = addr.TryGetProperty("address_line2", out var a2) ? a2.GetString() ?? "" : "";
+                var line3 = addr.TryGetProperty("address_line3", out var a3) ? a3.GetString() ?? "" : "";
+                var line4 = addr.TryGetProperty("address_line4", out var a4) ? a4.GetString() ?? "" : "";
+
+                var extraLines = new List<string> { line2, line3, line4 }.Where(s => !string.IsNullOrWhiteSpace(s));
+                var addressLine2Combined = string.Join(", ", extraLines);
+
+                var city = addr.TryGetProperty("city", out var c) ? c.GetString() ?? "" : "";
+                var state = addr.TryGetProperty("state", out var stVal) ? stVal.GetString() ?? "" : "";
+                var postalCode = addr.TryGetProperty("postal_code", out var pc) ? pc.GetString() ?? "" : "";
+                var country = addr.TryGetProperty("country_code", out var co) ? co.GetString() ?? "TH" : "TH";
+
+                // Construct full address
+                var allParts = new List<string> { line1, line2, line3, line4, city, state, postalCode }
+                    .Where(s => !string.IsNullOrWhiteSpace(s));
+                var fullAddress = string.Join(" ", allParts);
+
+                unified.Shipping.RecipientAddress = new RecipientAddress
+                {
+                    Name = addr.TryGetProperty("full_name", out var fn) ? fn.GetString() ?? "" : "",
+                    Phone = addr.TryGetProperty("phone_number", out var pn) ? pn.GetString() ?? "" : "",
+                    AddressLine1 = line1,
+                    AddressLine2 = addressLine2Combined,
+                    District = city, // In TH, city represents Amphur/District
+                    Province = state, // In TH, state represents Changwat/Province
+                    PostalCode = postalCode,
+                    Country = country,
+                    FullAddress = fullAddress
+                };
+            }
         }
 
         // ── Inventory ─────────────────────────────────────

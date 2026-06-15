@@ -82,5 +82,44 @@ namespace OmsApi.Models.Orders
         public string ShippingMethod { get; set; } = string.Empty;
         public decimal ShippingFee { get; set; }
         public DateTime? EstimatedDeliveryDate { get; set; }
+
+        /// <summary>ที่อยู่ผู้รับพัสดุ</summary>
+        public RecipientAddress? RecipientAddress { get; set; }
+    }
+
+    /// <summary>
+    /// ข้อมูลที่อยู่ผู้รับพัสดุ (Normalized Shipping Address)
+    /// </summary>
+    public class RecipientAddress
+    {
+        /// <summary>ชื่อ-นามสกุล ผู้รับ</summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>เบอร์โทรศัพท์ติดต่อ</summary>
+        public string Phone { get; set; } = string.Empty;
+
+        /// <summary>ที่อยู่บรรทัดที่ 1 (บ้านเลขที่, หมู่บ้าน, ซอย, ถนน)</summary>
+        public string AddressLine1 { get; set; } = string.Empty;
+
+        /// <summary>ที่อยู่บรรทัดที่ 2 (อาคาร, ชั้น, ห้อง - ถ้ามี)</summary>
+        public string AddressLine2 { get; set; } = string.Empty;
+
+        /// <summary>ตำบล / แขวง (Sub-district / Tumbol)</summary>
+        public string SubDistrict { get; set; } = string.Empty;
+
+        /// <summary>อำเภอ / เขต (District / Amphur)</summary>
+        public string District { get; set; } = string.Empty;
+
+        /// <summary>จังหวัด (Province / Changwat)</summary>
+        public string Province { get; set; } = string.Empty;
+
+        /// <summary>รหัสไปรษณีย์ (Postal / Zip Code)</summary>
+        public string PostalCode { get; set; } = string.Empty;
+
+        /// <summary>รหัสประเทศ (เช่น TH, SG)</summary>
+        public string Country { get; set; } = "TH";
+
+        /// <summary>ที่อยู่แบบเต็มบรรทัดเดียว (สำหรับพิมพ์ใบแปะหน้าด่วน)</summary>
+        public string FullAddress { get; set; } = string.Empty;
     }
 }

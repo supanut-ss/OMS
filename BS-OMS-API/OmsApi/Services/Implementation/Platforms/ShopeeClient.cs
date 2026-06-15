@@ -635,6 +635,29 @@ namespace OmsApi.Services.Implementation.Platforms
                 };
             }
 
+            if (order.TryGetProperty("recipient_address", out var recipientAddr) && recipientAddr.ValueKind != JsonValueKind.Null)
+            {
+                if (unified.Shipping == null)
+                {
+                    unified.Shipping = new ShippingInfo();
+                }
+
+                var fullAddress = recipientAddr.TryGetProperty("full_address", out var fa) ? fa.GetString() ?? "" : "";
+
+                unified.Shipping.RecipientAddress = new RecipientAddress
+                {
+                    Name = recipientAddr.TryGetProperty("name", out var name) ? name.GetString() ?? "" : "",
+                    Phone = recipientAddr.TryGetProperty("phone", out var phone) ? phone.GetString() ?? "" : "",
+                    SubDistrict = recipientAddr.TryGetProperty("town", out var town) ? town.GetString() ?? "" : "",
+                    District = recipientAddr.TryGetProperty("district", out var dist) ? dist.GetString() ?? "" : (recipientAddr.TryGetProperty("city", out var city) ? city.GetString() ?? "" : ""),
+                    Province = recipientAddr.TryGetProperty("state", out var state) ? state.GetString() ?? "" : "",
+                    PostalCode = recipientAddr.TryGetProperty("zipcode", out var zipcode) ? zipcode.GetString() ?? "" : "",
+                    Country = recipientAddr.TryGetProperty("region", out var region) ? region.GetString() ?? "TH" : "TH",
+                    FullAddress = fullAddress,
+                    AddressLine1 = fullAddress
+                };
+            }
+
             if (order.TryGetProperty("item_list", out var items))
             {
                 foreach (var item in items.EnumerateArray())

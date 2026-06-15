@@ -219,7 +219,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 statuses = st.EnumerateArray().FirstOrDefault().GetString() ?? "";
             }
 
-            return new UnifiedOrder
+            var unified = new UnifiedOrder
             {
                 OrderId = order.TryGetProperty("order_id", out var oid) ? oid.GetInt64().ToString() : "",
                 Platform = PlatformType.Lazada,
@@ -231,6 +231,9 @@ namespace OmsApi.Services.Implementation.Platforms
                     : DateTime.MinValue,
                 BuyerRemarks = order.TryGetProperty("remarks", out var rem) ? rem.GetString() ?? "" : ""
             };
+
+            MapLazadaAddress(order, unified);
+            return unified;
         }
 
         private static UnifiedOrder MapLazadaOrderDetail(JsonElement order)
@@ -278,7 +281,50 @@ namespace OmsApi.Services.Implementation.Platforms
                 }
             }
 
+            MapLazadaAddress(order, unified);
             return unified;
+        }
+
+        private static void MapLazadaAddress(JsonElement order, UnifiedOrder unified)
+        {
+            if (order.TryGetProperty("address_shipping", out var addr) && addr.ValueKind != JsonValueKind.Null)
+            {
+                var firstName = addr.TryGetProperty("first_name", out var fn) ? fn.GetString() ?? "" : "";
+                var lastName = addr.TryGetProperty("last_name", out var ln) ? ln.GetString() ?? "" : "";
+                var phone = addr.TryGetProperty("phone", out var ph) ? ph.GetString() ?? "" : "";
+
+                var address1 = addr.TryGetProperty("address1", out var a1) ? a1.GetString() ?? "" : "";
+                var address2 = addr.TryGetProperty("address2", out var a2) ? a2.GetString() ?? "" : "";
+                var address3 = addr.TryGetProperty("address3", out var a3) ? a3.GetString() ?? "" : ""; // Province
+                var address4 = addr.TryGetProperty("address4", out var a4) ? a4.GetString() ?? "" : ""; // City/District
+                var address5 = addr.TryGetProperty("address5", out var a5) ? a5.GetString() ?? "" : ""; // Sub-district
+                var postCode = addr.TryGetProperty("post_code", out var pc) ? pc.GetString() ?? "" : "";
+                var country = addr.TryGetProperty("country", out var co) ? co.GetString() ?? "TH" : "TH";
+
+                if (unified.Shipping == null)
+                {
+                    unified.Shipping = new ShippingInfo();
+                }
+
+                // Construct full address: address1 address2 address5 address4 address3 postCode
+                var parts = new List<string> { address1, address2, address5, address4, address3, postCode }
+                    .Where(s => !string.IsNullOrWhiteSpace(s));
+                var fullAddress = string.Join(" ", parts);
+
+                unified.Shipping.RecipientAddress = new RecipientAddress
+                {
+                    Name = $"{firstName} {lastName}".Trim(),
+                    Phone = phone,
+                    AddressLine1 = address1,
+                    AddressLine2 = address2,
+                    SubDistrict = address5,
+                    District = address4,
+                    Province = address3,
+                    PostalCode = postCode,
+                    Country = country,
+                    FullAddress = fullAddress
+                };
+            }
         }
 
         private static string MapStatusToLazada(OrderStatus status) => status switch
