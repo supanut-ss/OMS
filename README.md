@@ -588,3 +588,4 @@ BS-Platform/
 
 - `docker-compose up -d` # จะ build และ run container ทั้งหมดที่ถูกเขียนไว้ใน docker-compose.yml
 - `docker-compose build <ชื่อ container>` # จะ build container ตามที่กำหนด แต่ container จะไม่ถูก run
+"# OMS" 
