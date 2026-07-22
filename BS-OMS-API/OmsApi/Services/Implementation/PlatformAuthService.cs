@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using OmsApi.Helpers;
 using OmsApi.Models.Auth;
 using OmsApi.Models.Common;
@@ -106,18 +108,52 @@ namespace OmsApi.Services.Implementation
 
         private async Task<TokenInfo> HandleShopeeCallbackAsync(string code, string? shopId)
         {
-            // In production, this would call /api/v2/auth/token/get
             _logger.LogInformation("🛒 Shopee OAuth callback: code={Code}, shopId={ShopId}", code, shopId);
 
-            return await Task.FromResult(new TokenInfo
+            var shopIdLong = long.TryParse(shopId, out var sid) ? sid : 0;
+            var timestamp  = DateTimeHelper.CurrentUnixTimestamp();
+            var apiPath    = "/api/v2/auth/token/get";
+            var sign       = SignatureHelper.GenerateShopeeSignature(_shopeePartnerKey, _shopeePartnerId, apiPath, timestamp);
+
+            var url  = $"{_shopeeApiUrl}{apiPath}?partner_id={_shopeePartnerId}&timestamp={timestamp}&sign={sign}";
+            var body = JsonSerializer.Serialize(new { code, shop_id = shopIdLong, partner_id = _shopeePartnerId });
+
+            try
             {
-                Platform = PlatformType.Shopee,
-                AccessToken = $"shopee_token_{code}",
-                RefreshToken = $"shopee_refresh_{code}",
-                ShopId = shopId,
-                ExpiresAt = DateTime.UtcNow.AddHours(4),
-                RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
-            });
+                using var http     = new HttpClient();
+                using var content  = new StringContent(body, Encoding.UTF8, "application/json");
+                var response       = await http.PostAsync(url, content);
+                var responseBody   = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("🛒 Shopee token response: {Body}", responseBody);
+
+                var json = JsonDocument.Parse(responseBody);
+                var root = json.RootElement;
+
+                if (root.TryGetProperty("error", out var err) && !string.IsNullOrEmpty(err.GetString()))
+                {
+                    _logger.LogError("❌ Shopee token error: {Error} - {Msg}",
+                        err.GetString(), root.TryGetProperty("message", out var m) ? m.GetString() : "");
+                    throw new InvalidOperationException($"Shopee token exchange failed: {err.GetString()}");
+                }
+
+                var expireIn = root.TryGetProperty("expire_in", out var ei) ? ei.GetInt32() : 14400;
+
+                return new TokenInfo
+                {
+                    Platform        = PlatformType.Shopee,
+                    AccessToken     = root.TryGetProperty("access_token",  out var at) ? at.GetString() ?? "" : "",
+                    RefreshToken    = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() ?? "" : "",
+                    ShopId          = shopId,
+                    ExpiresAt       = DateTime.UtcNow.AddSeconds(expireIn),
+                    RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
+                };
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                _logger.LogError(ex, "❌ Shopee: Error exchanging token");
+                throw;
+            }
         }
 
         #endregion

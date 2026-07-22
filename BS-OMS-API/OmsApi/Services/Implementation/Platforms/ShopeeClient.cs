@@ -45,13 +45,14 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var timeFrom = DateTimeHelper.ToUnixTimestamp(filter.DateFrom ?? DateTime.UtcNow.AddDays(-15));
             var timeTo = DateTimeHelper.ToUnixTimestamp(filter.DateTo ?? DateTime.UtcNow);
-            var cursor = ((filter.Page - 1) * filter.PageSize).ToString();
-
+            var cursor = "0"; // Shopee uses cursor-based pagination; "0" for first page
+            var statusFilter = MapStatusToShopee(filter.Status);
             var queryParams = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}" +
                               $"&shop_id={shopIdLong}&sign={sign}" +
                               $"&time_range_field=create_time&time_from={timeFrom}&time_to={timeTo}" +
                               $"&page_size={Math.Min(filter.PageSize, 100)}&cursor={cursor}" +
-                              $"&order_status={MapStatusToShopee(filter.Status)}&response_optional_fields=order_status";
+                              $"&response_optional_fields=order_status" +
+                              (statusFilter != "ALL" ? $"&order_status={statusFilter}" : "");
 
             try
             {
@@ -59,13 +60,22 @@ namespace OmsApi.Services.Implementation.Platforms
                 var content = await response.Content.ReadAsStringAsync();
                 _logger.LogDebug("Shopee response: {Content}", content);
 
+                // Check for Shopee error even on HTTP 200
+                var json = JsonDocument.Parse(content);
+                var errCode = json.RootElement.TryGetProperty("error", out var errProp) ? errProp.GetString() : "";
+                if (!string.IsNullOrEmpty(errCode))
+                {
+                    var errMsg = json.RootElement.TryGetProperty("message", out var msgProp) ? msgProp.GetString() : "";
+                    _logger.LogWarning("⚠️ Shopee API error in body: {Code} - {Msg}", errCode, errMsg);
+                    return new PaginatedResult<UnifiedOrder>();
+                }
+
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("❌ Shopee API error: {StatusCode} - {Content}", response.StatusCode, content);
                     return new PaginatedResult<UnifiedOrder>();
                 }
 
-                var json = JsonDocument.Parse(content);
                 var result = new PaginatedResult<UnifiedOrder> { Page = filter.Page, PageSize = filter.PageSize };
 
                 if (json.RootElement.TryGetProperty("response", out var resp))
@@ -75,6 +85,8 @@ namespace OmsApi.Services.Implementation.Platforms
                             result.Items.Add(MapShopeeOrder(order));
                     if (resp.TryGetProperty("total_count", out var total))
                         result.TotalCount = total.GetInt32();
+                    else
+                        result.TotalCount = result.Items.Count; // Shopee sandbox may not return total_count
                 }
 
                 _logger.LogInformation("✅ Shopee: Retrieved {Count} orders", result.Items.Count);
@@ -103,7 +115,7 @@ namespace OmsApi.Services.Implementation.Platforms
                               $"&order_sn_list={orderId}" +
                               $"&response_optional_fields=buyer_user_id,buyer_username,estimated_shipping_fee," +
                               $"recipient_address,actual_shipping_fee,note,item_list,pay_time," +
-                              $"message_to_seller,ship_by_date,invoice_data";
+                              $"message_to_seller,ship_by_date,invoice_data,package_list,shipping_carrier";
 
             try
             {
@@ -633,6 +645,23 @@ namespace OmsApi.Services.Implementation.Platforms
                     TrackingNumber = order.TryGetProperty("tracking_no", out var tn) ? tn.GetString() ?? "" : "",
                     ShippingFee = order.TryGetProperty("estimated_shipping_fee", out var fee) ? fee.GetDecimal() : 0
                 };
+            }
+
+            if (order.TryGetProperty("package_list", out var pkgList) && pkgList.ValueKind == JsonValueKind.Array)
+            {
+                var firstPkg = pkgList.EnumerateArray().FirstOrDefault();
+                if (firstPkg.ValueKind != JsonValueKind.Undefined)
+                {
+                    if (unified.Shipping == null) unified.Shipping = new ShippingInfo();
+                    if (firstPkg.TryGetProperty("package_number", out var pn))
+                    {
+                        unified.Shipping.PackageNumber = pn.GetString() ?? "";
+                    }
+                    if (firstPkg.TryGetProperty("shipping_carrier", out var sc) && string.IsNullOrEmpty(unified.Shipping.Carrier))
+                    {
+                        unified.Shipping.Carrier = sc.GetString() ?? "";
+                    }
+                }
             }
 
             if (order.TryGetProperty("recipient_address", out var recipientAddr) && recipientAddr.ValueKind != JsonValueKind.Null)

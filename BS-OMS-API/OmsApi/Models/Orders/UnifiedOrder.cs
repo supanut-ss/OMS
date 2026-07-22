@@ -79,6 +79,7 @@ namespace OmsApi.Models.Orders
     {
         public string Carrier { get; set; } = string.Empty;
         public string TrackingNumber { get; set; } = string.Empty;
+        public string PackageNumber { get; set; } = string.Empty;
         public string ShippingMethod { get; set; } = string.Empty;
         public decimal ShippingFee { get; set; }
         public DateTime? EstimatedDeliveryDate { get; set; }
