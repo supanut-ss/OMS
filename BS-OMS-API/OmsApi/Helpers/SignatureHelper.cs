@@ -38,18 +38,19 @@ namespace OmsApi.Helpers
 
         /// <summary>
         /// Generate Lazada API signature
-        /// Sort all params alphabetically, concatenate, then HMAC
+        /// Sort all params alphabetically, concatenate, then HMAC.
+        /// Lazada requires the resulting signature as UPPERCASE hex.
         /// </summary>
         public static string GenerateLazadaSignature(string appSecret, string apiPath, Dictionary<string, string> parameters)
         {
-            var sortedParams = parameters.OrderBy(p => p.Key);
+            var sortedParams = parameters.OrderBy(p => p.Key, StringComparer.Ordinal);
             var sb = new StringBuilder(apiPath);
             foreach (var param in sortedParams)
             {
                 sb.Append(param.Key);
                 sb.Append(param.Value);
             }
-            return HmacSha256(appSecret, sb.ToString());
+            return HmacSha256(appSecret, sb.ToString()).ToUpperInvariant();
         }
 
         /// <summary>

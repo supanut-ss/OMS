@@ -24,6 +24,7 @@ namespace OmsApi.Services.Implementation
         private readonly string _lazadaAppKey;
         private readonly string _lazadaAppSecret;
         private readonly string _lazadaAuthUrl;
+        private readonly string _lazadaAuthApiUrl;
         private readonly string _lazadaRedirectUrl;
 
         // TikTok credentials
@@ -44,6 +45,7 @@ namespace OmsApi.Services.Implementation
             _lazadaAppKey = Environment.GetEnvironmentVariable("LAZADA_APP_KEY") ?? "";
             _lazadaAppSecret = Environment.GetEnvironmentVariable("LAZADA_APP_SECRET") ?? "";
             _lazadaAuthUrl = Environment.GetEnvironmentVariable("LAZADA_AUTH_URL") ?? "https://auth.lazada.com/oauth/authorize";
+            _lazadaAuthApiUrl = Environment.GetEnvironmentVariable("LAZADA_AUTH_API_URL") ?? "https://auth.lazada.com/rest";
             _lazadaRedirectUrl = Environment.GetEnvironmentVariable("LAZADA_REDIRECT_URL") ?? "";
 
             _tiktokAppKey = Environment.GetEnvironmentVariable("TIKTOK_APP_KEY") ?? "";
@@ -217,32 +219,79 @@ namespace OmsApi.Services.Implementation
 
         private async Task<TokenInfo> HandleLazadaCallbackAsync(string code)
         {
-            // In production, this would call /auth/token/create
             _logger.LogInformation("🏪 Lazada OAuth callback: code={Code}", code);
 
-            return await Task.FromResult(new TokenInfo
+            var parameters = new Dictionary<string, string>
             {
-                Platform = PlatformType.Lazada,
-                AccessToken = $"lazada_token_{code}",
-                RefreshToken = $"lazada_refresh_{code}",
-                ExpiresAt = DateTime.UtcNow.AddDays(7),
-                RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
-            });
+                { "app_key", _lazadaAppKey },
+                { "sign_method", "sha256" },
+                { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() },
+                { "code", code }
+            };
+
+            return await CallLazadaTokenApiAsync("/auth/token/create", parameters, "exchanging token");
         }
 
         private async Task<TokenInfo> RefreshLazadaTokenAsync(string refreshToken)
         {
-            // In production, this would call /auth/token/refresh
-            _logger.LogInformation("🏪 Lazada token refresh (not yet implemented against real API)");
+            _logger.LogInformation("🔄 Lazada token refresh");
 
-            return await Task.FromResult(new TokenInfo
+            var parameters = new Dictionary<string, string>
             {
-                Platform = PlatformType.Lazada,
-                AccessToken = $"lazada_token_{refreshToken}",
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7),
-                RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
-            });
+                { "app_key", _lazadaAppKey },
+                { "sign_method", "sha256" },
+                { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() },
+                { "refresh_token", refreshToken }
+            };
+
+            return await CallLazadaTokenApiAsync("/auth/token/refresh", parameters, "refreshing token");
+        }
+
+        private async Task<TokenInfo> CallLazadaTokenApiAsync(string apiPath, Dictionary<string, string> parameters, string actionDescription)
+        {
+            var sign = SignatureHelper.GenerateLazadaSignature(_lazadaAppSecret, apiPath, parameters);
+            parameters["sign"] = sign;
+
+            var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+            var url = $"{_lazadaAuthApiUrl}{apiPath}?{queryString}";
+
+            try
+            {
+                using var http = new HttpClient();
+                var response = await http.GetAsync(url);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("🏪 Lazada token response: {Body}", responseBody);
+
+                var json = JsonDocument.Parse(responseBody);
+                var root = json.RootElement;
+
+                // Lazada returns code "0" on success; anything else is an error
+                var resultCode = root.TryGetProperty("code", out var c) ? c.GetString() : null;
+                if (resultCode != "0")
+                {
+                    var msg = root.TryGetProperty("message", out var m) ? m.GetString() : "Unknown error";
+                    _logger.LogError("❌ Lazada token error: {Code} - {Msg}", resultCode, msg);
+                    throw new InvalidOperationException($"Lazada error {actionDescription}: {msg}");
+                }
+
+                var expiresIn = root.TryGetProperty("expires_in", out var ei) ? ei.GetInt32() : 2592000;
+                var refreshExpiresIn = root.TryGetProperty("refresh_expires_in", out var rei) ? rei.GetInt32() : 2592000;
+
+                return new TokenInfo
+                {
+                    Platform = PlatformType.Lazada,
+                    AccessToken = root.TryGetProperty("access_token", out var at) ? at.GetString() ?? "" : "",
+                    RefreshToken = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() ?? "" : "",
+                    ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn),
+                    RefreshExpiresAt = DateTime.UtcNow.AddSeconds(refreshExpiresIn)
+                };
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                _logger.LogError(ex, "❌ Lazada: Error {Action}", actionDescription);
+                throw;
+            }
         }
 
         #endregion
