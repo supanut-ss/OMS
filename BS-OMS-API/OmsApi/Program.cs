@@ -13,7 +13,7 @@ string[] allowedOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIG
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 if (allowedOrigins.Length == 0)
-    allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:8080" };
+    allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:8080" , "https://localhost:53954/" };
 
 builder.Services.AddCors(options =>
 {
@@ -44,7 +44,7 @@ builder.Services.AddHttpClient("TikTok", client =>
 });
 
 // ─── Dependency Injection ───────────────────────────────
-builder.Services.AddSingleton<IPlatformClientFactory, PlatformClientFactory>();
+builder.Services.AddScoped<IPlatformClientFactory, PlatformClientFactory>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPlatformAuthService, PlatformAuthService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
