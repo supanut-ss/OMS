@@ -82,15 +82,13 @@ namespace OmsApi.Services.Implementation
         {
             _logger.LogInformation("🔄 Refreshing token for {Platform}", platform);
 
-            // Token refresh implementation would follow the same pattern
-            // Each platform has its own refresh endpoint
-            return await Task.FromResult(new TokenInfo
+            return platform switch
             {
-                Platform = platform,
-                AccessToken = "refresh_not_yet_implemented",
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddHours(4)
-            });
+                PlatformType.Shopee => await RefreshShopeeTokenAsync(refreshToken, shopId),
+                PlatformType.Lazada => await RefreshLazadaTokenAsync(refreshToken),
+                PlatformType.TikTok => await RefreshTikTokTokenAsync(refreshToken),
+                _ => throw new ArgumentException($"Unsupported platform: {platform}")
+            };
         }
 
         #region Shopee Auth
@@ -156,6 +154,56 @@ namespace OmsApi.Services.Implementation
             }
         }
 
+        private async Task<TokenInfo> RefreshShopeeTokenAsync(string refreshToken, string? shopId)
+        {
+            _logger.LogInformation("🔄 Shopee token refresh: shopId={ShopId}", shopId);
+
+            var shopIdLong = long.TryParse(shopId, out var sid) ? sid : 0;
+            var timestamp  = DateTimeHelper.CurrentUnixTimestamp();
+            var apiPath    = "/api/v2/auth/access_token/get";
+            var sign       = SignatureHelper.GenerateShopeeSignature(_shopeePartnerKey, _shopeePartnerId, apiPath, timestamp);
+
+            var url  = $"{_shopeeApiUrl}{apiPath}?partner_id={_shopeePartnerId}&timestamp={timestamp}&sign={sign}";
+            var body = JsonSerializer.Serialize(new { refresh_token = refreshToken, shop_id = shopIdLong, partner_id = _shopeePartnerId });
+
+            try
+            {
+                using var http     = new HttpClient();
+                using var content  = new StringContent(body, Encoding.UTF8, "application/json");
+                var response       = await http.PostAsync(url, content);
+                var responseBody   = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("🔄 Shopee refresh response: {Body}", responseBody);
+
+                var json = JsonDocument.Parse(responseBody);
+                var root = json.RootElement;
+
+                if (root.TryGetProperty("error", out var err) && !string.IsNullOrEmpty(err.GetString()))
+                {
+                    _logger.LogError("❌ Shopee refresh error: {Error} - {Msg}",
+                        err.GetString(), root.TryGetProperty("message", out var m) ? m.GetString() : "");
+                    throw new InvalidOperationException($"Shopee token refresh failed: {err.GetString()}");
+                }
+
+                var expireIn = root.TryGetProperty("expire_in", out var ei) ? ei.GetInt32() : 14400;
+
+                return new TokenInfo
+                {
+                    Platform         = PlatformType.Shopee,
+                    AccessToken      = root.TryGetProperty("access_token",  out var at) ? at.GetString() ?? "" : "",
+                    RefreshToken     = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() ?? "" : "",
+                    ShopId           = shopId,
+                    ExpiresAt        = DateTime.UtcNow.AddSeconds(expireIn),
+                    RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
+                };
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                _logger.LogError(ex, "❌ Shopee: Error refreshing token");
+                throw;
+            }
+        }
+
         #endregion
 
         #region Lazada Auth
@@ -182,6 +230,21 @@ namespace OmsApi.Services.Implementation
             });
         }
 
+        private async Task<TokenInfo> RefreshLazadaTokenAsync(string refreshToken)
+        {
+            // In production, this would call /auth/token/refresh
+            _logger.LogInformation("🏪 Lazada token refresh (not yet implemented against real API)");
+
+            return await Task.FromResult(new TokenInfo
+            {
+                Platform = PlatformType.Lazada,
+                AccessToken = $"lazada_token_{refreshToken}",
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
+            });
+        }
+
         #endregion
 
         #region TikTok Auth
@@ -201,6 +264,21 @@ namespace OmsApi.Services.Implementation
                 Platform = PlatformType.TikTok,
                 AccessToken = $"tiktok_token_{code}",
                 RefreshToken = $"tiktok_refresh_{code}",
+                ExpiresAt = DateTime.UtcNow.AddHours(12),
+                RefreshExpiresAt = DateTime.UtcNow.AddDays(365)
+            });
+        }
+
+        private async Task<TokenInfo> RefreshTikTokTokenAsync(string refreshToken)
+        {
+            // In production, this would call /api/v2/token/refresh
+            _logger.LogInformation("🎵 TikTok token refresh (not yet implemented against real API)");
+
+            return await Task.FromResult(new TokenInfo
+            {
+                Platform = PlatformType.TikTok,
+                AccessToken = $"tiktok_token_{refreshToken}",
+                RefreshToken = refreshToken,
                 ExpiresAt = DateTime.UtcNow.AddHours(12),
                 RefreshExpiresAt = DateTime.UtcNow.AddDays(365)
             });
