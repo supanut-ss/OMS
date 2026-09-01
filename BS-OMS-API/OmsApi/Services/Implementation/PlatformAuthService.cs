@@ -1,4 +1,8 @@
-using System.Text;
+﻿using System.Text;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using OmsApi.Extensions;
+using OmsApi.Models.Persistence;
 using System.Text.Json;
 using OmsApi.Helpers;
 using OmsApi.Models.Auth;
@@ -13,6 +17,8 @@ namespace OmsApi.Services.Implementation
     public class PlatformAuthService : IPlatformAuthService
     {
         private readonly ILogger<PlatformAuthService> _logger;
+        private readonly ApplicationDbContext _db;
+        private readonly IDataProtector _tokenProtector;
 
         // Shopee credentials
         private readonly long _shopeePartnerId;
@@ -33,8 +39,10 @@ namespace OmsApi.Services.Implementation
         private readonly string _tiktokAuthUrl;
         private readonly string _tiktokRedirectUrl;
 
-        public PlatformAuthService(ILogger<PlatformAuthService> logger)
+        public PlatformAuthService(ILogger<PlatformAuthService> logger, ApplicationDbContext db, IDataProtectionProvider protectionProvider)
         {
+            _db = db;
+            _tokenProtector = protectionProvider.CreateProtector("OmsApi.PlatformCredentials.v1");
             _logger = logger;
 
             _shopeePartnerId = long.TryParse(Environment.GetEnvironmentVariable("SHOPEE_PARTNER_ID"), out var sid) ? sid : 0;
@@ -139,7 +147,7 @@ namespace OmsApi.Services.Implementation
 
                 var expireIn = root.TryGetProperty("expire_in", out var ei) ? ei.GetInt32() : 14400;
 
-                return new TokenInfo
+                var tokenInfo = new TokenInfo
                 {
                     Platform        = PlatformType.Shopee,
                     AccessToken     = root.TryGetProperty("access_token",  out var at) ? at.GetString() ?? "" : "",
@@ -147,7 +155,11 @@ namespace OmsApi.Services.Implementation
                     ShopId          = shopId,
                     ExpiresAt       = DateTime.UtcNow.AddSeconds(expireIn),
                     RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
+
                 };
+
+                await SaveCredentialAsync(tokenInfo);
+                return tokenInfo;
             }
             catch (Exception ex) when (ex is not InvalidOperationException)
             {
@@ -189,7 +201,7 @@ namespace OmsApi.Services.Implementation
 
                 var expireIn = root.TryGetProperty("expire_in", out var ei) ? ei.GetInt32() : 14400;
 
-                return new TokenInfo
+                var tokenInfo = new TokenInfo
                 {
                     Platform         = PlatformType.Shopee,
                     AccessToken      = root.TryGetProperty("access_token",  out var at) ? at.GetString() ?? "" : "",
@@ -197,7 +209,11 @@ namespace OmsApi.Services.Implementation
                     ShopId           = shopId,
                     ExpiresAt        = DateTime.UtcNow.AddSeconds(expireIn),
                     RefreshExpiresAt = DateTime.UtcNow.AddDays(30)
+
                 };
+
+                await SaveCredentialAsync(tokenInfo);
+                return tokenInfo;
             }
             catch (Exception ex) when (ex is not InvalidOperationException)
             {
@@ -206,6 +222,30 @@ namespace OmsApi.Services.Implementation
             }
         }
 
+        private async Task SaveCredentialAsync(TokenInfo tokenInfo)
+        {
+            if (string.IsNullOrWhiteSpace(tokenInfo.ShopId))
+                throw new InvalidOperationException("Shop ID is required to persist platform credentials.");
+            var platform = tokenInfo.Platform.ToString();
+            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x => x.Platform == platform && x.ShopId == tokenInfo.ShopId);
+            var now = DateTime.UtcNow;
+            if (credential == null)
+            {
+                credential = new PlatformCredential { Platform = platform, ShopId = tokenInfo.ShopId, CreateDate = now };
+                _db.PlatformCredentials.Add(credential);
+            }
+            credential.ShopName = tokenInfo.ShopName;
+            credential.AccessTokenEncrypted = _tokenProtector.Protect(tokenInfo.AccessToken);
+            credential.RefreshTokenEncrypted = string.IsNullOrWhiteSpace(tokenInfo.RefreshToken) ? null : _tokenProtector.Protect(tokenInfo.RefreshToken);
+            credential.AccessTokenExpiresDate = tokenInfo.ExpiresAt;
+            credential.RefreshTokenExpiresDate = tokenInfo.RefreshExpiresAt > now ? tokenInfo.RefreshExpiresAt : null;
+            credential.IsActive = "YES";
+            credential.RequiresReauthorization = "NO";
+            credential.LastRefreshDate = now;
+            credential.LastError = null;
+            credential.UpdateDate = now;
+            await _db.SaveChangesAsync();
+        }
         #endregion
 
         #region Lazada Auth
@@ -308,7 +348,7 @@ namespace OmsApi.Services.Implementation
             // In production, this would call /api/v2/token/get
             _logger.LogInformation("🎵 TikTok OAuth callback: code={Code}", code);
 
-            return await Task.FromResult(new TokenInfo
+            var tokenInfo = await Task.FromResult(new TokenInfo
             {
                 Platform = PlatformType.TikTok,
                 AccessToken = $"tiktok_token_{code}",
@@ -316,6 +356,9 @@ namespace OmsApi.Services.Implementation
                 ExpiresAt = DateTime.UtcNow.AddHours(12),
                 RefreshExpiresAt = DateTime.UtcNow.AddDays(365)
             });
+
+            await SaveCredentialAsync(tokenInfo);
+            return tokenInfo;
         }
 
         private async Task<TokenInfo> RefreshTikTokTokenAsync(string refreshToken)

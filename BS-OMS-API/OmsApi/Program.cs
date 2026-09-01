@@ -1,11 +1,18 @@
-using OmsApi.Middleware;
+﻿using OmsApi.Middleware;
 using OmsApi.Services.Interfaces;
 using OmsApi.Services.Implementation;
 using OmsApi.Services.Implementation.Platforms;
 using Microsoft.OpenApi.Models;
+using Microsoft.EntityFrameworkCore;
+using OmsApi.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
+builder.Services.AddDataProtection();
+
+var dbConnectionString = Environment.GetEnvironmentVariable("OMS_DB_CONNECTION_STRING");
+if (!string.IsNullOrWhiteSpace(dbConnectionString))
+    builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(dbConnectionString));
 
 // ─── CORS ───────────────────────────────────────────────
 const string corsKey = "OmsApiCors";

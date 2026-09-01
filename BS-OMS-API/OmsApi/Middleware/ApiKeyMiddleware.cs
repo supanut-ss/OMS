@@ -1,4 +1,4 @@
-namespace OmsApi.Middleware
+﻿namespace OmsApi.Middleware
 {
     /// <summary>
     /// Middleware ตรวจสอบ API Key จาก header X-Api-Key
@@ -20,7 +20,8 @@ namespace OmsApi.Middleware
             // Skip Swagger UI and OpenAPI spec paths
             var path = context.Request.Path.Value ?? string.Empty;
             if (path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase))
+                path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase) ||
+                IsOAuthBrowserPath(path))
             {
                 await _next(context);
                 return;
@@ -46,6 +47,15 @@ namespace OmsApi.Middleware
             }
 
             await _next(context);
+        }
+
+        private static bool IsOAuthBrowserPath(string path)
+        {
+            if (!path.StartsWith("/api/auth/", StringComparison.OrdinalIgnoreCase))
+                return false;
+            return path.EndsWith("/authorize", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith("/auth-url", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith("/callback", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
