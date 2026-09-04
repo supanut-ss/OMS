@@ -59,6 +59,8 @@ nunit-*.xml
 /BS-API-Core/.vs/BS-API-Core
 /BS-API-Core/.dockerignore
 /BS-API-Core/.env
+/BS-OMS-API/OmsApi/.env
+/BS-OMS-API/OmsApi/storage/
 /BS-API-Core/.vs/ProjectEvaluation
 /BS-API-Core/ApiCore/.vs/ApiCore/CopilotIndices/17.12.38.29086
 /BS-API-Core/ApiCore/.vs/ApiCore/FileContentIndex/1d926f56-0931-4a99-8a48-b8927d0cad14.vsidx

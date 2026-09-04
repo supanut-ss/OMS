@@ -17,10 +17,17 @@ namespace OmsApi.Services.Interfaces
         /// <summary>จัดส่งสินค้า (Ship Order)</summary>
         Task<bool> ShipOrderAsync(ShipOrderRequest request);
 
+        Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request);
+
         /// <summary>ดึงรายการผู้ให้บริการขนส่ง</summary>
         Task<List<ShippingProvider>> GetShippingProvidersAsync(PlatformType platform, string accessToken, string? shopId = null);
 
         /// <summary>ติดตามพัสดุ</summary>
-        Task<TrackingInfo?> GetTrackingInfoAsync(PlatformType platform, string orderId, string accessToken, string? shopId = null);
+        Task<TrackingInfo?> GetTrackingInfoAsync(
+            PlatformType platform,
+            string orderId,
+            string? accessToken = null,
+            string? shopId = null,
+            IReadOnlyCollection<string>? packageNumbers = null);
     }
 }

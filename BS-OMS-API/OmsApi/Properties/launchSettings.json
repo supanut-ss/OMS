@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "OmsApi": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:53954;http://localhost:53955"
+    }
+  }
+}

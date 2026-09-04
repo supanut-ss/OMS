@@ -37,6 +37,8 @@ namespace OmsApi.Services.Implementation
         private readonly string _tiktokAppKey;
         private readonly string _tiktokAppSecret;
         private readonly string _tiktokAuthUrl;
+        private readonly string _tiktokAuthApiUrl;
+        private readonly string _tiktokApiUrl;
         private readonly string _tiktokRedirectUrl;
 
         public PlatformAuthService(ILogger<PlatformAuthService> logger, ApplicationDbContext db, IDataProtectionProvider protectionProvider)
@@ -59,6 +61,8 @@ namespace OmsApi.Services.Implementation
             _tiktokAppKey = Environment.GetEnvironmentVariable("TIKTOK_APP_KEY") ?? "";
             _tiktokAppSecret = Environment.GetEnvironmentVariable("TIKTOK_APP_SECRET") ?? "";
             _tiktokAuthUrl = Environment.GetEnvironmentVariable("TIKTOK_AUTH_URL") ?? "https://services.tiktokshop.com/open/authorize";
+            _tiktokAuthApiUrl = Environment.GetEnvironmentVariable("TIKTOK_AUTH_API_URL") ?? "https://auth.tiktok-shops.com";
+            _tiktokApiUrl = Environment.GetEnvironmentVariable("TIKTOK_API_URL") ?? "https://open-api.tiktokglobalshop.com";
             _tiktokRedirectUrl = Environment.GetEnvironmentVariable("TIKTOK_REDIRECT_URL") ?? "";
         }
 
@@ -83,7 +87,7 @@ namespace OmsApi.Services.Implementation
             {
                 PlatformType.Shopee => await HandleShopeeCallbackAsync(code, shopId),
                 PlatformType.Lazada => await HandleLazadaCallbackAsync(code),
-                PlatformType.TikTok => await HandleTikTokCallbackAsync(code),
+                PlatformType.TikTok => await HandleTikTokCallbackAsync(code, shopId),
                 _ => throw new ArgumentException($"Unsupported platform: {platform}")
             };
         }
@@ -95,10 +99,52 @@ namespace OmsApi.Services.Implementation
             return platform switch
             {
                 PlatformType.Shopee => await RefreshShopeeTokenAsync(refreshToken, shopId),
-                PlatformType.Lazada => await RefreshLazadaTokenAsync(refreshToken),
-                PlatformType.TikTok => await RefreshTikTokTokenAsync(refreshToken),
+                PlatformType.Lazada => await RefreshLazadaTokenAsync(refreshToken, shopId),
+                PlatformType.TikTok => await RefreshTikTokTokenAsync(refreshToken, shopId),
                 _ => throw new ArgumentException($"Unsupported platform: {platform}")
             };
+        }
+
+        public async Task<TokenInfo> ImportSandboxTokenAsync(PlatformType platform, SandboxTokenRequest request)
+        {
+            if (platform != PlatformType.Shopee && platform != PlatformType.Lazada)
+                throw new ArgumentException("Sandbox token import currently supports Shopee and Lazada only.", nameof(request));
+            if (string.IsNullOrWhiteSpace(request.AccessToken))
+                throw new ArgumentException("accessToken is required.", nameof(request));
+            if (string.IsNullOrWhiteSpace(request.ShopId))
+                throw new ArgumentException("shopId is required.", nameof(request));
+            if (platform == PlatformType.Shopee &&
+                (!long.TryParse(request.ShopId.Trim(), out var shopeeShopId) || shopeeShopId <= 0))
+                throw new ArgumentException("shopId must be the numeric Shopee Sandbox shop_id.", nameof(request));
+
+            var now = DateTime.UtcNow;
+            var accessExpiresIn = request.ExpiresInSeconds ??
+                (platform == PlatformType.Shopee ? 14400 : 604800);
+            var refreshExpiresIn = request.RefreshExpiresInSeconds ?? 2592000;
+            var hasRefreshToken = !string.IsNullOrWhiteSpace(request.RefreshToken);
+            var tokenInfo = new TokenInfo
+            {
+                Platform = platform,
+                AccessToken = request.AccessToken.Trim(),
+                RefreshToken = hasRefreshToken ? request.RefreshToken!.Trim() : string.Empty,
+                ShopId = request.ShopId.Trim(),
+                ShopName = string.IsNullOrWhiteSpace(request.ShopName)
+                    ? $"{platform} Sandbox"
+                    : $"{request.ShopName.Trim()} [SANDBOX]",
+                ExpiresAt = now.AddSeconds(accessExpiresIn),
+                RefreshExpiresAt = hasRefreshToken
+                    ? now.AddSeconds(refreshExpiresIn)
+                    : now
+            };
+            await SaveCredentialAsync(tokenInfo);
+
+            _logger.LogInformation(
+                "Imported encrypted {Platform} Sandbox credential for shop {ShopId}; expires at {ExpiresAt}",
+                platform,
+                tokenInfo.ShopId,
+                tokenInfo.ExpiresAt);
+
+            return tokenInfo;
         }
 
         #region Shopee Auth
@@ -224,16 +270,25 @@ namespace OmsApi.Services.Implementation
 
         private async Task SaveCredentialAsync(TokenInfo tokenInfo)
         {
-            if (string.IsNullOrWhiteSpace(tokenInfo.ShopId))
-                throw new InvalidOperationException("Shop ID is required to persist platform credentials.");
             var platform = tokenInfo.Platform.ToString();
-            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x => x.Platform == platform && x.ShopId == tokenInfo.ShopId);
+            var shopId = tokenInfo.ShopId?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(shopId))
+                throw new InvalidOperationException("Shop ID/shop cipher is required to persist platform credentials.");
+
+            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(
+                x => x.Platform == platform && x.ShopId == shopId);
             var now = DateTime.UtcNow;
             if (credential == null)
             {
-                credential = new PlatformCredential { Platform = platform, ShopId = tokenInfo.ShopId, CreateDate = now };
+                credential = new PlatformCredential
+                {
+                    Platform = platform,
+                    ShopId = shopId,
+                    CreateDate = now
+                };
                 _db.PlatformCredentials.Add(credential);
             }
+            credential.ShopId = shopId;
             credential.ShopName = tokenInfo.ShopName;
             credential.AccessTokenEncrypted = _tokenProtector.Protect(tokenInfo.AccessToken);
             credential.RefreshTokenEncrypted = string.IsNullOrWhiteSpace(tokenInfo.RefreshToken) ? null : _tokenProtector.Protect(tokenInfo.RefreshToken);
@@ -259,7 +314,7 @@ namespace OmsApi.Services.Implementation
 
         private async Task<TokenInfo> HandleLazadaCallbackAsync(string code)
         {
-            _logger.LogInformation("🏪 Lazada OAuth callback: code={Code}", code);
+            _logger.LogInformation("🏪 Exchanging Lazada authorization code");
 
             var parameters = new Dictionary<string, string>
             {
@@ -269,10 +324,11 @@ namespace OmsApi.Services.Implementation
                 { "code", code }
             };
 
-            return await CallLazadaTokenApiAsync("/auth/token/create", parameters, "exchanging token");
+            return await CallLazadaTokenApiAsync(
+                "/auth/token/create", parameters, "exchanging token");
         }
 
-        private async Task<TokenInfo> RefreshLazadaTokenAsync(string refreshToken)
+        private async Task<TokenInfo> RefreshLazadaTokenAsync(string refreshToken, string? shopId)
         {
             _logger.LogInformation("🔄 Lazada token refresh");
 
@@ -284,10 +340,16 @@ namespace OmsApi.Services.Implementation
                 { "refresh_token", refreshToken }
             };
 
-            return await CallLazadaTokenApiAsync("/auth/token/refresh", parameters, "refreshing token");
+            return await CallLazadaTokenApiAsync(
+                "/auth/token/refresh", parameters, "refreshing token", shopId, refreshToken);
         }
 
-        private async Task<TokenInfo> CallLazadaTokenApiAsync(string apiPath, Dictionary<string, string> parameters, string actionDescription)
+        private async Task<TokenInfo> CallLazadaTokenApiAsync(
+            string apiPath,
+            Dictionary<string, string> parameters,
+            string actionDescription,
+            string? requestedShopId = null,
+            string? fallbackRefreshToken = null)
         {
             var sign = SignatureHelper.GenerateLazadaSignature(_lazadaAppSecret, apiPath, parameters);
             parameters["sign"] = sign;
@@ -301,37 +363,136 @@ namespace OmsApi.Services.Implementation
                 var response = await http.GetAsync(url);
                 var responseBody = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation("🏪 Lazada token response: {Body}", responseBody);
-
-                var json = JsonDocument.Parse(responseBody);
+                using var json = JsonDocument.Parse(responseBody);
                 var root = json.RootElement;
 
                 // Lazada returns code "0" on success; anything else is an error
-                var resultCode = root.TryGetProperty("code", out var c) ? c.GetString() : null;
+                var resultCode = root.TryGetProperty("code", out var c) ? ReadJsonText(c) : null;
+                var requestId = root.TryGetProperty("request_id", out var requestIdElement)
+                    ? ReadJsonText(requestIdElement)
+                    : null;
+                _logger.LogInformation(
+                    "🏪 Lazada token request completed: status={StatusCode}, code={Code}, requestId={RequestId}",
+                    response.StatusCode, resultCode, requestId);
+
                 if (resultCode != "0")
                 {
-                    var msg = root.TryGetProperty("message", out var m) ? m.GetString() : "Unknown error";
-                    _logger.LogError("❌ Lazada token error: {Code} - {Msg}", resultCode, msg);
-                    throw new InvalidOperationException($"Lazada error {actionDescription}: {msg}");
+                    var msg = root.TryGetProperty("message", out var m) ? ReadJsonText(m) : "Unknown error";
+                    _logger.LogError(
+                        "❌ Lazada token error: {Code} - {Msg}, requestId={RequestId}",
+                        resultCode, msg, requestId);
+                    throw new InvalidOperationException(
+                        $"Lazada error {actionDescription}: {msg} (request_id: {requestId ?? "n/a"})");
                 }
 
-                var expiresIn = root.TryGetProperty("expires_in", out var ei) ? ei.GetInt32() : 2592000;
-                var refreshExpiresIn = root.TryGetProperty("refresh_expires_in", out var rei) ? rei.GetInt32() : 2592000;
+                var expiresIn = ReadJsonInt32(root, "expires_in", 2592000);
+                var refreshExpiresIn = ReadJsonInt32(root, "refresh_expires_in", 2592000);
+                var accessToken = root.TryGetProperty("access_token", out var at)
+                    ? ReadJsonText(at) : "";
+                var refreshToken = root.TryGetProperty("refresh_token", out var rt)
+                    ? ReadJsonText(rt) : "";
+                if (string.IsNullOrWhiteSpace(refreshToken))
+                    refreshToken = fallbackRefreshToken ?? "";
 
-                return new TokenInfo
+                if (string.IsNullOrWhiteSpace(accessToken))
+                    throw new InvalidOperationException("Lazada token response does not contain access_token.");
+
+                var shop = ReadLazadaShop(root, requestedShopId);
+                if (string.IsNullOrWhiteSpace(shop.ShopId))
+                    throw new InvalidOperationException(
+                        "Lazada token response does not contain seller_id/user_id required for credential persistence.");
+
+                var tokenInfo = new TokenInfo
                 {
                     Platform = PlatformType.Lazada,
-                    AccessToken = root.TryGetProperty("access_token", out var at) ? at.GetString() ?? "" : "",
-                    RefreshToken = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() ?? "" : "",
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken,
                     ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn),
-                    RefreshExpiresAt = DateTime.UtcNow.AddSeconds(refreshExpiresIn)
+                    RefreshExpiresAt = DateTime.UtcNow.AddSeconds(refreshExpiresIn),
+                    ShopId = shop.ShopId,
+                    ShopName = shop.ShopName
                 };
+
+                await SaveCredentialAsync(tokenInfo);
+                return tokenInfo;
             }
             catch (Exception ex) when (ex is not InvalidOperationException)
             {
                 _logger.LogError(ex, "❌ Lazada: Error {Action}", actionDescription);
                 throw;
             }
+        }
+
+        private static (string ShopId, string? ShopName) ReadLazadaShop(
+            JsonElement root, string? requestedShopId)
+        {
+            var account = root.TryGetProperty("account", out var accountElement)
+                ? ReadJsonText(accountElement)
+                : null;
+            var shops = new List<(string ShopId, string? ShopName)>();
+
+            if (root.TryGetProperty("country_user_info", out var countryUsers) &&
+                countryUsers.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var countryUser in countryUsers.EnumerateArray())
+                {
+                    var sellerId = countryUser.TryGetProperty("seller_id", out var sellerIdElement)
+                        ? ReadJsonText(sellerIdElement)
+                        : "";
+                    if (string.IsNullOrWhiteSpace(sellerId) &&
+                        countryUser.TryGetProperty("user_id", out var userIdElement))
+                        sellerId = ReadJsonText(userIdElement);
+                    if (string.IsNullOrWhiteSpace(sellerId)) continue;
+
+                    var shortCode = countryUser.TryGetProperty("short_code", out var shortCodeElement)
+                        ? ReadJsonText(shortCodeElement)
+                        : null;
+                    var country = countryUser.TryGetProperty("country", out var countryElement)
+                        ? ReadJsonText(countryElement).ToUpperInvariant()
+                        : null;
+                    var shopName = !string.IsNullOrWhiteSpace(shortCode)
+                        ? string.IsNullOrWhiteSpace(country) ? shortCode : $"{shortCode} ({country})"
+                        : account;
+                    shops.Add((sellerId, shopName));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestedShopId))
+            {
+                var requested = shops.FirstOrDefault(shop => shop.ShopId == requestedShopId);
+                if (!string.IsNullOrWhiteSpace(requested.ShopId)) return requested;
+            }
+
+            if (shops.Count > 0) return shops[0];
+
+            var rootSellerId = root.TryGetProperty("seller_id", out var rootSellerIdElement)
+                ? ReadJsonText(rootSellerIdElement)
+                : "";
+            if (string.IsNullOrWhiteSpace(rootSellerId) &&
+                root.TryGetProperty("user_id", out var rootUserIdElement))
+                rootSellerId = ReadJsonText(rootUserIdElement);
+
+            return (!string.IsNullOrWhiteSpace(rootSellerId)
+                    ? rootSellerId
+                    : requestedShopId?.Trim() ?? "",
+                account);
+        }
+
+        private static int ReadJsonInt32(JsonElement root, string propertyName, int fallback)
+        {
+            return root.TryGetProperty(propertyName, out var element) &&
+                   int.TryParse(ReadJsonText(element), out var value)
+                ? value
+                : fallback;
+        }
+
+        private static string ReadJsonText(JsonElement element)
+        {
+            return element.ValueKind == JsonValueKind.String
+                ? element.GetString() ?? ""
+                : element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                    ? ""
+                    : element.ToString();
         }
 
         #endregion
@@ -343,37 +504,201 @@ namespace OmsApi.Services.Implementation
             return $"{_tiktokAuthUrl}?app_key={_tiktokAppKey}&state={state}";
         }
 
-        private async Task<TokenInfo> HandleTikTokCallbackAsync(string code)
+        private async Task<TokenInfo> HandleTikTokCallbackAsync(string code, string? shopId)
         {
-            // In production, this would call /api/v2/token/get
-            _logger.LogInformation("🎵 TikTok OAuth callback: code={Code}", code);
+            _logger.LogInformation("🎵 Exchanging TikTok authorization code");
+            return await CallTikTokTokenApiAsync(
+                "/api/v2/token/get",
+                "auth_code",
+                code,
+                "authorized_code",
+                shopId);
+        }
 
-            var tokenInfo = await Task.FromResult(new TokenInfo
+        private async Task<TokenInfo> RefreshTikTokTokenAsync(string refreshToken, string? shopId)
+        {
+            _logger.LogInformation("🔄 Refreshing TikTok access token");
+            return await CallTikTokTokenApiAsync(
+                "/api/v2/token/refresh",
+                "refresh_token",
+                refreshToken,
+                "refresh_token",
+                shopId);
+        }
+
+        private async Task<TokenInfo> CallTikTokTokenApiAsync(
+            string apiPath,
+            string credentialParameter,
+            string credentialValue,
+            string grantType,
+            string? requestedShopId)
+        {
+            if (string.IsNullOrWhiteSpace(_tiktokAppKey) || string.IsNullOrWhiteSpace(_tiktokAppSecret))
+                throw new InvalidOperationException("TIKTOK_APP_KEY and TIKTOK_APP_SECRET must be configured.");
+
+            var url = $"{_tiktokAuthApiUrl.TrimEnd('/')}{apiPath}" +
+                      $"?app_key={Uri.EscapeDataString(_tiktokAppKey)}" +
+                      $"&app_secret={Uri.EscapeDataString(_tiktokAppSecret)}" +
+                      $"&{credentialParameter}={Uri.EscapeDataString(credentialValue)}" +
+                      $"&grant_type={Uri.EscapeDataString(grantType)}";
+
+            using var http = new HttpClient();
+            var response = await http.GetAsync(url);
+            var body = await response.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(body);
+            var root = json.RootElement;
+            var resultCode = ReadTikTokResultCode(root);
+
+            if (!response.IsSuccessStatusCode || resultCode != 0)
+            {
+                var message = root.TryGetProperty("message", out var messageElement)
+                    ? messageElement.GetString()
+                    : response.ReasonPhrase;
+                throw new InvalidOperationException(
+                    $"TikTok token request failed (code {resultCode}): {message}");
+            }
+
+            if (!root.TryGetProperty("data", out var data))
+                throw new InvalidOperationException("TikTok token response does not contain data.");
+
+            var accessToken = data.TryGetProperty("access_token", out var accessTokenElement)
+                ? accessTokenElement.GetString() ?? ""
+                : "";
+            if (string.IsNullOrWhiteSpace(accessToken))
+                throw new InvalidOperationException("TikTok token response does not contain access_token.");
+
+            var refreshToken = data.TryGetProperty("refresh_token", out var refreshTokenElement)
+                ? refreshTokenElement.GetString() ?? ""
+                : "";
+            if (string.IsNullOrWhiteSpace(refreshToken) && credentialParameter == "refresh_token")
+                refreshToken = credentialValue;
+            var accessExpiresAt = ReadTikTokExpiration(
+                data, "access_token_expire_in", DateTime.UtcNow.AddHours(12));
+            var refreshExpiresAt = ReadTikTokExpiration(
+                data, "refresh_token_expire_in", DateTime.UtcNow.AddDays(365));
+
+            var shop = await GetTikTokAuthorizedShopAsync(accessToken, requestedShopId);
+            var tokenInfo = new TokenInfo
             {
                 Platform = PlatformType.TikTok,
-                AccessToken = $"tiktok_token_{code}",
-                RefreshToken = $"tiktok_refresh_{code}",
-                ExpiresAt = DateTime.UtcNow.AddHours(12),
-                RefreshExpiresAt = DateTime.UtcNow.AddDays(365)
-            });
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = accessExpiresAt,
+                RefreshExpiresAt = refreshExpiresAt,
+                ShopId = shop.ShopCipher,
+                ShopName = shop.ShopName
+            };
 
             await SaveCredentialAsync(tokenInfo);
             return tokenInfo;
         }
 
-        private async Task<TokenInfo> RefreshTikTokTokenAsync(string refreshToken)
+        private async Task<(string ShopCipher, string? ShopName)> GetTikTokAuthorizedShopAsync(
+            string accessToken,
+            string? requestedShopId)
         {
-            // In production, this would call /api/v2/token/refresh
-            _logger.LogInformation("🎵 TikTok token refresh (not yet implemented against real API)");
-
-            return await Task.FromResult(new TokenInfo
+            var apiPath = "/authorization/202309/shops";
+            var parameters = new Dictionary<string, string>
             {
-                Platform = PlatformType.TikTok,
-                AccessToken = $"tiktok_token_{refreshToken}",
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddHours(12),
-                RefreshExpiresAt = DateTime.UtcNow.AddDays(365)
-            });
+                { "app_key", _tiktokAppKey },
+                { "timestamp", DateTimeHelper.CurrentUnixTimestamp().ToString() }
+            };
+            parameters["sign"] = SignatureHelper.GenerateTikTokSignature(
+                _tiktokAppSecret, apiPath, parameters);
+
+            var queryString = string.Join("&", parameters.Select(
+                p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get, $"{_tiktokApiUrl.TrimEnd('/')}{apiPath}?{queryString}");
+            request.Headers.TryAddWithoutValidation("x-tts-access-token", accessToken);
+            request.Headers.TryAddWithoutValidation("Accept", "application/json");
+
+            using var http = new HttpClient();
+            var response = await http.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(body);
+            var root = json.RootElement;
+            var resultCode = ReadTikTokResultCode(root);
+
+            if (!response.IsSuccessStatusCode || resultCode != 0)
+            {
+                var message = root.TryGetProperty("message", out var messageElement)
+                    ? messageElement.GetString()
+                    : response.ReasonPhrase;
+                throw new InvalidOperationException(
+                    $"TikTok authorized shops request failed (code {resultCode}): {message}");
+            }
+
+            if (!root.TryGetProperty("data", out var data) ||
+                !data.TryGetProperty("shops", out var shopsElement))
+                throw new InvalidOperationException("TikTok authorized shops response does not contain shops.");
+
+            var shops = shopsElement.EnumerateArray().ToList();
+            if (shops.Count == 0)
+                throw new InvalidOperationException("No TikTok Shop is associated with this access token.");
+
+            var selectedShop = shops.FirstOrDefault(shop =>
+                string.IsNullOrWhiteSpace(requestedShopId) ||
+                string.Equals(ReadJsonString(shop, "cipher"), requestedShopId, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ReadJsonString(shop, "id"), requestedShopId, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ReadJsonString(shop, "code"), requestedShopId, StringComparison.OrdinalIgnoreCase));
+
+            if (selectedShop.ValueKind == JsonValueKind.Undefined)
+                throw new InvalidOperationException($"TikTok Shop '{requestedShopId}' was not found in the authorized shops.");
+
+            var shopCipher = ReadJsonString(selectedShop, "cipher");
+            if (string.IsNullOrWhiteSpace(shopCipher))
+                throw new InvalidOperationException("TikTok authorized shop does not contain shop cipher.");
+
+            return (shopCipher, ReadJsonString(selectedShop, "name"));
+        }
+
+        private static int ReadTikTokResultCode(JsonElement root)
+        {
+            if (!root.TryGetProperty("code", out var codeElement))
+                return -1;
+
+            if (codeElement.ValueKind == JsonValueKind.Number && codeElement.TryGetInt32(out var numericCode))
+                return numericCode;
+
+            return int.TryParse(codeElement.GetString(), out var stringCode) ? stringCode : -1;
+        }
+
+        private static DateTime ReadTikTokExpiration(
+            JsonElement data,
+            string propertyName,
+            DateTime fallback)
+        {
+            if (!data.TryGetProperty(propertyName, out var value))
+                return fallback;
+
+            long unixTimestamp;
+            if (value.ValueKind == JsonValueKind.Number)
+            {
+                if (!value.TryGetInt64(out unixTimestamp))
+                    return fallback;
+            }
+            else if (!long.TryParse(value.GetString(), out unixTimestamp))
+            {
+                return fallback;
+            }
+
+            try
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).UtcDateTime;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return fallback;
+            }
+        }
+
+        private static string? ReadJsonString(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var value))
+                return null;
+
+            return value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
         }
 
         #endregion

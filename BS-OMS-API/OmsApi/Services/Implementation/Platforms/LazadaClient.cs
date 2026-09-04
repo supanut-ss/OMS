@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Json;
+using System.Globalization;
 using OmsApi.Helpers;
 using OmsApi.Models.Common;
 using OmsApi.Models.Inventory;
@@ -62,7 +64,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var response = await client.GetAsync($"{apiPath}?{queryString}");
+                var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
                 var content = await response.Content.ReadAsStringAsync();
 
                 _logger.LogDebug("Lazada response: {Content}", content);
@@ -129,7 +131,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var response = await client.GetAsync($"{apiPath}?{queryString}");
+                var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
                 var content = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
@@ -181,7 +183,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var response = await client.GetAsync($"{apiPath}?{queryString}");
+                var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
                 var content = await response.Content.ReadAsStringAsync();
 
                 var json = JsonDocument.Parse(content);
@@ -232,8 +234,203 @@ namespace OmsApi.Services.Implementation.Platforms
                 BuyerRemarks = order.TryGetProperty("remarks", out var rem) ? rem.GetString() ?? "" : ""
             };
 
+            MapLazadaPackages(order, unified);
             MapLazadaAddress(order, unified);
             return unified;
+        }
+
+        private static void MapLazadaPackages(JsonElement order, UnifiedOrder unified)
+        {
+            var packageMap = new Dictionary<string, ShippingPackage>(StringComparer.OrdinalIgnoreCase);
+            var packageOrder = new List<string>();
+
+            ShippingPackage GetOrCreate(string packageId, string trackingNumber, string carrier)
+            {
+                var key = packageId.Length > 0
+                    ? $"id:{packageId}"
+                    : trackingNumber.Length > 0
+                        ? $"tracking:{trackingNumber}"
+                        : "default";
+
+                if (!packageMap.TryGetValue(key, out var package))
+                {
+                    package = new ShippingPackage { PackageId = packageId };
+                    packageMap[key] = package;
+                    packageOrder.Add(key);
+                }
+
+                if (package.PackageId.Length == 0) package.PackageId = packageId;
+                if (package.TrackingNumber.Length == 0) package.TrackingNumber = trackingNumber;
+                if (package.Carrier.Length == 0) package.Carrier = carrier;
+                return package;
+            }
+
+            void MergePackage(JsonElement source, string itemId = "", bool allowGenericId = true)
+            {
+                var packageId = allowGenericId
+                    ? GetLazadaString(source, "package_id", "package_number", "shipment_id", "id")
+                    : GetLazadaString(source, "package_id", "package_number", "shipment_id");
+                var trackingNumber = GetLazadaString(source, "tracking_number", "tracking_code", "tracking_no");
+                var carrier = GetLazadaString(source, "shipping_provider", "shipment_provider", "shipping_carrier", "provider_name");
+                var status = GetLazadaString(source, "package_status", "logistics_status", "status");
+                var shippingMethod = GetLazadaString(source, "shipping_type", "shipping_method");
+
+                if (packageId.Length == 0 && trackingNumber.Length == 0 && carrier.Length == 0)
+                    return;
+
+                if (packageMap.Count == 1)
+                {
+                    var existing = packageMap.Values.First();
+                    if (packageId.Length > 0 && existing.PackageId.Length == 0)
+                    {
+                        existing.PackageId = packageId;
+                        if (existing.TrackingNumber.Length == 0) existing.TrackingNumber = trackingNumber;
+                        if (existing.Carrier.Length == 0) existing.Carrier = carrier;
+                        if (existing.Status.Length == 0) existing.Status = status;
+                        if (existing.ShippingMethod.Length == 0) existing.ShippingMethod = shippingMethod;
+                        if (itemId.Length > 0 && !existing.ItemIds.Contains(itemId)) existing.ItemIds.Add(itemId);
+                        return;
+                    }
+                    if (packageId.Length == 0 && trackingNumber.Length > 0 &&
+                        existing.TrackingNumber.Length == 0)
+                    {
+                        existing.TrackingNumber = trackingNumber;
+                        if (existing.Carrier.Length == 0) existing.Carrier = carrier;
+                        if (existing.Status.Length == 0) existing.Status = status;
+                        if (existing.ShippingMethod.Length == 0) existing.ShippingMethod = shippingMethod;
+                        if (itemId.Length > 0 && !existing.ItemIds.Contains(itemId)) existing.ItemIds.Add(itemId);
+                        return;
+                    }
+                }
+
+                var package = GetOrCreate(packageId, trackingNumber, carrier);
+                if (package.Status.Length == 0) package.Status = status;
+                if (package.ShippingMethod.Length == 0) package.ShippingMethod = shippingMethod;
+                if (itemId.Length > 0 && !package.ItemIds.Contains(itemId)) package.ItemIds.Add(itemId);
+            }
+
+            foreach (var propertyName in new[] { "packages", "package_list" })
+            {
+                if (!order.TryGetProperty(propertyName, out var packageArray) ||
+                    packageArray.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var package in packageArray.EnumerateArray())
+                    MergePackage(package);
+            }
+
+            foreach (var propertyName in new[] { "order_items", "items" })
+            {
+                if (!order.TryGetProperty(propertyName, out var itemArray) ||
+                    itemArray.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var item in itemArray.EnumerateArray())
+                {
+                    var itemId = GetLazadaString(item, "order_item_id", "item_id", "id");
+                    MergePackage(item, itemId, allowGenericId: false);
+                }
+            }
+
+            var orderTrackingNumber = GetLazadaString(order, "tracking_number", "tracking_code", "tracking_no");
+            var orderCarrier = GetLazadaString(order, "shipping_provider", "shipment_provider", "shipping_carrier");
+            if (packageMap.Count == 0 && (orderTrackingNumber.Length > 0 || orderCarrier.Length > 0))
+                GetOrCreate("", orderTrackingNumber, orderCarrier);
+            else if (packageMap.Count == 1)
+            {
+                var onlyPackage = packageMap.Values.First();
+                if (onlyPackage.TrackingNumber.Length == 0) onlyPackage.TrackingNumber = orderTrackingNumber;
+                if (onlyPackage.Carrier.Length == 0) onlyPackage.Carrier = orderCarrier;
+            }
+
+            unified.Packages = packageOrder.Select(key => packageMap[key]).ToList();
+            if (unified.Packages.Count == 0 &&
+                string.IsNullOrWhiteSpace(orderTrackingNumber) &&
+                string.IsNullOrWhiteSpace(orderCarrier))
+                return;
+
+            var firstPackage = unified.Packages.FirstOrDefault();
+            unified.Shipping ??= new ShippingInfo();
+            unified.Shipping.TrackingNumber = firstPackage?.TrackingNumber ?? orderTrackingNumber;
+            unified.Shipping.Carrier = firstPackage?.Carrier ?? orderCarrier;
+            unified.Shipping.PackageNumber = firstPackage?.PackageId ?? "";
+            unified.Shipping.ShippingMethod = firstPackage?.ShippingMethod ?? "";
+        }
+
+        private static string GetLazadaString(JsonElement element, params string[] propertyNames)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (!TryGetLazadaProperty(element, propertyName, out var value) ||
+                    value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+                    continue;
+
+                var text = value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
+                if (!string.IsNullOrWhiteSpace(text)) return text;
+            }
+            return "";
+        }
+
+        private static decimal GetLazadaDecimal(JsonElement element, params string[] propertyNames)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (!TryGetLazadaProperty(element, propertyName, out var value) ||
+                    value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+                    continue;
+
+                if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var number))
+                    return number;
+
+                if (decimal.TryParse(value.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out number))
+                    return number;
+            }
+
+            return 0;
+        }
+
+        private static bool TryGetLazadaProperty(
+            JsonElement element,
+            string propertyName,
+            out JsonElement value)
+        {
+            if (element.TryGetProperty(propertyName, out value))
+                return true;
+
+            if (element.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = property.Value;
+                        return true;
+                    }
+                }
+            }
+
+            value = default;
+            return false;
+        }
+
+        private static DateTime GetLazadaDateTime(JsonElement element, params string[] propertyNames)
+        {
+            var value = GetLazadaString(element, propertyNames);
+            if (DateTime.TryParse(value, out var dateTime)) return dateTime;
+            if (long.TryParse(value, out var timestamp))
+            {
+                try
+                {
+                    return value.Length >= 13
+                        ? DateTimeOffset.FromUnixTimeMilliseconds(timestamp).UtcDateTime
+                        : DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // Keep the response usable when a provider sends an invalid timestamp.
+                }
+            }
+            return DateTime.MinValue;
         }
 
         private static UnifiedOrder MapLazadaOrderDetail(JsonElement order)
@@ -281,6 +478,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 }
             }
 
+            MapLazadaPackages(order, unified);
             MapLazadaAddress(order, unified);
             return unified;
         }
@@ -365,7 +563,7 @@ namespace OmsApi.Services.Implementation.Platforms
             var result = new PaginatedResult<ProductItem> { Page = filter.Page, PageSize = filter.PageSize };
             try
             {
-                var resp = await client.GetAsync($"{apiPath}?{qs}");
+                var resp = await client.GetAsync(BuildRequestUri(apiPath, qs));
                 var content = await resp.Content.ReadAsStringAsync();
                 if (!resp.IsSuccessStatusCode) return result;
 
@@ -452,7 +650,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var resp = await client.PostAsync($"{apiPath}?{qs}", null);
+                var resp = await client.PostAsync(BuildRequestUri(apiPath, qs), null);
                 return resp.IsSuccessStatusCode;
             }
             catch (Exception ex) { _logger.LogError(ex, "❌ Lazada: Error updating stock"); return false; }
@@ -460,18 +658,25 @@ namespace OmsApi.Services.Implementation.Platforms
 
         // ── Shipping ──────────────────────────────────────
 
-        public async Task<ShippingLabelResult?> GetShippingLabelAsync(string accessToken, string? shopId, string orderId, string? packageId, string documentType)
+        public async Task<ShippingLabelResult?> GetShippingLabelAsync(string accessToken, string? shopId, string orderId, string? packageId, string? trackingNumber, string documentType)
         {
             _logger.LogInformation("🏪 Lazada: Getting shipping label for order {OrderId}", orderId);
             var client = _httpClientFactory.CreateClient("Lazada");
-            var apiPath = "/order/document/get";
+            var apiPath = "/order/package/document/get";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var requestedPackageId = string.IsNullOrWhiteSpace(packageId) ? orderId : packageId;
+            var documentRequest = JsonSerializer.Serialize(new
+            {
+                doc_type = "PDF",
+                packages = new[] { new { package_id = requestedPackageId } },
+                print_item_list = true
+            });
 
             var parameters = new Dictionary<string, string>
             {
                 { "app_key", _appKey }, { "timestamp", timestamp },
                 { "access_token", accessToken }, { "sign_method", "sha256" },
-                { "order_id", orderId }, { "document_type", "shippingLabel" }
+                { "getDocumentReq", documentRequest }
             };
 
             var sign = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
@@ -480,27 +685,134 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var resp = await client.GetAsync($"{apiPath}?{qs}");
+                var resp = await client.GetAsync(BuildRequestUri(apiPath, qs));
                 var content = await resp.Content.ReadAsStringAsync();
 
                 if (!resp.IsSuccessStatusCode) return null;
 
                 var json = JsonDocument.Parse(content);
-                if (json.RootElement.TryGetProperty("data", out var data) &&
-                    data.TryGetProperty("document", out var doc))
+                if (json.RootElement.TryGetProperty("result", out var result) &&
+                    result.TryGetProperty("success", out var success) &&
+                    success.ValueKind == JsonValueKind.False)
+                    return null;
+
+                var data = json.RootElement.TryGetProperty("result", out result) &&
+                           result.TryGetProperty("data", out var resultData)
+                    ? resultData
+                    : json.RootElement.TryGetProperty("data", out var rootData)
+                        ? rootData
+                        : default;
+                if (data.ValueKind != JsonValueKind.Object)
+                    return null;
+
+                var fileValue = data.TryGetProperty("file", out var fileElement)
+                    ? fileElement.GetString()
+                    : null;
+                var pdfUrl = data.TryGetProperty("pdf_url", out var pdfUrlElement)
+                    ? pdfUrlElement.GetString()
+                    : null;
+
+                var document = await ReadLazadaDocumentAsync(client, fileValue, pdfUrl);
+                if (document == null || document.Content.Length == 0)
+                    return null;
+
+                return new ShippingLabelResult
                 {
-                    return new ShippingLabelResult
-                    {
-                        Platform = PlatformType.Lazada,
-                        OrderId = orderId,
-                        DocumentUrl = doc.TryGetProperty("file", out var file) ? file.GetString() ?? "" : "",
-                        ContentType = "application/pdf",
-                        Status = "READY"
-                    };
-                }
-                return null;
+                    Platform = PlatformType.Lazada,
+                    OrderId = orderId,
+                    PackageId = packageId,
+                    TrackingNumber = trackingNumber ?? string.Empty,
+                    DocumentUrl = pdfUrl,
+                    DocumentBase64 = Convert.ToBase64String(document.Content),
+                    ContentType = document.ContentType,
+                    DocumentType = documentType,
+                    Status = "READY"
+                };
             }
             catch (Exception ex) { _logger.LogError(ex, "❌ Lazada: Error getting shipping label"); return null; }
+        }
+
+        private static async Task<DownloadedDocument?> ReadLazadaDocumentAsync(
+            HttpClient client,
+            string? fileValue,
+            string? pdfUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(pdfUrl) && Uri.TryCreate(pdfUrl, UriKind.Absolute, out _))
+            {
+                using var response = await client.GetAsync(pdfUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    if (bytes.Length > 0)
+                    {
+                        var contentType = response.Content.Headers.ContentType?.MediaType;
+                        return new DownloadedDocument(bytes, IsPdf(bytes)
+                            ? "application/pdf"
+                            : string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(fileValue))
+                return null;
+
+            var value = fileValue.Trim();
+            if (Uri.TryCreate(value, UriKind.Absolute, out var fileUri) &&
+                (fileUri.Scheme == Uri.UriSchemeHttp || fileUri.Scheme == Uri.UriSchemeHttps))
+                return await ReadLazadaDocumentAsync(client, null, fileUri.ToString());
+
+            if (value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var comma = value.IndexOf(',');
+                if (comma > 0)
+                {
+                    var metadata = value.Substring(5, comma - 5);
+                    var payload = value.Substring(comma + 1);
+                    var bytes = metadata.IndexOf(";base64", StringComparison.OrdinalIgnoreCase) >= 0
+                        ? Convert.FromBase64String(payload)
+                        : Encoding.UTF8.GetBytes(Uri.UnescapeDataString(payload));
+                    return new DownloadedDocument(bytes, ContentTypeFor(bytes, metadata.Split(';')[0]));
+                }
+            }
+
+            try
+            {
+                var decoded = Convert.FromBase64String(value);
+                if (decoded.Length > 0)
+                    return new DownloadedDocument(decoded, ContentTypeFor(decoded, null));
+            }
+            catch (FormatException)
+            {
+                // Lazada may return the HTML document directly instead of Base64.
+            }
+
+            var raw = Encoding.UTF8.GetBytes(value);
+            return new DownloadedDocument(raw, "text/html");
+        }
+
+        private static string ContentTypeFor(byte[] bytes, string? declaredContentType)
+        {
+            if (IsPdf(bytes))
+                return "application/pdf";
+            if (!string.IsNullOrWhiteSpace(declaredContentType))
+                return declaredContentType;
+            return "text/html";
+        }
+
+        private static bool IsPdf(byte[] bytes) =>
+            bytes.Length >= 4 && bytes[0] == (byte)'%' && bytes[1] == (byte)'P' &&
+            bytes[2] == (byte)'D' && bytes[3] == (byte)'F';
+
+        private sealed class DownloadedDocument
+        {
+            public DownloadedDocument(byte[] content, string contentType)
+            {
+                Content = content;
+                ContentType = contentType;
+            }
+
+            public byte[] Content { get; }
+            public string ContentType { get; }
         }
 
         public async Task<bool> ShipOrderAsync(string accessToken, string? shopId, ShipOrderRequest request)
@@ -522,7 +834,7 @@ namespace OmsApi.Services.Implementation.Platforms
             parameters["sign"] = sign;
             var qs = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
 
-            try { var resp = await client.PostAsync($"{apiPath}?{qs}", null); return resp.IsSuccessStatusCode; }
+            try { var resp = await client.PostAsync(BuildRequestUri(apiPath, qs), null); return resp.IsSuccessStatusCode; }
             catch (Exception ex) { _logger.LogError(ex, "❌ Lazada: Error shipping order"); return false; }
         }
 
@@ -545,7 +857,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var resp = await client.GetAsync($"{apiPath}?{qs}");
+                var resp = await client.GetAsync(BuildRequestUri(apiPath, qs));
                 var content = await resp.Content.ReadAsStringAsync();
 
                 if (resp.IsSuccessStatusCode)
@@ -586,19 +898,66 @@ namespace OmsApi.Services.Implementation.Platforms
             };
         }
 
-        public async Task<TrackingInfo?> GetTrackingInfoAsync(string accessToken, string? shopId, string orderId)
+        public async Task<TrackingInfo?> GetTrackingInfoAsync(
+            string accessToken,
+            string? shopId,
+            string orderId,
+            IReadOnlyCollection<string>? packageNumbers = null)
         {
             _logger.LogInformation("🏪 Lazada: Getting tracking for order {OrderId}", orderId);
             var client = _httpClientFactory.CreateClient("Lazada");
+            var tracking = new TrackingInfo
+            {
+                Platform = PlatformType.Lazada,
+                OrderId = orderId,
+                Packages = await GetTrackingPackagesFromOrderItemsAsync(accessToken, orderId, client)
+            };
+            SetPrimaryTracking(tracking);
+
+            var assignedTrackingCount = tracking.Packages.Count(package =>
+                !string.IsNullOrWhiteSpace(package.TrackingNumber));
+            _logger.LogInformation(
+                "Lazada GetOrderItems resolved {PackageCount} packages and {TrackingCount} tracking numbers for order {OrderId}",
+                tracking.Packages.Count,
+                assignedTrackingCount,
+                orderId);
+
+            // GetOrderItems is the authoritative source for the tracking code.
+            // GetOrderTrace is only needed as a fallback when the order items do
+            // not contain it (and may legitimately return success without module).
+            if (assignedTrackingCount > 0)
+                return tracking;
+
             var apiPath = "/logistic/order/trace";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var packageIds = tracking.Packages
+                .Select(package => package.PackageId)
+                .Where(packageId => !string.IsNullOrWhiteSpace(packageId))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
             var parameters = new Dictionary<string, string>
             {
                 { "app_key", _appKey }, { "timestamp", timestamp },
                 { "access_token", accessToken }, { "sign_method", "sha256" },
-                { "order_id", orderId }
+                { "order_id", orderId },
+                { "locale", "th" },
+                { "ofcPackageIdList", JsonSerializer.Serialize(packageIds) }
             };
+
+            // GetOrderTrace requires the seller id in addition to the order id.
+            // For Lazada this is persisted as shop_id during OAuth.
+            if (!string.IsNullOrWhiteSpace(shopId))
+            {
+                parameters["seller_id"] = shopId.Trim();
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Lazada tracking request for order {OrderId} has no seller/shop id; " +
+                    "reauthorize Lazada so seller_id is saved with the credential.",
+                    orderId);
+            }
 
             var sign = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
             parameters["sign"] = sign;
@@ -606,32 +965,394 @@ namespace OmsApi.Services.Implementation.Platforms
 
             try
             {
-                var resp = await client.GetAsync($"{apiPath}?{qs}");
+                var resp = await client.GetAsync(BuildRequestUri(apiPath, qs));
                 var content = await resp.Content.ReadAsStringAsync();
-                if (!resp.IsSuccessStatusCode) return null;
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning(
+                        "Lazada GetOrderTrace failed: HTTP {StatusCode}, endpoint {Endpoint}, response {Content}",
+                        (int)resp.StatusCode,
+                        resp.RequestMessage?.RequestUri?.GetLeftPart(UriPartial.Path),
+                        string.IsNullOrWhiteSpace(content) ? "<empty>" : content);
+                    return tracking.Packages.Count > 0 ? tracking : null;
+                }
 
                 var json = JsonDocument.Parse(content);
-                var tracking = new TrackingInfo { Platform = PlatformType.Lazada, OrderId = orderId };
 
                 if (json.RootElement.TryGetProperty("data", out var data))
                 {
-                    tracking.TrackingNumber = data.TryGetProperty("tracking_number", out var tn) ? tn.GetString() ?? "" : "";
-                    if (data.TryGetProperty("packages", out var pkgs))
+                    tracking.TrackingNumber = GetLazadaString(data, "tracking_number", "tracking_code", "tracking_no");
+                    tracking.Carrier = GetLazadaString(data, "shipping_provider", "shipment_provider", "shipping_carrier");
+                    tracking.Status = GetLazadaString(data, "status", "logistics_status");
+
+                    var packageSources = new List<JsonElement>();
+                    if (data.TryGetProperty("packages", out var pkgs) && pkgs.ValueKind == JsonValueKind.Array)
                     {
-                        foreach (var evt in pkgs.EnumerateArray())
+                        packageSources.AddRange(pkgs.EnumerateArray());
+                    }
+                    if (data.TryGetProperty("package_list", out var packageList) && packageList.ValueKind == JsonValueKind.Array)
+                    {
+                        packageSources.AddRange(packageList.EnumerateArray());
+                    }
+
+                    foreach (var source in packageSources)
+                    {
+                        var packageId = GetLazadaString(source, "package_id", "package_number", "shipment_id", "id");
+                        var trackingNumber = GetLazadaString(
+                            source,
+                            "tracking_number",
+                            "tracking_code",
+                            "tracking_no",
+                            "seller_tracking_number",
+                            "tracking_code_pre");
+                        var carrier = GetLazadaString(source, "shipping_provider", "shipment_provider", "shipping_carrier", "provider_name");
+                        var status = GetLazadaString(source, "package_status", "logistics_status", "status");
+                        var description = GetLazadaString(source, "description", "event", "status_description");
+                        var eventTimestamp = GetLazadaDateTime(source, "timestamp", "event_time", "time", "created_at");
+
+                        // In some Lazada responses `packages` is actually the
+                        // trace-event list. Only create a package when the
+                        // element contains package identity/shipping data.
+                        if (packageId.Length > 0 || trackingNumber.Length > 0 || carrier.Length > 0)
+                        {
+                            var package = new ShippingPackage
+                            {
+                                PackageId = packageId,
+                                TrackingNumber = trackingNumber,
+                                Carrier = carrier,
+                                Status = status
+                            };
+                            if (!string.IsNullOrWhiteSpace(description))
+                            {
+                                package.Events.Add(new TrackingEvent
+                                {
+                                    Description = description,
+                                    Timestamp = eventTimestamp
+                                });
+                                tracking.Events.Add(package.Events[0]);
+                            }
+
+                            var existingPackage = tracking.Packages.FirstOrDefault(existing =>
+                                (!string.IsNullOrWhiteSpace(package.PackageId) &&
+                                 SameLazadaPackageId(existing.PackageId, package.PackageId)) ||
+                                (!string.IsNullOrWhiteSpace(package.TrackingNumber) &&
+                                 existing.TrackingNumber == package.TrackingNumber));
+                            if (existingPackage == null)
+                            {
+                                tracking.Packages.Add(package);
+                            }
+                            else
+                            {
+                                if (existingPackage.TrackingNumber.Length == 0)
+                                    existingPackage.TrackingNumber = package.TrackingNumber;
+                                if (existingPackage.Carrier.Length == 0)
+                                    existingPackage.Carrier = package.Carrier;
+                                if (existingPackage.Status.Length == 0)
+                                    existingPackage.Status = package.Status;
+                                existingPackage.Events.AddRange(package.Events);
+                            }
+                        }
+                        else if (!string.IsNullOrWhiteSpace(description))
                         {
                             tracking.Events.Add(new TrackingEvent
                             {
-                                Description = evt.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
-                                Timestamp = evt.TryGetProperty("timestamp", out var ts)
-                                    ? DateTime.TryParse(ts.GetString(), out var tsd) ? tsd : DateTime.MinValue : DateTime.MinValue
+                                Description = description,
+                                Timestamp = eventTimestamp
                             });
                         }
                     }
+
+                    if (tracking.Packages.Count == 0 &&
+                        (!string.IsNullOrWhiteSpace(tracking.TrackingNumber) || !string.IsNullOrWhiteSpace(tracking.Carrier)))
+                    {
+                        tracking.Packages.Add(new ShippingPackage
+                        {
+                            TrackingNumber = tracking.TrackingNumber,
+                            Carrier = tracking.Carrier,
+                            Status = tracking.Status
+                        });
+                    }
+
+                    var primary = tracking.Packages.FirstOrDefault();
+                    if (primary != null)
+                    {
+                        if (string.IsNullOrWhiteSpace(tracking.TrackingNumber)) tracking.TrackingNumber = primary.TrackingNumber;
+                        if (string.IsNullOrWhiteSpace(tracking.Carrier)) tracking.Carrier = primary.Carrier;
+                        if (string.IsNullOrWhiteSpace(tracking.Status)) tracking.Status = primary.Status;
+                    }
+                }
+
+                // GetOrderTrace uses a different envelope from the regular
+                // order APIs: result.module[].package_detail_info_list[].
+                if (json.RootElement.TryGetProperty("result", out var traceResult) &&
+                    traceResult.TryGetProperty("module", out var modules) &&
+                    modules.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var module in modules.EnumerateArray())
+                    {
+                        if (!module.TryGetProperty("package_detail_info_list", out var packageList) ||
+                            packageList.ValueKind != JsonValueKind.Array)
+                            continue;
+
+                        foreach (var source in packageList.EnumerateArray())
+                        {
+                            var package = new ShippingPackage
+                            {
+                                PackageId = GetLazadaString(source, "ofc_package_id", "package_id"),
+                                TrackingNumber = GetLazadaString(source, "tracking_number", "tracking_code")
+                            };
+
+                            if (source.TryGetProperty("logistic_detail_info_list", out var eventList) &&
+                                eventList.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var sourceEvent in eventList.EnumerateArray())
+                                {
+                                    var status = GetLazadaString(sourceEvent, "status_code", "title", "detail_type");
+                                    var description = GetLazadaString(sourceEvent, "description", "title");
+                                    var trackingEvent = new TrackingEvent
+                                    {
+                                        Description = description.Length > 0 ? description : status,
+                                        Timestamp = GetLazadaDateTime(sourceEvent, "event_time", "event_date", "receive_time")
+                                    };
+
+                                    if (status.Length > 0) package.Status = status;
+                                    package.Events.Add(trackingEvent);
+                                    tracking.Events.Add(trackingEvent);
+                                }
+                            }
+
+                            var existingPackage = tracking.Packages.FirstOrDefault(existing =>
+                                (!string.IsNullOrWhiteSpace(package.PackageId) &&
+                                 SameLazadaPackageId(existing.PackageId, package.PackageId)) ||
+                                (!string.IsNullOrWhiteSpace(package.TrackingNumber) && existing.TrackingNumber == package.TrackingNumber));
+
+                            if (existingPackage == null)
+                            {
+                                tracking.Packages.Add(package);
+                            }
+                            else
+                            {
+                                if (existingPackage.TrackingNumber.Length == 0)
+                                    existingPackage.TrackingNumber = package.TrackingNumber;
+                                if (existingPackage.Status.Length == 0)
+                                    existingPackage.Status = package.Status;
+                                existingPackage.Events.AddRange(package.Events);
+                            }
+                        }
+                    }
+
+                    var primaryPackage = tracking.Packages.FirstOrDefault();
+                    if (primaryPackage != null)
+                    {
+                        tracking.TrackingNumber = primaryPackage.TrackingNumber;
+                        if (tracking.Status.Length == 0) tracking.Status = primaryPackage.Status;
+                    }
+                }
+                SetPrimaryTracking(tracking);
+                if (tracking.Packages.Count > 0 &&
+                    json.RootElement.TryGetProperty("result", out var emptyTraceResult) &&
+                    !emptyTraceResult.TryGetProperty("module", out _))
+                {
+                    _logger.LogInformation(
+                        "Lazada GetOrderTrace returned no module for order {OrderId}; " +
+                        "using tracking numbers from GetOrderItems.",
+                        orderId);
                 }
                 return tracking;
             }
-            catch (Exception ex) { _logger.LogError(ex, "❌ Lazada: Error getting tracking"); return null; }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Lazada: Error getting tracking");
+                return tracking.Packages.Count > 0 ? tracking : null;
+            }
+        }
+
+        private async Task<List<ShippingPackage>> GetTrackingPackagesFromOrderItemsAsync(
+            string accessToken,
+            string orderId,
+            HttpClient client)
+        {
+            var apiPath = "/order/items/get";
+            var parameters = new Dictionary<string, string>
+            {
+                { "app_key", _appKey },
+                { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() },
+                { "access_token", accessToken },
+                { "sign_method", "sha256" },
+                { "order_id", orderId }
+            };
+            parameters["sign"] = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
+            var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+
+            try
+            {
+                var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
+                var content = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning(
+                        "Lazada GetOrderItems failed while resolving tracking packages: HTTP {StatusCode}",
+                        (int)response.StatusCode);
+                    return new List<ShippingPackage>();
+                }
+
+                using var json = JsonDocument.Parse(content);
+                var responseCode = GetLazadaString(json.RootElement, "code");
+                if (responseCode.Length > 0 && responseCode != "0")
+                {
+                    var responseMessage = GetLazadaString(json.RootElement, "message");
+                    throw new InvalidOperationException(
+                        $"Lazada rejected platform order_id '{orderId}' (code {responseCode}): {responseMessage}. " +
+                        "Use the order_id returned by /orders/get and the credential for the same Lazada shop.");
+                }
+
+                if (!TryGetLazadaProperty(json.RootElement, "data", out var data))
+                    return new List<ShippingPackage>();
+
+                var items = data.ValueKind == JsonValueKind.Array
+                    ? data.EnumerateArray().ToArray()
+                    : TryGetLazadaProperty(data, "order_items", out var orderItems) && orderItems.ValueKind == JsonValueKind.Array
+                        ? orderItems.EnumerateArray().ToArray()
+                    : TryGetLazadaProperty(data, "order_item_list", out var orderItemList) && orderItemList.ValueKind == JsonValueKind.Array
+                        ? orderItemList.EnumerateArray().ToArray()
+                    : TryGetLazadaProperty(data, "items", out var itemsProperty) && itemsProperty.ValueKind == JsonValueKind.Array
+                        ? itemsProperty.EnumerateArray().ToArray()
+                        : Array.Empty<JsonElement>();
+
+                var packageMap = new Dictionary<string, ShippingPackage>(StringComparer.OrdinalIgnoreCase);
+                foreach (var item in items)
+                {
+                    var packageId = GetLazadaString(item, "package_id", "ofc_package_id", "package_number");
+                    var trackingNumber = GetLazadaString(
+                        item,
+                        "tracking_code",
+                        "tracking_number",
+                        "tracking_no",
+                        "seller_tracking_number",
+                        "tracking_code_pre");
+                    var carrier = GetLazadaString(item, "shipment_provider", "shipping_provider", "shipping_carrier");
+                    var status = GetLazadaString(item, "status", "package_status", "logistics_status");
+                    var itemId = GetLazadaString(item, "order_item_id", "order_line_id", "id");
+                    // Lazada exposes the seller's item number under different
+                    // names depending on the API version/market. Keep every
+                    // non-empty form so matching can choose the one used by WMS.
+                    var itemNumberAliases = new[]
+                    {
+                        GetLazadaString(item, "seller_sku"),
+                        GetLazadaString(item, "shop_sku"),
+                        GetLazadaString(item, "sku"),
+                        GetLazadaString(item, "sku_id"),
+                        GetLazadaString(item, "product_id"),
+                        GetLazadaString(item, "item_id"),
+                        GetLazadaString(item, "order_item_id")
+                    }
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                    var itemNumber = itemNumberAliases.FirstOrDefault() ?? string.Empty;
+                    var itemQuantity = GetLazadaDecimal(item, "quantity", "item_quantity", "order_item_quantity");
+                    if (itemQuantity <= 0) itemQuantity = 1;
+
+                    if (packageId.Length == 0 && trackingNumber.Length == 0)
+                        continue;
+
+                    var key = packageId.Length > 0 ? $"id:{packageId}" : $"tracking:{trackingNumber}";
+                    if (!packageMap.TryGetValue(key, out var package))
+                    {
+                        package = new ShippingPackage
+                        {
+                            PackageId = packageId,
+                            TrackingNumber = trackingNumber,
+                            Carrier = carrier,
+                            Status = status
+                        };
+                        packageMap[key] = package;
+                    }
+
+                    if (package.TrackingNumber.Length == 0) package.TrackingNumber = trackingNumber;
+                    if (package.Carrier.Length == 0) package.Carrier = carrier;
+                    if (package.Status.Length == 0) package.Status = status;
+                    if (itemId.Length > 0 && !package.ItemIds.Contains(itemId)) package.ItemIds.Add(itemId);
+                    if (itemNumber.Length > 0)
+                    {
+                        var existingItem = package.Items.FirstOrDefault(x =>
+                            string.Equals(x.ItemId, itemId, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(x.ItemNumber, itemNumber, StringComparison.OrdinalIgnoreCase));
+                        if (existingItem == null)
+                        {
+                            package.Items.Add(new ShippingPackageItem
+                            {
+                                ItemId = itemId,
+                                ItemNumber = itemNumber,
+                                ItemNumberAliases = itemNumberAliases,
+                                Quantity = itemQuantity
+                            });
+                        }
+                        else
+                        {
+                            existingItem.Quantity += itemQuantity;
+                            foreach (var alias in itemNumberAliases.Where(alias =>
+                                         !existingItem.ItemNumberAliases.Contains(alias, StringComparer.OrdinalIgnoreCase)))
+                                existingItem.ItemNumberAliases.Add(alias);
+                        }
+                    }
+                }
+
+                return packageMap.Values.ToList();
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Lazada: Could not resolve tracking packages from GetOrderItems");
+                return new List<ShippingPackage>();
+            }
+        }
+
+        private static void SetPrimaryTracking(TrackingInfo tracking)
+        {
+            var primary = tracking.Packages.FirstOrDefault(package =>
+                              !string.IsNullOrWhiteSpace(package.TrackingNumber))
+                          ?? tracking.Packages.FirstOrDefault();
+            if (primary == null) return;
+
+            if (tracking.TrackingNumber.Length == 0) tracking.TrackingNumber = primary.TrackingNumber;
+            if (tracking.Carrier.Length == 0) tracking.Carrier = primary.Carrier;
+            if (tracking.Status.Length == 0) tracking.Status = primary.Status;
+        }
+
+        private static bool SameLazadaPackageId(string left, string right)
+        {
+            if (string.Equals(left, right, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                return false;
+
+            static string RemoveSellerFleetPrefix(string value)
+            {
+                var normalized = value.Trim();
+                return normalized.StartsWith("SOF_", StringComparison.OrdinalIgnoreCase)
+                    ? normalized[4..]
+                    : normalized;
+            }
+
+            return string.Equals(
+                RemoveSellerFleetPrefix(left),
+                RemoveSellerFleetPrefix(right),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static string BuildRequestUri(string apiPath, string queryString)
+        {
+            // The signing path must retain its leading slash, but the request URI
+            // must be relative so HttpClient preserves the `/rest/` base path.
+            return $"{apiPath.TrimStart('/')}?{queryString}";
         }
     }
 }

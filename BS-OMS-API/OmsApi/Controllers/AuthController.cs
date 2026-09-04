@@ -15,11 +15,16 @@ namespace OmsApi.Controllers
     {
         private readonly IPlatformAuthService _authService;
         private readonly ILogger<AuthController> _logger;
+        private readonly IHostEnvironment _environment;
 
-        public AuthController(IPlatformAuthService authService, ILogger<AuthController> logger)
+        public AuthController(
+            IPlatformAuthService authService,
+            ILogger<AuthController> logger,
+            IHostEnvironment environment)
         {
             _authService = authService;
             _logger = logger;
+            _environment = environment;
         }
 
         /// <summary>
@@ -106,6 +111,35 @@ namespace OmsApi.Controllers
             {
                 _logger.LogError(ex, "❌ Token refresh error for {Platform}", platform);
                 return BadRequest(ApiResponse<string>.Fail($"Refresh error: {ex.Message}"));
+            }
+        }
+
+        /// <summary>บันทึก token จาก Platform Sandbox แบบเข้ารหัส (Development เท่านั้น)</summary>
+        [HttpPost("sandbox-token")]
+        [SwaggerOperation(Summary = "Import Platform Sandbox token (Development only)")]
+        [SwaggerResponse(200, "Sandbox credential encrypted and saved")]
+        [SwaggerResponse(404, "Endpoint is disabled outside Development")]
+        public async Task<IActionResult> ImportSandboxToken([FromBody] SandboxTokenRequest request)
+        {
+            if (!_environment.IsDevelopment())
+                return NotFound();
+
+            try
+            {
+                var platform = ParsePlatform(request.Platform);
+                var tokenInfo = await _authService.ImportSandboxTokenAsync(platform, request);
+                return Ok(ApiResponse<object>.Ok(new
+                {
+                    platform = platform.ToString(),
+                    shopId = tokenInfo.ShopId,
+                    environment = "SANDBOX",
+                    expiresAt = tokenInfo.ExpiresAt,
+                    refreshTokenSaved = !string.IsNullOrWhiteSpace(request.RefreshToken)
+                }, $"{platform} Sandbox credential encrypted and saved"));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse<string>.Fail(ex.Message));
             }
         }
 

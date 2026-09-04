@@ -16,5 +16,8 @@ namespace OmsApi.Services.Interfaces
 
         /// <summary>Refresh expired access token</summary>
         Task<TokenInfo> RefreshTokenAsync(PlatformType platform, string refreshToken, string? shopId = null);
+
+        /// <summary>บันทึก Platform Sandbox token ที่ได้จาก Sandbox Console/Testing Tools</summary>
+        Task<TokenInfo> ImportSandboxTokenAsync(PlatformType platform, SandboxTokenRequest request);
     }
 }

@@ -1,4 +1,5 @@
 using OmsApi.Models.Common;
+using OmsApi.Models.Shipping;
 
 namespace OmsApi.Models.Orders
 {
@@ -53,6 +54,11 @@ namespace OmsApi.Models.Orders
 
         /// <summary>ข้อมูลการจัดส่ง</summary>
         public ShippingInfo? Shipping { get; set; }
+
+        /// <summary>
+        /// รายการพัสดุทั้งหมดของ Order; ใช้เมื่อ Order ถูกแยกส่งหลายกล่อง
+        /// </summary>
+        public List<ShippingPackage> Packages { get; set; } = new();
 
         /// <summary>รายการสินค้า</summary>
         public List<OrderItem> Items { get; set; } = new();

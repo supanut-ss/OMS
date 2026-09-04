@@ -34,16 +34,33 @@ namespace OmsApi.Services.Interfaces
         // ── Shipping ──────────────────────────────────────
 
         /// <summary>ดึงใบปะหน้าพัสดุ</summary>
-        Task<ShippingLabelResult?> GetShippingLabelAsync(string accessToken, string? shopId, string orderId, string? packageId, string documentType);
+        Task<ShippingLabelResult?> GetShippingLabelAsync(
+            string accessToken,
+            string? shopId,
+            string orderId,
+            string? packageId,
+            string? trackingNumber,
+            string documentType);
 
         /// <summary>จัดส่งสินค้า</summary>
         Task<bool> ShipOrderAsync(string accessToken, string? shopId, ShipOrderRequest request);
+
+        /// <summary>แยก Order เป็นหลาย Platform packages ตามกล่อง WMS</summary>
+        Task<SplitPlatformOrderResult> SplitOrderAsync(
+            string accessToken,
+            string? shopId,
+            SplitPlatformOrderRequest request)
+            => throw new NotSupportedException($"{Platform} does not support order splitting through OMS yet.");
 
         /// <summary>ดึงรายการผู้ให้บริการขนส่ง</summary>
         Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId);
 
         /// <summary>ดึงข้อมูลติดตามพัสดุ</summary>
-        Task<TrackingInfo?> GetTrackingInfoAsync(string accessToken, string? shopId, string orderId);
+        Task<TrackingInfo?> GetTrackingInfoAsync(
+            string accessToken,
+            string? shopId,
+            string orderId,
+            IReadOnlyCollection<string>? packageNumbers = null);
     }
 
     /// <summary>

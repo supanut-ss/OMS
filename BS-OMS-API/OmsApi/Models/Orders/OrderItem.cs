@@ -8,6 +8,15 @@ namespace OmsApi.Models.Orders
         /// <summary>Platform-specific item ID</summary>
         public string ItemId { get; set; } = string.Empty;
 
+        /// <summary>Platform-specific variation/model ID</summary>
+        public long ModelId { get; set; }
+
+        /// <summary>Platform order-line identity used by package operations</summary>
+        public long OrderItemId { get; set; }
+
+        /// <summary>Platform promotion group identity used by package operations</summary>
+        public long PromotionGroupId { get; set; }
+
         /// <summary>SKU</summary>
         public string Sku { get; set; } = string.Empty;
 

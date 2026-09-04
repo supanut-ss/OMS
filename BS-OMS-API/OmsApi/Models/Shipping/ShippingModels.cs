@@ -24,8 +24,10 @@ namespace OmsApi.Models.Shipping
         /// <summary>รหัส Package (ถ้ามี — TikTok ใช้ package_id)</summary>
         public string? PackageId { get; set; }
 
+        public string? TrackingNumber { get; set; }
+
         /// <summary>ประเภทเอกสาร: NORMAL, THERMAL (สำหรับ Shopee)</summary>
-        public string DocumentType { get; set; } = "NORMAL";
+        public string DocumentType { get; set; } = "NORMAL_AIR_WAYBILL";
     }
 
     /// <summary>
@@ -35,6 +37,8 @@ namespace OmsApi.Models.Shipping
     {
         public PlatformType Platform { get; set; }
         public string OrderId { get; set; } = string.Empty;
+        public string? PackageId { get; set; }
+        public string DocumentType { get; set; } = string.Empty;
 
         /// <summary>Tracking number</summary>
         public string TrackingNumber { get; set; } = string.Empty;
@@ -72,6 +76,9 @@ namespace OmsApi.Models.Shipping
         [StringLength(100)]
         public string OrderId { get; set; } = string.Empty;
 
+        /// <summary>Platform package identifier for split orders</summary>
+        public string? PackageId { get; set; }
+
         /// <summary>วิธีจัดส่ง: pickup, dropoff, non_integrated</summary>
         public string ShippingMethod { get; set; } = "dropoff";
 
@@ -102,8 +109,62 @@ namespace OmsApi.Models.Shipping
         public string Carrier { get; set; } = string.Empty;
         public PlatformType Platform { get; set; }
         public string OrderId { get; set; } = string.Empty;
+
         public string Status { get; set; } = string.Empty;
         public List<TrackingEvent> Events { get; set; } = new();
+
+        /// <summary>รายการพัสดุทั้งหมดของ Order (หนึ่ง Order อาจมีหลายกล่อง)</summary>
+        public List<ShippingPackage> Packages { get; set; } = new();
+    }
+
+    /// <summary>
+    /// ข้อมูลพัสดุระดับกล่อง ใช้ร่วมกันทุก Platform
+    /// </summary>
+    public class ShippingPackage
+    {
+        /// <summary>รหัสกล่องจาก WMS (outbound_sort_master_id ถ้ามี)</summary>
+        public string WmsPackageRef { get; set; } = string.Empty;
+
+        /// <summary>ลำดับกล่องจาก WMS</summary>
+        public int? BoxNumber { get; set; }
+
+        /// <summary>Primary key ของ record ใน OMS package table (ถ้ามี)</summary>
+        public long? PlatformPackageRecordId { get; set; }
+
+        /// <summary>รหัสพัสดุของ Platform (ถ้ามี)</summary>
+        public string PackageId { get; set; } = string.Empty;
+
+        /// <summary>เลข Tracking ของกล่องนี้</summary>
+        public string TrackingNumber { get; set; } = string.Empty;
+
+        /// <summary>ผู้ให้บริการขนส่งของกล่องนี้</summary>
+        public string Carrier { get; set; } = string.Empty;
+
+        /// <summary>สถานะพัสดุ</summary>
+        public string Status { get; set; } = string.Empty;
+
+        /// <summary>วิธีจัดส่ง</summary>
+        public string ShippingMethod { get; set; } = string.Empty;
+
+        /// <summary>รายการ Item/Order item ที่อยู่ในกล่องนี้</summary>
+        public List<string> ItemIds { get; set; } = new();
+
+        /// <summary>
+        /// รายละเอียดสินค้าในกล่องจาก Platform ใช้จับคู่กับสินค้าใน WMS
+        /// เมื่อ Platform แยก package แล้วแต่ยังไม่มี mapping ที่บันทึกไว้
+        /// </summary>
+        public List<ShippingPackageItem> Items { get; set; } = new();
+
+        /// <summary>เหตุการณ์ติดตามของกล่องนี้</summary>
+        public List<TrackingEvent> Events { get; set; } = new();
+    }
+
+    public class ShippingPackageItem
+    {
+        public string ItemId { get; set; } = string.Empty;
+        public string ItemNumber { get; set; } = string.Empty;
+        public List<string> ItemNumberAliases { get; set; } = new();
+        public decimal Quantity { get; set; }
     }
 
     /// <summary>
