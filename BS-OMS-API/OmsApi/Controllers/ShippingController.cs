@@ -315,6 +315,8 @@ namespace OmsApi.Controllers
             {
                 List<PlatformPackageMappingRequest>? splitMappings = null;
                 IReadOnlyCollection<string>? knownPackageNumbers = null;
+                var lazadaPackedByOms = false;
+                var tiktokSplitByOms = false;
                 if (manifest.Packages.Count > 1)
                 {
                     var savedPackages = await _platformPackageService.GetPackagesAsync(
@@ -367,6 +369,129 @@ namespace OmsApi.Controllers
                     // split_order is an irreversible external mutation. Persist
                     // its package numbers even if the WMS HTTP request has
                     // already timed out or disconnected.
+                    await _platformPackageService.SyncPackagesAsync(
+                        new SyncPlatformPackagesRequest
+                        {
+                            Platform = request.Platform,
+                            ShopId = request.ShopId,
+                            PlatformOrderId = request.PlatformOrderId,
+                            CustomerOrderNumber = request.CustomerOrderNumber,
+                            Packages = splitMappings.Select(mapping =>
+                            {
+                                var box = manifest.Packages.Single(x => x.WmsPackageRef == mapping.WmsPackageRef);
+                                return new SyncPlatformPackageRequest
+                                {
+                                    WmsPackageRef = mapping.WmsPackageRef,
+                                    BoxNumber = box.BoxNumber,
+                                    PlatformPackageId = mapping.PlatformPackageId,
+                                    PackageStatus = "CREATED"
+                                };
+                            }).ToList()
+                        },
+                        CancellationToken.None);
+
+                    tracking = await _shippingService.GetTrackingInfoAsync(
+                        request.Platform,
+                        request.PlatformOrderId,
+                        null,
+                        request.ShopId,
+                        knownPackageNumbers);
+                }
+
+                // Lazada does not split a pending order merely because WMS has
+                // multiple physical boxes. Pack each WMS box with its own
+                // order_item_id before asking Lazada for tracking numbers.
+                if (request.Platform == PlatformType.Lazada &&
+                    manifest.Packages.Count > 1 &&
+                    splitMappings == null &&
+                    (tracking?.Packages.Count ?? 0) < manifest.Packages.Count)
+                {
+                    if (tracking?.Packages.Any(x => !string.IsNullOrWhiteSpace(x.TrackingNumber)) == true)
+                    {
+                        throw new InvalidOperationException(
+                            $"Lazada has already issued {tracking.Packages.Count} package(s) for this order, " +
+                            $"but WMS has {manifest.Packages.Count} box(es). Create a new pending order or repack it in Lazada before retrying.");
+                    }
+
+                    var split = await _shippingService.SplitOrderAsync(new SplitPlatformOrderRequest
+                    {
+                        Platform = request.Platform,
+                        ShopId = request.ShopId,
+                        OrderId = request.PlatformOrderId,
+                        Packages = manifest.Packages
+                    });
+                    if (split.PackageMappings.Count != manifest.Packages.Count)
+                    {
+                        throw new InvalidOperationException(
+                            $"Lazada created {split.PackageMappings.Count} package(s), " +
+                            $"but WMS requested {manifest.Packages.Count} box(es).");
+                    }
+
+                    splitMappings = split.PackageMappings;
+                    lazadaPackedByOms = true;
+                    knownPackageNumbers = splitMappings.Select(x => x.PlatformPackageId!).ToList();
+                    await _platformPackageService.SyncPackagesAsync(
+                        new SyncPlatformPackagesRequest
+                        {
+                            Platform = request.Platform,
+                            ShopId = request.ShopId,
+                            PlatformOrderId = request.PlatformOrderId,
+                            CustomerOrderNumber = request.CustomerOrderNumber,
+                            Packages = splitMappings.Select(mapping =>
+                            {
+                                var box = manifest.Packages.Single(x => x.WmsPackageRef == mapping.WmsPackageRef);
+                                return new SyncPlatformPackageRequest
+                                {
+                                    WmsPackageRef = mapping.WmsPackageRef,
+                                    BoxNumber = box.BoxNumber,
+                                    PlatformPackageId = mapping.PlatformPackageId,
+                                    PackageStatus = "CREATED"
+                                };
+                            }).ToList()
+                        },
+                        CancellationToken.None);
+
+                    tracking = await _shippingService.GetTrackingInfoAsync(
+                        request.Platform,
+                        request.PlatformOrderId,
+                        null,
+                        request.ShopId,
+                        knownPackageNumbers);
+                }
+
+                // TikTok requires an explicit order split before its package
+                // shipping endpoint can be called. Build one split group per
+                // WMS box from the TikTok order-line IDs and persist the
+                // returned package IDs before arranging shipment.
+                if (request.Platform == PlatformType.TikTok &&
+                    manifest.Packages.Count > 1 &&
+                    splitMappings == null &&
+                    (tracking?.Packages.Count ?? 0) < manifest.Packages.Count)
+                {
+                    if (tracking?.Packages.Any(x => !string.IsNullOrWhiteSpace(x.TrackingNumber)) == true)
+                    {
+                        throw new InvalidOperationException(
+                            $"TikTok has already issued {tracking.Packages.Count} package(s) for this order, " +
+                            $"but WMS has {manifest.Packages.Count} box(es). Use a new Awaiting Shipment order before splitting.");
+                    }
+
+                    var split = await _shippingService.SplitOrderAsync(new SplitPlatformOrderRequest
+                    {
+                        Platform = request.Platform,
+                        ShopId = request.ShopId,
+                        OrderId = request.PlatformOrderId,
+                        Packages = manifest.Packages
+                    });
+                    if (split.PackageMappings.Count != manifest.Packages.Count)
+                    {
+                        throw new InvalidOperationException(
+                            $"TikTok created {split.PackageMappings.Count} package(s), " +
+                            $"but WMS requested {manifest.Packages.Count} box(es).");
+                    }
+
+                    splitMappings = split.PackageMappings;
+                    tiktokSplitByOms = true;
+                    knownPackageNumbers = splitMappings.Select(x => x.PlatformPackageId!).ToList();
                     await _platformPackageService.SyncPackagesAsync(
                         new SyncPlatformPackagesRequest
                         {
@@ -474,23 +599,39 @@ namespace OmsApi.Controllers
                         .Where(x => !string.IsNullOrWhiteSpace(x.PackageId) &&
                             (request.Platform != PlatformType.Shopee || ShopeePackageNeedsArrange(x.Status)))
                         .ToList() ?? new List<ShippingPackage>();
+                    if (packagesToArrange.Count == 0 && tiktokSplitByOms)
+                    {
+                        packagesToArrange = (knownPackageNumbers ?? Array.Empty<string>())
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Select(x => new ShippingPackage { PackageId = x })
+                            .ToList();
+                    }
                     if (packagesToArrange.Count == 0 &&
                         !(request.Platform == PlatformType.Shopee && manifest.Packages.Count > 1))
                         packagesToArrange.Add(new ShippingPackage());
 
-                    foreach (var package in packagesToArrange)
+                    // Lazada's split branch has already called the new Pack
+                    // API once per WMS box. Calling the legacy arrange path
+                    // immediately afterwards can repack all pending items
+                    // into one package while Lazada is still propagating the
+                    // package status, so only arrange when OMS did not just
+                    // create the split packages.
+                    if (!lazadaPackedByOms)
                     {
-                        var arranged = await _shippingService.ShipOrderAsync(new ShipOrderRequest
+                        foreach (var package in packagesToArrange)
                         {
-                            Platform = request.Platform,
-                            ShopId = request.ShopId,
-                            OrderId = request.PlatformOrderId,
-                            PackageId = string.IsNullOrWhiteSpace(package.PackageId) ? null : package.PackageId,
-                            ShippingMethod = "dropoff"
-                        });
-                        if (!arranged)
-                            throw new InvalidOperationException(
-                                $"{request.Platform} did not accept the arrange shipment request.");
+                            var arranged = await _shippingService.ShipOrderAsync(new ShipOrderRequest
+                            {
+                                Platform = request.Platform,
+                                ShopId = request.ShopId,
+                                OrderId = request.PlatformOrderId,
+                                PackageId = string.IsNullOrWhiteSpace(package.PackageId) ? null : package.PackageId,
+                                ShippingMethod = "dropoff"
+                            });
+                            if (!arranged)
+                                throw new InvalidOperationException(
+                                    $"{request.Platform} did not accept the arrange shipment request.");
+                        }
                     }
 
                     for (var attempt = 1; attempt <= 3; attempt++)

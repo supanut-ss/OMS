@@ -1,6 +1,9 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using OmsApi.Models.Common;
+using OmsApi.Models.Shipping;
 using OmsApi.Services.Implementation.Platforms;
 
 namespace OmsApi.Tests;
@@ -82,6 +85,40 @@ public class LazadaTrackingTests
     }
 
     [Fact]
+    public async Task GetTrackingInfo_PrefersTrackingNumberOverSellerPackageCode()
+    {
+        const string orderItemsJson = """
+        {
+          "code": "0",
+          "data": [
+            {
+              "order_item_id": 1,
+              "package_id": "SOF_FP000000000001",
+              "tracking_code": "SOF_FP000000000001",
+              "tracking_number": "LEXD00188557241",
+              "shipment_provider": "LEX TH"
+            }
+          ]
+        }
+        """;
+
+        var handler = new StubHandler(orderItemsJson, "{}");
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://api.lazada.co.th/rest/")
+        };
+        var client = new LazadaClient(
+            new StubHttpClientFactory(httpClient),
+            NullLogger<LazadaClient>.Instance);
+
+        var tracking = await client.GetTrackingInfoAsync("test-token", "seller-123", "order-1");
+
+        Assert.NotNull(tracking);
+        Assert.Equal("LEXD00188557241", tracking.TrackingNumber);
+        Assert.Equal("LEXD00188557241", tracking.Packages[0].TrackingNumber);
+    }
+
+    [Fact]
     public async Task GetTrackingInfo_PreservesRestPathAndMapsEveryPackage()
     {
         const string orderItemsJson = """
@@ -143,6 +180,73 @@ public class LazadaTrackingTests
         Assert.Single(tracking.Packages[0].Events);
     }
 
+    [Fact]
+    public async Task SplitOrderAsync_PacksEachWmsBoxUsingItsSkuAndQuantity()
+    {
+        const string orderItemsJson = """
+        {
+          "code": "0",
+          "data": [
+            { "order_item_id": 101, "seller_sku": "16262078600", "quantity": 1, "status": "pending" },
+            { "order_item_id": 102, "seller_sku": "16262078600", "quantity": 1, "status": "pending" },
+            { "order_item_id": 201, "seller_sku": "16261083348", "quantity": 1, "status": "pending" },
+            { "order_item_id": 202, "seller_sku": "16261083348", "quantity": 1, "status": "pending" }
+          ]
+        }
+        """;
+        var handler = new PackStubHandler(orderItemsJson);
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://api.lazada.co.th/rest/")
+        };
+        var client = new LazadaClient(
+            new StubHttpClientFactory(httpClient),
+            NullLogger<LazadaClient>.Instance);
+        var firstBox = Guid.NewGuid();
+        var secondBox = Guid.NewGuid();
+
+        var result = await client.SplitOrderAsync(
+            "test-token",
+            "seller-123",
+            new SplitPlatformOrderRequest
+            {
+                Platform = PlatformType.Lazada,
+                OrderId = "7001",
+                Packages = new List<WmsPackageManifestPackage>
+                {
+                    new()
+                    {
+                        WmsPackageRef = firstBox,
+                        BoxNumber = 1,
+                        Items = new List<WmsPackageManifestItem>
+                        {
+                            new() { ItemNumber = "16262078600", Quantity = 2 }
+                        }
+                    },
+                    new()
+                    {
+                        WmsPackageRef = secondBox,
+                        BoxNumber = 2,
+                        Items = new List<WmsPackageManifestItem>
+                        {
+                            new() { ItemNumber = "16261083348", Quantity = 2 }
+                        }
+                    }
+                }
+            });
+
+        Assert.Equal(2, result.PackageMappings.Count);
+        Assert.Equal(firstBox, result.PackageMappings[0].WmsPackageRef);
+        Assert.Equal("package-a", result.PackageMappings[0].PlatformPackageId);
+        Assert.Equal(secondBox, result.PackageMappings[1].WmsPackageRef);
+        Assert.Equal("package-b", result.PackageMappings[1].PlatformPackageId);
+        Assert.Equal(2, handler.PackRequests.Count);
+        Assert.Contains(101L, handler.PackRequests[0]);
+        Assert.Contains(102L, handler.PackRequests[0]);
+        Assert.Contains(201L, handler.PackRequests[1]);
+        Assert.Contains(202L, handler.PackRequests[1]);
+    }
+
     private sealed class StubHttpClientFactory(HttpClient client) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => client;
@@ -167,6 +271,67 @@ public class LazadaTrackingTests
                 Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
                 RequestMessage = request
             });
+        }
+    }
+
+    private sealed class PackStubHandler(string orderItemsJson) : HttpMessageHandler
+    {
+        private int _packCall;
+        public List<List<long>> PackRequests { get; } = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            await Task.Yield();
+            if (request.RequestUri!.AbsolutePath.EndsWith("/order/items/get", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(orderItemsJson, Encoding.UTF8, "application/json"),
+                    RequestMessage = request
+                };
+            }
+
+            Assert.Equal(HttpMethod.Post, request.Method);
+            var encodedPackRequest = request.RequestUri.Query
+                .TrimStart('?')
+                .Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Split('=', 2))
+                .Where(parts => parts.Length == 2 && parts[0] == "packReq")
+                .Select(parts => parts[1])
+                .Single();
+            using var packRequest = JsonDocument.Parse(Uri.UnescapeDataString(encodedPackRequest));
+            var itemIds = packRequest.RootElement
+                .GetProperty("pack_order_list")[0]
+                .GetProperty("order_item_list")
+                .EnumerateArray()
+                .Select(x => x.GetInt64())
+                .ToList();
+            PackRequests.Add(itemIds);
+            var packageId = Interlocked.Increment(ref _packCall) == 1 ? "package-a" : "package-b";
+            var packedItemJson = string.Join(",", itemIds.Select(itemId =>
+                $"{{\"order_item_id\":{itemId},\"package_id\":\"{packageId}\",\"item_err_code\":\"0\"}}"));
+            var response = $$"""
+            {
+              "errorCode": "0",
+              "errorMsg": "",
+              "result": {
+                "data": {
+                  "pack_order_list": [
+                    {
+                      "order_item_list": [{{packedItemJson}}]
+                    }
+                  ]
+                }
+              }
+            }
+            """;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(response, Encoding.UTF8, "application/json"),
+                RequestMessage = request
+            };
         }
     }
 }

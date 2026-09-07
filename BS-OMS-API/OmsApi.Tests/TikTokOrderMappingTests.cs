@@ -1,6 +1,11 @@
 using System.Reflection;
+using System.Net;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
+using OmsApi.Models.Common;
 using OmsApi.Models.Orders;
+using OmsApi.Models.Shipping;
 using OmsApi.Services.Implementation.Platforms;
 
 namespace OmsApi.Tests;
@@ -116,5 +121,132 @@ public class TikTokOrderMappingTests
             });
         Assert.Equal("track-a", order.Shipping!.TrackingNumber);
         Assert.Equal("package-a", order.Shipping.PackageNumber);
+    }
+
+    [Fact]
+    public async Task SplitOrderAsync_MapsReturnedPackageAndOriginalPackageToWmsBoxes()
+    {
+        var firstBox = Guid.NewGuid();
+        var secondBox = Guid.NewGuid();
+        var handler = new TikTokSplitHandler();
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://open-api.tiktokglobalshop.com/")
+        };
+        var client = new TikTokClient(
+            new StubHttpClientFactory(httpClient),
+            NullLogger<TikTokClient>.Instance);
+
+        var result = await client.SplitOrderAsync(
+            "test-token",
+            "shop-cipher",
+            new SplitPlatformOrderRequest
+            {
+                Platform = PlatformType.TikTok,
+                OrderId = "order-1",
+                Packages = new List<WmsPackageManifestPackage>
+                {
+                    new()
+                    {
+                        WmsPackageRef = firstBox,
+                        BoxNumber = 1,
+                        Items = new List<WmsPackageManifestItem>
+                        {
+                            new() { ItemNumber = "SKU-A", Quantity = 2 }
+                        }
+                    },
+                    new()
+                    {
+                        WmsPackageRef = secondBox,
+                        BoxNumber = 2,
+                        Items = new List<WmsPackageManifestItem>
+                        {
+                            new() { ItemNumber = "SKU-B", Quantity = 1 }
+                        }
+                    }
+                }
+            });
+
+        Assert.Equal(2, result.PackageMappings.Count);
+        Assert.Equal(firstBox, result.PackageMappings[0].WmsPackageRef);
+        Assert.Equal("package-a", result.PackageMappings[0].PlatformPackageId);
+        Assert.Equal(secondBox, result.PackageMappings[1].WmsPackageRef);
+        Assert.Equal("original-package", result.PackageMappings[1].PlatformPackageId);
+        Assert.Single(handler.SplitRequests);
+        Assert.Contains("line-a-1", handler.SplitRequests[0]);
+        Assert.Contains("line-a-2", handler.SplitRequests[0]);
+    }
+
+    private sealed class StubHttpClientFactory(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => client;
+    }
+
+    private sealed class TikTokSplitHandler : HttpMessageHandler
+    {
+        private int _orderRequestCount;
+        public List<string> SplitRequests { get; } = new();
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/order/202309/orders", StringComparison.Ordinal))
+            {
+                _orderRequestCount++;
+                var firstRead = _orderRequestCount == 1;
+                var packageA = firstRead ? "original-package" : "package-a";
+                const string packageB = "original-package";
+                var orderJson = $$"""
+                {
+                  "code": 0,
+                  "data": {
+                    "orders": [{
+                      "id": "order-1",
+                      "line_items": [
+                        { "id": "line-a-1", "seller_sku": "SKU-A", "quantity": 1, "package_id": "{{packageA}}" },
+                        { "id": "line-a-2", "seller_sku": "SKU-A", "quantity": 1, "package_id": "{{packageA}}" },
+                        { "id": "line-b-1", "seller_sku": "SKU-B", "quantity": 1, "package_id": "{{packageB}}" }
+                      ]
+                    }]
+                  }
+                }
+                """;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(orderJson, Encoding.UTF8, "application/json"),
+                    RequestMessage = request
+                });
+            }
+
+            if (request.RequestUri.AbsolutePath.EndsWith("/fulfillment/202309/orders/order-1/split", StringComparison.Ordinal))
+            {
+                using var reader = new StreamReader(request.Content!.ReadAsStream());
+                var body = reader.ReadToEnd();
+                SplitRequests.Add(body);
+                const string splitJson = """
+                {
+                  "code": 0,
+                  "data": {
+                    "packages": [
+                      { "splittable_group_id": "wms_FIRST", "id": "package-a" }
+                    ]
+                  },
+                  "message": "Success"
+                }
+                """;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(splitJson, Encoding.UTF8, "application/json"),
+                    RequestMessage = request
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+                RequestMessage = request
+            });
+        }
     }
 }

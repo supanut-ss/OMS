@@ -815,27 +815,166 @@ namespace OmsApi.Services.Implementation.Platforms
             public string ContentType { get; }
         }
 
+        public async Task<SplitPlatformOrderResult> SplitOrderAsync(
+            string accessToken,
+            string? shopId,
+            SplitPlatformOrderRequest request)
+        {
+            if (request.Packages.Count < 2)
+                throw new InvalidOperationException("Lazada package split requires at least two WMS packages.");
+
+            if (!long.TryParse(request.OrderId, out var orderId) || orderId <= 0)
+                throw new InvalidOperationException($"Lazada order_id '{request.OrderId}' is invalid.");
+
+            var client = _httpClientFactory.CreateClient("Lazada");
+            var orderItems = await GetLazadaPackItemsAsync(accessToken, request.OrderId, client);
+            if (orderItems.Count == 0)
+                throw new InvalidOperationException(
+                    $"Lazada did not return order items for order '{request.OrderId}'.");
+
+            var assignedItemIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var mappings = new List<PlatformPackageMappingRequest>();
+            foreach (var package in request.Packages.OrderBy(x => x.BoxNumber))
+            {
+                if (package.Items.Count == 0)
+                    throw new InvalidOperationException(
+                        $"WMS box {package.BoxNumber} does not contain any items.");
+
+                var itemIds = new List<string>();
+                foreach (var wmsItem in package.Items
+                    .Where(x => !string.IsNullOrWhiteSpace(x.ItemNumber))
+                    .GroupBy(x => NormalizeLazadaItemNumber(x.ItemNumber), StringComparer.OrdinalIgnoreCase)
+                    .Select(x => new { ItemNumber = x.Key, Quantity = x.Sum(y => y.Quantity) }))
+                {
+                    if (wmsItem.Quantity <= 0)
+                        throw new InvalidOperationException(
+                            $"WMS item '{wmsItem.ItemNumber}' in box {package.BoxNumber} has an invalid quantity.");
+
+                    // Lazada may return one order-item object per unit.  Do not
+                    // require a single row for a WMS SKU; collect all still
+                    // unassigned rows for that SKU until the WMS quantity is
+                    // satisfied.  This also allows the same SKU to be split
+                    // across two WMS boxes when Lazada exposes separate item
+                    // ids for each unit.
+                    var candidates = orderItems.Where(item =>
+                            !assignedItemIds.Contains(item.ItemId) &&
+                            item.ItemNumberAliases.Any(alias =>
+                                string.Equals(
+                                    NormalizeLazadaItemNumber(alias),
+                                    wmsItem.ItemNumber,
+                                    StringComparison.OrdinalIgnoreCase)))
+                        .OrderBy(item => item.ItemId, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    var matches = new List<LazadaPackItem>();
+                    var remainingQuantity = wmsItem.Quantity;
+                    foreach (var candidate in candidates)
+                    {
+                        if (candidate.Quantity <= 0 || candidate.Quantity > remainingQuantity)
+                            continue;
+                        matches.Add(candidate);
+                        remainingQuantity -= candidate.Quantity;
+                        if (remainingQuantity == 0)
+                            break;
+                    }
+                    if (remainingQuantity != 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"WMS item '{wmsItem.ItemNumber}' in box {package.BoxNumber} " +
+                            $"could not be allocated at quantity {wmsItem.Quantity} from Lazada order items. " +
+                            "Ensure the WMS item_number and quantity match Lazada seller_sku/shop_sku.");
+                    }
+
+                    var alreadyPacked = matches.FirstOrDefault(item => IsLazadaPackedStatus(item.Status));
+                    if (alreadyPacked != null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Lazada order item '{alreadyPacked.ItemId}' is already packed " +
+                            $"in package '{alreadyPacked.PackageId}'. Repack it in Lazada or use a new pending order before splitting WMS boxes.");
+                    }
+
+                    foreach (var orderItem in matches)
+                    {
+                        if (!assignedItemIds.Add(orderItem.ItemId))
+                            throw new InvalidOperationException(
+                                $"Lazada order item '{orderItem.ItemId}' is assigned to more than one WMS box.");
+                        itemIds.Add(orderItem.ItemId);
+                    }
+                }
+
+                var packed = await PackLazadaItemsAsync(
+                    accessToken,
+                    orderId,
+                    itemIds,
+                    client);
+                if (packed.Count != 1)
+                {
+                    throw new InvalidOperationException(
+                        $"Lazada Pack API returned {packed.Count} package(s) for WMS box {package.BoxNumber}; expected exactly one.");
+                }
+
+                var packageId = packed[0].PackageId;
+                if (string.IsNullOrWhiteSpace(packageId))
+                    throw new InvalidOperationException(
+                        $"Lazada Pack API did not return a package_id for WMS box {package.BoxNumber}.");
+
+                mappings.Add(new PlatformPackageMappingRequest
+                {
+                    WmsPackageRef = package.WmsPackageRef,
+                    PlatformPackageId = packageId
+                });
+            }
+
+            var missingItems = orderItems
+                .Where(item => !assignedItemIds.Contains(item.ItemId) &&
+                               !IsLazadaPackedStatus(item.Status))
+                .Select(item => item.ItemId)
+                .ToList();
+            if (missingItems.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "The WMS boxes do not contain every pending Lazada order item: " +
+                    string.Join(", ", missingItems));
+            }
+
+            var duplicatePackageIds = mappings
+                .GroupBy(x => x.PlatformPackageId, StringComparer.OrdinalIgnoreCase)
+                .Where(x => string.IsNullOrWhiteSpace(x.Key) || x.Count() > 1)
+                .Select(x => x.Key)
+                .ToList();
+            if (duplicatePackageIds.Count > 0)
+                throw new InvalidOperationException(
+                    "Lazada assigned the same package_id to more than one WMS box: " +
+                    string.Join(", ", duplicatePackageIds));
+
+            return new SplitPlatformOrderResult { PackageMappings = mappings };
+        }
+
         public async Task<bool> ShipOrderAsync(string accessToken, string? shopId, ShipOrderRequest request)
         {
             _logger.LogInformation("🏪 Lazada: Shipping order {OrderId}", request.OrderId);
             var client = _httpClientFactory.CreateClient("Lazada");
-            var apiPath = "/order/pack";
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
-
-            var parameters = new Dictionary<string, string>
+            try
             {
-                { "app_key", _appKey }, { "timestamp", timestamp },
-                { "access_token", accessToken }, { "sign_method", "sha256" },
-                { "shipping_provider", request.ShippingProviderId ?? "" },
-                { "order_item_ids", $"[{request.OrderId}]" }
-            };
+                if (!long.TryParse(request.OrderId, out var orderId) || orderId <= 0)
+                    return false;
 
-            var sign = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
-            parameters["sign"] = sign;
-            var qs = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+                var orderItems = await GetLazadaPackItemsAsync(accessToken, request.OrderId, client);
+                var pendingItems = orderItems
+                    .Where(item => !IsLazadaPackedStatus(item.Status))
+                    .Select(item => item.ItemId)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (pendingItems.Count == 0)
+                    return true;
 
-            try { var resp = await client.PostAsync(BuildRequestUri(apiPath, qs), null); return resp.IsSuccessStatusCode; }
-            catch (Exception ex) { _logger.LogError(ex, "❌ Lazada: Error shipping order"); return false; }
+                var packed = await PackLazadaItemsAsync(accessToken, orderId, pendingItems, client);
+                return packed.Count > 0 && packed.All(item => !string.IsNullOrWhiteSpace(item.PackageId));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Lazada: Error packing order");
+                return false;
+            }
         }
 
         public async Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId)
@@ -1227,10 +1366,16 @@ namespace OmsApi.Services.Implementation.Platforms
                 foreach (var item in items)
                 {
                     var packageId = GetLazadaString(item, "package_id", "ofc_package_id", "package_number");
+                    // The newer Lazada order-items response exposes the
+                    // carrier tracking number as tracking_number.  Some
+                    // responses also contain tracking_code, which can be a
+                    // seller/package code (including SOF_...) rather than
+                    // the number shown in Seller Center.  Prefer the
+                    // authoritative tracking_number field first.
                     var trackingNumber = GetLazadaString(
                         item,
-                        "tracking_code",
                         "tracking_number",
+                        "tracking_code",
                         "tracking_no",
                         "seller_tracking_number",
                         "tracking_code_pre");
@@ -1313,6 +1458,274 @@ namespace OmsApi.Services.Implementation.Platforms
                 _logger.LogWarning(ex, "Lazada: Could not resolve tracking packages from GetOrderItems");
                 return new List<ShippingPackage>();
             }
+        }
+
+        private async Task<List<LazadaPackItem>> GetLazadaPackItemsAsync(
+            string accessToken,
+            string orderId,
+            HttpClient client)
+        {
+            var apiPath = "/order/items/get";
+            var parameters = new Dictionary<string, string>
+            {
+                { "app_key", _appKey },
+                { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() },
+                { "access_token", accessToken },
+                { "sign_method", "sha256" },
+                { "order_id", orderId }
+            };
+            parameters["sign"] = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
+            var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+
+            var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
+            var content = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Lazada GetOrderItems failed with HTTP {(int)response.StatusCode}: {content}");
+            }
+
+            using var json = JsonDocument.Parse(content);
+            var responseCode = GetLazadaString(json.RootElement, "code");
+            if (responseCode.Length > 0 && responseCode != "0")
+            {
+                var responseMessage = GetLazadaString(json.RootElement, "message");
+                throw new InvalidOperationException(
+                    $"Lazada rejected order '{orderId}' (code {responseCode}): {responseMessage}.");
+            }
+            if (!TryGetLazadaProperty(json.RootElement, "data", out var data))
+                return new List<LazadaPackItem>();
+
+            var items = data.ValueKind == JsonValueKind.Array
+                ? data.EnumerateArray().ToArray()
+                : TryGetLazadaProperty(data, "order_items", out var orderItems) && orderItems.ValueKind == JsonValueKind.Array
+                    ? orderItems.EnumerateArray().ToArray()
+                : TryGetLazadaProperty(data, "order_item_list", out var orderItemList) && orderItemList.ValueKind == JsonValueKind.Array
+                    ? orderItemList.EnumerateArray().ToArray()
+                : TryGetLazadaProperty(data, "items", out var itemsProperty) && itemsProperty.ValueKind == JsonValueKind.Array
+                    ? itemsProperty.EnumerateArray().ToArray()
+                    : Array.Empty<JsonElement>();
+
+            var result = new List<LazadaPackItem>();
+            foreach (var item in items)
+            {
+                var itemId = GetLazadaString(item, "order_item_id", "order_line_id", "id");
+                if (string.IsNullOrWhiteSpace(itemId))
+                    continue;
+
+                var aliases = new[]
+                {
+                    GetLazadaString(item, "seller_sku"),
+                    GetLazadaString(item, "shop_sku"),
+                    GetLazadaString(item, "sku"),
+                    GetLazadaString(item, "sku_id"),
+                    GetLazadaString(item, "product_id"),
+                    GetLazadaString(item, "item_id"),
+                    itemId
+                }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+                var quantity = GetLazadaDecimal(item, "quantity", "item_quantity", "order_item_quantity");
+                if (quantity <= 0) quantity = 1;
+
+                var existing = result.FirstOrDefault(x =>
+                    string.Equals(x.ItemId, itemId, StringComparison.OrdinalIgnoreCase));
+                if (existing == null)
+                {
+                    result.Add(new LazadaPackItem
+                    {
+                        ItemId = itemId,
+                        ItemNumberAliases = aliases,
+                        Quantity = quantity,
+                        Status = GetLazadaString(item, "status", "package_status", "logistics_status"),
+                        PackageId = GetLazadaString(item, "package_id", "ofc_package_id", "package_number")
+                    });
+                }
+                else
+                {
+                    existing.Quantity += quantity;
+                    foreach (var alias in aliases.Where(alias =>
+                                 !existing.ItemNumberAliases.Contains(alias, StringComparer.OrdinalIgnoreCase)))
+                        existing.ItemNumberAliases.Add(alias);
+                    if (existing.Status.Length == 0)
+                        existing.Status = GetLazadaString(item, "status", "package_status", "logistics_status");
+                    if (existing.PackageId.Length == 0)
+                        existing.PackageId = GetLazadaString(item, "package_id", "ofc_package_id", "package_number");
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<List<LazadaPackedItem>> PackLazadaItemsAsync(
+            string accessToken,
+            long orderId,
+            IReadOnlyCollection<string> itemIds,
+            HttpClient client)
+        {
+            if (itemIds.Count == 0)
+                throw new InvalidOperationException("No Lazada order items were supplied to Pack API.");
+
+            var numericItemIds = itemIds.Select(itemId =>
+            {
+                if (!long.TryParse(itemId, out var value) || value <= 0)
+                    throw new InvalidOperationException($"Lazada order_item_id '{itemId}' is invalid.");
+                return value;
+            }).ToArray();
+
+            var shippingAllocateType = Environment.GetEnvironmentVariable("LAZADA_SHIPPING_ALLOCATE_TYPE")?.Trim();
+            if (string.IsNullOrWhiteSpace(shippingAllocateType))
+                shippingAllocateType = "TFS";
+
+            var packRequest = new
+            {
+                pack_order_list = new[]
+                {
+                    new
+                    {
+                        order_item_list = numericItemIds,
+                        order_id = orderId
+                    }
+                },
+                delivery_type = "dropship",
+                shipping_allocate_type = shippingAllocateType
+            };
+            var packReq = JsonSerializer.Serialize(packRequest);
+            var apiPath = "/order/fulfill/pack";
+            var parameters = new Dictionary<string, string>
+            {
+                { "app_key", _appKey },
+                { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() },
+                { "access_token", accessToken },
+                { "sign_method", "sha256" },
+                { "packReq", packReq }
+            };
+
+            // Lazada names this optional query parameter
+            // shipment_provider_id. Keep the old *_CODE environment variable
+            // as a compatibility fallback for existing deployments.
+            var providerId = Environment.GetEnvironmentVariable("LAZADA_SHIPPING_PROVIDER_ID")?.Trim();
+            if (string.IsNullOrWhiteSpace(providerId))
+                providerId = Environment.GetEnvironmentVariable("LAZADA_SHIPPING_PROVIDER_CODE")?.Trim();
+            if (!string.IsNullOrWhiteSpace(providerId))
+                parameters["shipment_provider_id"] = providerId;
+
+            parameters["sign"] = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
+            var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+            using var response = await client.PostAsync(BuildRequestUri(apiPath, queryString), null);
+            var content = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Lazada Pack API failed with HTTP {(int)response.StatusCode}: {content}");
+            }
+
+            using var json = JsonDocument.Parse(content);
+            var root = json.RootElement;
+            var errorCode = GetLazadaString(root, "errorCode", "error_code", "code");
+            var errorMessage = GetLazadaString(root, "errorMsg", "error_msg", "message");
+            if (!string.IsNullOrWhiteSpace(errorCode) && errorCode != "0")
+                throw new InvalidOperationException(
+                    $"Lazada Pack API error {errorCode}: {errorMessage}");
+
+            JsonElement payload = root;
+            if (TryGetLazadaProperty(root, "result", out var result) && result.ValueKind == JsonValueKind.Object)
+                payload = result;
+            if (TryGetLazadaProperty(payload, "data", out var data) && data.ValueKind == JsonValueKind.Object)
+                payload = data;
+            if (!TryGetLazadaProperty(payload, "pack_order_list", out var packOrders) ||
+                packOrders.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidOperationException("Lazada Pack API did not return pack_order_list.");
+            }
+
+            var packedItems = new List<LazadaPackedItem>();
+            foreach (var packOrder in packOrders.EnumerateArray())
+            {
+                if (!TryGetLazadaProperty(packOrder, "order_item_list", out var orderItemList) ||
+                    orderItemList.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var packedItem in orderItemList.EnumerateArray())
+                {
+                    var itemErrorCode = GetLazadaString(packedItem, "item_err_code", "error_code");
+                    if (!string.IsNullOrWhiteSpace(itemErrorCode) && itemErrorCode != "0")
+                    {
+                        var itemMessage = GetLazadaString(packedItem, "msg", "message", "error_msg");
+                        throw new InvalidOperationException(
+                            $"Lazada Pack API item error {itemErrorCode}: {itemMessage}");
+                    }
+
+                    packedItems.Add(new LazadaPackedItem
+                    {
+                        ItemId = GetLazadaString(packedItem, "order_item_id", "order_line_id", "id"),
+                        PackageId = GetLazadaString(packedItem, "package_id", "ofc_package_id", "package_number"),
+                        TrackingNumber = GetLazadaString(packedItem, "tracking_number", "tracking_code"),
+                        Carrier = GetLazadaString(packedItem, "shipment_provider", "shipping_provider")
+                    });
+                }
+            }
+
+            var packageIds = packedItems
+                .Select(x => x.PackageId)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (packageIds.Count == 0)
+                throw new InvalidOperationException("Lazada Pack API did not return a package_id.");
+            var returnedItemIds = packedItems
+                .Select(x => x.ItemId)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var missingItemIds = itemIds
+                .Where(itemId => !returnedItemIds.Contains(itemId))
+                .ToList();
+            if (missingItemIds.Count > 0)
+                throw new InvalidOperationException(
+                    "Lazada Pack API did not confirm every requested order item: " +
+                    string.Join(", ", missingItemIds));
+            if (packageIds.Count > 1)
+                throw new InvalidOperationException(
+                    $"Lazada Pack API returned {packageIds.Count} packages for one WMS box; " +
+                    "each WMS box must be packed into exactly one Lazada package.");
+
+            return new List<LazadaPackedItem>
+            {
+                new LazadaPackedItem
+                {
+                    ItemId = string.Join(",", packedItems.Select(x => x.ItemId).Where(x => !string.IsNullOrWhiteSpace(x))),
+                    PackageId = packageIds[0],
+                    TrackingNumber = packedItems.Select(x => x.TrackingNumber).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? string.Empty,
+                    Carrier = packedItems.Select(x => x.Carrier).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? string.Empty
+                }
+            };
+        }
+
+        private static bool IsLazadaPackedStatus(string status)
+        {
+            var normalized = (status ?? string.Empty).Trim().ToUpperInvariant();
+            return normalized is "PACKED" or "READY_TO_SHIP" or "SHIPPED" or "DELIVERED";
+        }
+
+        private static string NormalizeLazadaItemNumber(string value) =>
+            (value ?? string.Empty).Trim().Replace(" ", string.Empty).ToUpperInvariant();
+
+        private sealed class LazadaPackItem
+        {
+            public string ItemId { get; set; } = string.Empty;
+            public List<string> ItemNumberAliases { get; set; } = new();
+            public decimal Quantity { get; set; }
+            public string Status { get; set; } = string.Empty;
+            public string PackageId { get; set; } = string.Empty;
+        }
+
+        private sealed class LazadaPackedItem
+        {
+            public string ItemId { get; set; } = string.Empty;
+            public string PackageId { get; set; } = string.Empty;
+            public string TrackingNumber { get; set; } = string.Empty;
+            public string Carrier { get; set; } = string.Empty;
         }
 
         private static void SetPrimaryTracking(TrackingInfo tracking)
