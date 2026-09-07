@@ -37,7 +37,7 @@ public interface IPlatformPackageService
     /// <summary>อ่านผลการซิงก์ Package ที่บันทึกไว้ใน OMS</summary>
     Task<List<PlatformPackageRecordResult>> GetPackagesAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         CancellationToken cancellationToken = default);
 }

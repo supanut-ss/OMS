@@ -4,11 +4,33 @@ using OmsApi.Services.Implementation;
 using OmsApi.Services.Implementation.Platforms;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using OmsApi.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
-DotNetEnv.Env.Load();
-builder.Services.AddDataProtection();
+
+// IIS can start the process with a working directory such as
+// C:\\Windows\\System32\\inetsrv. Load the deployed .env from the
+// application content root so the server does not silently fall back to
+// production/default platform endpoints.
+var envFilePath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (File.Exists(envFilePath))
+{
+    DotNetEnv.Env.Load(envFilePath);
+}
+var dataProtection = builder.Services
+    .AddDataProtection()
+    .SetApplicationName(
+        Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_APP_NAME")
+        ?? "OmsApi");
+
+var dataProtectionKeysPath = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_KEYS_PATH");
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
+    Directory.CreateDirectory(keyDirectory);
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+}
 
 var dbConnectionString = Environment.GetEnvironmentVariable("OMS_DB_CONNECTION_STRING");
 if (!string.IsNullOrWhiteSpace(dbConnectionString))
@@ -101,15 +123,15 @@ builder.Services.AddSwaggerGen(options =>
 
     options.UseAllOfToExtendReferenceSchemas();
 });
-builder.Services.AddOpenApi();
-
 var app = builder.Build();
 
 // ─── Middleware Pipeline ────────────────────────────────
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BS-OMS-API v1");
+    // Keep this relative so Swagger also works when IIS hosts the app under
+    // a virtual path such as /WM3_OMS.
+    c.SwaggerEndpoint("v1/swagger.json", "BS-OMS-API v1");
     c.RoutePrefix = "swagger";
 });
 
@@ -118,5 +140,7 @@ app.UseMiddleware<ApiKeyMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/", (HttpRequest request) =>
+    Results.Redirect($"{request.PathBase}/swagger/index.html"));
 
 app.Run();

@@ -20,7 +20,16 @@ namespace OmsApi.Services.Interfaces
         Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request);
 
         /// <summary>ดึงรายการผู้ให้บริการขนส่ง</summary>
-        Task<List<ShippingProvider>> GetShippingProvidersAsync(PlatformType platform, string accessToken, string? shopId = null);
+        Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            PlatformType platform,
+            string accessToken,
+            string? shopId = null,
+            bool throwOnApiError = false);
+
+        /// <summary>ทดสอบ credential และการเชื่อมต่อกับ Platform</summary>
+        Task<PlatformConnectionTestResult> TestConnectionAsync(
+            PlatformType platform,
+            string? shopId = null);
 
         /// <summary>ติดตามพัสดุ</summary>
         Task<TrackingInfo?> GetTrackingInfoAsync(

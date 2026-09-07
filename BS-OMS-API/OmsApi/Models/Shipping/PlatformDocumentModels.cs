@@ -8,8 +8,8 @@ public class EnsureWaybillRequest
     [Required]
     public PlatformType Platform { get; set; }
 
-    [Required, StringLength(128)]
-    public string ShopId { get; set; } = string.Empty;
+    [StringLength(128)]
+    public string? ShopId { get; set; }
 
     [Required, StringLength(128)]
     public string PlatformOrderId { get; set; } = string.Empty;
@@ -46,8 +46,8 @@ public class ReviewWaybillRequest
     [Required]
     public PlatformType Platform { get; set; }
 
-    [Required, StringLength(128)]
-    public string ShopId { get; set; } = string.Empty;
+    [StringLength(128)]
+    public string? ShopId { get; set; }
 
     [Required, StringLength(128)]
     public string PlatformOrderId { get; set; } = string.Empty;

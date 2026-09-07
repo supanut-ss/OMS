@@ -634,7 +634,10 @@ namespace OmsApi.Services.Implementation.Platforms
             }
         }
 
-        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId)
+        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            string accessToken,
+            string? shopId,
+            bool throwOnApiError = false)
         {
             _logger.LogInformation("🛒 Shopee: Getting shipping providers");
 
@@ -652,9 +655,17 @@ namespace OmsApi.Services.Implementation.Platforms
                 var response = await client.GetAsync(apiPath + queryParams);
                 var content = await response.Content.ReadAsStringAsync();
 
-                if (!response.IsSuccessStatusCode) return providers;
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (throwOnApiError)
+                        throw CreateShopeeException(content, $"HTTP_{(int)response.StatusCode}");
+                    return providers;
+                }
 
                 var json = JsonDocument.Parse(content);
+                var apiError = GetShopeeString(json.RootElement, "error");
+                if (throwOnApiError && !string.IsNullOrWhiteSpace(apiError))
+                    throw CreateShopeeException(content, apiError);
                 if (json.RootElement.TryGetProperty("response", out var resp) &&
                     resp.TryGetProperty("logistics_channel_list", out var channels))
                 {
@@ -670,9 +681,15 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
                 }
             }
+            catch (PlatformApiException) when (throwOnApiError)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Shopee: Error fetching shipping providers");
+                if (throwOnApiError)
+                    throw;
             }
 
             return providers;
@@ -701,6 +718,14 @@ namespace OmsApi.Services.Implementation.Platforms
                 .Select(x => x.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList() ?? new List<string>();
+
+            // Shopee's unsplit order must be queried with order_sn only. WMS
+            // may still send a saved package mapping from a previous retry,
+            // so discard it when the current order detail proves that Shopee
+            // has only one package.
+            if (detail != null && detail.Packages.Count <= 1)
+                requestedPackageNumbers.Clear();
+
             if (requestedPackageNumbers.Count > 0)
             {
                 var packages = requestedPackageNumbers.Select(packageNumber =>
@@ -739,7 +764,11 @@ namespace OmsApi.Services.Implementation.Platforms
                     !string.IsNullOrWhiteSpace(p.PackageId)))
                 {
                     package.TrackingNumber = await GetShopeeTrackingNumberAsync(
-                        client, accessToken, shopIdLong, orderId, package.PackageId);
+                        client,
+                        accessToken,
+                        shopIdLong,
+                        orderId,
+                        detail.Packages.Count > 1 ? package.PackageId : null);
                 }
 
                 // For a split order, an empty tracking number before Arrange
@@ -776,7 +805,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var trackingNumber = await GetShopeeTrackingNumberAsync(
                 client, accessToken, shopIdLong, orderId,
-                detail?.Packages.Count == 1 ? detail.Packages[0].PackageId : null);
+                detail?.Packages.Count > 1 ? detail.Packages[0].PackageId : null);
 
             if (detail != null && detail.Packages.Count > 0)
             {
@@ -848,12 +877,39 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
                 }
             }
+            catch (PlatformApiException ex) when (
+                !string.IsNullOrWhiteSpace(packageNumber) &&
+                IsShopeeUnsplitPackageError(ex))
+            {
+                // A stale WMS/platform mapping can make an unsplit order look
+                // packaged. Retry once without package_number as required by
+                // Shopee's logistics API.
+                _logger.LogInformation(
+                    "Shopee order {OrderId} is unsplit; retrying tracking without package_number {PackageNumber}",
+                    orderId,
+                    packageNumber);
+                return await GetShopeeTrackingNumberAsync(
+                    client, accessToken, shopId, orderId, null);
+            }
             catch (PlatformApiException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "⚠️ Shopee: Error resolving tracking for package {PackageNumber}", packageNumber);
             }
             return "";
+        }
+
+        private static bool IsShopeeUnsplitPackageError(PlatformApiException exception)
+        {
+            return exception.Code.Contains(
+                       "logistics.ship_order_not_need_pacakge_number",
+                       StringComparison.OrdinalIgnoreCase) ||
+                   exception.Message.Contains(
+                       "not_need_pacakge_number",
+                       StringComparison.OrdinalIgnoreCase) ||
+                   exception.Message.Contains(
+                       "don't request with package_number",
+                       StringComparison.OrdinalIgnoreCase);
         }
 
         private static PlatformApiException CreateShopeeException(string content, string fallbackCode)

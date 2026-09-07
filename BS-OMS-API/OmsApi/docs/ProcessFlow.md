@@ -316,7 +316,7 @@ flowchart TD
     NULL_T -->|Yes| OK_T["200 TrackingInfo\n{ TrackingNo, Carrier, Events[] }"]
 
     PROVIDERS --> LAZADA_CHECK{Platform?}
-    LAZADA_CHECK -->|"Lazada"| CALL_LAZADA_API["เรียก /logistics/buyer/providers\nLazada API (Real Call)"]
+    LAZADA_CHECK -->|"Lazada"| CALL_LAZADA_API["เรียก /shipment/providers/get\nLazada API (Real Call)"]
     CALL_LAZADA_API --> FALLBACK{Response\nว่างหรือ Error?}
     FALLBACK -->|Yes| HARDCODED["Fallback: LEX, Kerry,\nFlash, ThaiPost"]
     FALLBACK -->|No| MAPPED_P["Map provider_list JSON\n→ ShippingProvider[]"]
@@ -505,7 +505,7 @@ flowchart LR
 #### 🔧 Improvements
 
 - **แก้ไข `LazadaClient.GetShippingProvidersAsync`** — เปลี่ยนจาก hardcoded list เป็น real API call
-  - เรียก Lazada `/logistics/buyer/providers` endpoint จริง
+  - เรียก Lazada `/shipment/providers/get` endpoint จริง
   - Parse `data.provider_list[]` → map `provider_code`/`provider_name`/`is_active`
   - Fallback กลับ hardcoded list (LEX, Kerry, Flash, ThaiPost) เมื่อ API ไม่ตอบสนองหรือ response ว่าง
   - ไฟล์: `Services/Implementation/Platforms/LazadaClient.cs`

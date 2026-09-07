@@ -117,6 +117,7 @@ public class PlatformPackageService : IPlatformPackageService
         WmsPackageManifest manifest,
         CancellationToken cancellationToken = default)
     {
+        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
         var platformName = request.Platform.ToString();
         var shopId = request.ShopId.Trim();
         var platformOrderId = request.PlatformOrderId.Trim();
@@ -251,6 +252,7 @@ public class PlatformPackageService : IPlatformPackageService
         string error,
         CancellationToken cancellationToken = default)
     {
+        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
         var platformName = request.Platform.ToString();
         var shopId = request.ShopId.Trim();
         var orderId = request.PlatformOrderId.Trim();
@@ -277,6 +279,7 @@ public class PlatformPackageService : IPlatformPackageService
         SyncPlatformPackagesRequest request,
         CancellationToken cancellationToken = default)
     {
+        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
         var platformName = request.Platform.ToString();
         var result = new SyncPlatformPackagesResult
         {
@@ -483,6 +486,7 @@ public class PlatformPackageService : IPlatformPackageService
         TrackingInfo tracking,
         CancellationToken cancellationToken = default)
     {
+        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
         var manifest = await GetWmsPackageManifestAsync(
             request.CustomerOrderNumber, request.Platform, cancellationToken);
         if (manifest == null || manifest.Packages.Count == 0)
@@ -717,10 +721,11 @@ public class PlatformPackageService : IPlatformPackageService
 
     public async Task<List<PlatformPackageRecordResult>> GetPackagesAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         CancellationToken cancellationToken = default)
     {
+        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
         var rows = await _db.PlatformPackages
             .AsNoTracking()
             .Where(x => x.Platform == platform.ToString() &&

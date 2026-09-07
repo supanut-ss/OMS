@@ -125,6 +125,7 @@ dotnet run
 
 # 5. เปิด Swagger UI
 # http://localhost:5000/swagger
+# หน้าแรกของ OMS จะ redirect ไปยัง Swagger โดยอัตโนมัติ
 ```
 
 ---
@@ -134,26 +135,46 @@ dotnet run
 แก้ไขไฟล์ `.env` ในโฟลเดอร์ `OmsApi/`:
 
 ```env
+# ─── OMS / Database ─────────────────────────────────────
+ASPNETCORE_ENVIRONMENT=Development
+ASPNETCORE_URLS=http://+:5170
+OMS_API_KEY=<API key ที่ WMS ใช้เรียก OMS>
+OMS_DB_CONNECTION_STRING=<SQL Server connection string>
+# On Server use an absolute persistent folder and grant Modify to the OMS process.
+OMS_DATA_PROTECTION_KEYS_PATH=D:\ProgramData\BS-OMS\keys
+OMS_DATA_PROTECTION_APP_NAME=OmsApi
+# ST only; remove or leave unset in Production
+# OMS_ENABLE_SANDBOX_TOKEN_IMPORT=YES
+# CORS_ALLOWED_ORIGINS=http://localhost:3000,https://your-wms-host
+# WAYBILL_STORAGE_ROOT=./storage/waybills
+
 # ─── Shopee Open Platform ───────────────────────────────
 SHOPEE_PARTNER_ID=<Partner ID จาก Shopee Developer Console>
 SHOPEE_PARTNER_KEY=<Partner Key>
+SHOPEE_DEFAULT_SHOP_ID=<Shopee shop_id>
 SHOPEE_API_URL=https://partner.shopeemobile.com
 SHOPEE_REDIRECT_URL=http://localhost:5170/api/auth/shopee/callback
 
 # ─── Lazada Open Platform ───────────────────────────────
+LAZADA_DEFAULT_SHOP_ID=<Lazada seller_id หรือ shop cipher>
 LAZADA_APP_KEY=<App Key จาก Lazada Developer Console>
 LAZADA_APP_SECRET=<App Secret>
 LAZADA_API_URL=https://api.lazada.co.th/rest
+LAZADA_AUTH_API_URL=https://auth.lazada.com/rest
 LAZADA_AUTH_URL=https://auth.lazada.com/oauth/authorize
 LAZADA_REDIRECT_URL=http://localhost:5170/api/auth/lazada/callback
 
 # ─── TikTok Shop ────────────────────────────────────────
 TIKTOK_APP_KEY=<App Key จาก TikTok Partner Center>
 TIKTOK_APP_SECRET=<App Secret>
+TIKTOK_DEFAULT_SHOP_ID=<TikTok shop cipher>
 TIKTOK_API_URL=https://open-api.tiktokglobalshop.com
 TIKTOK_AUTH_URL=https://services.tiktokshop.com/open/authorize
+TIKTOK_AUTH_API_URL=https://auth.tiktok-shops.com
 TIKTOK_REDIRECT_URL=http://localhost:5170/api/auth/tiktok/callback
 ```
+
+`*_DEFAULT_SHOP_ID` เป็นตัวเลือกเริ่มต้นของ OMS เมื่อคำขอจาก WMS ไม่ระบุ `shopId` โดย OMS จะใช้ค่านี้ค้น credential ที่ active ในตาราง `dbo.t_interface_platform_credentials` และ refresh token เมื่อจำเป็น
 
 ### วิธีลงทะเบียน App Developer
 
@@ -190,6 +211,7 @@ TIKTOK_REDIRECT_URL=http://localhost:5170/api/auth/tiktok/callback
 | **Shipping** | `POST` | `/api/shipping/arrange` | จัดส่งสินค้า (Ship Order) |
 | **Shipping** | `GET` | `/api/shipping/tracking/{platform}/{orderId}` | ติดตามสถานะพัสดุ |
 | **Shipping** | `GET` | `/api/shipping/providers/{platform}` | ดูผู้ให้บริการขนส่งที่รองรับ |
+| **Shipping** | `GET` | `/api/shipping/test-connection/{platform}` | ทดสอบ credential และการเชื่อมต่อ Platform |
 | **Chat** | `GET` | `/api/chat/conversations` | 🔜 ดูรายการแชทจากทุกแพลตฟอร์ม |
 | **Chat** | `GET` | `/api/chat/conversations/{id}/messages` | 🔜 ดูข้อความในแชท |
 | **Chat** | `POST` | `/api/chat/conversations/{id}/send` | 🔜 ส่งข้อความ |
@@ -812,7 +834,7 @@ docker-compose up -d bs_oms_api
 | Component | Technology |
 |-----------|-----------|
 | Framework | .NET 9.0 Web API |
-| API Docs | Swagger / OpenAPI 3.0 |
+| API Docs | Swagger UI + OpenAPI 3.0 |
 | HTTP Client | `IHttpClientFactory` (Named Clients) |
 | Auth | HMAC-SHA256 Signature (per platform) |
 | Config | DotNetEnv (.env files) |

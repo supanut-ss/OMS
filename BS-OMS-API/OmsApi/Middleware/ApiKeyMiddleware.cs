@@ -17,9 +17,10 @@
 
         public async Task InvokeAsync(HttpContext context)
         {
-            // Skip Swagger UI and OpenAPI spec paths
+            // Skip API documentation UI and OpenAPI spec paths
             var path = context.Request.Path.Value ?? string.Empty;
             if (path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase) ||
                 IsOAuthBrowserPath(path))
             {

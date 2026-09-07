@@ -101,6 +101,22 @@ namespace OmsApi.Models.Shipping
     }
 
     /// <summary>
+    /// ผลการทดสอบ credential และการเรียก Platform API โดยไม่เปิดเผย token
+    /// </summary>
+    public class PlatformConnectionTestResult
+    {
+        public PlatformType Platform { get; set; }
+        public bool Connected { get; set; }
+        public bool CredentialFound { get; set; }
+        public string ShopId { get; set; } = string.Empty;
+        public int ShippingProviderCount { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string? ErrorCode { get; set; }
+        public string? RequestId { get; set; }
+        public DateTime CheckedAtUtc { get; set; }
+    }
+
+    /// <summary>
     /// ข้อมูลติดตามพัสดุ
     /// </summary>
     public class TrackingInfo

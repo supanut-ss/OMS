@@ -7,7 +7,7 @@ public interface IPlatformDocumentService
 {
     Task<List<PlatformDocumentResult>> EnsureWaybillsAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         IReadOnlyCollection<PlatformPackageRecordResult> packages,
         string shippingDocumentType = "NORMAL_AIR_WAYBILL",
@@ -15,13 +15,13 @@ public interface IPlatformDocumentService
 
     Task<List<PlatformDocumentResult>> GetDocumentsAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         CancellationToken cancellationToken = default);
 
     Task<PlatformDocumentFile?> GetFileAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         string? platformPackageId,
         bool markPrinted,

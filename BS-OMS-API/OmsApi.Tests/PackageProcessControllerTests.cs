@@ -245,7 +245,7 @@ public class PackageProcessControllerTests
                 Packages = packageResults
             });
         }
-        public Task<List<PlatformPackageRecordResult>> GetPackagesAsync(PlatformType platform, string shopId, string platformOrderId, CancellationToken cancellationToken = default)
+        public Task<List<PlatformPackageRecordResult>> GetPackagesAsync(PlatformType platform, string? shopId, string platformOrderId, CancellationToken cancellationToken = default)
             => Task.FromResult(new List<PlatformPackageRecordResult>());
     }
 
@@ -277,7 +277,14 @@ public class PackageProcessControllerTests
                     }).ToList()
             });
         }
-        public Task<List<ShippingProvider>> GetShippingProvidersAsync(PlatformType platform, string accessToken, string? shopId = null) => throw new NotSupportedException();
+        public Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            PlatformType platform,
+            string accessToken,
+            string? shopId = null,
+            bool throwOnApiError = false) => throw new NotSupportedException();
+        public Task<PlatformConnectionTestResult> TestConnectionAsync(
+            PlatformType platform,
+            string? shopId = null) => throw new NotSupportedException();
         public Task<TrackingInfo?> GetTrackingInfoAsync(
             PlatformType platform,
             string orderId,

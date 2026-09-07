@@ -157,8 +157,20 @@ namespace OmsApi.Controllers
                 HttpContext.RequestAborted);
             var pending = documents.Where(x => x.DocumentStatus != "READY").ToList();
             if (pending.Count > 0)
+            {
+                var details = string.Join("; ", pending.Select(x =>
+                {
+                    var package = string.IsNullOrWhiteSpace(x.PlatformPackageId)
+                        ? "order"
+                        : $"package {x.PlatformPackageId}";
+                    var error = string.IsNullOrWhiteSpace(x.Error)
+                        ? string.Empty
+                        : $" ({x.Error})";
+                    return $"{package}: {x.DocumentStatus}{error}";
+                }));
                 return BadRequest(ApiResponse<List<PlatformDocumentResult>>.Fail(
-                    "Waybill is not ready for every selected box. Please try again."));
+                    $"Waybill is not ready for every selected box. {details} Please try again."));
+            }
 
             using var merged = new PdfDocument();
             foreach (var package in selectedPackages)
@@ -1006,6 +1018,25 @@ namespace OmsApi.Controllers
             return Ok(ApiResponse<List<PlatformPackageRecordResult>>.Ok(
                 packages,
                 $"Found {packages.Count} saved packages"));
+        }
+
+        /// <summary>
+        /// ทดสอบ credential และการเชื่อมต่อ Platform โดยไม่เปิดเผย access token
+        /// </summary>
+        [HttpGet("test-connection/{platform}")]
+        [SwaggerOperation(Summary = "ทดสอบการเชื่อมต่อ Platform และ credential ที่บันทึกไว้")]
+        [SwaggerResponse(200, "Connection test result")]
+        public async Task<IActionResult> TestPlatformConnection(
+            PlatformType platform,
+            [FromQuery] string? shopId = null)
+        {
+            var result = await _shippingService.TestConnectionAsync(
+                platform,
+                shopId);
+            var message = result.Connected
+                ? $"{platform} connection succeeded."
+                : $"{platform} connection failed: {result.Message}";
+            return Ok(ApiResponse<PlatformConnectionTestResult>.Ok(result, message));
         }
 
         /// <summary>

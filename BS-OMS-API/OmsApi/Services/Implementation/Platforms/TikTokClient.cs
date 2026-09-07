@@ -557,6 +557,22 @@ namespace OmsApi.Services.Implementation.Platforms
                 : value.ToString();
         }
 
+        private static int ReadTikTokResultCode(JsonElement root)
+        {
+            if (!root.TryGetProperty("code", out var codeElement))
+                return -1;
+
+            if (codeElement.ValueKind == JsonValueKind.Number &&
+                codeElement.TryGetInt32(out var numericCode))
+            {
+                return numericCode;
+            }
+
+            return int.TryParse(codeElement.GetString(), out var stringCode)
+                ? stringCode
+                : -1;
+        }
+
         private static decimal GetDecimal(JsonElement element, string propertyName)
         {
             return decimal.TryParse(
@@ -1177,7 +1193,9 @@ namespace OmsApi.Services.Implementation.Platforms
                         : null;
                 }
                 if (string.IsNullOrWhiteSpace(packageId))
-                    return false;
+                    throw new InvalidOperationException(
+                        $"TikTok package_id was not available for order '{request.OrderId}'. " +
+                        "The order must be in Awaiting Shipment and have a package before arrange shipment.");
 
                 var apiPath = $"/fulfillment/202309/packages/{Uri.EscapeDataString(packageId)}/ship";
                 var handoverMethod = string.Equals(request.ShippingMethod, "dropoff", StringComparison.OrdinalIgnoreCase)
@@ -1212,17 +1230,25 @@ namespace OmsApi.Services.Implementation.Platforms
                 {
                     _logger.LogWarning("TikTok Ship Package failed: HTTP {StatusCode}: {Content}",
                         (int)resp.StatusCode, content);
-                    return false;
+                    throw CreateTikTokShippingException(
+                        $"HTTP_{(int)resp.StatusCode}",
+                        content);
                 }
                 using var json = JsonDocument.Parse(content);
                 var code = GetString(json.RootElement, "code");
                 if (!string.IsNullOrWhiteSpace(code) && code != "0")
                 {
+                    var message = GetString(json.RootElement, "message", "TikTok rejected the ship package request.");
+                    var requestId = GetString(json.RootElement, "request_id");
                     _logger.LogWarning("TikTok Ship Package rejected package {PackageId}: {Code} {Message}",
-                        packageId, code, GetString(json.RootElement, "message"));
-                    return false;
+                        packageId, code, message);
+                    throw new PlatformApiException("TikTok", code, message, requestId);
                 }
                 return true;
+            }
+            catch (PlatformApiException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -1231,7 +1257,29 @@ namespace OmsApi.Services.Implementation.Platforms
             }
         }
 
-        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId)
+        private static PlatformApiException CreateTikTokShippingException(
+            string code,
+            string responseBody,
+            string? requestId = null)
+        {
+            try
+            {
+                using var json = JsonDocument.Parse(responseBody);
+                var root = json.RootElement;
+                var message = GetString(root, "message", responseBody);
+                var responseRequestId = GetString(root, "request_id", requestId ?? string.Empty);
+                return new PlatformApiException("TikTok", code, message, responseRequestId);
+            }
+            catch (JsonException)
+            {
+                return new PlatformApiException("TikTok", code, responseBody, requestId);
+            }
+        }
+
+        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            string accessToken,
+            string? shopId,
+            bool throwOnApiError = false)
         {
             _logger.LogInformation("🎵 TikTok: Getting shipping providers");
             var client = _httpClientFactory.CreateClient("TikTok");
@@ -1254,9 +1302,29 @@ namespace OmsApi.Services.Implementation.Platforms
                     HttpMethod.Get, $"{apiPath}?{qs}", accessToken);
                 var resp = await client.SendAsync(req);
                 var content = await resp.Content.ReadAsStringAsync();
-                if (!resp.IsSuccessStatusCode) return providers;
+                if (!resp.IsSuccessStatusCode)
+                {
+                    if (throwOnApiError)
+                    {
+                        using var errorJson = JsonDocument.Parse(content);
+                        var errorRoot = errorJson.RootElement;
+                        throw new PlatformApiException(
+                            "TikTok",
+                            GetString(errorRoot, "code", $"HTTP_{(int)resp.StatusCode}"),
+                            GetString(errorRoot, "message", content),
+                            GetString(errorRoot, "request_id"));
+                    }
+                    return providers;
+                }
 
                 var json = JsonDocument.Parse(content);
+                var responseCode = GetString(json.RootElement, "code");
+                if (throwOnApiError && !string.IsNullOrWhiteSpace(responseCode) && responseCode != "0")
+                    throw new PlatformApiException(
+                        "TikTok",
+                        responseCode,
+                        GetString(json.RootElement, "message", "TikTok API rejected the request."),
+                        GetString(json.RootElement, "request_id"));
                 if (json.RootElement.TryGetProperty("data", out var data) &&
                     data.TryGetProperty("shipping_providers", out var sps))
                 {
@@ -1272,8 +1340,69 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
                 }
             }
-            catch (Exception ex) { _logger.LogError(ex, "❌ TikTok: Error fetching shipping providers"); }
+            catch (PlatformApiException) when (throwOnApiError)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ TikTok: Error fetching shipping providers");
+                if (throwOnApiError)
+                    throw;
+            }
             return providers;
+        }
+
+        public async Task<PlatformConnectionTestResult> TestConnectionAsync(
+            string accessToken,
+            string? shopId)
+        {
+            // Get Shipping Providers requires a delivery_option_id. Use the
+            // authorized-shops endpoint for a connection test instead; it
+            // validates the seller token and is not a mutating operation.
+            var apiPath = "/authorization/202309/shops";
+            var query = new Dictionary<string, string>
+            {
+                ["app_key"] = _appKey,
+                ["timestamp"] = DateTimeHelper.CurrentUnixTimestamp().ToString()
+            };
+            query["sign"] = SignatureHelper.GenerateTikTokSignature(_appSecret, apiPath, query);
+            var queryString = string.Join("&", query.Select(x =>
+                $"{x.Key}={Uri.EscapeDataString(x.Value)}"));
+
+            using var request = CreateAuthenticatedRequest(
+                HttpMethod.Get,
+                $"{apiPath}?{queryString}",
+                accessToken);
+            using var response = await _httpClientFactory.CreateClient("TikTok").SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(content);
+            var root = json.RootElement;
+            var code = ReadTikTokResultCode(root);
+            var requestId = GetString(root, "request_id");
+            var message = GetString(root, "message", response.ReasonPhrase ?? "Request failed.");
+            if (!response.IsSuccessStatusCode || code != 0)
+                throw new PlatformApiException(
+                    "TikTok",
+                    code == 0 ? $"HTTP_{(int)response.StatusCode}" : code.ToString(),
+                    message,
+                    requestId);
+
+            var shopCount = 0;
+            if (root.TryGetProperty("data", out var data) &&
+                data.TryGetProperty("shops", out var shops) &&
+                shops.ValueKind == JsonValueKind.Array)
+                shopCount = shops.GetArrayLength();
+
+            return new PlatformConnectionTestResult
+            {
+                Platform = PlatformType.TikTok,
+                Connected = true,
+                ShopId = shopId ?? string.Empty,
+                ShippingProviderCount = shopCount,
+                Message = $"TikTok API connection succeeded; {shopCount} authorized shop(s) returned.",
+                CheckedAtUtc = DateTime.UtcNow
+            };
         }
 
         public async Task<TrackingInfo?> GetTrackingInfoAsync(

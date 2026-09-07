@@ -44,6 +44,21 @@ public class ApiKeyMiddlewareTests
     }
 
     [Fact]
+    public async Task Invoke_WhenScalarPath_SkipsApiKeyCheck()
+    {
+        Environment.SetEnvironmentVariable("OMS_API_KEY", "valid-key");
+        bool nextCalled = false;
+        var middleware = new ApiKeyMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
+        var context = CreateContext();
+        context.Request.Path = "/scalar/";
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextCalled);
+        Environment.SetEnvironmentVariable("OMS_API_KEY", null);
+    }
+
+    [Fact]
     public async Task Invoke_WhenValidApiKey_AllowsRequest()
     {
         Environment.SetEnvironmentVariable("OMS_API_KEY", "my-secret-key");

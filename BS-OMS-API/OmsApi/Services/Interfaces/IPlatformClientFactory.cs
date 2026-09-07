@@ -53,7 +53,33 @@ namespace OmsApi.Services.Interfaces
             => throw new NotSupportedException($"{Platform} does not support order splitting through OMS yet.");
 
         /// <summary>ดึงรายการผู้ให้บริการขนส่ง</summary>
-        Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId);
+        Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            string accessToken,
+            string? shopId,
+            bool throwOnApiError = false);
+
+        /// <summary>
+        /// ทดสอบการเรียก API ที่ไม่แก้ไขข้อมูล โดยแต่ละ Platform สามารถ
+        /// override ให้ใช้ endpoint ที่เหมาะกับสิทธิ์ของตนเองได้
+        /// </summary>
+        async Task<PlatformConnectionTestResult> TestConnectionAsync(
+            string accessToken,
+            string? shopId)
+        {
+            var providers = await GetShippingProvidersAsync(
+                accessToken,
+                shopId,
+                throwOnApiError: true);
+            return new PlatformConnectionTestResult
+            {
+                Platform = Platform,
+                Connected = true,
+                ShopId = shopId ?? string.Empty,
+                ShippingProviderCount = providers.Count,
+                Message = "Platform API connection and credential validation succeeded.",
+                CheckedAtUtc = DateTime.UtcNow
+            };
+        }
 
         /// <summary>ดึงข้อมูลติดตามพัสดุ</summary>
         Task<TrackingInfo?> GetTrackingInfoAsync(

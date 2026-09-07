@@ -114,14 +114,20 @@ namespace OmsApi.Controllers
             }
         }
 
-        /// <summary>บันทึก token จาก Platform Sandbox แบบเข้ารหัส (Development เท่านั้น)</summary>
+        /// <summary>บันทึก token จาก Platform Sandbox แบบเข้ารหัส (Development หรือ ST ที่เปิดใช้งาน)</summary>
         [HttpPost("sandbox-token")]
-        [SwaggerOperation(Summary = "Import Platform Sandbox token (Development only)")]
+        [SwaggerOperation(Summary = "Import Platform Sandbox token (Development/ST only)")]
         [SwaggerResponse(200, "Sandbox credential encrypted and saved")]
-        [SwaggerResponse(404, "Endpoint is disabled outside Development")]
+        [SwaggerResponse(404, "Endpoint is disabled outside Development/ST")]
         public async Task<IActionResult> ImportSandboxToken([FromBody] SandboxTokenRequest request)
         {
-            if (!_environment.IsDevelopment())
+            var sandboxImportEnabled = _environment.IsDevelopment() ||
+                _environment.IsStaging() ||
+                string.Equals(
+                    Environment.GetEnvironmentVariable("OMS_ENABLE_SANDBOX_TOKEN_IMPORT")?.Trim(),
+                    "YES",
+                    StringComparison.OrdinalIgnoreCase);
+            if (!sandboxImportEnabled)
                 return NotFound();
 
             try

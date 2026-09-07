@@ -977,11 +977,17 @@ namespace OmsApi.Services.Implementation.Platforms
             }
         }
 
-        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(string accessToken, string? shopId)
+        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            string accessToken,
+            string? shopId,
+            bool throwOnApiError = false)
         {
             _logger.LogInformation("🏪 Lazada: Getting shipping providers");
             var client = _httpClientFactory.CreateClient("Lazada");
-            var apiPath = "/logistics/buyer/providers";
+            // Lazada Open Platform maps GetShipmentProviders to
+            // /shipment/providers/get. The old /logistics/buyer/providers
+            // path is not a valid LazOP API path and returns InvalidApiPath.
+            var apiPath = "/shipment/providers/get";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
 
             var parameters = new Dictionary<string, string>
@@ -999,9 +1005,37 @@ namespace OmsApi.Services.Implementation.Platforms
                 var resp = await client.GetAsync(BuildRequestUri(apiPath, qs));
                 var content = await resp.Content.ReadAsStringAsync();
 
+                if (!resp.IsSuccessStatusCode && throwOnApiError)
+                {
+                    var errorJson = TryParseJson(content);
+                    var errorCode = errorJson.HasValue
+                        ? GetLazadaString(errorJson.Value, "error_code", "errorCode", "code")
+                        : $"HTTP_{(int)resp.StatusCode}";
+                    var errorMessage = errorJson.HasValue
+                        ? GetLazadaString(errorJson.Value, "message", "error_msg", "errorMsg")
+                        : content;
+                    var requestId = errorJson.HasValue
+                        ? GetLazadaString(errorJson.Value, "request_id")
+                        : string.Empty;
+                    throw new PlatformApiException(
+                        "Lazada",
+                        string.IsNullOrWhiteSpace(errorCode) ? $"HTTP_{(int)resp.StatusCode}" : errorCode,
+                        string.IsNullOrWhiteSpace(errorMessage) ? "Request failed." : errorMessage,
+                        requestId);
+                }
+
                 if (resp.IsSuccessStatusCode)
                 {
                     var json = JsonDocument.Parse(content);
+                    var responseCode = GetLazadaString(json.RootElement, "code");
+                    if (throwOnApiError && !string.IsNullOrWhiteSpace(responseCode) && responseCode != "0")
+                    {
+                        throw new PlatformApiException(
+                            "Lazada",
+                            responseCode,
+                            GetLazadaString(json.RootElement, "message", "error_msg", "errorMsg"),
+                            GetLazadaString(json.RootElement, "request_id"));
+                    }
                     if (json.RootElement.TryGetProperty("data", out var data) &&
                         data.TryGetProperty("provider_list", out var list))
                     {
@@ -1022,9 +1056,15 @@ namespace OmsApi.Services.Implementation.Platforms
 
                 _logger.LogWarning("⚠️ Lazada: Could not fetch shipping providers from API, using fallback list. Response: {Status}", resp.StatusCode);
             }
+            catch (PlatformApiException) when (throwOnApiError)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "⚠️ Lazada: Error fetching shipping providers from API, using fallback list");
+                if (throwOnApiError)
+                    throw;
             }
 
             // Fallback: standard Thai shipping providers
@@ -1035,6 +1075,19 @@ namespace OmsApi.Services.Implementation.Platforms
                 new() { ProviderId = "Flash", Name = "Flash Express", Platform = PlatformType.Lazada, Enabled = true },
                 new() { ProviderId = "ThaiPost", Name = "Thailand Post", Platform = PlatformType.Lazada, Enabled = true }
             };
+        }
+
+        private static JsonElement? TryParseJson(string content)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(content);
+                return document.RootElement.Clone();
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
 
         public async Task<TrackingInfo?> GetTrackingInfoAsync(

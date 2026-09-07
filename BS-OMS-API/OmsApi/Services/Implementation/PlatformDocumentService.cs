@@ -31,12 +31,13 @@ public class PlatformDocumentService : IPlatformDocumentService
 
     public async Task<List<PlatformDocumentResult>> EnsureWaybillsAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         IReadOnlyCollection<PlatformPackageRecordResult> packages,
         string shippingDocumentType = "NORMAL_AIR_WAYBILL",
         CancellationToken cancellationToken = default)
     {
+        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
         if (packages.Count == 0)
             throw new InvalidOperationException("No platform packages were found for this order.");
         if (packages.Any(x => string.IsNullOrWhiteSpace(x.TrackingNumber)))
@@ -161,10 +162,11 @@ public class PlatformDocumentService : IPlatformDocumentService
 
     public async Task<List<PlatformDocumentResult>> GetDocumentsAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         CancellationToken cancellationToken = default)
     {
+        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
         var rows = await _db.PlatformDocuments.AsNoTracking()
             .Where(x => x.Platform == platform.ToString() &&
                         x.ShopId == shopId &&
@@ -176,12 +178,13 @@ public class PlatformDocumentService : IPlatformDocumentService
 
     public async Task<PlatformDocumentFile?> GetFileAsync(
         PlatformType platform,
-        string shopId,
+        string? shopId,
         string platformOrderId,
         string? platformPackageId,
         bool markPrinted,
         CancellationToken cancellationToken = default)
     {
+        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
         platformPackageId = NullIfWhiteSpace(platformPackageId);
         var document = await _db.PlatformDocuments.FirstOrDefaultAsync(x =>
                 x.Platform == platform.ToString() &&

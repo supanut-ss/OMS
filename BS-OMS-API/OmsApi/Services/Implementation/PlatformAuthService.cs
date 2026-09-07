@@ -107,8 +107,6 @@ namespace OmsApi.Services.Implementation
 
         public async Task<TokenInfo> ImportSandboxTokenAsync(PlatformType platform, SandboxTokenRequest request)
         {
-            if (platform != PlatformType.Shopee && platform != PlatformType.Lazada)
-                throw new ArgumentException("Sandbox token import currently supports Shopee and Lazada only.", nameof(request));
             if (string.IsNullOrWhiteSpace(request.AccessToken))
                 throw new ArgumentException("accessToken is required.", nameof(request));
             if (string.IsNullOrWhiteSpace(request.ShopId))

@@ -152,10 +152,86 @@ namespace OmsApi.Services.Implementation
             }
         }
 
-        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(PlatformType platform, string accessToken, string? shopId = null)
+        public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
+            PlatformType platform,
+            string accessToken,
+            string? shopId = null,
+            bool throwOnApiError = false)
         {
+            shopId = PlatformShopIdResolver.Resolve(platform, shopId);
             var client = _clientFactory.GetClient(platform);
-            return await client.GetShippingProvidersAsync(accessToken, shopId);
+            return await client.GetShippingProvidersAsync(accessToken, shopId, throwOnApiError);
+        }
+
+        public async Task<PlatformConnectionTestResult> TestConnectionAsync(
+            PlatformType platform,
+            string? shopId = null)
+        {
+            var checkedAt = DateTime.UtcNow;
+            var result = new PlatformConnectionTestResult
+            {
+                Platform = platform,
+                CheckedAtUtc = checkedAt
+            };
+
+            var resolved = await ResolveStoredCredentialAsync(platform, shopId);
+            result.ShopId = resolved.ShopId ?? string.Empty;
+            result.CredentialFound = resolved.Credential != null;
+            if (string.IsNullOrWhiteSpace(resolved.AccessToken))
+            {
+                result.Message = resolved.Credential == null
+                    ? $"No active {platform} credential was found for shop '{result.ShopId}'."
+                    : $"The stored {platform} credential could not be decrypted or refreshed.";
+                result.ErrorCode = "CREDENTIAL_NOT_FOUND";
+                return result;
+            }
+
+            var client = _clientFactory.GetClient(platform);
+            try
+            {
+                var connection = await client.TestConnectionAsync(
+                    resolved.AccessToken,
+                    resolved.ShopId);
+                result.Connected = connection.Connected;
+                result.ShippingProviderCount = connection.ShippingProviderCount;
+                result.Message = connection.Message;
+                return result;
+            }
+            catch (PlatformApiException ex) when (
+                resolved.Credential != null &&
+                IsInvalidAccessToken(ex) &&
+                CanRefresh(resolved.Credential))
+            {
+                var refreshToken = _tokenProtector.Unprotect(resolved.Credential.RefreshTokenEncrypted!);
+                var refreshed = await _authService.RefreshTokenAsync(
+                    platform,
+                    refreshToken,
+                    resolved.Credential.ShopId);
+                var connection = await client.TestConnectionAsync(
+                    refreshed.AccessToken,
+                    resolved.Credential.ShopId);
+                result.Connected = connection.Connected;
+                result.ShopId = resolved.Credential.ShopId;
+                result.ShippingProviderCount = connection.ShippingProviderCount;
+                result.Message = connection.Connected
+                    ? "Platform API connection succeeded after refreshing the access token."
+                    : connection.Message;
+                return result;
+            }
+            catch (PlatformApiException ex)
+            {
+                result.Message = ex.Message;
+                result.ErrorCode = ex.Code;
+                result.RequestId = ex.RequestId;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Platform connection test failed for {Platform}", platform);
+                result.Message = ex.Message;
+                result.ErrorCode = "CONNECTION_TEST_FAILED";
+                return result;
+            }
         }
 
         public async Task<TrackingInfo?> GetTrackingInfoAsync(

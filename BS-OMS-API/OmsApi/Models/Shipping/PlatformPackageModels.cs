@@ -48,8 +48,8 @@ public class ProcessPlatformPackagesRequest
     [Required]
     public PlatformType Platform { get; set; }
 
-    [Required, StringLength(128)]
-    public string ShopId { get; set; } = string.Empty;
+    [StringLength(128)]
+    public string? ShopId { get; set; }
 
     [Required, StringLength(128)]
     public string PlatformOrderId { get; set; } = string.Empty;
@@ -109,8 +109,8 @@ public class SyncPlatformPackagesRequest
     [Required]
     public PlatformType Platform { get; set; }
 
-    [Required, StringLength(128)]
-    public string ShopId { get; set; } = string.Empty;
+    [StringLength(128)]
+    public string? ShopId { get; set; }
 
     [Required, StringLength(128)]
     public string PlatformOrderId { get; set; } = string.Empty;
@@ -204,8 +204,8 @@ public class SyncPlatformTrackingRequest
     [StringLength(512)]
     public string? AccessToken { get; set; }
 
-    [Required, StringLength(128)]
-    public string ShopId { get; set; } = string.Empty;
+    [StringLength(128)]
+    public string? ShopId { get; set; }
 
     [Required, StringLength(128)]
     public string PlatformOrderId { get; set; } = string.Empty;
