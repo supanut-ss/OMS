@@ -4,6 +4,7 @@ using OmsApi.Extensions;
 using OmsApi.Services.Interfaces;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using OmsApi.Models.Orders;
 using OmsApi.Models.Persistence;
 
 namespace OmsApi.Services.Implementation
@@ -117,6 +118,173 @@ namespace OmsApi.Services.Implementation
                 return await client.ShipOrderAsync(request.AccessToken, request.ShopId, request);
             }
         }
+
+        public async Task ValidateOrderPackagesAsync(
+            PlatformType platform,
+            string orderId,
+            IReadOnlyCollection<WmsPackageManifestPackage> packages,
+            string? shopId = null)
+        {
+            if (platform is not (PlatformType.Shopee or PlatformType.Lazada or PlatformType.TikTok))
+                return;
+
+            var resolved = await ResolveStoredCredentialAsync(platform, shopId);
+            var accessToken = resolved.AccessToken
+                ?? throw new InvalidOperationException(
+                    $"No active {platform} credential was found for shop '{shopId}'.");
+            shopId = resolved.ShopId;
+            var client = _clientFactory.GetClient(platform);
+
+            UnifiedOrder? order;
+            try
+            {
+                order = await client.GetOrderDetailAsync(accessToken, shopId, orderId);
+            }
+            catch (PlatformApiException ex) when (
+                resolved.Credential != null && IsInvalidAccessToken(ex) && CanRefresh(resolved.Credential))
+            {
+                var refreshToken = _tokenProtector.Unprotect(resolved.Credential.RefreshTokenEncrypted!);
+                var refreshed = await _authService.RefreshTokenAsync(
+                    platform, refreshToken, resolved.Credential.ShopId);
+                order = await client.GetOrderDetailAsync(
+                    refreshed.AccessToken, resolved.Credential.ShopId, orderId);
+            }
+
+            if (order == null)
+                throw new InvalidOperationException(
+                    $"{platform} order '{orderId}' was not found.");
+            if (order.Items.Count == 0)
+                throw new InvalidOperationException(
+                    $"{platform} did not return order items for the order.");
+
+            if (platform == PlatformType.Shopee)
+                ValidateShopeeItemAllocation(order, packages);
+            else
+                ValidateMarketplaceItemAllocation(platform, order, packages);
+        }
+
+        private static void ValidateMarketplaceItemAllocation(
+            PlatformType platform,
+            UnifiedOrder order,
+            IReadOnlyCollection<WmsPackageManifestPackage> packages)
+        {
+            var wmsTotals = packages
+                .SelectMany(package => package.Items)
+                .GroupBy(item => NormalizeItemNumber(item.ItemNumber), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Sum(item => item.Quantity),
+                    StringComparer.OrdinalIgnoreCase);
+            if (wmsTotals.Count == 0 || wmsTotals.ContainsKey(string.Empty))
+                throw new InvalidOperationException(
+                    "Every WMS item must contain an item number.");
+            if (wmsTotals.Values.Any(quantity =>
+                    quantity <= 0 || quantity != decimal.Truncate(quantity)))
+                throw new InvalidOperationException(
+                    $"{platform} requires every WMS item quantity to be a positive whole number.");
+
+            var platformTotals = new Dictionary<string, decimal>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var orderItem in order.Items)
+            {
+                var matchingWmsItems = new[] { orderItem.Sku, orderItem.ItemId }
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(NormalizeItemNumber)
+                    .Where(wmsTotals.ContainsKey)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (matchingWmsItems.Count != 1)
+                {
+                    var identity = string.IsNullOrWhiteSpace(orderItem.Sku)
+                        ? orderItem.ItemId
+                        : orderItem.Sku;
+                    throw new InvalidOperationException(
+                        $"{platform} item '{identity}' could not be matched uniquely " +
+                        "to a WMS item by seller SKU or item ID.");
+                }
+
+                var itemNumber = matchingWmsItems[0];
+                platformTotals[itemNumber] =
+                    platformTotals.GetValueOrDefault(itemNumber) + orderItem.Quantity;
+            }
+
+            if (platformTotals.Count != wmsTotals.Count ||
+                wmsTotals.Any(item =>
+                    !platformTotals.TryGetValue(item.Key, out var quantity) ||
+                    quantity != item.Value))
+            {
+                var wmsSummary = string.Join(
+                    ", ",
+                    wmsTotals.OrderBy(item => item.Key)
+                        .Select(item => $"{item.Key}={item.Value}"));
+                var platformSummary = string.Join(
+                    ", ",
+                    platformTotals.OrderBy(item => item.Key)
+                        .Select(item => $"{item.Key}={item.Value}"));
+                throw new InvalidOperationException(
+                    $"WMS item quantities do not match the {platform} order. " +
+                    $"WMS: [{wmsSummary}]; {platform}: [{platformSummary}].");
+            }
+        }
+
+        private static void ValidateShopeeItemAllocation(
+            UnifiedOrder order,
+            IReadOnlyCollection<WmsPackageManifestPackage> packages)
+        {
+            var wmsTotals = packages
+                .SelectMany(package => package.Items)
+                .GroupBy(item => NormalizeItemNumber(item.ItemNumber), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Sum(item => item.Quantity),
+                    StringComparer.OrdinalIgnoreCase);
+
+            if (wmsTotals.Count == 0 || wmsTotals.ContainsKey(string.Empty))
+                throw new InvalidOperationException("Every WMS item must contain an item number.");
+            if (wmsTotals.Values.Any(quantity =>
+                    quantity <= 0 || quantity != decimal.Truncate(quantity)))
+                throw new InvalidOperationException(
+                    "Shopee requires every WMS item quantity to be a positive whole number.");
+
+            var platformTotals = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var orderItem in order.Items)
+            {
+                var matchingWmsItems = new[] { orderItem.Sku, orderItem.ItemId }
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(NormalizeItemNumber)
+                    .Where(wmsTotals.ContainsKey)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (matchingWmsItems.Count != 1)
+                {
+                    var identity = string.IsNullOrWhiteSpace(orderItem.Sku)
+                        ? orderItem.ItemId
+                        : orderItem.Sku;
+                    throw new InvalidOperationException(
+                        $"Shopee item '{identity}' could not be matched uniquely to a WMS item by seller SKU or item_id.");
+                }
+
+                var itemNumber = matchingWmsItems[0];
+                platformTotals[itemNumber] =
+                    platformTotals.GetValueOrDefault(itemNumber) + orderItem.Quantity;
+            }
+
+            if (platformTotals.Count != wmsTotals.Count ||
+                wmsTotals.Any(item =>
+                    !platformTotals.TryGetValue(item.Key, out var quantity) ||
+                    quantity != item.Value))
+            {
+                var wmsSummary = string.Join(", ", wmsTotals.OrderBy(x => x.Key)
+                    .Select(x => $"{x.Key}={x.Value}"));
+                var shopeeSummary = string.Join(", ", platformTotals.OrderBy(x => x.Key)
+                    .Select(x => $"{x.Key}={x.Value}"));
+                throw new InvalidOperationException(
+                    $"WMS item quantities do not match the Shopee order. WMS: [{wmsSummary}]; Shopee: [{shopeeSummary}].");
+            }
+        }
+
+        private static string NormalizeItemNumber(string? value) =>
+            (value ?? string.Empty).Trim().Replace(" ", string.Empty).ToUpperInvariant();
 
         public async Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request)
         {

@@ -96,6 +96,7 @@ public class ProcessPlatformPackageResult
     public decimal TotalQuantity { get; set; }
     public string? PlatformPackageId { get; set; }
     public string TrackingNumber { get; set; } = string.Empty;
+    public bool WaybillRequired { get; set; } = true;
     public string Status { get; set; } = "READY";
     public string? Error { get; set; }
 }
@@ -120,6 +121,12 @@ public class SyncPlatformPackagesRequest
 
     [Required, MinLength(1)]
     public List<SyncPlatformPackageRequest> Packages { get; set; } = new();
+
+    /// <summary>
+    /// Pending tracking may be saved in OMS for retry recovery, but WMS must
+    /// receive tracking numbers only after every package is complete.
+    /// </summary>
+    public bool PersistTrackingToWms { get; set; } = true;
 }
 
 public class SyncPlatformPackageRequest
@@ -174,6 +181,8 @@ public class PlatformPackageRecordResult
     public int BoxNumber { get; set; }
     public string? PlatformPackageId { get; set; }
     public string TrackingNumber { get; set; } = string.Empty;
+    public string? ShippingProviderId { get; set; }
+    public string? ShippingProviderName { get; set; }
     public string PackageStatus { get; set; } = string.Empty;
     public string SyncStatus { get; set; } = string.Empty;
     public string? Error { get; set; }
@@ -214,6 +223,8 @@ public class SyncPlatformTrackingRequest
     public string CustomerOrderNumber { get; set; } = string.Empty;
 
     public List<PlatformPackageMappingRequest> PackageMappings { get; set; } = new();
+
+    public bool PersistTrackingToWms { get; set; } = true;
 }
 
 public class PlatformPackageMappingRequest

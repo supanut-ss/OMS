@@ -165,8 +165,15 @@ public class PlatformPackageService : IPlatformPackageService
                 {
                     if (string.IsNullOrWhiteSpace(record.PlatformPackageId))
                     {
-                        record.PackageStatus = "PENDING";
-                        record.SyncStatus = "PENDING";
+                        if (!string.Equals(record.PackageStatus, "ARRANGED", StringComparison.OrdinalIgnoreCase))
+                        {
+                            record.PackageStatus = "PENDING";
+                            record.SyncStatus = "PENDING";
+                        }
+                        else
+                        {
+                            record.SyncStatus = "PROCESSING";
+                        }
                     }
                     else
                     {
@@ -187,6 +194,18 @@ public class PlatformPackageService : IPlatformPackageService
                     var oldItems = await _db.PlatformPackageItems
                         .Where(x => x.PlatformPackageRecordId == record.PlatformPackageRecordId)
                         .ToListAsync(cancellationToken);
+                    var packageIsFrozen =
+                        !string.IsNullOrWhiteSpace(record.PlatformPackageId) ||
+                        string.Equals(record.PackageStatus, "ARRANGED", StringComparison.OrdinalIgnoreCase) ||
+                        !string.IsNullOrWhiteSpace(record.TrackingNumber);
+                    if (packageIsFrozen &&
+                        oldItems.Count > 0 &&
+                        !SamePersistedItemQuantities(oldItems, package.Items))
+                    {
+                        throw new InvalidOperationException(
+                            $"WMS box {package.BoxNumber} was changed after its platform package was created or arranged. " +
+                            "Automatic split/arrange retry was stopped; manual recovery is required.");
+                    }
                     if (oldItems.Count > 0)
                         _db.PlatformPackageItems.RemoveRange(oldItems);
                 }
@@ -398,7 +417,12 @@ public class PlatformPackageService : IPlatformPackageService
                 if (!string.IsNullOrWhiteSpace(packageRequest.ShippingProviderName))
                     record.ShippingProviderName = packageRequest.ShippingProviderName.Trim();
 
-                if (!string.IsNullOrWhiteSpace(requestedStatus))
+                var preserveAcceptedShopeeArrange =
+                    request.Platform == PlatformType.Shopee &&
+                    !hasTracking &&
+                    !hasError &&
+                    string.Equals(record.PackageStatus, "ARRANGED", StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrWhiteSpace(requestedStatus) && !preserveAcceptedShopeeArrange)
                     record.PackageStatus = requestedStatus;
                 else if (hasTracking)
                     record.PackageStatus = "SHIPPED";
@@ -418,7 +442,9 @@ public class PlatformPackageService : IPlatformPackageService
                 // WMS owns the physical box. Keep its tracking_no in sync with
                 // the platform result, but never erase an existing value when
                 // the platform response is still pending.
-                if (hasTracking && !string.Equals(wmsMaster.TrackingNo, packageRequest.TrackingNumber, StringComparison.Ordinal))
+                if (request.PersistTrackingToWms &&
+                    hasTracking &&
+                    !string.Equals(wmsMaster.TrackingNo, packageRequest.TrackingNumber, StringComparison.Ordinal))
                 {
                     wmsMaster.TrackingNo = packageRequest.TrackingNumber;
                     wmsMaster.UpdateBy = SystemUser;
@@ -522,8 +548,8 @@ public class PlatformPackageService : IPlatformPackageService
         {
             // On retries, reuse a mapping that was already persisted instead
             // of forcing the caller to send the same package map again.
-            if (mappings.Count == 0)
-            {
+                if (mappings.Count == 0)
+                {
                 // First-time synchronization may not have a PlatformPackageId
                 // in OMS yet. Resolve a split Lazada/Seller Own Fleet response
                 // from the SKU and quantity on each platform package before
@@ -542,16 +568,21 @@ public class PlatformPackageService : IPlatformPackageService
                                 x.PlatformPackageId != null)
                     .ToListAsync(cancellationToken);
                 var savedByPlatformId = savedRecords
-                    .GroupBy(x => x.PlatformPackageId!, StringComparer.OrdinalIgnoreCase)
+                    .GroupBy(
+                        x => NormalizePackageId(request.Platform, x.PlatformPackageId!),
+                        StringComparer.OrdinalIgnoreCase)
                     .Where(x => x.Count() == 1)
                     .ToDictionary(x => x.Key, x => x.Single().OutboundSortMasterId, StringComparer.OrdinalIgnoreCase);
-                if (platformPackages.All(x => !string.IsNullOrWhiteSpace(x.PackageId) && savedByPlatformId.ContainsKey(x.PackageId)))
+                if (platformPackages.All(x =>
+                        !string.IsNullOrWhiteSpace(x.PackageId) &&
+                        savedByPlatformId.ContainsKey(NormalizePackageId(request.Platform, x.PackageId))))
                 {
                     mappings = platformPackages
                         .Select(x => new PlatformPackageMappingRequest
                         {
                             PlatformPackageId = x.PackageId,
-                            WmsPackageRef = savedByPlatformId[x.PackageId]
+                            WmsPackageRef = savedByPlatformId[
+                                NormalizePackageId(request.Platform, x.PackageId!)]
                         })
                         .ToList();
                 }
@@ -583,7 +614,7 @@ public class PlatformPackageService : IPlatformPackageService
             {
                 var platformPackageId = platformPackage.value.PackageId;
                 var mapping = mappings.FirstOrDefault(x =>
-                    string.Equals(x.PlatformPackageId, platformPackageId, StringComparison.OrdinalIgnoreCase));
+                    PackageIdsEqual(request.Platform, x.PlatformPackageId, platformPackageId));
                 if (mapping == null)
                     throw new InvalidOperationException(
                         $"No WMS mapping was supplied for platform package '{platformPackageId}'.");
@@ -601,6 +632,7 @@ public class PlatformPackageService : IPlatformPackageService
             ShopId = request.ShopId,
             PlatformOrderId = request.PlatformOrderId,
             CustomerOrderNumber = request.CustomerOrderNumber,
+            PersistTrackingToWms = request.PersistTrackingToWms,
             Packages = platformPackages.Select((platformPackage, index) => new SyncPlatformPackageRequest
             {
                 WmsPackageRef = assignments[PackageKey(platformPackage, index)],
@@ -616,6 +648,33 @@ public class PlatformPackageService : IPlatformPackageService
         };
 
         return await SyncPackagesAsync(syncRequest, cancellationToken);
+    }
+
+    private static bool PackageIdsEqual(
+        PlatformType platform,
+        string? left,
+        string? right)
+    {
+        if (string.Equals(left, right, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (platform != PlatformType.Lazada ||
+            string.IsNullOrWhiteSpace(left) ||
+            string.IsNullOrWhiteSpace(right))
+            return false;
+
+        return string.Equals(
+            NormalizePackageId(platform, left),
+            NormalizePackageId(platform, right),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizePackageId(PlatformType platform, string value)
+    {
+        var normalized = value.Trim();
+        return platform == PlatformType.Lazada &&
+               normalized.StartsWith("SOF_", StringComparison.OrdinalIgnoreCase)
+            ? normalized[4..]
+            : normalized;
     }
 
     private static bool TryBuildItemBasedMappings(
@@ -719,6 +778,25 @@ public class PlatformPackageService : IPlatformPackageService
     private static string NormalizeItemNumber(string value) =>
         value.Trim().Replace(" ", string.Empty).ToUpperInvariant();
 
+    private static bool SamePersistedItemQuantities(
+        IReadOnlyCollection<PlatformPackageItem> persistedItems,
+        IReadOnlyCollection<WmsPackageManifestItem> currentItems)
+    {
+        var persisted = persistedItems
+            .GroupBy(x => NormalizeItemNumber(x.ItemNumber), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                x => x.Key,
+                x => x.Sum(item => item.Quantity),
+                StringComparer.OrdinalIgnoreCase);
+        var current = currentItems
+            .GroupBy(x => NormalizeItemNumber(x.ItemNumber), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                x => x.Key,
+                x => x.Sum(item => item.Quantity),
+                StringComparer.OrdinalIgnoreCase);
+        return SameItemQuantities(persisted, current);
+    }
+
     public async Task<List<PlatformPackageRecordResult>> GetPackagesAsync(
         PlatformType platform,
         string? shopId,
@@ -746,6 +824,8 @@ public class PlatformPackageService : IPlatformPackageService
             BoxNumber = record.BoxNumber,
             PlatformPackageId = record.PlatformPackageId,
             TrackingNumber = record.TrackingNumber ?? string.Empty,
+            ShippingProviderId = record.ShippingProviderId,
+            ShippingProviderName = record.ShippingProviderName,
             PackageStatus = record.PackageStatus,
             SyncStatus = record.SyncStatus,
             Error = record.LastError

@@ -79,13 +79,21 @@ namespace OmsApi.Controllers
             if (packages.Count == 0)
                 return NotFound(ApiResponse<string>.Fail("No saved platform packages were found for this order."));
 
+            var packagesRequiringWaybill = packages
+                .Where(package => RequiresPrintableWaybill(request.Platform, package))
+                .ToList();
+            if (packagesRequiringWaybill.Count == 0)
+                return Ok(ApiResponse<List<PlatformDocumentResult>>.Ok(
+                    new List<PlatformDocumentResult>(),
+                    "Lazada SOF packages do not require a printable Waybill."));
+
             try
             {
                 var documents = await _platformDocumentService.EnsureWaybillsAsync(
                     request.Platform,
                     request.ShopId,
                     request.PlatformOrderId,
-                    packages,
+                    packagesRequiringWaybill,
                     request.ShippingDocumentType,
                     HttpContext.RequestAborted);
                 return Ok(ApiResponse<List<PlatformDocumentResult>>.Ok(
@@ -148,18 +156,35 @@ namespace OmsApi.Controllers
                 return BadRequest(ApiResponse<string>.Fail(
                     "One or more selected WMS boxes do not belong to this platform order."));
 
-            var documents = await _platformDocumentService.EnsureWaybillsAsync(
+            var printablePackages = selectedPackages
+                .Where(package => RequiresPrintableWaybill(request.Platform, package))
+                .ToList();
+            if (printablePackages.Count == 0)
+                return BadRequest(ApiResponse<string>.Fail(
+                    "The selected Lazada SOF boxes do not require a printable Waybill."));
+
+            var allDocuments = await _platformDocumentService.GetDocumentsAsync(
                 request.Platform,
                 request.ShopId,
                 request.PlatformOrderId,
-                selectedPackages,
-                request.ShippingDocumentType,
                 HttpContext.RequestAborted);
-            var pending = documents.Where(x => x.DocumentStatus != "READY").ToList();
+            var documents = printablePackages.Select(package =>
+                allDocuments.FirstOrDefault(document =>
+                    string.Equals(
+                        document.PlatformPackageId,
+                        package.PlatformPackageId,
+                        StringComparison.OrdinalIgnoreCase))).ToList();
+            var pending = documents
+                .Where(document =>
+                    document == null ||
+                    !string.Equals(document.DocumentStatus, "READY", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             if (pending.Count > 0)
             {
                 var details = string.Join("; ", pending.Select(x =>
                 {
+                    if (x == null)
+                        return "waybill document: MISSING";
                     var package = string.IsNullOrWhiteSpace(x.PlatformPackageId)
                         ? "order"
                         : $"package {x.PlatformPackageId}";
@@ -169,11 +194,11 @@ namespace OmsApi.Controllers
                     return $"{package}: {x.DocumentStatus}{error}";
                 }));
                 return BadRequest(ApiResponse<List<PlatformDocumentResult>>.Fail(
-                    $"Waybill is not ready for every selected box. {details} Please try again."));
+                    $"Waybill is not ready for every selected box that requires one. {details} Please try again."));
             }
 
             using var merged = new PdfDocument();
-            foreach (var package in selectedPackages)
+            foreach (var package in printablePackages)
             {
                 var file = await _platformDocumentService.GetFileAsync(
                     request.Platform,
@@ -318,10 +343,38 @@ namespace OmsApi.Controllers
                 return BadRequest(ApiResponse<string>.Fail(
                     $"Every WMS box must contain items with a positive quantity. Invalid boxes: {string.Join(", ", invalidBoxes)}."));
 
-            var result = await _platformPackageService.PreparePackagesAsync(
-                request,
-                manifest,
-                HttpContext.RequestAborted);
+            if (request.Platform is PlatformType.Shopee or PlatformType.Lazada or PlatformType.TikTok)
+            {
+                try
+                {
+                    await _shippingService.ValidateOrderPackagesAsync(
+                        request.Platform,
+                        request.PlatformOrderId,
+                        manifest.Packages,
+                        request.ShopId);
+                }
+                catch (PlatformApiException ex)
+                {
+                    return BadRequest(ApiResponse<string>.Fail(ex.Message));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(ApiResponse<string>.Fail(ex.Message));
+                }
+            }
+
+            ProcessPlatformPackagesResult result;
+            try
+            {
+                result = await _platformPackageService.PreparePackagesAsync(
+                    request,
+                    manifest,
+                    HttpContext.RequestAborted);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<string>.Fail(ex.Message));
+            }
 
             try
             {
@@ -329,13 +382,13 @@ namespace OmsApi.Controllers
                 IReadOnlyCollection<string>? knownPackageNumbers = null;
                 var lazadaPackedByOms = false;
                 var tiktokSplitByOms = false;
+                var savedPackages = await _platformPackageService.GetPackagesAsync(
+                    request.Platform,
+                    request.ShopId,
+                    request.PlatformOrderId,
+                    HttpContext.RequestAborted);
                 if (manifest.Packages.Count > 1)
                 {
-                    var savedPackages = await _platformPackageService.GetPackagesAsync(
-                        request.Platform,
-                        request.ShopId,
-                        request.PlatformOrderId,
-                        HttpContext.RequestAborted);
                     if (savedPackages.Count == manifest.Packages.Count &&
                         savedPackages.All(x => !string.IsNullOrWhiteSpace(x.PlatformPackageId)))
                     {
@@ -357,6 +410,7 @@ namespace OmsApi.Controllers
 
                 if (request.Platform == PlatformType.Shopee &&
                     manifest.Packages.Count > 1 &&
+                    splitMappings == null &&
                     (tracking?.Packages.Count ?? 0) <= 1)
                 {
                     var existingTracking = tracking?.Packages
@@ -533,39 +587,6 @@ namespace OmsApi.Controllers
                         knownPackageNumbers);
                 }
 
-                // Recovery for an order that Shopee split successfully before
-                // an earlier OMS request disconnected prior to saving mappings.
-                if (request.Platform == PlatformType.Shopee &&
-                    manifest.Packages.Count > 1 &&
-                    splitMappings == null &&
-                    tracking?.Packages.Count == manifest.Packages.Count &&
-                    tracking.Packages.All(x => !string.IsNullOrWhiteSpace(x.PackageId)))
-                {
-                    var orderedBoxes = manifest.Packages.OrderBy(x => x.BoxNumber).ToList();
-                    splitMappings = tracking.Packages.Select((package, index) =>
-                        new PlatformPackageMappingRequest
-                        {
-                            WmsPackageRef = orderedBoxes[index].WmsPackageRef,
-                            PlatformPackageId = package.PackageId
-                        }).ToList();
-                    knownPackageNumbers = splitMappings.Select(x => x.PlatformPackageId!).ToList();
-                    await _platformPackageService.SyncPackagesAsync(
-                        new SyncPlatformPackagesRequest
-                        {
-                            Platform = request.Platform,
-                            ShopId = request.ShopId,
-                            PlatformOrderId = request.PlatformOrderId,
-                            CustomerOrderNumber = request.CustomerOrderNumber,
-                            Packages = splitMappings.Select(mapping => new SyncPlatformPackageRequest
-                            {
-                                WmsPackageRef = mapping.WmsPackageRef,
-                                PlatformPackageId = mapping.PlatformPackageId,
-                                PackageStatus = "CREATED"
-                            }).ToList()
-                        },
-                        CancellationToken.None);
-                }
-
                 // Lazada can be split from its seller console. In that case
                 // the platform response already contains one package per WMS
                 // box, but the internal mapping has not been saved yet. Match
@@ -605,11 +626,80 @@ namespace OmsApi.Controllers
                         CancellationToken.None);
                 }
 
-                if (!HasCompleteTracking(tracking, manifest.Packages.Count))
+                if (request.Platform == PlatformType.Shopee &&
+                    manifest.Packages.Count > 1 &&
+                    splitMappings == null &&
+                    tracking?.Packages.Any(x => !string.IsNullOrWhiteSpace(x.PackageId)) == true)
+                {
+                    throw new InvalidOperationException(
+                        "Shopee packages exist, but OMS cannot map them safely to the current WMS boxes by SKU and quantity. " +
+                        "The order was not split or arranged again; manual recovery is required.");
+                }
+
+                // Never call Lazada's legacy Pack path when the platform
+                // already has packages but their item composition cannot be
+                // matched to the WMS boxes. Pack accepts order_item_id only
+                // and can otherwise re-pack the remaining lines into a
+                // different distribution (for example 3:1 instead of 2:2).
+                // The order must be repacked in Lazada (RecreatePackage) or a
+                // new pending order must be used before trying again.
+                if (request.Platform == PlatformType.Lazada &&
+                    manifest.Packages.Count > 1 &&
+                    splitMappings == null &&
+                    tracking?.Packages.Any(x => !string.IsNullOrWhiteSpace(x.PackageId)) == true)
+                {
+                    throw new InvalidOperationException(
+                        "Lazada package composition does not match the WMS boxes. " +
+                        "The existing Lazada package(s) were not repacked; use RecreatePackage in Lazada " +
+                        "or create a new pending order, then try again.");
+                }
+
+                if (request.Platform is PlatformType.Lazada or PlatformType.TikTok)
+                {
+                    var arrangedAnyPackage = await ArrangeNonShopeePackagesAsync(
+                        request,
+                        manifest,
+                        tracking,
+                        splitMappings,
+                        knownPackageNumbers,
+                        savedPackages);
+                    if (arrangedAnyPackage)
+                    {
+                        var pollAttempts = Math.Clamp(
+                            ReadPositiveIntEnvironment("PLATFORM_TRACKING_POLL_ATTEMPTS", 3),
+                            1,
+                            6);
+                        var pollDelaySeconds = Math.Clamp(
+                            ReadPositiveIntEnvironment("PLATFORM_TRACKING_POLL_DELAY_SECONDS", 3),
+                            1,
+                            5);
+                        for (var attempt = 1; attempt <= pollAttempts; attempt++)
+                        {
+                            await Task.Delay(
+                                TimeSpan.FromSeconds(pollDelaySeconds),
+                                HttpContext.RequestAborted);
+                            tracking = await _shippingService.GetTrackingInfoAsync(
+                                request.Platform,
+                                request.PlatformOrderId,
+                                null,
+                                request.ShopId,
+                                knownPackageNumbers);
+                            if (HasCompleteTracking(tracking, manifest.Packages.Count))
+                                break;
+                        }
+                    }
+                }
+
+                // Keep the proven Shopee arrange/retry path isolated from the
+                // platform-specific Lazada and TikTok fulfillment flows.
+                if (request.Platform == PlatformType.Shopee &&
+                    !HasCompleteTracking(tracking, manifest.Packages.Count))
                 {
                     var packagesToArrange = tracking?.Packages
                         .Where(x => !string.IsNullOrWhiteSpace(x.PackageId) &&
-                            (request.Platform != PlatformType.Shopee || ShopeePackageNeedsArrange(x.Status)))
+                            (request.Platform != PlatformType.Shopee ||
+                             (ShopeePackageNeedsArrange(x) &&
+                              !ShopeeArrangeWasAccepted(x, savedPackages, manifest))))
                         .ToList() ?? new List<ShippingPackage>();
                     if (packagesToArrange.Count == 0 && tiktokSplitByOms)
                     {
@@ -619,7 +709,9 @@ namespace OmsApi.Controllers
                             .ToList();
                     }
                     if (packagesToArrange.Count == 0 &&
-                        !(request.Platform == PlatformType.Shopee && manifest.Packages.Count > 1))
+                        !(request.Platform == PlatformType.Shopee && manifest.Packages.Count > 1) &&
+                        !(request.Platform == PlatformType.Shopee &&
+                          ShopeeSingleArrangeWasAccepted(savedPackages, manifest)))
                         packagesToArrange.Add(new ShippingPackage());
 
                     // Lazada's split branch has already called the new Pack
@@ -628,27 +720,94 @@ namespace OmsApi.Controllers
                     // into one package while Lazada is still propagating the
                     // package status, so only arrange when OMS did not just
                     // create the split packages.
-                    if (!lazadaPackedByOms)
+                    var lazadaAlreadyHasPackages = request.Platform == PlatformType.Lazada &&
+                        tracking?.Packages.Any(x => !string.IsNullOrWhiteSpace(x.PackageId)) == true;
+                    if (!lazadaPackedByOms && !lazadaAlreadyHasPackages)
                     {
                         foreach (var package in packagesToArrange)
                         {
-                            var arranged = await _shippingService.ShipOrderAsync(new ShipOrderRequest
+                            bool arranged;
+                            try
                             {
-                                Platform = request.Platform,
-                                ShopId = request.ShopId,
-                                OrderId = request.PlatformOrderId,
-                                PackageId = string.IsNullOrWhiteSpace(package.PackageId) ? null : package.PackageId,
-                                ShippingMethod = "dropoff"
-                            });
+                                arranged = await _shippingService.ShipOrderAsync(new ShipOrderRequest
+                                {
+                                    Platform = request.Platform,
+                                    ShopId = request.ShopId,
+                                    OrderId = request.PlatformOrderId,
+                                    PackageId = string.IsNullOrWhiteSpace(package.PackageId) ? null : package.PackageId,
+                                    ShippingMethod = "dropoff"
+                                });
+                            }
+                            catch (PlatformApiException ex) when (
+                                request.Platform == PlatformType.Shopee &&
+                                IsShopeeAlreadyArrangedError(ex))
+                            {
+                                // Arrange is idempotent for the purpose of
+                                // this workflow. If Seller Center/another
+                                // retry already arranged the package, continue
+                                // polling for the tracking number instead of
+                                // marking the WMS package as failed.
+                                _logger.LogInformation(
+                                    "Shopee package {PackageId} was already arranged for order {OrderId}; continuing to poll tracking",
+                                    package.PackageId ?? "(order)",
+                                    request.PlatformOrderId);
+                                arranged = true;
+                            }
                             if (!arranged)
                                 throw new InvalidOperationException(
                                     $"{request.Platform} did not accept the arrange shipment request.");
+
+                            if (request.Platform == PlatformType.Shopee)
+                            {
+                                var mappedRef = ResolveShopeeWmsPackageRef(
+                                    package, splitMappings, manifest);
+                                await _platformPackageService.SyncPackagesAsync(
+                                    new SyncPlatformPackagesRequest
+                                    {
+                                        Platform = request.Platform,
+                                        ShopId = request.ShopId,
+                                        PlatformOrderId = request.PlatformOrderId,
+                                        CustomerOrderNumber = request.CustomerOrderNumber,
+                                        PersistTrackingToWms = false,
+                                        Packages =
+                                        {
+                                            new SyncPlatformPackageRequest
+                                            {
+                                                WmsPackageRef = mappedRef,
+                                                PlatformPackageId = string.IsNullOrWhiteSpace(package.PackageId)
+                                                    ? null
+                                                    : package.PackageId,
+                                                PackageStatus = "ARRANGED"
+                                            }
+                                        }
+                                    },
+                                    CancellationToken.None);
+                            }
                         }
                     }
 
-                    for (var attempt = 1; attempt <= 3; attempt++)
+                    // Shopee may accept ship_order while its logistics service
+                    // is still issuing the AWB asynchronously. Poll briefly
+                    // within the WMS HTTP request, then return PROCESSING so
+                    // WMS can retry. Holding this request for minutes exceeds
+                    // HttpClient/IIS timeouts and surfaces as "A task was
+                    // canceled" on the WMS side. Package mappings are reused;
+                    // split_order is never called again during this loop.
+                    // The upper bounds also protect the request when an old
+                    // server environment still contains 10 x 30-second values.
+                    var pollAttempts = Math.Clamp(
+                        ReadPositiveIntEnvironment("SHOPEE_TRACKING_POLL_ATTEMPTS", 3),
+                        1,
+                        6);
+                    var pollDelaySeconds = Math.Clamp(
+                        ReadPositiveIntEnvironment("SHOPEE_TRACKING_POLL_DELAY_SECONDS", 3),
+                        1,
+                        5);
+                    for (var attempt = 1; attempt <= pollAttempts; attempt++)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(attempt), HttpContext.RequestAborted);
+                        await Task.Delay(
+                            TimeSpan.FromSeconds(pollDelaySeconds),
+                            HttpContext.RequestAborted);
                         tracking = await _shippingService.GetTrackingInfoAsync(
                             request.Platform,
                             request.PlatformOrderId,
@@ -683,7 +842,8 @@ namespace OmsApi.Controllers
                             ShopId = request.ShopId,
                             PlatformOrderId = request.PlatformOrderId,
                             CustomerOrderNumber = request.CustomerOrderNumber,
-                            PackageMappings = pendingMappings
+                            PackageMappings = pendingMappings,
+                            PersistTrackingToWms = false
                         },
                         tracking,
                         CancellationToken.None);
@@ -698,14 +858,21 @@ namespace OmsApi.Controllers
                         package.PlatformPackageId = pending.PlatformPackageId;
                         package.TrackingNumber = pending.TrackingNumber;
                         package.Status = "PROCESSING";
-                        package.Error = null;
+                        package.Error = string.IsNullOrWhiteSpace(pending.PackageStatus)
+                            ? null
+                            : $"Shopee package status: {pending.PackageStatus}; tracking number is not issued yet.";
                         return package;
                     }).ToList();
 
+                    var pendingDetails = string.Join("; ", pendingResult.Packages
+                        .Where(x => string.IsNullOrWhiteSpace(x.TrackingNumber))
+                        .Select(x =>
+                            $"box {x.BoxNumber}: {(string.IsNullOrWhiteSpace(x.PackageStatus) ? "status unknown" : x.PackageStatus)}"));
                     return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
                         result,
                         $"{request.Platform} has not issued tracking numbers for every package yet. " +
-                        "The package mapping was saved; please try Get Tracking No again shortly."));
+                        "The package mapping was saved; please try Get Tracking No again shortly." +
+                        (string.IsNullOrWhiteSpace(pendingDetails) ? string.Empty : $" ({pendingDetails})")));
                 }
                 var duplicateTrackingNumbers = platformPackages
                     .GroupBy(x => x.TrackingNumber.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -733,12 +900,46 @@ namespace OmsApi.Controllers
                         ShopId = request.ShopId,
                         PlatformOrderId = request.PlatformOrderId,
                         CustomerOrderNumber = request.CustomerOrderNumber,
-                        PackageMappings = mappings
+                        PackageMappings = mappings,
+                        // WMS commits tracking only after OMS returns
+                        // COMPLETED, which also guarantees a printable
+                        // waybill. Until then keep the tracking in OMS for
+                        // retry recovery.
+                        PersistTrackingToWms = request.Platform switch
+                        {
+                            PlatformType.Shopee => false,
+                            PlatformType.Lazada => false,
+                            PlatformType.TikTok => false,
+                            _ => true
+                        }
                     },
                     tracking,
                     CancellationToken.None);
 
-                result.Stage = syncResult.SucceededPackages == syncResult.TotalPackages
+                var hasAllSyncedPackages =
+                    syncResult.TotalPackages == manifest.Packages.Count &&
+                    syncResult.Packages.Count == manifest.Packages.Count;
+                var syncedTrackingNumbers = syncResult.Packages
+                    .Select(package => package.TrackingNumber?.Trim())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Cast<string>()
+                    .ToList();
+                var hasAllSyncedTracking =
+                    hasAllSyncedPackages &&
+                    syncedTrackingNumbers.Count == manifest.Packages.Count &&
+                    syncedTrackingNumbers.Distinct(StringComparer.OrdinalIgnoreCase).Count() ==
+                        manifest.Packages.Count;
+                var hasAllRequiredPackageIds = request.Platform switch
+                {
+                    PlatformType.Shopee or PlatformType.Lazada or PlatformType.TikTok =>
+                        hasAllSyncedPackages &&
+                        syncResult.Packages.All(package =>
+                            !string.IsNullOrWhiteSpace(package.PlatformPackageId)),
+                    _ => true
+                };
+                result.Stage = syncResult.SucceededPackages == syncResult.TotalPackages &&
+                               hasAllSyncedTracking &&
+                               hasAllRequiredPackageIds
                     ? "COMPLETED"
                     : "PROCESSING";
                 result.Packages = result.Packages.Select(package =>
@@ -748,33 +949,184 @@ namespace OmsApi.Controllers
                     package.PlatformPackageRecordId = synced.PlatformPackageRecordId;
                     package.PlatformPackageId = synced.PlatformPackageId;
                     package.TrackingNumber = synced.TrackingNumber;
+                    package.WaybillRequired = RequiresPrintableWaybill(request.Platform, synced);
                     package.Status = synced.SyncStatus;
                     package.Error = synced.Error;
                     return package;
                 }).ToList();
 
-                if (result.Stage == "COMPLETED" &&
-                    request.Platform == PlatformType.Shopee &&
-                    _platformDocumentService != null)
+                if (!hasAllRequiredPackageIds)
                 {
-                    // Tracking is already durable at this point. Waybill creation
-                    // is best-effort and must never roll tracking back.
+                    result.Packages = result.Packages.Select(package =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(package.PlatformPackageId))
+                            return package;
+                        package.Status = "PROCESSING";
+                        package.Error =
+                            $"{request.Platform} has not returned a platform_package_id for this box yet.";
+                        return package;
+                    }).ToList();
+                }
+
+                if (result.Stage == "COMPLETED" &&
+                    request.Platform == PlatformType.Shopee)
+                {
+                    // The WMS scope ends only when every box has both a tracking
+                    // number and a printable waybill. Tracking alone must not be
+                    // reported as COMPLETED/PROCESSED because that lets the WMS
+                    // workflow move on while the label is still pending.
+                    if (_platformDocumentService == null)
+                    {
+                        result.Stage = "PROCESSING";
+                        result.Packages = result.Packages.Select(package =>
+                        {
+                            package.Status = "PROCESSING";
+                            package.Error = "Waybill service is unavailable; tracking was saved. Retry Get Tracking No.";
+                            return package;
+                        }).ToList();
+                        return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                            result,
+                            "Tracking numbers were saved, but the waybill service is unavailable. Please try again."));
+                    }
+
                     try
                     {
-                        await _platformDocumentService.EnsureWaybillsAsync(
+                        var waybills = await _platformDocumentService.EnsureWaybillsAsync(
                             request.Platform,
                             request.ShopId,
                             request.PlatformOrderId,
                             syncResult.Packages,
                             "NORMAL_AIR_WAYBILL",
                             CancellationToken.None);
+
+                        var pendingWaybills = waybills
+                            .Where(x => !string.Equals(x.DocumentStatus, "READY", StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                        if (pendingWaybills.Count > 0)
+                        {
+                            result.Stage = "PROCESSING";
+                            result.Packages = result.Packages.Select(package =>
+                            {
+                                var document = pendingWaybills.FirstOrDefault(x =>
+                                    string.Equals(x.PlatformPackageId, package.PlatformPackageId,
+                                        StringComparison.OrdinalIgnoreCase));
+                                if (document == null) return package;
+                                package.Status = "PROCESSING";
+                                package.Error = string.IsNullOrWhiteSpace(document.Error)
+                                    ? $"Waybill is {document.DocumentStatus}; retry Get Tracking No."
+                                    : document.Error;
+                                return package;
+                            }).ToList();
+
+                            return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                                result,
+                                "Tracking numbers were saved, but waybill is not ready for every box. Please try Get Tracking No again."));
+                        }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning(
                             ex,
-                            "Tracking completed but automatic waybill creation failed for order {OrderId}",
+                            "Tracking completed but automatic waybill creation failed for order {OrderId}; keeping workflow in PROCESSING",
                             request.PlatformOrderId);
+                        result.Stage = "PROCESSING";
+                        result.Packages = result.Packages.Select(package =>
+                        {
+                            package.Status = "PROCESSING";
+                            package.Error = "Waybill is not ready; tracking was saved. Retry Get Tracking No.";
+                            return package;
+                        }).ToList();
+                        return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                            result,
+                            "Tracking numbers were saved, but waybill is not ready. Please try Get Tracking No again."));
+                    }
+                }
+
+                var packagesRequiringWaybill = syncResult.Packages
+                    .Where(package => RequiresPrintableWaybill(request.Platform, package))
+                    .ToList();
+                var waybillPackageRefs = packagesRequiringWaybill
+                    .Select(package => package.WmsPackageRef)
+                    .ToHashSet();
+
+                if (result.Stage == "COMPLETED" &&
+                    (request.Platform is PlatformType.Lazada or PlatformType.TikTok) &&
+                    packagesRequiringWaybill.Count > 0)
+                {
+                    if (_platformDocumentService == null)
+                    {
+                        result.Stage = "PROCESSING";
+                        result.Packages = result.Packages.Select(package =>
+                        {
+                            if (!waybillPackageRefs.Contains(package.WmsPackageRef))
+                                return package;
+                            package.Status = "PROCESSING";
+                            package.Error =
+                                "Waybill service is unavailable; retry Get Tracking No.";
+                            return package;
+                        }).ToList();
+                        return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                            result,
+                            "Tracking numbers were saved in OMS, but the waybill service is unavailable. Please try again."));
+                    }
+
+                    try
+                    {
+                        var waybills = await _platformDocumentService.EnsureWaybillsAsync(
+                            request.Platform,
+                            request.ShopId,
+                            request.PlatformOrderId,
+                            packagesRequiringWaybill,
+                            "NORMAL_AIR_WAYBILL",
+                            CancellationToken.None);
+                        var pendingWaybills = waybills
+                            .Where(document => !string.Equals(
+                                document.DocumentStatus,
+                                "READY",
+                                StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                        if (pendingWaybills.Count > 0)
+                        {
+                            result.Stage = "PROCESSING";
+                            result.Packages = result.Packages.Select(package =>
+                            {
+                                var document = pendingWaybills.FirstOrDefault(candidate =>
+                                    PlatformPackageIdsEqual(
+                                        request.Platform,
+                                        candidate.PlatformPackageId,
+                                        package.PlatformPackageId));
+                                if (document == null) return package;
+                                package.Status = "PROCESSING";
+                                package.Error = string.IsNullOrWhiteSpace(document.Error)
+                                    ? $"Waybill is {document.DocumentStatus}; retry Get Tracking No."
+                                    : document.Error;
+                                return package;
+                            }).ToList();
+                            return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                                result,
+                                "Tracking numbers were saved in OMS, but waybill is not ready for every applicable box. Please try Get Tracking No again."));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "{Platform} tracking completed but automatic waybill creation failed for order {OrderId}; keeping workflow in PROCESSING",
+                            request.Platform,
+                            request.PlatformOrderId);
+                        result.Stage = "PROCESSING";
+                        result.Packages = result.Packages.Select(package =>
+                        {
+                            if (!waybillPackageRefs.Contains(package.WmsPackageRef))
+                                return package;
+                            package.Status = "PROCESSING";
+                            package.Error =
+                                "Waybill is not ready; tracking was saved in OMS. Retry Get Tracking No.";
+                            return package;
+                        }).ToList();
+                        return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                            result,
+                            "Tracking numbers were saved in OMS, but waybill is not ready. Please try Get Tracking No again."));
                     }
                 }
 
@@ -795,6 +1147,238 @@ namespace OmsApi.Controllers
                     request, ex.Message, CancellationToken.None);
                 return BadRequest(ApiResponse<string>.Fail(ex.Message));
             }
+        }
+
+        private async Task<bool> ArrangeNonShopeePackagesAsync(
+            ProcessPlatformPackagesRequest request,
+            WmsPackageManifest manifest,
+            TrackingInfo? tracking,
+            IReadOnlyCollection<PlatformPackageMappingRequest>? mappings,
+            IReadOnlyCollection<string>? knownPackageNumbers,
+            IReadOnlyCollection<PlatformPackageRecordResult> savedPackages)
+        {
+            if (request.Platform == PlatformType.Shopee)
+                throw new InvalidOperationException(
+                    "Shopee must use its dedicated arrange shipment flow.");
+
+            var packagesToArrange = tracking?.Packages
+                .Where(package => !string.IsNullOrWhiteSpace(package.PackageId) &&
+                    NonShopeePackageNeedsArrange(request.Platform, package) &&
+                    !NonShopeeArrangeWasAccepted(
+                        request.Platform, package, savedPackages, manifest))
+                .ToList() ?? new List<ShippingPackage>();
+
+            if (packagesToArrange.Count == 0 &&
+                (tracking?.Packages.Count ?? 0) == 0 &&
+                knownPackageNumbers?.Count > 0)
+            {
+                packagesToArrange = knownPackageNumbers
+                    .Where(packageId => !string.IsNullOrWhiteSpace(packageId))
+                    .Where(packageId => !savedPackages.Any(saved =>
+                        PlatformPackageIdsEqual(
+                            request.Platform,
+                            saved.PlatformPackageId,
+                            packageId) &&
+                        string.Equals(
+                            saved.PackageStatus,
+                            "ARRANGED",
+                            StringComparison.OrdinalIgnoreCase)))
+                    .Select(packageId => new ShippingPackage { PackageId = packageId })
+                    .ToList();
+            }
+
+            if (packagesToArrange.Count == 0 &&
+                manifest.Packages.Count == 1 &&
+                !HasCompleteTracking(tracking, 1) &&
+                !savedPackages.Any(saved =>
+                    saved.WmsPackageRef == manifest.Packages[0].WmsPackageRef &&
+                    string.Equals(
+                        saved.PackageStatus,
+                        "ARRANGED",
+                        StringComparison.OrdinalIgnoreCase)))
+            {
+                packagesToArrange.Add(new ShippingPackage());
+            }
+
+            foreach (var package in packagesToArrange)
+            {
+                var arranged = await _shippingService.ShipOrderAsync(new ShipOrderRequest
+                {
+                    Platform = request.Platform,
+                    ShopId = request.ShopId,
+                    OrderId = request.PlatformOrderId,
+                    PackageId = string.IsNullOrWhiteSpace(package.PackageId)
+                        ? null
+                        : package.PackageId,
+                    ShippingMethod = "dropoff"
+                });
+                if (!arranged)
+                    throw new InvalidOperationException(
+                        $"{request.Platform} did not accept the arrange shipment request.");
+
+                var mappedRef = ResolveNonShopeeWmsPackageRef(
+                    request.Platform,
+                    package,
+                    mappings,
+                    manifest);
+                await _platformPackageService.SyncPackagesAsync(
+                    new SyncPlatformPackagesRequest
+                    {
+                        Platform = request.Platform,
+                        ShopId = request.ShopId,
+                        PlatformOrderId = request.PlatformOrderId,
+                        CustomerOrderNumber = request.CustomerOrderNumber,
+                        PersistTrackingToWms = false,
+                        Packages =
+                        {
+                            new SyncPlatformPackageRequest
+                            {
+                                WmsPackageRef = mappedRef,
+                                PlatformPackageId =
+                                    string.IsNullOrWhiteSpace(package.PackageId)
+                                        ? null
+                                        : package.PackageId,
+                                PackageStatus = "ARRANGED"
+                            }
+                        }
+                    },
+                    CancellationToken.None);
+            }
+
+            return packagesToArrange.Count > 0;
+        }
+
+        private static bool NonShopeePackageNeedsArrange(
+            PlatformType platform,
+            ShippingPackage package)
+        {
+            var status = (package.Status ?? string.Empty).Trim().ToUpperInvariant();
+            if (platform == PlatformType.Lazada)
+                return status is "" or "PACKED" or "REPACKED";
+
+            if (platform == PlatformType.TikTok)
+            {
+                if (!string.IsNullOrWhiteSpace(package.TrackingNumber))
+                    return false;
+                return status is not ("PROCESSING" or "AWAITING_COLLECTION" or
+                    "COLLECTED" or "SHIPPED" or "IN_TRANSIT" or "DELIVERED" or
+                    "COMPLETED");
+            }
+
+            throw new InvalidOperationException(
+                $"Unsupported non-Shopee arrange platform '{platform}'.");
+        }
+
+        private static bool NonShopeeArrangeWasAccepted(
+            PlatformType platform,
+            ShippingPackage package,
+            IReadOnlyCollection<PlatformPackageRecordResult> savedPackages,
+            WmsPackageManifest manifest)
+        {
+            if (manifest.Packages.Count == 1)
+            {
+                var packageRef = manifest.Packages[0].WmsPackageRef;
+                return savedPackages.Any(saved =>
+                    saved.WmsPackageRef == packageRef &&
+                    string.Equals(
+                        saved.PackageStatus,
+                        "ARRANGED",
+                        StringComparison.OrdinalIgnoreCase));
+            }
+
+            return !string.IsNullOrWhiteSpace(package.PackageId) &&
+                   savedPackages.Any(saved =>
+                       PlatformPackageIdsEqual(
+                           platform,
+                           saved.PlatformPackageId,
+                           package.PackageId) &&
+                       string.Equals(
+                           saved.PackageStatus,
+                           "ARRANGED",
+                           StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static Guid ResolveNonShopeeWmsPackageRef(
+            PlatformType platform,
+            ShippingPackage package,
+            IReadOnlyCollection<PlatformPackageMappingRequest>? mappings,
+            WmsPackageManifest manifest)
+        {
+            if (manifest.Packages.Count == 1)
+                return manifest.Packages[0].WmsPackageRef;
+
+            var mapping = mappings?.SingleOrDefault(candidate =>
+                PlatformPackageIdsEqual(
+                    platform,
+                    candidate.PlatformPackageId,
+                    package.PackageId));
+            if (mapping == null || mapping.WmsPackageRef == Guid.Empty)
+                throw new InvalidOperationException(
+                    $"No durable WMS mapping exists for {platform} package '{package.PackageId}'.");
+            return mapping.WmsPackageRef;
+        }
+
+        private static bool PlatformPackageIdsEqual(
+            PlatformType platform,
+            string? left,
+            string? right)
+        {
+            if (string.Equals(left, right, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (platform != PlatformType.Lazada ||
+                string.IsNullOrWhiteSpace(left) ||
+                string.IsNullOrWhiteSpace(right))
+                return false;
+
+            static string NormalizeLazadaPackageId(string value)
+            {
+                var normalized = value.Trim();
+                return normalized.StartsWith(
+                    "SOF_",
+                    StringComparison.OrdinalIgnoreCase)
+                    ? normalized[4..]
+                    : normalized;
+            }
+
+            return string.Equals(
+                NormalizeLazadaPackageId(left),
+                NormalizeLazadaPackageId(right),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool RequiresPrintableWaybill(
+            PlatformType platform,
+            PlatformPackageRecordResult package)
+        {
+            if (platform != PlatformType.Lazada)
+                return true;
+
+            return !IsLazadaSellerOwnTracking(package.TrackingNumber) &&
+                   !IsLazadaSellerOwnFleet(package.ShippingProviderId) &&
+                   !IsLazadaSellerOwnFleet(package.ShippingProviderName);
+        }
+
+        private static bool IsLazadaSellerOwnTracking(string? trackingNumber)
+        {
+            if (string.IsNullOrWhiteSpace(trackingNumber))
+                return false;
+
+            return trackingNumber.Trim().StartsWith(
+                "SOF_",
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLazadaSellerOwnFleet(string? shippingProvider)
+        {
+            if (string.IsNullOrWhiteSpace(shippingProvider))
+                return false;
+
+            var normalized = new string(shippingProvider
+                .Where(char.IsLetterOrDigit)
+                .Select(char.ToUpperInvariant)
+                .ToArray());
+            return normalized == "SOF" ||
+                   normalized.Contains("SELLEROWNFLEET", StringComparison.Ordinal);
         }
 
         private static bool HasCompleteTracking(TrackingInfo? tracking, int expectedBoxes)
@@ -918,12 +1502,97 @@ namespace OmsApi.Controllers
         private static string NormalizeItemNumber(string value) =>
             value.Trim().Replace(" ", string.Empty).ToUpperInvariant();
 
-        private static bool ShopeePackageNeedsArrange(string? logisticsStatus)
+        private static bool ShopeePackageNeedsArrange(ShippingPackage package)
         {
-            if (string.IsNullOrWhiteSpace(logisticsStatus)) return true;
+            if (package.IsShipmentArranged == true)
+                return false;
+
+            var logisticsStatus = package.Status;
+            if (string.IsNullOrWhiteSpace(logisticsStatus))
+                return package.IsShipmentArranged == false;
             var status = logisticsStatus.Trim().ToUpperInvariant();
-            return status is "READY_TO_SHIP" or "LOGISTICS_NOT_START" or "LOGISTICS_INVALID" ||
+
+            // PROCESSED means Shopee has already accepted shipment handling;
+            // keep polling for tracking and never arrange it again.
+            if (status == "PROCESSED")
+                return false;
+
+            if (package.IsShipmentArranged == false)
+                return status is "READY_TO_SHIP" or "LOGISTICS_READY" or
+                       "LOGISTICS_PICKUP_RETRY" or "LOGISTICS_NOT_START" or
+                       "LOGISTICS_INVALID" ||
+                       status.Contains("NOT_START", StringComparison.Ordinal);
+
+            // Shopee Sandbox can omit is_shipment_arranged even while Seller
+            // Center still shows the package action "Arrange Shipment". Let
+            // LOGISTICS_READY enter the arrange branch; the caller also checks
+            // the durable OMS package status and skips packages already saved
+            // as ARRANGED, so a retry does not submit ship_order again.
+            return status is "READY_TO_SHIP" or "LOGISTICS_READY" or
+                   "LOGISTICS_PICKUP_RETRY" or "LOGISTICS_NOT_START" or "LOGISTICS_INVALID" ||
                    status.Contains("NOT_START", StringComparison.Ordinal);
+        }
+
+        private static bool ShopeeArrangeWasAccepted(
+            ShippingPackage package,
+            IReadOnlyCollection<PlatformPackageRecordResult> savedPackages,
+            WmsPackageManifest manifest)
+        {
+            if (manifest.Packages.Count == 1)
+                return ShopeeSingleArrangeWasAccepted(savedPackages, manifest);
+            if (string.IsNullOrWhiteSpace(package.PackageId))
+                return false;
+            return savedPackages.Any(saved =>
+                string.Equals(saved.PlatformPackageId, package.PackageId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(saved.PackageStatus, "ARRANGED", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool ShopeeSingleArrangeWasAccepted(
+            IReadOnlyCollection<PlatformPackageRecordResult> savedPackages,
+            WmsPackageManifest manifest)
+        {
+            if (manifest.Packages.Count != 1)
+                return false;
+            var packageRef = manifest.Packages[0].WmsPackageRef;
+            return savedPackages.Any(saved =>
+                saved.WmsPackageRef == packageRef &&
+                string.Equals(saved.PackageStatus, "ARRANGED", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static Guid ResolveShopeeWmsPackageRef(
+            ShippingPackage package,
+            IReadOnlyCollection<PlatformPackageMappingRequest>? mappings,
+            WmsPackageManifest manifest)
+        {
+            if (manifest.Packages.Count == 1)
+                return manifest.Packages[0].WmsPackageRef;
+            var mapping = mappings?.SingleOrDefault(candidate =>
+                string.Equals(
+                    candidate.PlatformPackageId,
+                    package.PackageId,
+                    StringComparison.OrdinalIgnoreCase));
+            if (mapping == null || mapping.WmsPackageRef == Guid.Empty)
+                throw new InvalidOperationException(
+                    $"No durable WMS mapping exists for Shopee package '{package.PackageId}'.");
+            return mapping.WmsPackageRef;
+        }
+
+        private static bool IsShopeeAlreadyArrangedError(PlatformApiException exception)
+        {
+            var code = exception.Code ?? string.Empty;
+            var message = exception.Message ?? string.Empty;
+            return code.Contains("already", StringComparison.OrdinalIgnoreCase) ||
+                   code.Contains("processed", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("already arranged", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("already shipped", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("already processed", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int ReadPositiveIntEnvironment(string name, int fallback)
+        {
+            return int.TryParse(Environment.GetEnvironmentVariable(name), out var value) && value > 0
+                ? value
+                : fallback;
         }
 
         /// <summary>
@@ -1018,6 +1687,85 @@ namespace OmsApi.Controllers
             return Ok(ApiResponse<List<PlatformPackageRecordResult>>.Ok(
                 packages,
                 $"Found {packages.Count} saved packages"));
+        }
+
+        /// <summary>
+        /// อ่านสถานะรวมของ Package/Tracking/Waybill ที่ OMS บันทึกไว้ โดยไม่เรียก Platform
+        /// </summary>
+        [HttpGet("packages/status/{platform}/{orderId}")]
+        [SwaggerOperation(Summary = "อ่านสถานะ PROCESSING/COMPLETED ของ Package จาก OMS")]
+        [SwaggerResponse(200, "Package process status retrieved")]
+        [SwaggerResponse(404, "No saved package process found")]
+        public async Task<IActionResult> GetPackageProcessStatus(
+            PlatformType platform,
+            string orderId,
+            [FromQuery] string? shopId = null)
+        {
+            if (_platformDocumentService == null)
+                return StatusCode(503, ApiResponse<string>.Fail("Platform document service is unavailable."));
+
+            var packages = await _platformPackageService.GetPackagesAsync(
+                platform, shopId, orderId, HttpContext.RequestAborted);
+            if (packages.Count == 0)
+                return NotFound(ApiResponse<string>.Fail("No saved package process was found."));
+
+            var documents = await _platformDocumentService.GetDocumentsAsync(
+                platform, shopId, orderId, HttpContext.RequestAborted);
+            var packageIds = packages
+                .Select(x => x.PlatformPackageId?.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Cast<string>()
+                .ToList();
+            var trackingNumbers = packages
+                .Select(x => x.TrackingNumber?.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Cast<string>()
+                .ToList();
+
+            var allPackageIdsReady = packageIds.Count == packages.Count;
+            var allTrackingReady = trackingNumbers.Count == packages.Count &&
+                trackingNumbers.Distinct(StringComparer.OrdinalIgnoreCase).Count() == packages.Count;
+            var packagesRequiringWaybill = packages
+                .Where(package => RequiresPrintableWaybill(platform, package))
+                .ToList();
+            var allWaybillsReady = allPackageIdsReady && packagesRequiringWaybill.All(package =>
+                documents.Any(document =>
+                    PlatformPackageIdsEqual(
+                        platform,
+                        document.PlatformPackageId,
+                        package.PlatformPackageId) &&
+                    string.Equals(document.DocumentStatus, "READY", StringComparison.OrdinalIgnoreCase)));
+            var completed = allPackageIdsReady && allTrackingReady && allWaybillsReady;
+
+            var result = new ProcessPlatformPackagesResult
+            {
+                Platform = platform,
+                ShopId = shopId ?? string.Empty,
+                PlatformOrderId = orderId,
+                CustomerOrderNumber = string.Empty,
+                Stage = completed ? "COMPLETED" : "PROCESSING",
+                TotalBoxes = packages.Count,
+                Packages = packages
+                    .OrderBy(x => x.BoxNumber)
+                    .Select(x => new ProcessPlatformPackageResult
+                    {
+                        PlatformPackageRecordId = x.PlatformPackageRecordId,
+                        WmsPackageRef = x.WmsPackageRef,
+                        BoxNumber = x.BoxNumber,
+                        PlatformPackageId = x.PlatformPackageId,
+                        TrackingNumber = x.TrackingNumber,
+                        WaybillRequired = RequiresPrintableWaybill(platform, x),
+                        Status = x.PackageStatus,
+                        Error = x.Error
+                    })
+                    .ToList()
+            };
+
+            return Ok(ApiResponse<ProcessPlatformPackagesResult>.Ok(
+                result,
+                completed
+                    ? "Every package has tracking and every applicable package has a printable Waybill."
+                    : "The package workflow is still processing."));
         }
 
         /// <summary>

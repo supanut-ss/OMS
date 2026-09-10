@@ -42,8 +42,10 @@ public class PlatformDocumentService : IPlatformDocumentService
             throw new InvalidOperationException("No platform packages were found for this order.");
         if (packages.Any(x => string.IsNullOrWhiteSpace(x.TrackingNumber)))
             throw new InvalidOperationException("Tracking number is required before creating a waybill.");
-        if (packages.Count > 1 && packages.Any(x => string.IsNullOrWhiteSpace(x.PlatformPackageId)))
-            throw new InvalidOperationException("Every split package must have a platform_package_id before creating a waybill.");
+        if (platform == PlatformType.Shopee &&
+            packages.Any(x => string.IsNullOrWhiteSpace(x.PlatformPackageId)))
+            throw new InvalidOperationException(
+                "Every Shopee package must have a platform_package_id before creating a waybill.");
 
         var results = new List<PlatformDocumentResult>();
         foreach (var package in packages.OrderBy(x => x.BoxNumber))

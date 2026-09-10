@@ -159,6 +159,13 @@ namespace OmsApi.Models.Shipping
         /// <summary>สถานะพัสดุ</summary>
         public string Status { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Shopee's package-level flag indicating whether shipment has already
+        /// been arranged. This is required because LOGISTICS_READY can mean
+        /// either awaiting arrange or tracking-number generation in progress.
+        /// </summary>
+        public bool? IsShipmentArranged { get; set; }
+
         /// <summary>วิธีจัดส่ง</summary>
         public string ShippingMethod { get; set; } = string.Empty;
 

@@ -101,8 +101,18 @@ public class PackageProcessControllerTests
             OrderId = "SHOPEE-ORDER-1",
             Packages =
             {
-                new ShippingPackage { PackageId = "PACKAGE-1", TrackingNumber = "TRACK-SAME" },
-                new ShippingPackage { PackageId = "PACKAGE-2", TrackingNumber = "TRACK-SAME" }
+                new ShippingPackage
+                {
+                    PackageId = "PACKAGE-1",
+                    TrackingNumber = "TRACK-SAME",
+                    Items = { new ShippingPackageItem { ItemNumber = "SKU-1", Quantity = 1 } }
+                },
+                new ShippingPackage
+                {
+                    PackageId = "PACKAGE-2",
+                    TrackingNumber = "TRACK-SAME",
+                    Items = { new ShippingPackageItem { ItemNumber = "SKU-2", Quantity = 1 } }
+                }
             }
         };
         var controller = CreateController(manifest, tracking);
@@ -148,6 +158,258 @@ public class PackageProcessControllerTests
             response.Data.Packages.OrderBy(x => x.BoxNumber).Select(x => x.TrackingNumber));
     }
 
+    [Fact]
+    public async Task ProcessPackages_WhenSingleShopeePackageHasNoPackageId_RemainsProcessing()
+    {
+        var manifest = new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = PlatformType.Shopee,
+            Packages = { ClosedBox(1) }
+        };
+        var tracking = new TrackingInfo
+        {
+            Platform = PlatformType.Shopee,
+            OrderId = "SHOPEE-ORDER-1",
+            Packages =
+            {
+                new ShippingPackage { TrackingNumber = "TRACK-1" }
+            }
+        };
+        var controller = CreateController(manifest, tracking);
+
+        var action = await controller.ProcessPackages(CreateRequest());
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.Equal("PROCESSING", response.Data!.Stage);
+        Assert.Contains("platform_package_id", response.Data.Packages[0].Error);
+    }
+
+    [Fact]
+    public async Task ProcessPackages_WhenLazadaPackageIsPacked_ArrangesEvenWhenTrackingExists()
+    {
+        var manifest = new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = PlatformType.Lazada,
+            Packages = { ClosedBox(1) }
+        };
+        var tracking = new TrackingInfo
+        {
+            Platform = PlatformType.Lazada,
+            OrderId = "7001",
+            Packages =
+            {
+                new ShippingPackage
+                {
+                    PackageId = "FP-1",
+                    TrackingNumber = "LEX-1",
+                    Status = "packed"
+                }
+            }
+        };
+        var shippingService = new UnusedShippingService(
+            tracking,
+            trackingAfterArrange: tracking);
+        var controller = CreateController(
+            manifest,
+            shippingService: shippingService);
+
+        var action = await controller.ProcessPackages(
+            CreateRequest(PlatformType.Lazada, "7001"));
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.Equal("COMPLETED", response.Data!.Stage);
+        var arrange = Assert.Single(shippingService.ShipRequests);
+        Assert.Equal(PlatformType.Lazada, arrange.Platform);
+        Assert.Equal("FP-1", arrange.PackageId);
+    }
+
+    [Fact]
+    public async Task ProcessPackages_WhenTikTokPackageNeedsShipping_ArrangesThenTracksIt()
+    {
+        var manifest = new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = PlatformType.TikTok,
+            Packages = { ClosedBox(1) }
+        };
+        var beforeArrange = new TrackingInfo
+        {
+            Platform = PlatformType.TikTok,
+            OrderId = "TT-1",
+            Packages =
+            {
+                new ShippingPackage
+                {
+                    PackageId = "PKG-1",
+                    Status = "AWAITING_SHIPMENT"
+                }
+            }
+        };
+        var afterArrange = new TrackingInfo
+        {
+            Platform = PlatformType.TikTok,
+            OrderId = "TT-1",
+            Packages =
+            {
+                new ShippingPackage
+                {
+                    PackageId = "PKG-1",
+                    TrackingNumber = "TT-TRACK-1",
+                    Status = "PROCESSING"
+                }
+            }
+        };
+        var shippingService = new UnusedShippingService(
+            beforeArrange,
+            trackingAfterArrange: afterArrange);
+        var controller = CreateController(
+            manifest,
+            shippingService: shippingService);
+
+        var action = await controller.ProcessPackages(
+            CreateRequest(PlatformType.TikTok, "TT-1"));
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.Equal("COMPLETED", response.Data!.Stage);
+        var arrange = Assert.Single(shippingService.ShipRequests);
+        Assert.Equal(PlatformType.TikTok, arrange.Platform);
+        Assert.Equal("PKG-1", arrange.PackageId);
+    }
+
+    [Theory]
+    [InlineData(PlatformType.Lazada)]
+    [InlineData(PlatformType.TikTok)]
+    public async Task ProcessPackages_WhenNonShopeeWaybillIsPending_RemainsProcessing(
+        PlatformType platform)
+    {
+        var manifest = new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = platform,
+            Packages = { ClosedBox(1) }
+        };
+        var tracking = new TrackingInfo
+        {
+            Platform = platform,
+            OrderId = "PLATFORM-1",
+            Packages =
+            {
+                new ShippingPackage
+                {
+                    PackageId = "PKG-1",
+                    TrackingNumber = "TRACK-1",
+                    Status = platform == PlatformType.Lazada
+                        ? "ready_to_ship"
+                        : "PROCESSING"
+                }
+            }
+        };
+        var controller = CreateController(
+            manifest,
+            tracking,
+            documentService: new PendingDocumentService());
+
+        var action = await controller.ProcessPackages(
+            CreateRequest(platform, "PLATFORM-1"));
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.Equal("PROCESSING", response.Data!.Stage);
+        Assert.Contains("Waybill", response.Data.Packages[0].Error);
+    }
+
+    [Fact]
+    public async Task ProcessPackages_WhenLazadaPackageUsesSof_CompletesWithoutWaybill()
+    {
+        var manifest = new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = PlatformType.Lazada,
+            Packages = { ClosedBox(1) }
+        };
+        var tracking = new TrackingInfo
+        {
+            Platform = PlatformType.Lazada,
+            OrderId = "LAZADA-SOF-1",
+            Packages =
+            {
+                new ShippingPackage
+                {
+                    PackageId = "PKG-SOF-1",
+                    TrackingNumber = "SOF_FP094613283658634",
+                    Status = "ready_to_ship"
+                }
+            }
+        };
+        var documentService = new PendingDocumentService();
+        var controller = CreateController(manifest, tracking, documentService: documentService);
+
+        var action = await controller.ProcessPackages(
+            CreateRequest(PlatformType.Lazada, "LAZADA-SOF-1"));
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.Equal("COMPLETED", response.Data!.Stage);
+        Assert.False(Assert.Single(response.Data.Packages).WaybillRequired);
+        Assert.Empty(documentService.EnsuredPackageIds);
+    }
+
+    [Fact]
+    public async Task ProcessPackages_WhenLazadaHasSofAndLex_RequiresWaybillOnlyForLex()
+    {
+        var manifest = new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = PlatformType.Lazada,
+            Packages = { ClosedBox(1), ClosedBox(2) }
+        };
+        var tracking = new TrackingInfo
+        {
+            Platform = PlatformType.Lazada,
+            OrderId = "LAZADA-MIXED-1",
+            Packages =
+            {
+                new ShippingPackage
+                {
+                    PackageId = "PKG-SOF-1",
+                    TrackingNumber = "SOF-TRACK-1",
+                    Carrier = "Seller Own Fleet",
+                    Status = "ready_to_ship",
+                    Items = { new ShippingPackageItem { ItemNumber = "SKU-1", Quantity = 1 } }
+                },
+                new ShippingPackage
+                {
+                    PackageId = "PKG-LEX-2",
+                    TrackingNumber = "LEX-TRACK-2",
+                    Carrier = "LEX TH",
+                    Status = "ready_to_ship",
+                    Items = { new ShippingPackageItem { ItemNumber = "SKU-2", Quantity = 1 } }
+                }
+            }
+        };
+        var documentService = new PendingDocumentService();
+        var controller = CreateController(manifest, tracking, documentService: documentService);
+
+        var action = await controller.ProcessPackages(
+            CreateRequest(PlatformType.Lazada, "LAZADA-MIXED-1"));
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.Equal("PROCESSING", response.Data!.Stage);
+        Assert.Equal("PKG-LEX-2", Assert.Single(documentService.EnsuredPackageIds));
+        var sofPackage = response.Data.Packages.Single(package => package.BoxNumber == 1);
+        var lexPackage = response.Data.Packages.Single(package => package.BoxNumber == 2);
+        Assert.False(sofPackage.WaybillRequired);
+        Assert.Null(sofPackage.Error);
+        Assert.True(lexPackage.WaybillRequired);
+        Assert.Contains("Waybill", lexPackage.Error);
+    }
+
     private static WmsPackageManifestPackage ClosedBox(int boxNumber) => new()
     {
         WmsPackageRef = Guid.NewGuid(),
@@ -156,23 +418,28 @@ public class PackageProcessControllerTests
         Items = { new WmsPackageManifestItem { ItemNumber = $"SKU-{boxNumber}", Quantity = 1 } }
     };
 
-    private static ProcessPlatformPackagesRequest CreateRequest() => new()
+    private static ProcessPlatformPackagesRequest CreateRequest(
+        PlatformType platform = PlatformType.Shopee,
+        string platformOrderId = "SHOPEE-ORDER-1") => new()
     {
-        Platform = PlatformType.Shopee,
+        Platform = platform,
         ShopId = "227762129",
-        PlatformOrderId = "SHOPEE-ORDER-1",
+        PlatformOrderId = platformOrderId,
         CustomerOrderNumber = "ORDER-1"
     };
 
     private static ShippingController CreateController(
         WmsPackageManifest? manifest,
         TrackingInfo? tracking = null,
-        TrackingInfo? trackingAfterSplit = null)
+        TrackingInfo? trackingAfterSplit = null,
+        UnusedShippingService? shippingService = null,
+        IPlatformDocumentService? documentService = null)
     {
         var controller = new ShippingController(
-            new UnusedShippingService(tracking, trackingAfterSplit),
+            shippingService ?? new UnusedShippingService(tracking, trackingAfterSplit),
             new StubPlatformPackageService(manifest),
-            NullLogger<ShippingController>.Instance)
+            NullLogger<ShippingController>.Instance,
+            documentService ?? new ReadyDocumentService())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -190,7 +457,7 @@ public class PackageProcessControllerTests
             => Task.FromResult(new ProcessPlatformPackagesResult
             {
                 Platform = request.Platform,
-                ShopId = request.ShopId,
+                ShopId = request.ShopId ?? string.Empty,
                 PlatformOrderId = request.PlatformOrderId,
                 CustomerOrderNumber = request.CustomerOrderNumber,
                 Stage = "PREPARED",
@@ -232,6 +499,8 @@ public class PackageProcessControllerTests
                     BoxNumber = _manifest!.Packages.Single(x => x.WmsPackageRef == mappedRef).BoxNumber,
                     PlatformPackageId = package.PackageId,
                     TrackingNumber = package.TrackingNumber,
+                    ShippingProviderName = package.Carrier,
+                    PackageStatus = package.Status,
                     SyncStatus = "SUCCESS"
                 };
             }).ToList();
@@ -253,17 +522,34 @@ public class PackageProcessControllerTests
     {
         private readonly TrackingInfo? _tracking;
         private readonly TrackingInfo? _trackingAfterSplit;
+        private readonly TrackingInfo? _trackingAfterArrange;
         private bool _wasSplit;
+        private bool _wasArranged;
+        public List<ShipOrderRequest> ShipRequests { get; } = new();
 
-        public UnusedShippingService(TrackingInfo? tracking = null, TrackingInfo? trackingAfterSplit = null)
+        public UnusedShippingService(
+            TrackingInfo? tracking = null,
+            TrackingInfo? trackingAfterSplit = null,
+            TrackingInfo? trackingAfterArrange = null)
         {
             _tracking = tracking;
             _trackingAfterSplit = trackingAfterSplit;
+            _trackingAfterArrange = trackingAfterArrange;
         }
 
         public Task<ShippingLabelResult?> GetShippingLabelAsync(ShippingLabelRequest request) => throw new NotSupportedException();
         public Task<List<ShippingLabelResult>> GetBatchShippingLabelsAsync(List<ShippingLabelRequest> requests) => throw new NotSupportedException();
-        public Task<bool> ShipOrderAsync(ShipOrderRequest request) => Task.FromResult(true);
+        public Task<bool> ShipOrderAsync(ShipOrderRequest request)
+        {
+            ShipRequests.Add(request);
+            _wasArranged = true;
+            return Task.FromResult(true);
+        }
+        public Task ValidateOrderPackagesAsync(
+            PlatformType platform,
+            string orderId,
+            IReadOnlyCollection<WmsPackageManifestPackage> packages,
+            string? shopId = null) => Task.CompletedTask;
         public Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request)
         {
             _wasSplit = true;
@@ -291,9 +577,11 @@ public class PackageProcessControllerTests
             string? accessToken = null,
             string? shopId = null,
             IReadOnlyCollection<string>? packageNumbers = null)
-            => Task.FromResult<TrackingInfo?>(_wasSplit && _trackingAfterSplit != null
-                ? _trackingAfterSplit
-                : _tracking ?? new TrackingInfo
+            => Task.FromResult<TrackingInfo?>(_wasArranged && _trackingAfterArrange != null
+                ? _trackingAfterArrange
+                : _wasSplit && _trackingAfterSplit != null
+                    ? _trackingAfterSplit
+                    : _tracking ?? new TrackingInfo
             {
                 Platform = platform,
                 OrderId = orderId,
@@ -303,5 +591,84 @@ public class PackageProcessControllerTests
                     new ShippingPackage { PackageId = "PACKAGE-1", TrackingNumber = "TRACK-1" }
                 }
             });
+    }
+
+    private sealed class PendingDocumentService : IPlatformDocumentService
+    {
+        public List<string?> EnsuredPackageIds { get; } = new();
+
+        public Task<List<PlatformDocumentResult>> EnsureWaybillsAsync(
+            PlatformType platform,
+            string? shopId,
+            string platformOrderId,
+            IReadOnlyCollection<PlatformPackageRecordResult> packages,
+            string shippingDocumentType = "NORMAL_AIR_WAYBILL",
+            CancellationToken cancellationToken = default)
+        {
+            EnsuredPackageIds.AddRange(packages.Select(package => package.PlatformPackageId));
+            return Task.FromResult(packages.Select(package => new PlatformDocumentResult
+            {
+                Platform = platform,
+                ShopId = shopId ?? string.Empty,
+                PlatformOrderId = platformOrderId,
+                PlatformPackageId = package.PlatformPackageId,
+                TrackingNumber = package.TrackingNumber,
+                DocumentType = "WAYBILL",
+                DocumentStatus = "PROCESSING"
+            }).ToList());
+        }
+
+        public Task<List<PlatformDocumentResult>> GetDocumentsAsync(
+            PlatformType platform,
+            string? shopId,
+            string platformOrderId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<PlatformDocumentResult>());
+
+        public Task<PlatformDocumentFile?> GetFileAsync(
+            PlatformType platform,
+            string? shopId,
+            string platformOrderId,
+            string? platformPackageId,
+            bool markPrinted,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<PlatformDocumentFile?>(null);
+    }
+
+    private sealed class ReadyDocumentService : IPlatformDocumentService
+    {
+        public Task<List<PlatformDocumentResult>> EnsureWaybillsAsync(
+            PlatformType platform,
+            string? shopId,
+            string platformOrderId,
+            IReadOnlyCollection<PlatformPackageRecordResult> packages,
+            string shippingDocumentType = "NORMAL_AIR_WAYBILL",
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(packages.Select(package => new PlatformDocumentResult
+            {
+                Platform = platform,
+                ShopId = shopId ?? string.Empty,
+                PlatformOrderId = platformOrderId,
+                PlatformPackageId = package.PlatformPackageId,
+                TrackingNumber = package.TrackingNumber,
+                DocumentType = "WAYBILL",
+                DocumentStatus = "READY"
+            }).ToList());
+
+        public Task<List<PlatformDocumentResult>> GetDocumentsAsync(
+            PlatformType platform,
+            string? shopId,
+            string platformOrderId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<PlatformDocumentResult>());
+
+        public Task<PlatformDocumentFile?> GetFileAsync(
+            PlatformType platform,
+            string? shopId,
+            string platformOrderId,
+            string? platformPackageId,
+            bool markPrinted,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<PlatformDocumentFile?>(null);
     }
 }

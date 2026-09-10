@@ -167,6 +167,7 @@ LAZADA_REDIRECT_URL=http://localhost:5170/api/auth/lazada/callback
 # ─── TikTok Shop ────────────────────────────────────────
 TIKTOK_APP_KEY=<App Key จาก TikTok Partner Center>
 TIKTOK_APP_SECRET=<App Secret>
+# TIKTOK_SERVICE_ID=<ถ้ามี Service ID ให้ระบุ; ถ้าไม่มี ระบบใช้ TIKTOK_APP_KEY แบบเดิม>
 TIKTOK_DEFAULT_SHOP_ID=<TikTok shop cipher>
 TIKTOK_API_URL=https://open-api.tiktokglobalshop.com
 TIKTOK_AUTH_URL=https://services.tiktokshop.com/open/authorize

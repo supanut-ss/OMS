@@ -28,6 +28,7 @@ var dataProtectionKeysPath = Environment.GetEnvironmentVariable("OMS_DATA_PROTEC
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
     var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
+    // ─── ดูการเชื่อมต่อ ได้ที่ docs/Connected.md ───────────────────────────────────────────────
     Directory.CreateDirectory(keyDirectory);
     dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
 }

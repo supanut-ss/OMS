@@ -36,6 +36,7 @@ namespace OmsApi.Services.Implementation
         // TikTok credentials
         private readonly string _tiktokAppKey;
         private readonly string _tiktokAppSecret;
+        private readonly string _tiktokServiceId;
         private readonly string _tiktokAuthUrl;
         private readonly string _tiktokAuthApiUrl;
         private readonly string _tiktokApiUrl;
@@ -60,6 +61,8 @@ namespace OmsApi.Services.Implementation
 
             _tiktokAppKey = Environment.GetEnvironmentVariable("TIKTOK_APP_KEY") ?? "";
             _tiktokAppSecret = Environment.GetEnvironmentVariable("TIKTOK_APP_SECRET") ?? "";
+            var tiktokServiceId = Environment.GetEnvironmentVariable("TIKTOK_SERVICE_ID");
+            _tiktokServiceId = tiktokServiceId?.Trim() ?? "";
             _tiktokAuthUrl = Environment.GetEnvironmentVariable("TIKTOK_AUTH_URL") ?? "https://services.tiktokshop.com/open/authorize";
             _tiktokAuthApiUrl = Environment.GetEnvironmentVariable("TIKTOK_AUTH_API_URL") ?? "https://auth.tiktok-shops.com";
             _tiktokApiUrl = Environment.GetEnvironmentVariable("TIKTOK_API_URL") ?? "https://open-api.tiktokglobalshop.com";
@@ -499,7 +502,12 @@ namespace OmsApi.Services.Implementation
 
         private string GetTikTokAuthUrl(string state)
         {
-            return $"{_tiktokAuthUrl}?app_key={_tiktokAppKey}&state={state}";
+            var authorizationParameter = string.IsNullOrWhiteSpace(_tiktokServiceId)
+                ? $"app_key={Uri.EscapeDataString(_tiktokAppKey)}"
+                : $"service_id={Uri.EscapeDataString(_tiktokServiceId)}";
+
+            return $"{_tiktokAuthUrl}?{authorizationParameter}" +
+                   $"&state={Uri.EscapeDataString(state)}";
         }
 
         private async Task<TokenInfo> HandleTikTokCallbackAsync(string code, string? shopId)

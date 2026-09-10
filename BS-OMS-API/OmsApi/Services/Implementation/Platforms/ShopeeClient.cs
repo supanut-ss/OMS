@@ -568,6 +568,51 @@ namespace OmsApi.Services.Implementation.Platforms
             }
         }
 
+        private static void EnsureShopeeShipOrderAccepted(string content)
+        {
+            using var json = JsonDocument.Parse(content);
+            var root = json.RootElement;
+            var requestId = GetShopeeString(root, "request_id");
+            var error = GetShopeeString(root, "error");
+            if (!string.IsNullOrWhiteSpace(error))
+                throw new PlatformApiException(
+                    "Shopee",
+                    error,
+                    GetShopeeString(root, "message"),
+                    requestId);
+
+            // A successful ship_order response is allowed to contain only
+            // the common fields (error/message/request_id). Unlike tracking
+            // APIs, Shopee does not require a response object for this call.
+            if (!root.TryGetProperty("response", out var response))
+                return;
+
+            if (response.TryGetProperty("result_list", out var results) &&
+                results.ValueKind == JsonValueKind.Array)
+            {
+                var failed = results.EnumerateArray().FirstOrDefault(item =>
+                    !string.IsNullOrWhiteSpace(GetShopeeString(item, "fail_error")) ||
+                    !string.IsNullOrWhiteSpace(GetShopeeString(item, "fail_message")));
+                if (failed.ValueKind != JsonValueKind.Undefined)
+                {
+                    var failError = GetShopeeString(failed, "fail_error");
+                    throw new PlatformApiException(
+                        "Shopee",
+                        string.IsNullOrWhiteSpace(failError) ? "ship_order_failed" : failError,
+                        GetShopeeString(failed, "fail_message", "message"),
+                        requestId);
+                }
+            }
+
+            var responseError = GetShopeeString(response, "fail_error", "error");
+            if (!string.IsNullOrWhiteSpace(responseError))
+                throw new PlatformApiException(
+                    "Shopee",
+                    responseError,
+                    GetShopeeString(response, "fail_message", "message"),
+                    requestId);
+        }
+
         private static string ReadShopeeDocumentStatus(string content)
         {
             EnsureShopeeDocumentAccepted(content, "get_shipping_document_result_failed");
@@ -599,19 +644,22 @@ namespace OmsApi.Services.Implementation.Platforms
             _logger.LogInformation("🛒 Shopee: Shipping order {OrderId}", request.OrderId);
 
             var client = _httpClientFactory.CreateClient("Shopee");
-            var timestamp = DateTimeHelper.CurrentUnixTimestamp();
-            var apiPath = "/api/v2/logistics/ship_order";
             var shopIdLong = long.TryParse(shopId, out var sid) ? sid : 0;
-            var sign = SignatureHelper.GenerateShopeeSignature(_partnerKey, _partnerId, apiPath, timestamp, accessToken, shopIdLong);
-
-            var body = string.IsNullOrWhiteSpace(request.PackageId)
-                ? JsonSerializer.Serialize(new { order_sn = request.OrderId, dropoff = new { } })
-                : JsonSerializer.Serialize(new { order_sn = request.OrderId, package_number = request.PackageId, dropoff = new { } });
-            var bodyJson = body;
-            var queryString = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopIdLong}&sign={sign}";
+            var apiPath = "/api/v2/logistics/ship_order";
 
             try
             {
+                // Shopee requires the shipping parameters for the selected
+                // channel before ship_order.  An empty dropoff object may be
+                // accepted with HTTP 200 but leave the order in READY_TO_SHIP
+                // without asking the 3PL to issue a tracking number.
+                var payload = await BuildShipOrderPayloadAsync(
+                    client, accessToken, shopIdLong, request);
+                var timestamp = DateTimeHelper.CurrentUnixTimestamp();
+                var sign = SignatureHelper.GenerateShopeeSignature(
+                    _partnerKey, _partnerId, apiPath, timestamp, accessToken, shopIdLong);
+                var bodyJson = JsonSerializer.Serialize(payload);
+                var queryString = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}&shop_id={shopIdLong}&sign={sign}";
                 var req = new HttpRequestMessage(HttpMethod.Post, apiPath + queryString)
                 {
                     Content = new StringContent(bodyJson, Encoding.UTF8, "application/json")
@@ -620,11 +668,36 @@ namespace OmsApi.Services.Implementation.Platforms
                 var content = await response.Content.ReadAsStringAsync();
                 if (!response.IsSuccessStatusCode)
                     throw CreateShopeeException(content, response.StatusCode.ToString());
-                using var json = JsonDocument.Parse(content);
-                var error = GetShopeeString(json.RootElement, "error");
-                if (!string.IsNullOrWhiteSpace(error))
-                    throw CreateShopeeException(content, error);
+                // Shopee can return HTTP 200 while reporting a per-package
+                // failure in response.result_list[].fail_error. Treat that
+                // as a rejected arrange request; otherwise OMS would poll
+                // while the order remains READY_TO_SHIP.
+                EnsureShopeeShipOrderAccepted(content);
                 return true;
+            }
+            catch (PlatformApiException ex) when (
+                !string.IsNullOrWhiteSpace(request.PackageId) &&
+                IsShopeeUnsplitPackageError(ex))
+            {
+                // get_order_detail can expose a package_number even though
+                // Shopee still treats a one-box order as unsplit. Retry once
+                // with order_sn only, as required by get_shipping_parameter
+                // and ship_order for an unsplit order.
+                _logger.LogInformation(
+                    "Shopee order {OrderId} is unsplit; retrying arrange without package_number {PackageNumber}",
+                    request.OrderId,
+                    request.PackageId);
+                return await ShipOrderAsync(accessToken, shopId, new ShipOrderRequest
+                {
+                    Platform = request.Platform,
+                    AccessToken = request.AccessToken,
+                    ShopId = request.ShopId,
+                    OrderId = request.OrderId,
+                    PackageId = null,
+                    ShippingMethod = request.ShippingMethod,
+                    TrackingNumber = request.TrackingNumber,
+                    ShippingProviderId = request.ShippingProviderId
+                });
             }
             catch (PlatformApiException) { throw; }
             catch (Exception ex)
@@ -633,6 +706,156 @@ namespace OmsApi.Services.Implementation.Platforms
                 return false;
             }
         }
+
+        private async Task<Dictionary<string, object?>> BuildShipOrderPayloadAsync(
+            HttpClient client,
+            string accessToken,
+            long shopId,
+            ShipOrderRequest request)
+        {
+            var parameterPath = "/api/v2/logistics/get_shipping_parameter";
+            var timestamp = DateTimeHelper.CurrentUnixTimestamp();
+            var sign = SignatureHelper.GenerateShopeeSignature(
+                _partnerKey, _partnerId, parameterPath, timestamp, accessToken, shopId);
+            var query = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={Uri.EscapeDataString(accessToken)}" +
+                        $"&shop_id={shopId}&sign={sign}&order_sn={Uri.EscapeDataString(request.OrderId)}";
+            if (!string.IsNullOrWhiteSpace(request.PackageId))
+                query += $"&package_number={Uri.EscapeDataString(request.PackageId)}";
+
+            var response = await client.GetAsync(parameterPath + query);
+            var content = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw CreateShopeeException(content, response.StatusCode.ToString());
+
+            using var json = JsonDocument.Parse(content);
+            var root = json.RootElement;
+            var error = GetShopeeString(root, "error");
+            if (!string.IsNullOrWhiteSpace(error))
+                throw CreateShopeeException(content, error);
+
+            if (!root.TryGetProperty("response", out var responseData))
+                throw new InvalidOperationException(
+                    "Shopee get_shipping_parameter did not return response data.");
+
+            var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["order_sn"] = request.OrderId
+            };
+            if (!string.IsNullOrWhiteSpace(request.PackageId))
+                payload["package_number"] = request.PackageId;
+
+            var infoNeeded = responseData.TryGetProperty("info_needed", out var needed)
+                ? needed
+                : default;
+            var wantsPickup = HasShippingRequirement(infoNeeded, "pickup") ||
+                              (!HasAnyShippingRequirement(infoNeeded) &&
+                               string.Equals(request.ShippingMethod, "pickup", StringComparison.OrdinalIgnoreCase));
+            var wantsDropoff = HasShippingRequirement(infoNeeded, "dropoff") ||
+                               (!HasAnyShippingRequirement(infoNeeded) &&
+                                !string.Equals(request.ShippingMethod, "pickup", StringComparison.OrdinalIgnoreCase) &&
+                                !string.Equals(request.ShippingMethod, "non_integrated", StringComparison.OrdinalIgnoreCase));
+            var wantsNonIntegrated = HasShippingRequirement(infoNeeded, "non_integrated") ||
+                                     string.Equals(request.ShippingMethod, "non_integrated", StringComparison.OrdinalIgnoreCase);
+
+            if (wantsNonIntegrated)
+            {
+                if (string.IsNullOrWhiteSpace(request.TrackingNumber))
+                    throw new InvalidOperationException(
+                        "Shopee requires a seller-provided tracking number for this non-integrated channel.");
+                payload["non_integrated"] = new Dictionary<string, object?>
+                {
+                    ["tracking_number"] = request.TrackingNumber
+                };
+            }
+            else if (wantsPickup)
+            {
+                if (!responseData.TryGetProperty("pickup", out var pickup) ||
+                    !pickup.TryGetProperty("address_list", out var addresses) ||
+                    addresses.ValueKind != JsonValueKind.Array || addresses.GetArrayLength() == 0)
+                    throw new InvalidOperationException(
+                        "Shopee requires pickup parameters, but no pickup address was returned.");
+
+                var address = addresses.EnumerateArray().First();
+                var addressId = GetShopeeString(address, "address_id");
+                if (!long.TryParse(addressId, out var addressIdLong) || addressIdLong <= 0)
+                    throw new InvalidOperationException(
+                        "Shopee returned an invalid pickup address_id.");
+
+                var pickupPayload = new Dictionary<string, object?>
+                {
+                    ["address_id"] = addressIdLong
+                };
+                if (address.TryGetProperty("time_slot_list", out var slots) &&
+                    slots.ValueKind == JsonValueKind.Array && slots.GetArrayLength() > 0)
+                {
+                    var slot = slots.EnumerateArray().First();
+                    var pickupTimeId = GetShopeeString(slot, "pickup_time_id", "time_slot_id");
+                    if (!string.IsNullOrWhiteSpace(pickupTimeId))
+                        pickupPayload["pickup_time_id"] = pickupTimeId;
+                }
+                payload["pickup"] = pickupPayload;
+            }
+            else if (wantsDropoff)
+            {
+                var dropoffPayload = new Dictionary<string, object?>();
+                if (responseData.TryGetProperty("dropoff", out var dropoff) &&
+                    dropoff.TryGetProperty("branch_list", out var branches) &&
+                    branches.ValueKind == JsonValueKind.Array && branches.GetArrayLength() > 0)
+                {
+                    var branch = branches.EnumerateArray().First();
+                    var branchId = GetShopeeString(branch, "branch_id");
+                    if (long.TryParse(branchId, out var branchIdLong) && branchIdLong > 0)
+                        dropoffPayload["branch_id"] = branchIdLong;
+                }
+
+                var senderName = Environment.GetEnvironmentVariable("SHOPEE_SENDER_REAL_NAME");
+                if (!string.IsNullOrWhiteSpace(senderName))
+                    dropoffPayload["sender_real_name"] = senderName.Trim();
+
+                payload["dropoff"] = dropoffPayload;
+            }
+            else
+            {
+                // Keep the explicit field for channels that do not return an
+                // info_needed block and accept an empty dropoff object.
+                payload["dropoff"] = new Dictionary<string, object?>();
+            }
+
+            _logger.LogInformation(
+                "Shopee shipping parameters resolved for order {OrderId}, package {PackageNumber}: {Mode}",
+                request.OrderId,
+                request.PackageId ?? "(order)",
+                wantsNonIntegrated ? "non_integrated" : wantsPickup ? "pickup" : "dropoff");
+            return payload;
+        }
+
+        private static bool HasShippingRequirement(JsonElement infoNeeded, string method)
+        {
+            if (infoNeeded.ValueKind == JsonValueKind.Object &&
+                infoNeeded.TryGetProperty(method, out var value))
+            {
+                return value.ValueKind switch
+                {
+                    JsonValueKind.Array => value.GetArrayLength() > 0,
+                    JsonValueKind.True => true,
+                    JsonValueKind.String => !string.IsNullOrWhiteSpace(value.GetString()),
+                    _ => false
+                };
+            }
+
+            if (infoNeeded.ValueKind == JsonValueKind.Array)
+            {
+                return infoNeeded.EnumerateArray().Any(item =>
+                    string.Equals(item.GetString(), method, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return false;
+        }
+
+        private static bool HasAnyShippingRequirement(JsonElement infoNeeded) =>
+            HasShippingRequirement(infoNeeded, "pickup") ||
+            HasShippingRequirement(infoNeeded, "dropoff") ||
+            HasShippingRequirement(infoNeeded, "non_integrated");
 
         public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
             string accessToken,
@@ -719,13 +942,6 @@ namespace OmsApi.Services.Implementation.Platforms
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList() ?? new List<string>();
 
-            // Shopee's unsplit order must be queried with order_sn only. WMS
-            // may still send a saved package mapping from a previous retry,
-            // so discard it when the current order detail proves that Shopee
-            // has only one package.
-            if (detail != null && detail.Packages.Count <= 1)
-                requestedPackageNumbers.Clear();
-
             if (requestedPackageNumbers.Count > 0)
             {
                 var packages = requestedPackageNumbers.Select(packageNumber =>
@@ -794,8 +1010,16 @@ namespace OmsApi.Services.Implementation.Platforms
                                 TrackingNumber = p.TrackingNumber,
                                 Carrier = p.Carrier,
                                 Status = p.Status,
+                                IsShipmentArranged = p.IsShipmentArranged,
                                 ShippingMethod = p.ShippingMethod,
                                 ItemIds = new List<string>(p.ItemIds),
+                                Items = p.Items.Select(item => new ShippingPackageItem
+                                {
+                                    ItemId = item.ItemId,
+                                    ItemNumber = item.ItemNumber,
+                                    ItemNumberAliases = new List<string>(item.ItemNumberAliases),
+                                    Quantity = item.Quantity
+                                }).ToList(),
                                 Events = new List<TrackingEvent>(p.Events)
                             })
                             .ToList()
@@ -863,7 +1087,44 @@ namespace OmsApi.Services.Implementation.Platforms
                     throw CreateShopeeException(content, error);
                 if (!json.RootElement.TryGetProperty("response", out var responseData)) return "";
 
+                var responseError = GetShopeeString(responseData, "fail_error", "error");
+                if (!string.IsNullOrWhiteSpace(responseError))
+                    throw new PlatformApiException(
+                        "Shopee",
+                        responseError,
+                        GetShopeeString(responseData, "fail_message", "message"),
+                        GetShopeeString(json.RootElement, "request_id"));
+                if (responseData.TryGetProperty("fail_list", out var failList) &&
+                    failList.ValueKind == JsonValueKind.Array)
+                {
+                    var failed = failList.EnumerateArray().FirstOrDefault(item =>
+                        !string.IsNullOrWhiteSpace(GetShopeeString(item, "fail_error")) ||
+                        !string.IsNullOrWhiteSpace(GetShopeeString(item, "fail_message")));
+                    if (failed.ValueKind != JsonValueKind.Undefined)
+                    {
+                        var failError = GetShopeeString(failed, "fail_error");
+                        throw new PlatformApiException(
+                            "Shopee",
+                            string.IsNullOrWhiteSpace(failError)
+                                ? "get_tracking_number_failed"
+                                : failError,
+                            GetShopeeString(failed, "fail_message", "message"),
+                            GetShopeeString(json.RootElement, "request_id"));
+                    }
+                }
+
                 var directTracking = GetShopeeString(responseData, "tracking_number");
+                if (string.IsNullOrWhiteSpace(directTracking))
+                {
+                    _logger.LogInformation(
+                        "Shopee tracking is not ready for order {OrderId}, package {PackageNumber}; " +
+                        "hint={Hint}, pickupCode={PickupCode}, requestId={RequestId}",
+                        orderId,
+                        packageNumber ?? "(order)",
+                        GetShopeeString(responseData, "hint"),
+                        GetShopeeString(responseData, "pickup_code"),
+                        GetShopeeString(json.RootElement, "request_id"));
+                }
                 if (!string.IsNullOrWhiteSpace(directTracking)) return directTracking;
 
                 if (responseData.TryGetProperty("success_list", out var successList) &&
@@ -894,7 +1155,9 @@ namespace OmsApi.Services.Implementation.Platforms
             catch (PlatformApiException) { throw; }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "⚠️ Shopee: Error resolving tracking for package {PackageNumber}", packageNumber);
+                throw new InvalidOperationException(
+                    $"Shopee tracking request failed for package '{packageNumber ?? orderId}': {ex.Message}",
+                    ex);
             }
             return "";
         }
@@ -947,6 +1210,9 @@ namespace OmsApi.Services.Implementation.Platforms
                 ?? throw new InvalidOperationException($"Shopee order '{request.OrderId}' was not found.");
             if (order.Items.Count == 0)
                 throw new InvalidOperationException("Shopee did not return item_list for the order.");
+            if (!string.Equals(order.OriginalStatus, "READY_TO_SHIP", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"Shopee order '{request.OrderId}' must be READY_TO_SHIP before split_order, but is '{order.OriginalStatus}'.");
 
             var orderedPackages = request.Packages.OrderBy(x => x.BoxNumber).ToList();
             var payloadPackages = new List<ShopeeSplitPackagePayload>();
@@ -982,11 +1248,6 @@ namespace OmsApi.Services.Implementation.Platforms
                                 StringComparison.OrdinalIgnoreCase))
                             .ToList();
                     }
-                    // Sandbox products frequently have no seller SKU. A single
-                    // Shopee order line is still unambiguous and can be safely
-                    // allocated across multiple WMS boxes.
-                    if (matches.Count == 0 && order.Items.Count == 1)
-                        matches.Add(order.Items[0]);
                     if (matches.Count != 1)
                         throw new InvalidOperationException(
                             $"WMS item '{wmsItem.ItemNumber}' could not be matched uniquely to Shopee item_list " +
@@ -1142,6 +1403,7 @@ namespace OmsApi.Services.Implementation.Platforms
                         TrackingNumber = GetShopeeString(pkg, "tracking_number", "tracking_no"),
                         Carrier = GetShopeeString(pkg, "shipping_carrier", "shipping_provider", "carrier"),
                         Status = GetShopeeString(pkg, "logistics_status", "package_status", "status"),
+                        IsShipmentArranged = GetShopeeNullableBool(pkg, "is_shipment_arranged"),
                         ShippingMethod = GetShopeeString(pkg, "shipping_type", "shipping_method")
                     };
 
@@ -1263,6 +1525,18 @@ namespace OmsApi.Services.Implementation.Platforms
 
         private static string GetShopeeString(JsonElement value)
             => value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
+
+        private static bool? GetShopeeNullableBool(JsonElement element, string propertyName)
+        {
+            if (!element.TryGetProperty(propertyName, out var value) ||
+                value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+                return null;
+            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                return value.GetBoolean();
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var numeric))
+                return numeric != 0;
+            return bool.TryParse(GetShopeeString(value), out var result) ? result : null;
+        }
 
         private static decimal GetShopeeDecimal(JsonElement value)
             => decimal.TryParse(

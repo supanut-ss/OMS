@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using OmsApi.Models.Common;
 using OmsApi.Models.Shipping;
 using OmsApi.Services.Implementation.Platforms;
 
@@ -158,6 +159,90 @@ public class ShopeeSplitOrderTests
     }
 
     [Fact]
+    public async Task SplitOrder_RejectsOrderThatIsNotReadyToShip()
+    {
+        const string orderJson = """
+        {
+          "error": "",
+          "response": {
+            "order_list": [{
+              "order_sn": "ORDER-PROCESSED",
+              "order_status": "PROCESSED",
+              "item_list": [{
+                "item_id": 101,
+                "model_sku": "FND",
+                "model_quantity_purchased": 2
+              }]
+            }]
+          }
+        }
+        """;
+        var handler = new SplitHandler(orderJson, """{"error":"","response":{"package_list":[]}}""");
+        var client = new ShopeeClient(
+            new StubHttpClientFactory(new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://openplatform.example.test")
+            }),
+            NullLogger<ShopeeClient>.Instance);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.SplitOrderAsync("token", "123", new SplitPlatformOrderRequest
+            {
+                OrderId = "ORDER-PROCESSED",
+                Packages =
+                {
+                    Box(Guid.NewGuid(), 1, 1),
+                    Box(Guid.NewGuid(), 2, 1)
+                }
+            }));
+
+        Assert.Contains("must be READY_TO_SHIP", exception.Message);
+        Assert.Null(handler.SplitBody);
+    }
+
+    [Fact]
+    public async Task SplitOrder_DoesNotGuessSingleShopeeItemWhenSkuDoesNotMatch()
+    {
+        const string orderJson = """
+        {
+          "error": "",
+          "response": {
+            "order_list": [{
+              "order_sn": "ORDER-WRONG-SKU",
+              "order_status": "READY_TO_SHIP",
+              "item_list": [{
+                "item_id": 101,
+                "model_sku": "SHOPEE-SKU",
+                "model_quantity_purchased": 2
+              }]
+            }]
+          }
+        }
+        """;
+        var handler = new SplitHandler(orderJson, """{"error":"","response":{"package_list":[]}}""");
+        var client = new ShopeeClient(
+            new StubHttpClientFactory(new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://openplatform.example.test")
+            }),
+            NullLogger<ShopeeClient>.Instance);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.SplitOrderAsync("token", "123", new SplitPlatformOrderRequest
+            {
+                OrderId = "ORDER-WRONG-SKU",
+                Packages =
+                {
+                    Box(Guid.NewGuid(), 1, 1),
+                    Box(Guid.NewGuid(), 2, 1)
+                }
+            }));
+
+        Assert.Contains("could not be matched uniquely", exception.Message);
+        Assert.Null(handler.SplitBody);
+    }
+
+    [Fact]
     public async Task GetTracking_SplitOrderWithoutTracking_DoesNotCallOrderOnlyFallback()
     {
         const string orderJson = """
@@ -193,6 +278,50 @@ public class ShopeeSplitOrderTests
         Assert.DoesNotContain(handler.RequestedPackageNumbers, string.IsNullOrWhiteSpace);
     }
 
+    [Fact]
+    public async Task GetTracking_WhenShopeeReturnsFailError_ThrowsPlatformError()
+    {
+        const string orderJson = """
+        {
+          "error": "",
+          "response": {
+            "order_list": [{
+              "order_sn": "ORDER-FAIL",
+              "order_status": "PROCESSED",
+              "package_list": [{ "package_number": "PKG-1" }],
+              "item_list": []
+            }]
+          }
+        }
+        """;
+        const string trackingJson = """
+        {
+          "error": "",
+          "request_id": "request-1",
+          "response": {
+            "fail_list": [{
+              "package_number": "PKG-1",
+              "fail_error": "logistics.tracking_failed",
+              "fail_message": "Tracking request was rejected"
+            }]
+          }
+        }
+        """;
+        var handler = new SplitTrackingHandler(orderJson, trackingJson);
+        var client = new ShopeeClient(
+            new StubHttpClientFactory(new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://openplatform.example.test")
+            }),
+            NullLogger<ShopeeClient>.Instance);
+
+        var exception = await Assert.ThrowsAsync<PlatformApiException>(() =>
+            client.GetTrackingInfoAsync("token", "123", "ORDER-FAIL"));
+
+        Assert.Equal("logistics.tracking_failed", exception.Code);
+        Assert.Contains("Tracking request was rejected", exception.Message);
+    }
+
     private static WmsPackageManifestPackage Box(Guid packageRef, int boxNumber, decimal quantity) => new()
     {
         WmsPackageRef = packageRef,
@@ -225,7 +354,10 @@ public class ShopeeSplitOrderTests
         }
     }
 
-    private sealed class SplitTrackingHandler(string orderJson) : HttpMessageHandler
+    private sealed class SplitTrackingHandler(
+        string orderJson,
+        string trackingJson = """{"error":"","response":{"tracking_number":""}}""")
+        : HttpMessageHandler
     {
         public List<string> RequestedPackageNumbers { get; } = new();
 
@@ -235,6 +367,17 @@ public class ShopeeSplitOrderTests
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/logistics/get_tracking_number", StringComparison.Ordinal))
             {
+                if (trackingJson.Contains("fail_list", StringComparison.Ordinal))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(
+                            trackingJson,
+                            Encoding.UTF8,
+                            "application/json"),
+                        RequestMessage = request
+                    });
+                }
                 var query = System.Web.HttpUtility.ParseQueryString(request.RequestUri.Query);
                 RequestedPackageNumbers.Add(query["package_number"] ?? string.Empty);
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)

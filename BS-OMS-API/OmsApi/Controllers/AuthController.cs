@@ -89,7 +89,8 @@ namespace OmsApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ OAuth callback error for {Platform}", platform);
-                return BadRequest(ApiResponse<string>.Fail($"OAuth error: {ex.Message}"));
+                return BadRequest(ApiResponse<string>.Fail(
+                    $"OAuth error: {BuildExceptionDetails(ex)}"));
             }
         }
 
@@ -147,6 +148,22 @@ namespace OmsApi.Controllers
             {
                 return BadRequest(ApiResponse<string>.Fail(ex.Message));
             }
+        }
+
+        private static string BuildExceptionDetails(Exception exception)
+        {
+            var details = new List<string>();
+
+            for (Exception? current = exception; current != null; current = current.InnerException)
+            {
+                var message = string.IsNullOrWhiteSpace(current.Message)
+                    ? "(no message)"
+                    : current.Message;
+
+                details.Add($"{current.GetType().Name}: {message}");
+            }
+
+            return string.Join(" --> ", details);
         }
 
         private static PlatformType ParsePlatform(string platform)

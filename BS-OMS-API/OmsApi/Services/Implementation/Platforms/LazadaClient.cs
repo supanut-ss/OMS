@@ -191,16 +191,27 @@ namespace OmsApi.Services.Implementation.Platforms
                 {
                     foreach (var item in data.EnumerateArray())
                     {
+                        var orderItemId = GetLazadaString(
+                            item,
+                            "order_item_id",
+                            "order_line_id");
+                        _ = long.TryParse(orderItemId, out var numericOrderItemId);
                         items.Add(new OrderItem
                         {
-                            ItemId = item.TryGetProperty("order_item_id", out var iid) ? iid.GetInt64().ToString() : "",
-                            Name = item.TryGetProperty("name", out var name) ? name.GetString() ?? "" : "",
-                            Sku = item.TryGetProperty("sku", out var sku) ? sku.GetString() ?? "" : "",
+                            ItemId = GetLazadaProductItemNumber(item),
+                            OrderItemId = numericOrderItemId,
+                            Name = GetLazadaString(item, "name", "item_name"),
+                            Sku = GetLazadaString(
+                                item,
+                                "seller_sku",
+                                "shop_sku",
+                                "sku",
+                                "sku_id"),
                             Quantity = 1, // Lazada treats each item individually
-                            UnitPrice = item.TryGetProperty("paid_price", out var price) ? price.GetDecimal() : 0,
-                            TotalPrice = item.TryGetProperty("paid_price", out var tp) ? tp.GetDecimal() : 0,
-                            ImageUrl = item.TryGetProperty("product_main_image", out var img) ? img.GetString() ?? "" : "",
-                            Variation = item.TryGetProperty("variation", out var v) ? v.GetString() ?? "" : ""
+                            UnitPrice = GetLazadaDecimal(item, "paid_price", "item_price", "price"),
+                            TotalPrice = GetLazadaDecimal(item, "paid_price", "item_price", "price"),
+                            ImageUrl = GetLazadaString(item, "product_main_image", "image_url"),
+                            Variation = GetLazadaString(item, "variation", "variation_name")
                         });
                     }
                 }
@@ -223,15 +234,13 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var unified = new UnifiedOrder
             {
-                OrderId = order.TryGetProperty("order_id", out var oid) ? oid.GetInt64().ToString() : "",
+                OrderId = GetLazadaString(order, "order_id", "order_number"),
                 Platform = PlatformType.Lazada,
                 Status = OrderStatusMapper.FromLazada(statuses),
                 OriginalStatus = statuses,
-                TotalAmount = order.TryGetProperty("price", out var price) ? price.GetDecimal() : 0,
-                CreatedAt = order.TryGetProperty("created_at", out var ca)
-                    ? DateTime.TryParse(ca.GetString(), out var dt) ? dt : DateTime.MinValue
-                    : DateTime.MinValue,
-                BuyerRemarks = order.TryGetProperty("remarks", out var rem) ? rem.GetString() ?? "" : ""
+                TotalAmount = GetLazadaDecimal(order, "price"),
+                CreatedAt = GetLazadaDateTime(order, "created_at"),
+                BuyerRemarks = GetLazadaString(order, "remarks", "buyer_note")
             };
 
             MapLazadaPackages(order, unified);
@@ -371,6 +380,33 @@ namespace OmsApi.Services.Implementation.Platforms
             return "";
         }
 
+        private static string GetLazadaProductItemNumber(JsonElement item)
+        {
+            var productId = GetLazadaString(item, "product_id", "item_id");
+            if (!string.IsNullOrWhiteSpace(productId))
+                return productId;
+
+            // Lazada shop_sku commonly has the Product ID followed by a
+            // market/variation suffix, for example
+            // 16275649164_TH-127602487591. WMS stores the Product ID only.
+            var shopSku = GetLazadaString(item, "shop_sku");
+            var marketSuffix = shopSku.IndexOf(
+                "_TH-",
+                StringComparison.OrdinalIgnoreCase);
+            if (marketSuffix > 0)
+            {
+                var prefix = shopSku[..marketSuffix];
+                if (prefix.All(char.IsDigit))
+                    return prefix;
+            }
+
+            return GetLazadaString(
+                item,
+                "order_item_id",
+                "order_line_id",
+                "id");
+        }
+
         private static decimal GetLazadaDecimal(JsonElement element, params string[] propertyNames)
         {
             foreach (var propertyName in propertyNames)
@@ -433,6 +469,14 @@ namespace OmsApi.Services.Implementation.Platforms
             return DateTime.MinValue;
         }
 
+        private static DateTime? GetNullableLazadaDateTime(
+            JsonElement element,
+            params string[] propertyNames)
+        {
+            var value = GetLazadaDateTime(element, propertyNames);
+            return value == DateTime.MinValue ? null : value;
+        }
+
         private static UnifiedOrder MapLazadaOrderDetail(JsonElement order)
         {
             var statuses = "";
@@ -443,36 +487,33 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var unified = new UnifiedOrder
             {
-                OrderId = order.TryGetProperty("order_id", out var oid) ? oid.GetInt64().ToString() : "",
+                OrderId = GetLazadaString(order, "order_id", "order_number"),
                 Platform = PlatformType.Lazada,
                 Status = OrderStatusMapper.FromLazada(statuses),
                 OriginalStatus = statuses,
-                BuyerName = order.TryGetProperty("customer_first_name", out var fn) ? fn.GetString() ?? "" : "",
-                BuyerRemarks = order.TryGetProperty("remarks", out var rem) ? rem.GetString() ?? "" : "",
-                TotalAmount = order.TryGetProperty("price", out var price) ? price.GetDecimal() : 0,
-                CreatedAt = order.TryGetProperty("created_at", out var ca)
-                    ? DateTime.TryParse(ca.GetString(), out var dt) ? dt : DateTime.MinValue
-                    : DateTime.MinValue,
-                UpdatedAt = order.TryGetProperty("updated_at", out var ua)
-                    ? DateTime.TryParse(ua.GetString(), out var udt) ? udt : null
-                    : null
+                BuyerName = GetLazadaString(order, "customer_first_name"),
+                BuyerRemarks = GetLazadaString(order, "remarks", "buyer_note"),
+                TotalAmount = GetLazadaDecimal(order, "price"),
+                CreatedAt = GetLazadaDateTime(order, "created_at"),
+                UpdatedAt = GetNullableLazadaDateTime(order, "updated_at")
             };
 
             // Tax invoice
-            if (order.TryGetProperty("tax_code", out var taxCode) &&
-                !string.IsNullOrEmpty(taxCode.GetString()))
+            var taxCode = GetLazadaString(order, "tax_code");
+            if (!string.IsNullOrEmpty(taxCode))
             {
                 unified.TaxInvoiceRequested = true;
                 unified.TaxInvoice = new TaxInvoiceInfo
                 {
-                    TaxId = taxCode.GetString() ?? ""
+                    TaxId = taxCode
                 };
             }
 
             // Shipping deadline (cancellation)
-            if (order.TryGetProperty("shipping_deadline", out var deadline))
+            var shippingDeadline = GetLazadaString(order, "shipping_deadline");
+            if (!string.IsNullOrWhiteSpace(shippingDeadline))
             {
-                if (DateTime.TryParse(deadline.GetString(), out var dlDt))
+                if (DateTime.TryParse(shippingDeadline, out var dlDt))
                 {
                     unified.CancellationDeadline = dlDt;
                 }
@@ -959,22 +1000,167 @@ namespace OmsApi.Services.Implementation.Platforms
                     return false;
 
                 var orderItems = await GetLazadaPackItemsAsync(accessToken, request.OrderId, client);
-                var pendingItems = orderItems
-                    .Where(item => !IsLazadaPackedStatus(item.Status))
-                    .Select(item => item.ItemId)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                if (pendingItems.Count == 0)
-                    return true;
+                var packageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                var packed = await PackLazadaItemsAsync(accessToken, orderId, pendingItems, client);
-                return packed.Count > 0 && packed.All(item => !string.IsNullOrWhiteSpace(item.PackageId));
+                if (!string.IsNullOrWhiteSpace(request.PackageId))
+                {
+                    var requestedPackageId = request.PackageId.Trim();
+                    var requestedItems = orderItems
+                        .Where(item => SameLazadaPackageId(item.PackageId, requestedPackageId))
+                        .ToList();
+                    if (requestedItems.Count > 0 && requestedItems.All(item =>
+                            IsLazadaReadyToShipStatus(item.Status)))
+                        return true;
+
+                    packageIds.Add(requestedPackageId);
+                }
+                else
+                {
+                    foreach (var packageId in orderItems
+                                 .Where(item => !IsLazadaReadyToShipStatus(item.Status))
+                                 .Select(item => item.PackageId)
+                                 .Where(packageId => !string.IsNullOrWhiteSpace(packageId)))
+                        packageIds.Add(packageId);
+
+                    var pendingItems = orderItems
+                        .Where(item => !IsLazadaPackedStatus(item.Status))
+                        .Select(item => item.ItemId)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    if (pendingItems.Count > 0)
+                    {
+                        var packed = await PackLazadaItemsAsync(
+                            accessToken, orderId, pendingItems, client);
+                        foreach (var packageId in packed
+                                     .Select(item => item.PackageId)
+                                     .Where(packageId => !string.IsNullOrWhiteSpace(packageId)))
+                            packageIds.Add(packageId);
+                    }
+
+                    if (packageIds.Count == 0 && orderItems.Count > 0 &&
+                        orderItems.All(item => IsLazadaReadyToShipStatus(item.Status)))
+                        return true;
+                }
+
+                if (packageIds.Count == 0)
+                    throw new InvalidOperationException(
+                        $"Lazada package_id was not available for order '{request.OrderId}'.");
+
+                await ReadyLazadaPackagesAsync(accessToken, packageIds, client);
+                return true;
+            }
+            catch (PlatformApiException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Lazada: Error packing order");
-                return false;
+                // Do not collapse the platform error into a generic false
+                // result. The caller needs the actual Pack/Repack reason (for
+                // example an already-packed item or a wrong shipping type) to
+                // avoid retrying and changing the package composition.
+                throw new InvalidOperationException(
+                    $"Lazada arrange/pack failed for order '{request.OrderId}': {ex.Message}", ex);
             }
+        }
+
+        private async Task ReadyLazadaPackagesAsync(
+            string accessToken,
+            IReadOnlyCollection<string> packageIds,
+            HttpClient client)
+        {
+            var readyToShipRequest = JsonSerializer.Serialize(new
+            {
+                packages = packageIds
+                    .Where(packageId => !string.IsNullOrWhiteSpace(packageId))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(packageId => new { package_id = packageId })
+                    .ToList()
+            });
+            var apiPath = "/order/package/rts";
+            var parameters = new Dictionary<string, string>
+            {
+                { "app_key", _appKey },
+                { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() },
+                { "access_token", accessToken },
+                { "sign_method", "sha256" },
+                { "readyToShipReq", readyToShipRequest }
+            };
+            parameters["sign"] = SignatureHelper.GenerateLazadaSignature(
+                _appSecret, apiPath, parameters);
+            var queryString = string.Join("&", parameters.Select(parameter =>
+                $"{parameter.Key}={Uri.EscapeDataString(parameter.Value)}"));
+
+            using var response = await client.PostAsync(
+                BuildRequestUri(apiPath, queryString), null);
+            var content = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new PlatformApiException(
+                    "Lazada",
+                    $"HTTP_{(int)response.StatusCode}",
+                    content);
+
+            using var json = JsonDocument.Parse(content);
+            var root = json.RootElement;
+            var requestId = GetLazadaString(root, "request_id");
+            var responseCode = GetLazadaString(root, "code", "errorCode", "error_code");
+            if (!string.IsNullOrWhiteSpace(responseCode) && responseCode != "0")
+                throw new PlatformApiException(
+                    "Lazada",
+                    responseCode,
+                    GetLazadaString(root, "message", "errorMsg", "error_msg"),
+                    requestId);
+
+            JsonElement payload = root;
+            if (TryGetLazadaProperty(payload, "result", out var result) &&
+                result.ValueKind == JsonValueKind.Object)
+                payload = result;
+            if (TryGetLazadaProperty(payload, "success", out var success) &&
+                success.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                !success.GetBoolean())
+                throw new PlatformApiException(
+                    "Lazada",
+                    GetLazadaString(payload, "errorCode", "error_code", "code"),
+                    GetLazadaString(payload, "errorMsg", "error_msg", "message"),
+                    requestId);
+            if (TryGetLazadaProperty(payload, "data", out var data) &&
+                data.ValueKind == JsonValueKind.Object)
+                payload = data;
+            if (!TryGetLazadaProperty(payload, "packages", out var packages) ||
+                packages.ValueKind != JsonValueKind.Array)
+                throw new PlatformApiException(
+                    "Lazada",
+                    "RTS_RESPONSE_INVALID",
+                    "Lazada ReadyToShip API did not return package results.",
+                    requestId);
+
+            var returnedPackageIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var package in packages.EnumerateArray())
+            {
+                var packageId = GetLazadaString(package, "package_id");
+                var itemErrorCode = GetLazadaString(package, "item_err_code", "error_code");
+                if (!string.IsNullOrWhiteSpace(itemErrorCode) && itemErrorCode != "0")
+                    throw new PlatformApiException(
+                        "Lazada",
+                        itemErrorCode,
+                        GetLazadaString(package, "msg", "message", "error_msg"),
+                        requestId);
+                if (!string.IsNullOrWhiteSpace(packageId))
+                    returnedPackageIds.Add(packageId);
+            }
+
+            var missingPackageIds = packageIds
+                .Where(packageId => !returnedPackageIds.Any(returned =>
+                    SameLazadaPackageId(returned, packageId)))
+                .ToList();
+            if (missingPackageIds.Count > 0)
+                throw new PlatformApiException(
+                    "Lazada",
+                    "RTS_PACKAGE_MISSING",
+                    "Lazada ReadyToShip API did not confirm package(s): " +
+                    string.Join(", ", missingPackageIds),
+                    requestId);
         }
 
         public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
@@ -1440,6 +1626,7 @@ namespace OmsApi.Services.Implementation.Platforms
                     // non-empty form so matching can choose the one used by WMS.
                     var itemNumberAliases = new[]
                     {
+                        GetLazadaProductItemNumber(item),
                         GetLazadaString(item, "seller_sku"),
                         GetLazadaString(item, "shop_sku"),
                         GetLazadaString(item, "sku"),
@@ -1568,6 +1755,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
                 var aliases = new[]
                 {
+                    GetLazadaProductItemNumber(item),
                     GetLazadaString(item, "seller_sku"),
                     GetLazadaString(item, "shop_sku"),
                     GetLazadaString(item, "sku"),
@@ -1759,6 +1947,12 @@ namespace OmsApi.Services.Implementation.Platforms
         {
             var normalized = (status ?? string.Empty).Trim().ToUpperInvariant();
             return normalized is "PACKED" or "READY_TO_SHIP" or "SHIPPED" or "DELIVERED";
+        }
+
+        private static bool IsLazadaReadyToShipStatus(string status)
+        {
+            var normalized = (status ?? string.Empty).Trim().ToUpperInvariant();
+            return normalized is "READY_TO_SHIP" or "SHIPPED" or "DELIVERED";
         }
 
         private static string NormalizeLazadaItemNumber(string value) =>

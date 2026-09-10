@@ -17,6 +17,13 @@ namespace OmsApi.Services.Interfaces
         /// <summary>จัดส่งสินค้า (Ship Order)</summary>
         Task<bool> ShipOrderAsync(ShipOrderRequest request);
 
+        /// <summary>Validate WMS package items without changing platform state.</summary>
+        Task ValidateOrderPackagesAsync(
+            PlatformType platform,
+            string orderId,
+            IReadOnlyCollection<WmsPackageManifestPackage> packages,
+            string? shopId = null);
+
         Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request);
 
         /// <summary>ดึงรายการผู้ให้บริการขนส่ง</summary>
