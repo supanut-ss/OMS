@@ -35,7 +35,7 @@ const defaultFormData = {
   description_en: "",
   description_th: "",
   descrption_other: "",
-  is_active: "YES",
+  is_active: 1,
 };
 let errorFormData = {
   app_id: false,
@@ -44,8 +44,8 @@ let errorFormData = {
 };
 
 const activeOptions = [
-  { value: "YES", label: "YES" },
-  { value: "NO", label: "NO" },
+  { value: 1, label: "YES" },
+  { value: 0, label: "NO" },
 ];
 const Resource = (props) => {
   const { permission } = useOutletContext();
@@ -59,12 +59,18 @@ const Resource = (props) => {
   const dataGridRef = useRef();
   const [locale_id, setLocale_id] = useState(lang || "en");
   const handleOpenEdit = (row) => {
-    setDialogTitleForm(getResourceByGroupAndName("Resource", "Edit_Form", lang)?.resource_value || "Edit Form");
+    setDialogTitleForm(
+      getResourceByGroupAndName("Resource", "Edit_Form", lang)
+        ?.resource_value || "Edit Form",
+    );
     setFormData({ ...row });
     setOpenForm(true);
   };
   const handleOpenAdd = () => {
-    setDialogTitleForm(getResourceByGroupAndName("Resource", "Add_Form", lang)?.resource_value || "Add Form");
+    setDialogTitleForm(
+      getResourceByGroupAndName("Resource", "Add_Form", lang)?.resource_value ||
+        "Add Form",
+    );
     setFormData(defaultFormData);
     setOpenForm(true);
   };
@@ -102,7 +108,7 @@ const Resource = (props) => {
     }
     setFormData({ ...formData });
     try {
-      await AxiosMaster.post("/resource/save", formData).then((res) => {
+      await AxiosMaster.post(`/resource/save`, formData).then((res) => {
         if (res.data.message_code === "0") {
           BSAlertSwal2.fire({
             icon: "success",
@@ -131,7 +137,7 @@ const Resource = (props) => {
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const getLang = async () => {
-   setLocale_id(lang || "en");
+    setLocale_id(lang || "en");
   };
   useEffect(() => {
     getLang();
@@ -140,7 +146,7 @@ const Resource = (props) => {
   return (
     <Box>
       <BSFullScreenLoader open={loading} />
-      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
+      <Paper sx={{ p: 2, width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
         <BSDataGrid
           ref={dataGridRef}
           bsLocale={lang}
@@ -156,6 +162,7 @@ const Resource = (props) => {
                     ,description_en
                     ,description_th
                     ,descrption_other
+                    ,micro_service_name
                     ,is_active"
           bsObjBy="user_id asc"
           bsComboBox={[
@@ -166,7 +173,7 @@ const Resource = (props) => {
               Default: "--- Select Application ---",
               PreObj: "sec",
               Obj: "t_com_application",
-              ObjWh: "is_active='YES'",
+              ObjWh: "is_active=1",
               ObjBy: "application_name asc",
             },
             {
@@ -176,16 +183,37 @@ const Resource = (props) => {
               Default: "--- Select Platform ---",
               PreObj: "sec",
               Obj: "t_com_combobox_item",
-              ObjWh: "group_name = 'platform' AND is_active='YES'",
+              ObjWh: "group_name = 'platform' AND is_active=1",
               ObjBy: "display_member asc",
+            },
+            // {
+            //   Column: "resource_group",
+            //   Display: "display_member",
+            //   Value: "value_member",
+            //   Default: "--- Select Resource Group ---",
+            //   PreObj: "sec",
+            //   Obj: "t_com_combobox_item",
+            //   ObjWh: "group_name = 'combobox_resource_group' AND is_active=1",
+            //   ObjBy: "display_sequence asc",
+            // },
+            {
+              Column: "micro_service_name",
+              Display: "display_member",
+              Value: "value_member",
+              Default: "--- Select Micro Service ---",
+              PreObj: "sec",
+              Obj: "t_com_combobox_item",
+              ObjWh:
+                "group_name = 'combobox_micro_service_name' AND is_active=1",
+              ObjBy: "display_sequence asc",
             },
           ]}
           bsBulkMode={{
             enable: false, // Enable all bulk operations
             addInline: permission.is_add, // Add new rows inline instead of dialog
-            edit: permission.is_edit,      // Enabled by default when enable=true
-            delete: permission.is_delete,    // Enabled by default when enable=true
-            add: permission.is_add,       // Enabled by default when enable=true
+            edit: permission.is_edit, // Enabled by default when enable=true
+            delete: permission.is_delete, // Enabled by default when enable=true
+            add: permission.is_add, // Enabled by default when enable=true
             // showCheckbox: false,
             // showSplitButton: false,
           }}
@@ -211,8 +239,8 @@ const Resource = (props) => {
                 <BSAutoComplete
                   bsMode="single"
                   bsTitle="Select Application"
-                  bsPreObj="sec.t_com_"
-                  bsObj="application"
+                  bsPreObj="sec"
+                  bsObj="t_com_application"
                   bsColumes={[
                     {
                       field: "app_id",
@@ -244,8 +272,8 @@ const Resource = (props) => {
                 <BSAutoComplete
                   bsMode="single"
                   bsTitle="Select Platform"
-                  bsPreObj="sec.t_com_"
-                  bsObj="combobox_item"
+                  bsPreObj="sec"
+                  bsObj="t_com_combobox_item"
                   bsColumes={[
                     {
                       field: "display_member",
@@ -256,7 +284,7 @@ const Resource = (props) => {
                     //  { field: "display_member", display: true, filter: false, key: false },
                   ]}
                   bsObjBy="display_member asc"
-                  bsObjWh="group_name = 'platform' AND is_active='YES'"
+                  bsObjWh="group_name = 'platform' AND is_active=1"
                   bsValue={formData.platform}
                   bsOnChange={(val) =>
                     setFormData({
@@ -273,7 +301,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_group">
-                  {getResourceByGroupAndName("t_com_resource", "resource_group", locale_id)?.resource_value || "Resource Group"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "resource_group",
+                    locale_id,
+                  )?.resource_value || "Resource Group"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_group"
@@ -293,7 +325,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_name">
-                  {getResourceByGroupAndName("t_com_resource", "resource_name", locale_id)?.resource_value || "Resource Name"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "resource_name",
+                    locale_id,
+                  )?.resource_value || "Resource Name"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_name"
@@ -313,7 +349,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_en">
-                  {getResourceByGroupAndName("t_com_resource", "resource_en", locale_id)?.resource_value || "Resource (EN)"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "resource_en",
+                    locale_id,
+                  )?.resource_value || "Resource (EN)"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_en"
@@ -333,7 +373,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_th">
-                  {getResourceByGroupAndName("t_com_resource", "resource_th", locale_id)?.resource_value || "Resource (TH)"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "resource_th",
+                    locale_id,
+                  )?.resource_value || "Resource (TH)"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_th"
@@ -353,7 +397,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="resource_other">
-                  {getResourceByGroupAndName("t_com_resource", "resource_other", locale_id)?.resource_value || "Resource (Other)"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "resource_other",
+                    locale_id,
+                  )?.resource_value || "Resource (Other)"}
                 </InputLabel>
                 <OutlinedInput
                   id="resource_other"
@@ -373,7 +421,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="description_en">
-                  {getResourceByGroupAndName("t_com_resource", "description_en", locale_id)?.resource_value || "Description (EN)"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "description_en",
+                    locale_id,
+                  )?.resource_value || "Description (EN)"}
                 </InputLabel>
                 <OutlinedInput
                   id="description_en"
@@ -393,7 +445,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="description_th">
-                  {getResourceByGroupAndName("t_com_resource", "description_th", locale_id)?.resource_value || "Description (TH)"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "description_th",
+                    locale_id,
+                  )?.resource_value || "Description (TH)"}
                 </InputLabel>
                 <OutlinedInput
                   id="description_th"
@@ -413,7 +469,11 @@ const Resource = (props) => {
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FormControl fullWidth>
                 <InputLabel htmlFor="descrption_other">
-                  {getResourceByGroupAndName("t_com_resource", "descrption_other", locale_id)?.resource_value || "Description (Other)"}
+                  {getResourceByGroupAndName(
+                    "t_com_resource",
+                    "descrption_other",
+                    locale_id,
+                  )?.resource_value || "Description (Other)"}
                 </InputLabel>
                 <OutlinedInput
                   id="descrption_other"
@@ -438,7 +498,13 @@ const Resource = (props) => {
                 <TextField
                   fullWidth
                   select
-                  label={getResourceByGroupAndName("t_com_resource", "is_active", locale_id)?.resource_value || "Is Active"}
+                  label={
+                    getResourceByGroupAndName(
+                      "t_com_resource",
+                      "is_active",
+                      locale_id,
+                    )?.resource_value || "Is Active"
+                  }
                   name="is_active"
                   value={formData.is_active}
                   onChange={(e) =>
@@ -459,10 +525,12 @@ const Resource = (props) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenForm(false)}>
-            {getResourceByGroupAndName("Resource", "Cancel", locale_id)?.resource_value || "Cancel"}
+            {getResourceByGroupAndName("Resource", "Cancel", locale_id)
+              ?.resource_value || "Cancel"}
           </Button>
           <Button variant="contained" onClick={onSave}>
-            {getResourceByGroupAndName("Resource", "Save", locale_id)?.resource_value || "Save"}
+            {getResourceByGroupAndName("Resource", "Save", locale_id)
+              ?.resource_value || "Save"}
           </Button>
         </DialogActions>
       </Dialog>

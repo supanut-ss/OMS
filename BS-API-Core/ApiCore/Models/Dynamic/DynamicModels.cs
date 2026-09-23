@@ -191,6 +191,39 @@ namespace ApiCore.Models.Dynamic
         /// User lookup configuration for audit fields (create_by, update_by)
         /// </summary>
         public UserLookupConfig? UserLookup { get; set; }
+
+        /// <summary>
+        /// Custom filters with advanced operators (isBetween, etc.)
+        /// </summary>
+        public List<CustomFilterItem>? CustomFilters { get; set; }
+    }
+
+    /// <summary>
+    /// Custom filter item with advanced operators support
+    /// </summary>
+    public class CustomFilterItem
+    {
+        /// <summary>
+        /// Field name to filter
+        /// </summary>
+        [Required]
+        public string Field { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Filter operator (isBetween, equals, contains, etc.)
+        /// </summary>
+        [Required]
+        public string Operator { get; set; } = "equals";
+
+        /// <summary>
+        /// Filter value (or start value for isBetween)
+        /// </summary>
+        public object? Value { get; set; }
+
+        /// <summary>
+        /// End value for isBetween operator
+        /// </summary>
+        public object? Value2 { get; set; }
     }
 
     /// <summary>

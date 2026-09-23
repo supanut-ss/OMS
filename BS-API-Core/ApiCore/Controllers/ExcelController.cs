@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using OfficeOpenXml;
 using System.Data;
+using System.Data.Common;
 
 namespace ApiCore.Controllers
 {
@@ -34,18 +34,18 @@ namespace ApiCore.Controllers
                 var dt = new DataTable("InventoryCheck");
 
                 using (var conn = _connectionFactory.CreateConnection(DatabaseType.Main))
-                using (var cmd = new SqlCommand("dbo.usp_inventory_check_report", conn))
-                using (var da = new SqlDataAdapter(cmd))
+                using (var cmd = _connectionFactory.CreateCommand("dbo.usp_inventory_check_report", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.CommandTimeout = 120;
 
                     // ✅ ตัวอย่างเพิ่มพารามิเตอร์ (ตามที่ Stored Procedure ใช้จริง)
-                    //cmd.Parameters.Add(new SqlParameter("@warehouse_code", (object?)warehouseCode ?? DBNull.Value));
-                    //cmd.Parameters.Add(new SqlParameter("@item_code", (object?)itemCode ?? DBNull.Value));
+                    //cmd.Parameters.Add(_connectionFactory.CreateParameter("@warehouse_code", (object?)warehouseCode ?? DBNull.Value));
+                    //cmd.Parameters.Add(_connectionFactory.CreateParameter("@item_code", (object?)itemCode ?? DBNull.Value));
 
                     conn.Open();
-                    da.Fill(dt); // ดึงข้อมูลจาก SP ลง DataTable
+                    using var reader = cmd.ExecuteReader();
+                    dt.Load(reader); // ดึงข้อมูลจาก SP ลง DataTable
                 }
                 ///////////////////
                 //var dt = new DataTable("ProductList");

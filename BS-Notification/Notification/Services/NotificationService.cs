@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.Data.SqlClient;
 using Notification.Hubs;
 using Notification.Interfaces;
@@ -8,19 +6,19 @@ using Notification.Models;
 using Notification.Models.Requests;
 using Notification.Models.Responses;
 using System.Data;
-using System.Reflection.PortableExecutable;
+using TokenManagement.Database;
 
 namespace Notification.Services
 {
     public class NotificationService : INotificationService
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY")
-                ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly IDbConnectionFactory _connectionFactory;
         private readonly IHubContext<NotificationHub> _hub;
         private readonly ILogger<NotificationService> _logger;
 
-        public NotificationService(IHubContext<NotificationHub> hub, ILogger<NotificationService> logger)
+        public NotificationService(IDbConnectionFactory connectionFactory, IHubContext<NotificationHub> hub, ILogger<NotificationService> logger)
         {
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             _hub = hub;
             _logger = logger;
         }
@@ -62,48 +60,23 @@ namespace Notification.Services
             {
                 var list = new List<NotificationItem>();
 
-                await using var conn = new SqlConnection(_connectionString);
+                await using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                await using var cmd = new SqlCommand("noti.usp_noti_by_user", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                await using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_by_user", conn);
 
-                cmd.Parameters.Add(new SqlParameter("@in_vchUserId", SqlDbType.NVarChar, 100)
-                {
-                    Value = userId
-                });
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intLimit", limit));
 
-                cmd.Parameters.Add(new SqlParameter("@in_intLimit", SqlDbType.Int)
-                {
-                    Value = limit
-                });
+                var pOutCode = _connectionFactory.CreateOutputParameter("@out_vchErrorCode", DbType.String, 50);
+                var pOutMsg = _connectionFactory.CreateOutputParameter("@out_vchErrorMessage", DbType.String, 500);
+                var pTotal = _connectionFactory.CreateOutputParameter("@out_intTotal", DbType.Int32, 0);
+                var pUnreadTotal = _connectionFactory.CreateOutputParameter("@out_intUnreadTotal", DbType.Int32, 0);
 
-                var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pTotal = new SqlParameter("@out_intTotal", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pUnreadTotal = new SqlParameter("@out_intUnreadTotal", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-
-                cmd.Parameters.AddRange(new[]
-                {
-            pOutCode,
-            pOutMsg,
-            pTotal,
-            pUnreadTotal
-        });
+                cmd.Parameters.Add(pOutCode);
+                cmd.Parameters.Add(pOutMsg);
+                cmd.Parameters.Add(pTotal);
+                cmd.Parameters.Add(pUnreadTotal);
 
                 await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -119,8 +92,8 @@ namespace Notification.Services
                         is_read = reader.GetBoolean(reader.GetOrdinal("is_read")),
                         from_user = reader.GetString(reader.GetOrdinal("from_user")),
                         to_user = reader.GetString(reader.GetOrdinal("to_user")),
-                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
-                        read_at = reader["read_at"] as DateTime?
+                        create_date = reader.GetDateTime(reader.GetOrdinal("create_date")),
+                        read_date = reader["read_date"] as DateTime?
                     });
                 }
 
@@ -163,48 +136,23 @@ namespace Notification.Services
         {
             try
             {
-                await using var conn = new SqlConnection(_connectionString);
+                await using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                await using var cmd = new SqlCommand("noti.usp_noti_mark_read", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                await using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_mark_read", conn);
 
-                cmd.Parameters.Add(new SqlParameter("@in_vchUserId", SqlDbType.NVarChar, 100)
-                {
-                    Value = userId
-                });
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intNotifyId", notifyId));
 
-                cmd.Parameters.Add(new SqlParameter("@in_intNotifyId", SqlDbType.Int)
-                {
-                    Value = notifyId
-                });
+                var pOutCode = _connectionFactory.CreateOutputParameter("@out_vchErrorCode", DbType.String, 50);
+                var pOutMsg = _connectionFactory.CreateOutputParameter("@out_vchErrorMessage", DbType.String, 500);
+                var pTotal = _connectionFactory.CreateOutputParameter("@out_intTotal", DbType.Int32, 0);
+                var pUnreadTotal = _connectionFactory.CreateOutputParameter("@out_intUnreadTotal", DbType.Int32, 0);
 
-                var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pTotal = new SqlParameter("@out_intTotal", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pUnreadTotal = new SqlParameter("@out_intUnreadTotal", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-
-                cmd.Parameters.AddRange(new[]
-                {
-            pOutCode,
-            pOutMsg,
-            pTotal,
-            pUnreadTotal
-        });
+                cmd.Parameters.Add(pOutCode);
+                cmd.Parameters.Add(pOutMsg);
+                cmd.Parameters.Add(pTotal);
+                cmd.Parameters.Add(pUnreadTotal);
 
                 // ✅ ExecuteNonQuery เหมาะที่สุด
                 await cmd.ExecuteNonQueryAsync();
@@ -244,20 +192,17 @@ namespace Notification.Services
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("noti.usp_noti_insert", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_insert", conn);
 
-                cmd.Parameters.AddWithValue("@in_vchType", "info");
-                cmd.Parameters.AddWithValue("@in_vchTitle", "Notification");
-                cmd.Parameters.AddWithValue("@in_vchDescription", request.Message);
-                cmd.Parameters.AddWithValue("@in_vchLink", DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchFromUser", form_user);
-                cmd.Parameters.AddWithValue("@in_vchToUser", to_user);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchType", "info"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchTitle", "Notification"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchDescription", request.Message));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchLink", DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchFromUser", form_user));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchToUser", to_user));
 
                var res =  await cmd.ExecuteNonQueryAsync();
                 if (res <= 0)
@@ -293,15 +238,12 @@ namespace Notification.Services
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("noti.usp_noti_soft_delete", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
-                cmd.Parameters.AddWithValue("@in_intNotifyId", notifyId);
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_soft_delete", conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intNotifyId", notifyId));
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -325,21 +267,19 @@ namespace Notification.Services
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
                 using var tran = conn.BeginTransaction();
                 try
                 {
-                    using var cmd = new SqlCommand("noti.usp_noti_insert_all_users", conn, tran)
-                    {
-                        CommandType = CommandType.StoredProcedure
-                    };
+                    using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_insert_all_users", conn);
+                    cmd.Transaction = tran;
 
-                    cmd.Parameters.AddWithValue("@in_vchType", request.Type);
-                    cmd.Parameters.AddWithValue("@in_vchTitle", request.Title);
-                    cmd.Parameters.AddWithValue("@in_vchDescription", request.Message);
-                    cmd.Parameters.AddWithValue("@in_vchFromUser", fromUser);
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchType", request.Type));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchTitle", request.Title));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchDescription", request.Message));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchFromUser", fromUser));
 
                     await cmd.ExecuteNonQueryAsync();
                     tran.Commit();
@@ -384,13 +324,10 @@ namespace Notification.Services
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("noti.usp_get_banner", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_get_banner", conn);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -408,7 +345,7 @@ namespace Notification.Services
                         title = reader["title"]?.ToString() ?? "",
                         description = reader["description"]?.ToString() ?? "",
                         link = reader["link"]?.ToString(),
-                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
+                        create_date = reader.GetDateTime(reader.GetOrdinal("create_date")),
                         list = new List<BannerLink>()
                     };
 
@@ -456,26 +393,25 @@ namespace Notification.Services
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("noti.usp_manage_banner", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_manage_banner", conn);
 
-                cmd.Parameters.AddWithValue("@in_vchAction", request.action);
-                cmd.Parameters.AddWithValue("@in_intId", (object?)request.id ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchType", (object?)request.type ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchTitle", (object?)request.title ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchDescription", (object?)request.description ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchLink", (object?)request.link ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchStartDate", (object?)request.start_date ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchEndDate", (object?)request.end_date ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_intPriority", request.priority);
-                cmd.Parameters.AddWithValue("@in_bitIsActive", request.is_active);
-                cmd.Parameters.AddWithValue("@in_vchUpdateBy", (object?)request.update_by ?? DBNull.Value);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchAction", request.action));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intId", (object?)request.id ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchType", (object?)request.type ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchTitle", (object?)request.title ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchDescription", (object?)request.description ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchLink", (object?)request.link ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchStartDate", (object?)request.start_date ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchEndDate", (object?)request.end_date ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intPriority", request.priority));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_bitIsActive", request.is_active));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUpdateBy", (object?)request.update_by ?? DBNull.Value));
 
                 // ===============================
-                // Table-Valued Parameter
+                // Table-Valued Parameter (SQL Server specific)
                 // ===============================
                 var table = new DataTable();
                 table.Columns.Add("name", typeof(string));
@@ -519,22 +455,14 @@ namespace Notification.Services
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
-                using var cmd = new SqlCommand("noti.usp_delete_banner", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                cmd.Parameters.AddWithValue("@in_intId", request.id);
-                var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                cmd.Parameters.AddRange(new[] { pOutCode, pOutMsg });
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_delete_banner", conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intId", request.id));
+                var pOutCode = _connectionFactory.CreateOutputParameter("@out_vchErrorCode", DbType.String, 50);
+                var pOutMsg = _connectionFactory.CreateOutputParameter("@out_vchErrorMessage", DbType.String, 500);
+                cmd.Parameters.Add(pOutCode);
+                cmd.Parameters.Add(pOutMsg);
                 await cmd.ExecuteNonQueryAsync();
                 var response = new BannerResponse
                 {
@@ -557,13 +485,10 @@ namespace Notification.Services
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
-                using var cmd = new SqlCommand("noti.usp_get_banner_detail", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                cmd.Parameters.AddWithValue("@in_intId", bannerId);
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_get_banner_detail", conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intId", bannerId));
                 using var reader = await cmd.ExecuteReaderAsync();
                 var response = new BannerResponse();
                 if (await reader.ReadAsync())
@@ -577,7 +502,7 @@ namespace Notification.Services
                         title = reader["title"]?.ToString() ?? "",
                         description = reader["description"]?.ToString() ?? "",
                         link = reader["link"]?.ToString(),
-                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
+                        create_date = reader.GetDateTime(reader.GetOrdinal("create_date")),
                         list = new List<BannerLink>()
                     });
                 }
@@ -599,15 +524,12 @@ namespace Notification.Services
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("noti.usp_get_banner_by_id", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_get_banner_by_id", conn);
 
-                cmd.Parameters.Add("@in_intId", SqlDbType.Int).Value = id;
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intId", id));
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -625,7 +547,7 @@ namespace Notification.Services
                         title = reader["title"]?.ToString() ?? "",
                         description = reader["description"]?.ToString() ?? "",
                         link = reader["link"] as string,
-                        create_at = reader.GetDateTime(reader.GetOrdinal("create_at")),
+                        create_date = reader.GetDateTime(reader.GetOrdinal("create_date")),
                         list = new List<BannerLink>()
                     };
 

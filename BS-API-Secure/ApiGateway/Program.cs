@@ -23,8 +23,9 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins(
         "http://localhost:3000",
-        "http://10.10.60.60",
-        "https://10.10.60.60"
+        "http://localhost:3001",
+        "http://10.10.60.67",
+        "https://10.10.60.67"
      )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
@@ -38,6 +39,20 @@ builder.Services.AddOcelot(builder.Configuration);
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<AddClientIpDelegatingHandler>();
+
+// Register TokenManagement.Database.IDbConnectionFactory (used by TokenValidatorService)
+builder.Services.AddScoped<TokenManagement.Database.IDbConnectionFactory>(sp =>
+{
+    var providerName = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer";
+    var connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY")
+        ?? Environment.GetEnvironmentVariable("SERVERDB")
+        ?? throw new ArgumentNullException("SERVERDB", "Database connection string is required.");
+    var provider = Enum.TryParse<TokenManagement.Database.DatabaseProvider>(providerName, true, out var parsed)
+        ? parsed
+        : TokenManagement.Database.DatabaseProvider.SqlServer;
+    return new TokenManagement.Database.DbConnectionFactory(connectionString, provider);
+});
+
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
 
 var app = builder.Build();

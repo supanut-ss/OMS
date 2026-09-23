@@ -11,6 +11,26 @@ import {
   DateTimeRangePicker,
   SingleInputDateTimeRangeField,
 } from "@mui/x-date-pickers-pro";
+
+const compactDateInputSx = {
+  "& .MuiInputBase-root:not(.MuiInputBase-multiline), & .MuiOutlinedInput-root:not(.MuiInputBase-multiline), & .MuiPickersInputBase-root": {
+    minHeight: 44,
+    alignItems: "center",
+  },
+  "& .MuiInputBase-input, & .MuiOutlinedInput-input, & .MuiInputBase-inputSizeSmall, & .MuiOutlinedInput-inputSizeSmall, & .MuiPickersInputBase-input": {
+    height: "20px",
+    pt: "0 !important",
+    pb: "0 !important",
+    lineHeight: "20px",
+  },
+  "& .MuiInputLabel-root": {
+    transform: "translate(14px, 10px) scale(1)",
+  },
+  "& .MuiInputLabel-shrink": {
+    transform: "translate(14px, -9px) scale(0.75)",
+  },
+};
+
 const BSDatepicker = ({
   label,
   value,
@@ -22,8 +42,30 @@ const BSDatepicker = ({
   borderLeftRadius = null,
   isRange = false,
   isDateOnly = false,
+  size = "small",
+  slotProps,
+  sx,
+  placeholder,
   ...props
 }) => {
+  const joinedInputSx = {
+    ...compactDateInputSx,
+    ...(borderLeftRadius && {
+      "& .MuiInputBase-root, & .MuiOutlinedInput-root, & .MuiPickersInputBase-root": {
+        borderTopLeftRadius: borderLeftRadius,
+        borderBottomLeftRadius: borderLeftRadius,
+      },
+      "& .MuiInputBase-root fieldset, & .MuiOutlinedInput-root fieldset, & .MuiPickersInputBase-root fieldset": {
+        borderTopLeftRadius: borderLeftRadius,
+        borderBottomLeftRadius: borderLeftRadius,
+      },
+    }),
+    position: "relative",
+    zIndex: 1,
+    "&:focus-within": {
+      zIndex: 2,
+    },
+  };
   // const licenseStatus = muiLicenseManager.getLicenseStatus();
   // Logger.log("🔐 MUI X License Status:", licenseStatus);
 
@@ -32,7 +74,7 @@ const BSDatepicker = ({
   // } else {
   //   Logger.warn("⚠️ MUI X Pro license not found - some features may be limited");
   // }
-  return isRange ===true? (
+  return isRange === true ? (
     <FormControl fullWidth error={error} sx={{ mb: 2 }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         {isDateOnly ? (
@@ -40,14 +82,20 @@ const BSDatepicker = ({
             value={value || [null, null]}
             slotProps={{
               textField: {
+                ...slotProps?.textField,
                 error: error,
                 helperText: helperText,
+                fullWidth: true,
+                size: size,
+                placeholder: placeholder,
                 sx: {
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": {
                       borderColor: error ? "red" : undefined,
                     },
                   },
+                  ...joinedInputSx,
+                  ...slotProps?.textField?.sx,
                 },
               },
             }}
@@ -70,7 +118,36 @@ const BSDatepicker = ({
               onChange(newValue);
             }}
             slots={{ field: SingleInputDateTimeRangeField }}
+            slotProps={{
+              textField: {
+                ...slotProps?.textField,
+                error: error,
+                helperText: helperText,
+                fullWidth: true,
+                size: size,
+                placeholder: placeholder,
+                sx: {
+                  ...joinedInputSx,
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: error ? "red" : undefined,
+                    },
+                  },
+                  ...slotProps?.textField?.sx,
+                },
+              },
+            }}
             calendars={2}
+            sx={{
+              ...joinedInputSx,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: error ? "red" : undefined,
+                },
+              },
+              ...sx,
+            }}
+
           />
         )}
       </LocalizationProvider>
@@ -88,27 +165,27 @@ const BSDatepicker = ({
             disabled={props.disabled}
             slotProps={{
               textField: {
+                ...slotProps?.textField,
                 required,
                 readOnly: props.readOnly,
                 disabled: props.disabled,
                 error: error,
                 helperText: helperText,
                 fullWidth: true,
+                size: size,
+                placeholder: placeholder,
                 sx: {
-                  ...(borderLeftRadius && {
-                    "& .MuiPickersInputBase-root": {
-                      borderTopLeftRadius: borderLeftRadius,
-                      borderBottomLeftRadius: borderLeftRadius,
-                      "& .MuiOutlinedInput-root": {
-                        "& fieldset": {
-                          borderColor: error ? "red" : undefined,
-                        },
-                      },
+                  ...joinedInputSx,
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: error ? "red" : undefined,
                     },
-                  }),
+                  },
+                  ...slotProps?.textField?.sx,
                 },
               },
             }}
+            sx={sx}
             {...props}
           />
         ) : (
@@ -121,27 +198,27 @@ const BSDatepicker = ({
             disabled={props.disabled}
             slotProps={{
               textField: {
+                ...slotProps?.textField,
                 required,
                 readOnly: props.readOnly,
                 error: error,
                 helperText: helperText,
                 disabled: props.disabled,
                 fullWidth: true,
+                size: size,
+                placeholder: placeholder,
                 sx: {
-                  ...(borderLeftRadius && {
-                    "& .MuiPickersInputBase-root": {
-                      borderTopLeftRadius: borderLeftRadius,
-                      borderBottomLeftRadius: borderLeftRadius,
-                      "& .MuiOutlinedInput-root": {
-                        "& fieldset": {
-                          borderColor: error ? "red" : undefined,
-                        },
-                      },
+                  ...joinedInputSx,
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      borderColor: error ? "red" : undefined,
                     },
-                  }),
+                  },
+                  ...slotProps?.textField?.sx,
                 },
               },
             }}
+            sx={sx}
             {...props}
           />
         )}

@@ -189,7 +189,7 @@ export const thaiLocaleText = {
 
   // Used core components translation keys
   MuiTablePagination: {
-    labelRowsPerPage: "แถวต่อหน้า:",
+    labelRowsPerPage: "จำนวนแถวต่อหน้า:",
     labelDisplayedRows: ({ from, to, count }) => {
       const estimatedLabel = `มากกว่า ${to}`;
       return `${from}–${to} จาก ${count !== -1 ? count : estimatedLabel}`;
@@ -240,6 +240,8 @@ export const thaiLocaleText = {
   bsSaving: "กำลังบันทึก...",
   bsCancel: "ยกเลิก",
   bsClose: "ปิด",
+  bsMinimizeDialog: "ย่อหน้าต่าง",
+  bsRestoreDialog: "ขยายหน้าต่าง",
   bsRefresh: "รีเฟรช",
   bsExportExcel: "ส่งออก Excel",
   bsExportExcelError: "ไม่สามารถส่งออกเป็น Excel ได้",
@@ -248,7 +250,7 @@ export const thaiLocaleText = {
   bsShowFilters: "แสดงตัวกรอง",
   bsHeaderFiltersEnabled: "เปิดใช้งานตัวกรองส่วนหัว",
   bsOfflineToolbar: "🔧 โหมดออฟไลน์",
-  bsBulkEditMode: "🔄 โหมดแก้ไขหลายรายการ",
+  bsBulkEditMode: "โหมดแก้ไขหลายรายการ",
   bsBulkEditMessage:
     "แก้ไขเซลล์โดยตรงในตาราง การเปลี่ยนแปลงจะถูกติดตามแต่จะไม่ถูกบันทึกจนกว่าคุณจะคลิกบันทึก",
   bsUnsavedChanges: "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
@@ -276,6 +278,8 @@ export const thaiLocaleText = {
 
   // BSDataGrid Validation Messages
   bsValidationErrors: "พบข้อผิดพลาดในการตรวจสอบข้อมูล",
+  bsValidationError: "พบข้อผิดพลาดในการตรวจสอบข้อมูล",
+  bsFieldRequired: "จำเป็นต้องกรอกข้อมูล",
   bsDuplicateValueError: "พบข้อมูลซ้ำ",
   bsFieldAlreadyExists: (fieldName, value) =>
     `${fieldName}: "${value}" มีอยู่ในระบบแล้ว กรุณาใช้ค่าอื่น`,

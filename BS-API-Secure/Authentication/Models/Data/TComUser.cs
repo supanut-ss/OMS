@@ -10,6 +10,7 @@ namespace Authentication.Models.Data
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string LocaleId { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
         public int AccessFailedCount { get; set; } = 0;
         public int UserGroupId { get; set; }

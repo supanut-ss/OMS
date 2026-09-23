@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="LandscapeStickerItemNumber" pageWidth="212" pageHeight="141" orientation="Landscape" columnWidth="206" leftMargin="2" rightMargin="2" topMargin="2" bottomMargin="2" uuid="3dedc18c-ae5b-45e0-b7f9-9901cae10fe2">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="StickerInboundItem"/>
+	<property name="com.jaspersoft.studio.unit." value="mm"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="mm"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="mm"/>
+	<style name="Default" isDefault="true" forecolor="#000000" fontName="Tahoma" fontSize="10"/>
+	<subDataset name="report_data" uuid="6eca445b-fb22-43e4-9e6b-3c8cf9a8268f">
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="StickerInboundItem"/>
+		<queryString language="jsonql">
+			<![CDATA[details]]>
+		</queryString>
+		<field name="barcode_data" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="barcode_data"/>
+			<fieldDescription><![CDATA[barcode_data]]></fieldDescription>
+		</field>
+		<field name="inbound_order_number" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="inbound_order_number"/>
+			<fieldDescription><![CDATA[inbound_order_number]]></fieldDescription>
+		</field>
+		<field name="item_number" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="item_number"/>
+			<fieldDescription><![CDATA[item_number]]></fieldDescription>
+		</field>
+		<field name="item_description" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="item_description"/>
+			<fieldDescription><![CDATA[item_description]]></fieldDescription>
+		</field>
+		<field name="uom" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="uom"/>
+			<fieldDescription><![CDATA[uom]]></fieldDescription>
+		</field>
+		<field name="lot_number" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="lot_number"/>
+			<fieldDescription><![CDATA[lot_number]]></fieldDescription>
+		</field>
+		<field name="expiry_date" class="java.sql.Date">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="expiry_date"/>
+			<fieldDescription><![CDATA[expiry_date]]></fieldDescription>
+		</field>
+		<field name="serial_number" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="serial_number"/>
+			<fieldDescription><![CDATA[serial_number]]></fieldDescription>
+		</field>
+	</subDataset>
+	<queryString language="jsonql">
+		<![CDATA[]]>
+	</queryString>
+	<field name="report_title" class="java.lang.String">
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="report_title"/>
+	</field>
+	<field name="image_logo" class="java.lang.String">
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="header.image_logo"/>
+	</field>
+	<detail>
+		<band height="136" splitType="Stretch">
+			<componentElement>
+				<reportElement x="0" y="0" width="206" height="135" uuid="9c9af93c-839e-495e-93d1-4d3b2815d2be">
+					<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+				</reportElement>
+				<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Horizontal" ignoreWidth="false">
+					<datasetRun subDataset="report_data" uuid="b1c2d3e4-f5a6-7890-bcde-f01234567890">
+						<dataSourceExpression><![CDATA[((net.sf.jasperreports.engine.data.JsonQLDataSource)$P{REPORT_DATA_SOURCE}).subDataSource("details")]]></dataSourceExpression>
+					</datasetRun>
+					<jr:listContents height="135" width="206">
+						<componentElement>
+							<reportElement x="0" y="28" width="84" height="84" uuid="6d485108-3884-40f0-ac40-30cacc9c626f">
+								<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.margin" value="px"/>
+							</reportElement>
+							<jr:QRCode margin="2" errorCorrectionLevel="M">
+								<jr:codeExpression><![CDATA[$F{barcode_data}]]></jr:codeExpression>
+							</jr:QRCode>
+						</componentElement>
+						<textField>
+							<reportElement style="Default" x="0" y="111" width="85" height="23" uuid="e80974de-3283-4864-a487-ac968516c88b">
+								<property name="com.jaspersoft.studio.unit.leftIndent" value="px"/>
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+							</reportElement>
+							<textElement textAlignment="Center" verticalAlignment="Middle">
+								<font size="10" isBold="true"/>
+								<paragraph leftIndent="10"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{item_number}]]></textFieldExpression>
+						</textField>
+						<textField>
+							<reportElement style="Default" x="85" y="28" width="121" height="33" uuid="89d24b36-64df-4073-8dd7-631074ce240e">
+								<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.firstLineIndent" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.y" value="mm"/>
+							</reportElement>
+							<textElement>
+								<font size="10" isBold="true"/>
+								<paragraph firstLineIndent="0"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{item_description}]]></textFieldExpression>
+						</textField>
+						<textField isBlankWhenNull="true">
+							<reportElement style="Default" x="119" y="60" width="87" height="14" uuid="c1172f01-151b-49f7-b0bf-e8a8e5ee8c37">
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+							</reportElement>
+							<textElement verticalAlignment="Middle">
+								<font size="10" isBold="false"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{lot_number}]]></textFieldExpression>
+						</textField>
+						<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+							<reportElement style="Default" x="141" y="79" width="65" height="14" uuid="ae5e8c05-3b4d-46e6-8e6e-662b1cd95806">
+								<property name="com.jaspersoft.studio.unit.x" value="px"/>
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
+							<textElement verticalAlignment="Middle">
+								<font size="10"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{expiry_date}]]></textFieldExpression>
+						</textField>
+						<textField isBlankWhenNull="true">
+							<reportElement style="Default" x="130" y="97" width="76" height="14" uuid="e9f53d36-5393-4b98-a979-eaf8f8d7aebd">
+								<property name="com.jaspersoft.studio.unit.height" value="px"/>
+							</reportElement>
+							<textElement verticalAlignment="Middle">
+								<font size="10"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{serial_number}]]></textFieldExpression>
+						</textField>
+						<staticText>
+							<reportElement x="85" y="60" width="34" height="14" uuid="f5081c1a-a924-496f-bcc7-569b28331760">
+								<property name="com.jaspersoft.studio.unit.y" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+							</reportElement>
+							<textElement verticalAlignment="Middle">
+								<font size="10" isBold="false"/>
+							</textElement>
+							<text><![CDATA[Lot No:]]></text>
+						</staticText>
+						<staticText>
+							<reportElement x="85" y="79" width="56" height="14" uuid="482d7907-9868-4beb-aa04-5668517b19e8">
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+							</reportElement>
+							<textElement verticalAlignment="Middle">
+								<font size="10" isBold="false"/>
+							</textElement>
+							<text><![CDATA[Expiry Date:]]></text>
+						</staticText>
+						<staticText>
+							<reportElement x="85" y="97" width="45" height="14" uuid="f265bb79-0aff-4623-9ac7-f7c8e2125d25">
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+								<property name="com.jaspersoft.studio.unit.width" value="mm"/>
+							</reportElement>
+							<textElement verticalAlignment="Middle">
+								<font size="10" isBold="false"/>
+							</textElement>
+							<text><![CDATA[Serial No:]]></text>
+						</staticText>
+						<image>
+							<reportElement x="0" y="0" width="28" height="28" uuid="06484b33-999d-423b-bfdf-c5bdab3d5b3e"/>
+							<imageExpression><![CDATA["http://10.10.60.67/my-inventory/images/logo.png"]]></imageExpression>
+						</image>
+						<staticText>
+							<reportElement x="28" y="0" width="178" height="28" uuid="c5ab0cde-5084-4ed5-81db-c43069832ac6"/>
+							<textElement textAlignment="Center" verticalAlignment="Middle">
+								<font isBold="true"/>
+							</textElement>
+							<text><![CDATA[My Inventory]]></text>
+						</staticText>
+					</jr:listContents>
+				</jr:list>
+			</componentElement>
+		</band>
+	</detail>
+</jasperReport>

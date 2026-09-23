@@ -2,24 +2,26 @@
 using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Azure.Core;
-using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Data.Common;
+using TokenManagement.Database;
 
 namespace Authentication.Services
 {
     public class AliveService : IAlive
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly IDbConnectionFactory _connectionFactory;
         private readonly IClientInfo _clientInfo;
-        public AliveService(IClientInfo clientInfo)
+        public AliveService(IDbConnectionFactory connectionFactory, IClientInfo clientInfo)
         {
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             _clientInfo = clientInfo ?? throw new ArgumentNullException(nameof(clientInfo));
         }
         public async Task<AliveUserResponse> GetAliveUser()
         {
-            using (var conn = new SqlConnection(_connectionString)) {
+            using (var conn = _connectionFactory.CreateConnection()) {
                 await conn.OpenAsync();
-                using var cmd = new SqlCommand("sec.usp_get_user_alive", conn);
+                using var cmd = _connectionFactory.CreateCommand("sec.usp_get_user_alive", conn);
                 
                     cmd.CommandType = CommandType.StoredProcedure;
                     using var reader = await cmd.ExecuteReaderAsync() ;
@@ -59,26 +61,20 @@ namespace Authentication.Services
             {
                 throw new ArgumentException("Invalid request: refresh_token is required.");
             }
-            using (var conn = new SqlConnection(_connectionString))
+            using (var conn = _connectionFactory.CreateConnection())
             {
-                using var cmd = new SqlCommand("sec.usp_update_user_alive", conn);
+                using var cmd = _connectionFactory.CreateCommand("sec.usp_update_user_alive", conn);
 
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@in_vchRefreshToken", request.refresh_token);
-                cmd.Parameters.AddWithValue("@in_vchDeviceInfo", _clientInfo.GetClientDeviceInfo()); // Optional, can be set to empty string if not used
-                cmd.Parameters.AddWithValue("@in_vchIpAddress", _clientInfo.GetClientIpAddress());
-                cmd.Parameters.AddWithValue("@in_delLatitude", request.location?.latitude ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_delLongitude", request.location?.longitude ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_delAccuracy", request.location?.accuracy ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_bigTimestamp", request.location != null ? DateTimeOffset.FromUnixTimeMilliseconds(request.location.timestamp).DateTime : (object)DBNull.Value);
-                var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_refresh_token", request.refresh_token));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_device_info", _clientInfo.GetClientDeviceInfo())); // Optional, can be set to empty string if not used
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_ip_address", _clientInfo.GetClientIpAddress()));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_del_latitude", request.location?.latitude ?? (object)DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_del_longitude", request.location?.longitude ?? (object)DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_del_accuracy", request.location?.accuracy ?? (object)DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_big_timestamp", request.location != null ? DateTimeOffset.FromUnixTimeMilliseconds(request.location.timestamp).DateTime : (object)DBNull.Value));
+                var errorCodeParam = _connectionFactory.CreateOutputParameter("@out_vch_error_code", DbType.String, 50);
+                var errorMsgParam = _connectionFactory.CreateOutputParameter("@out_vch_error_message", DbType.String, 500);
 
 
 

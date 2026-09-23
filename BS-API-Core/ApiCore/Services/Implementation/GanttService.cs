@@ -1,7 +1,7 @@
 using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
-using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Data.Common;
 
 namespace ApiCore.Services.Implementation
 {
@@ -10,11 +10,11 @@ namespace ApiCore.Services.Implementation
     /// </summary>
     public class GanttService : IGanttService
     {
-        private readonly string _connectionString;
+        private readonly ISqlConnectionFactory _connectionFactory;
 
-        public GanttService(IConfiguration configuration)
+        public GanttService(ISqlConnectionFactory connectionFactory)
         {
-            _connectionString = Environment.GetEnvironmentVariable("SERVERDB") ?? "";
+            _connectionFactory = connectionFactory;
         }
 
         /// <summary>
@@ -30,17 +30,17 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                using var connection = _connectionFactory.CreateConnection();
                 await connection.OpenAsync();
 
-                using var command = new SqlCommand("tmt.usp_tmt_dashboard_project_timeline", connection);
+                using var command = _connectionFactory.CreateCommand("tmt.usp_tmt_dashboard_project_timeline", connection);
                 command.CommandType = CommandType.StoredProcedure;
 
                 // Add parameters matching the SP signature
-                command.Parameters.AddWithValue("@in_dtStartDate", startDate);
-                command.Parameters.AddWithValue("@in_dtEndDate", endDate);
-                command.Parameters.AddWithValue("@in_vchProjectHeaderID", (object?)projectHeaderId ?? DBNull.Value);
-                command.Parameters.AddWithValue("@in_xmlUserID", string.IsNullOrEmpty(xmlUserIds) ? DBNull.Value : xmlUserIds);
+                command.Parameters.Add(_connectionFactory.CreateParameter("@in_dtStartDate", startDate));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@in_dtEndDate", endDate));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@in_vchProjectHeaderID", (object?)projectHeaderId ?? DBNull.Value));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@in_xmlUserID", string.IsNullOrEmpty(xmlUserIds) ? (object)DBNull.Value : xmlUserIds));
 
                 using var reader = await command.ExecuteReaderAsync();
                 
@@ -84,7 +84,7 @@ namespace ApiCore.Services.Implementation
 
         #region Helper Methods
 
-        private static T GetSafeValue<T>(SqlDataReader reader, string columnName) where T : struct
+        private static T GetSafeValue<T>(DbDataReader reader, string columnName) where T : struct
         {
             try
             {
@@ -110,7 +110,7 @@ namespace ApiCore.Services.Implementation
             }
         }
 
-        private static T? GetSafeNullableValue<T>(SqlDataReader reader, string columnName) where T : struct
+        private static T? GetSafeNullableValue<T>(DbDataReader reader, string columnName) where T : struct
         {
             try
             {
@@ -125,7 +125,7 @@ namespace ApiCore.Services.Implementation
             }
         }
 
-        private static string? GetSafeString(SqlDataReader reader, string columnName)
+        private static string? GetSafeString(DbDataReader reader, string columnName)
         {
             try
             {
@@ -140,7 +140,7 @@ namespace ApiCore.Services.Implementation
             }
         }
 
-        private static DateTime? GetSafeNullableDateTime(SqlDataReader reader, string columnName)
+        private static DateTime? GetSafeNullableDateTime(DbDataReader reader, string columnName)
         {
             try
             {

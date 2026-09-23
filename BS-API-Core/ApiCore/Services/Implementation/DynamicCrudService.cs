@@ -1,14 +1,15 @@
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ApiCore.Data;
 using ApiCore.Models.Base;
 using ApiCore.Models.Dynamic;
 using ApiCore.Services.Interfaces;
 using System.Data;
+using System.Data.Common;
 using System.Text;
 using System.Text.Json;
 using System.Diagnostics;
 using System.Security;
+using System.Text.RegularExpressions;
 
 namespace ApiCore.Services.Implementation
 {
@@ -25,6 +26,8 @@ namespace ApiCore.Services.Implementation
         // Security: Allowed schemas and forbidden tables (loaded from configuration)
         private readonly HashSet<string> _allowedSchemas;
         private readonly HashSet<string> _forbiddenTables;
+        private static readonly HashSet<string> GlobalFilterExcludedColumns =
+            new(new[] { "create_by", "update_by" }, StringComparer.OrdinalIgnoreCase);
 
         public DynamicCrudService(
             ApplicationDbContext context,
@@ -41,7 +44,7 @@ namespace ApiCore.Services.Implementation
             var configSchemas = _configuration.GetSection("DynamicCrud:AllowedSchemas").Get<string[]>();
             _allowedSchemas = configSchemas != null && configSchemas.Length > 0
                 ? new HashSet<string>(configSchemas, StringComparer.OrdinalIgnoreCase)
-                : new HashSet<string>(new[] { "dbo", "sec", "tmt", "imp", "ams","noti" }, StringComparer.OrdinalIgnoreCase);
+                : new HashSet<string>(new[] { "dbo", "sec", "tmt", "imp", "ams" }, StringComparer.OrdinalIgnoreCase);
 
             // Load forbidden tables from configuration, with fallback defaults
             var configForbidden = _configuration.GetSection("DynamicCrud:ForbiddenTables").Get<string[]>();
@@ -58,53 +61,20 @@ namespace ApiCore.Services.Implementation
         {
             ValidateSecurityConstraints(tableName, schemaName);
 
-            var query = @"
-                SELECT 
-                    c.COLUMN_NAME,
-                    c.DATA_TYPE,
-                    c.IS_NULLABLE,
-                    c.CHARACTER_MAXIMUM_LENGTH,
-                    c.NUMERIC_PRECISION,
-                    c.NUMERIC_SCALE,
-                    c.COLUMN_DEFAULT,
-                    CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END AS IS_PRIMARY_KEY,
-                    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY,
-                    ep.value AS COLUMN_DESCRIPTION
-                FROM INFORMATION_SCHEMA.COLUMNS c
-                LEFT JOIN (
-                    SELECT ku.TABLE_NAME, ku.COLUMN_NAME, ku.TABLE_SCHEMA
-                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-                    INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE ku
-                        ON tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
-                        AND tc.TABLE_SCHEMA = ku.TABLE_SCHEMA
-                    WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
-                ) pk ON c.TABLE_NAME = pk.TABLE_NAME 
-                    AND c.COLUMN_NAME = pk.COLUMN_NAME
-                    AND c.TABLE_SCHEMA = pk.TABLE_SCHEMA
-                LEFT JOIN sys.extended_properties ep 
-                    ON ep.major_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME)
-                    AND ep.minor_id = (
-                        SELECT column_id 
-                        FROM sys.columns 
-                        WHERE object_id = OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME) 
-                        AND name = c.COLUMN_NAME
-                    )
-                    AND ep.name = 'MS_Description'
-                WHERE c.TABLE_NAME = @TableName 
-                    AND c.TABLE_SCHEMA = @SchemaName
-                ORDER BY c.ORDINAL_POSITION";
+            var dialect = _connectionFactory.Dialect;
+            var query = dialect.GetColumnMetadataQuery();
 
-            using var connection = _connectionFactory.CreateConnection(DatabaseType.Main);
+            using var connection = _connectionFactory.CreateConnection();
             await connection.OpenAsync();
 
             var columns = new List<DynamicColumnInfo>();
             var primaryKeys = new List<string>();
 
             // Get column metadata
-            using (var command = new SqlCommand(query, connection))
+            using (var command = _connectionFactory.CreateCommand(query, connection))
             {
-                command.Parameters.Add(new SqlParameter("@TableName", tableName));
-                command.Parameters.Add(new SqlParameter("@SchemaName", schemaName));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@TableName", tableName));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@SchemaName", schemaName));
 
                 using var reader = await command.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
@@ -133,9 +103,9 @@ namespace ApiCore.Services.Implementation
             } // Reader is disposed here
 
             // Get row count with a new command after reader is closed
-            var countQuery = $"SELECT COUNT(*) FROM [{schemaName}].[{tableName}]";
-            using var countCommand = new SqlCommand(countQuery, connection);
-            var totalRows = (int)await countCommand.ExecuteScalarAsync();
+            var countQuery = $"SELECT COUNT(*) FROM {dialect.QuoteTable(schemaName, tableName)}";
+            using var countCommand = _connectionFactory.CreateCommand(countQuery, connection);
+            var totalRows = Convert.ToInt32(await countCommand.ExecuteScalarAsync());
 
             return new DynamicTableMetadata
             {
@@ -154,43 +124,8 @@ namespace ApiCore.Services.Implementation
             var schemaPattern = string.IsNullOrEmpty(request.SchemaName) ? "%" : request.SchemaName;
             var searchPattern = string.IsNullOrEmpty(request.SearchPattern) ? "%" : $"%{request.SearchPattern}%";
 
-            var query = @"
-                -- Tables
-                SELECT 
-                    t.TABLE_NAME,
-                    t.TABLE_SCHEMA,
-                    'Table' as TABLE_TYPE,
-                    ISNULL(p.rows, 0) as ROW_COUNT,
-                    o.create_date,
-                    o.modify_date
-                FROM INFORMATION_SCHEMA.TABLES t
-                LEFT JOIN sys.tables st ON st.name = t.TABLE_NAME AND st.schema_id = SCHEMA_ID(t.TABLE_SCHEMA)
-                LEFT JOIN sys.partitions p ON st.object_id = p.object_id AND p.index_id IN (0,1)
-                LEFT JOIN sys.objects o ON st.object_id = o.object_id
-                WHERE t.TABLE_TYPE = 'BASE TABLE'
-                    AND t.TABLE_SCHEMA LIKE @SchemaPattern
-                    AND t.TABLE_NAME LIKE @SearchPattern
-                    AND t.TABLE_SCHEMA IN ('dbo', 'app', 'data')
-                    AND t.TABLE_NAME NOT IN ('sysdiagrams', '__EFMigrationsHistory')
-
-                UNION ALL
-
-                -- Views
-                SELECT 
-                    v.TABLE_NAME,
-                    v.TABLE_SCHEMA,
-                    'View' as TABLE_TYPE,
-                    0 as ROW_COUNT,
-                    o.create_date,
-                    o.modify_date
-                FROM INFORMATION_SCHEMA.VIEWS v
-                LEFT JOIN sys.views sv ON sv.name = v.TABLE_NAME AND sv.schema_id = SCHEMA_ID(v.TABLE_SCHEMA)
-                LEFT JOIN sys.objects o ON sv.object_id = o.object_id
-                WHERE v.TABLE_SCHEMA LIKE @SchemaPattern
-                    AND v.TABLE_NAME LIKE @SearchPattern
-                    AND v.TABLE_SCHEMA IN ('dbo', 'app', 'data')
-
-                ORDER BY TABLE_SCHEMA, TABLE_NAME";
+            var dialect = _connectionFactory.Dialect;
+            var query = dialect.GetSchemaQuery();
 
             using var connection = _connectionFactory.CreateConnection();
             await connection.OpenAsync();
@@ -199,10 +134,10 @@ namespace ApiCore.Services.Implementation
             var views = new List<DynamicTableInfo>();
 
             // Get tables and views first
-            using (var command = new SqlCommand(query, connection))
+            using (var command = _connectionFactory.CreateCommand(query, connection))
             {
-                command.Parameters.Add(new SqlParameter("@SchemaPattern", schemaPattern));
-                command.Parameters.Add(new SqlParameter("@SearchPattern", searchPattern));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@SchemaPattern", schemaPattern));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@SearchPattern", searchPattern));
 
                 using var reader = await command.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
@@ -225,23 +160,12 @@ namespace ApiCore.Services.Implementation
             } // First reader is disposed here
 
             // Get stored procedures with a new command
-            var spQuery = @"
-                SELECT 
-                    p.name AS PROCEDURE_NAME,
-                    s.name AS SCHEMA_NAME,
-                    p.create_date,
-                    p.modify_date
-                FROM sys.procedures p
-                INNER JOIN sys.schemas s ON p.schema_id = s.schema_id
-                WHERE s.name LIKE @SchemaPattern
-                    AND p.name LIKE @SearchPattern
-                    AND s.name IN ('dbo', 'app', 'data')
-                ORDER BY s.name, p.name";
+            var spQuery = dialect.GetStoredProcedureListQuery();
 
-            using (var spCommand = new SqlCommand(spQuery, connection))
+            using (var spCommand = _connectionFactory.CreateCommand(spQuery, connection))
             {
-                spCommand.Parameters.Add(new SqlParameter("@SchemaPattern", schemaPattern));
-                spCommand.Parameters.Add(new SqlParameter("@SearchPattern", searchPattern));
+                spCommand.Parameters.Add(_connectionFactory.CreateParameter("@SchemaPattern", schemaPattern));
+                spCommand.Parameters.Add(_connectionFactory.CreateParameter("@SearchPattern", searchPattern));
 
                 using var spReader = await spCommand.ExecuteReaderAsync();
                 var storedProcedures = new List<DynamicStoredProcedureInfo>();
@@ -287,8 +211,9 @@ namespace ApiCore.Services.Implementation
                 var offset = request.Start;
 
                 // Build SELECT clause
+                var dialect = _connectionFactory.Dialect;
                 var selectColumns = request.SelectColumns?.Any() == true
-                    ? string.Join(", ", request.SelectColumns.Select(c => $"t.[{c}]"))  // Add table alias to prevent ambiguous columns
+                    ? string.Join(", ", request.SelectColumns.Select(c => $"t.{dialect.QuoteIdentifier(c)}"))
                     : "*";
 
                 // Build WHERE clause
@@ -321,7 +246,7 @@ namespace ApiCore.Services.Implementation
                 {
                     // Generate explicit column list with table alias to prevent ambiguous columns
                     var explicitColumns = metadata.Columns
-                        .Select(c => $"t.[{c.ColumnName}]")
+                        .Select(c => $"t.{dialect.QuoteIdentifier(c.ColumnName)}")
                         .ToList();
                     fullSelectColumns = string.Join(", ", explicitColumns);
                 }
@@ -348,61 +273,25 @@ namespace ApiCore.Services.Implementation
 
                     if (groupByColumns.Any())
                     {
-                        groupByClause = $"GROUP BY {string.Join(", ", groupByColumns.Select(c => $"t.[{c}]"))}";
+                        groupByClause = $"GROUP BY {string.Join(", ", groupByColumns.Select(c => $"t.{dialect.QuoteIdentifier(c)}"))}";
                         // When GROUP BY is used, we need to adjust SELECT columns to only include grouped columns
-                        fullSelectColumns = string.Join(", ", groupByColumns.Select(c => $"t.[{c}]"));
+                        fullSelectColumns = string.Join(", ", groupByColumns.Select(c => $"t.{dialect.QuoteIdentifier(c)}"));
                     }
                 }
 
-                // Build final query
-                string query;
-                if (!string.IsNullOrEmpty(groupByClause))
-                {
-                    // For GROUP BY queries, use simpler query without pagination
-                    query = $@"
-                        SELECT {fullSelectColumns}
-                        FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
-                        {userLookupJoin}
-                        {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
-                        {groupByClause}
-                        {orderByClause};
-                        
-                        SELECT COUNT(*) as TotalCount FROM (
-                            SELECT 1 as dummy
-                            FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
-                            {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
-                            {groupByClause}
-                        ) as grouped;";
-                }
-                else
-                {
-                    // Standard query with pagination
-                    query = $@"
-                        DECLARE @TotalCount INT;
-                        
-                        SELECT @TotalCount = COUNT(*)
-                        FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
-                        {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")};
-                        
-                        SELECT @TotalCount as TotalCount;
-                        
-                        SELECT {fullSelectColumns}
-                        FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}] t
-                        {userLookupJoin}
-                        {(string.IsNullOrEmpty(whereClause) ? "" : $"WHERE {whereClause}")}
-                        {orderByClause}
-                        OFFSET @Offset ROWS
-                        FETCH NEXT @PageSize ROWS ONLY;";
-                }
+                // Build final query using dialect
+                var schemaName = request.SchemaName ?? "dbo";
+                var fromClause = $"{dialect.QuoteTable(schemaName, request.TableName)} t {userLookupJoin}";
+                var query = dialect.BuildDataGridQuery(fullSelectColumns, fromClause, whereClause, orderByClause, string.IsNullOrEmpty(groupByClause) ? null : groupByClause);
 
                 _logger.LogInformation("🔍 Generated SQL Query: {Query}", query);
 
                 using var connection = _connectionFactory.CreateConnection();
-                using var command = new SqlCommand(query, connection);
+                using var command = _connectionFactory.CreateCommand(query, connection);
 
                 // Add parameters
-                command.Parameters.Add(new SqlParameter("@Offset", offset));
-                command.Parameters.Add(new SqlParameter("@PageSize", pageSize));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@Offset", offset));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@PageSize", pageSize));
 
                 // Add filter parameters
                 AddFilterParameters(command, request, metadata);
@@ -523,7 +412,7 @@ namespace ApiCore.Services.Implementation
             }
 
             var whereConditions = new List<string>();
-            var parameters = new List<SqlParameter>();
+            var parameters = new List<DbParameter>();
 
             foreach (var pk in metadata.PrimaryKeys)
             {
@@ -532,19 +421,19 @@ namespace ApiCore.Services.Implementation
                     throw new ArgumentException($"Primary key value for '{pk}' is required");
                 }
 
-                whereConditions.Add($"[{pk}] = @{pk}");
+                whereConditions.Add($"{_connectionFactory.Dialect.QuoteIdentifier(pk)} = @{pk}");
                 var convertedValue = ConvertJsonElementValue(primaryKeyValues[pk]);
-                parameters.Add(new SqlParameter($"@{pk}", convertedValue));
+                parameters.Add(_connectionFactory.CreateParameter($"@{pk}", convertedValue));
             }
 
             var query = $@"
                 SELECT *
-                FROM [{schemaName}].[{tableName}]
+                FROM {_connectionFactory.Dialect.QuoteTable(schemaName, tableName)}
                 WHERE {string.Join(" AND ", whereConditions)}";
 
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            using var command = new SqlCommand(query, connection);
-            command.Parameters.AddRange(parameters.ToArray());
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = _connectionFactory.CreateCommand(query, connection);
+            foreach (var p in parameters) command.Parameters.Add(p);
 
             await connection.OpenAsync();
             using var reader = await command.ExecuteReaderAsync();
@@ -576,13 +465,35 @@ namespace ApiCore.Services.Implementation
 
             var metadata = await GetTableMetadataAsync(request.TableName, request.SchemaName ?? "dbo");
 
-            // Filter out identity columns and timestamp columns from insert data
+            // Filter out identity columns and timestamp columns from insert data.
+            // Also strip any "DEFAULT" sentinel values — sequence columns are handled
+            // separately below; other default-only columns are simply omitted so the
+            // database applies their DEFAULT constraint automatically.
             var insertData = request.Data
                 .Where(kvp => !metadata.Columns.Any(c => c.ColumnName == kvp.Key &&
                     (c.IsIdentity ||
                      c.DataType.ToLower() == "timestamp" ||
                      c.DataType.ToLower() == "rowversion")))
+                .Where(kvp => !IsDefaultValueSentinel(kvp.Value))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            // Detect sequence-based PK columns (NEXT VALUE FOR ...) and build raw SQL
+            // expressions for them so they are injected directly into VALUES, not as params.
+            var sequenceExpressions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var col in metadata.Columns)
+            {
+                var defaultStr = col.DefaultValue?.ToString();
+                if (string.IsNullOrEmpty(defaultStr)) continue;
+                var match = Regex.Match(defaultStr,
+                    @"NEXT\s+VALUE\s+FOR\s+([\[\w\]\.]+)",
+                    RegexOptions.IgnoreCase);
+                if (!match.Success) continue;
+                var seqExpr = $"NEXT VALUE FOR {match.Groups[1].Value}";
+                // Remove brackets from group to re-quote cleanly, or keep as-is
+                sequenceExpressions[col.ColumnName] = seqExpr;
+                // Ensure the column is not in the parameterized insertData
+                insertData.Remove(col.ColumnName);
+            }
 
             // Add audit fields if they exist
             if (metadata.Columns.Any(c => c.ColumnName == "create_date"))
@@ -605,21 +516,25 @@ namespace ApiCore.Services.Implementation
                 insertData["update_by"] = userId;
             }
 
-            var columns = string.Join(", ", insertData.Keys.Select(k => $"[{k}]"));
-            var values = string.Join(", ", insertData.Keys.Select(k => $"@{k}"));
+            var dialect = _connectionFactory.Dialect;
 
-            var query = $@"
-                INSERT INTO [{request.SchemaName ?? "dbo"}].[{request.TableName}] ({columns})
-                OUTPUT INSERTED.*
-                VALUES ({values})";
+            // Combine parameterized columns + raw sequence expression columns
+            var allColumnNames = insertData.Keys.Concat(sequenceExpressions.Keys).ToList();
+            var columns = string.Join(", ", allColumnNames.Select(k => dialect.QuoteIdentifier(k)));
+            var values = string.Join(", ",
+                insertData.Keys.Select(k => $"@{k}")
+                .Concat(sequenceExpressions.Values));
 
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            using var command = new SqlCommand(query, connection);
+            var schemaName = request.SchemaName ?? "dbo";
+            var query = dialect.BuildInsertReturning(schemaName, request.TableName, columns, values);
+
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = _connectionFactory.CreateCommand(query, connection);
 
             foreach (var kvp in insertData)
             {
-                var convertedValue = ConvertJsonElementValue(kvp.Value);
-                command.Parameters.Add(new SqlParameter($"@{kvp.Key}", convertedValue));
+                var convertedValue = ConvertCrudDataValue(kvp.Value);
+                command.Parameters.Add(_connectionFactory.CreateParameter($"@{kvp.Key}", convertedValue));
             }
 
             await connection.OpenAsync();
@@ -671,30 +586,28 @@ namespace ApiCore.Services.Implementation
                 updateData["update_by"] = userId;
             }
 
-            var setClause = string.Join(", ", updateData.Keys.Select(k => $"[{k}] = @{k}"));
-            var whereClause = string.Join(" AND ", request.WhereConditions.Keys.Select(k => $"[{k}] = @Where_{k}"));
+            var dialect = _connectionFactory.Dialect;
+            var setClause = string.Join(", ", updateData.Keys.Select(k => $"{dialect.QuoteIdentifier(k)} = @{k}"));
+            var whereClause = string.Join(" AND ", request.WhereConditions.Keys.Select(k => $"{dialect.QuoteIdentifier(k)} = @Where_{k}"));
 
-            var query = $@"
-                UPDATE [{request.SchemaName ?? "dbo"}].[{request.TableName}]
-                SET {setClause}
-                OUTPUT INSERTED.*
-                WHERE {whereClause}";
+            var schemaName = request.SchemaName ?? "dbo";
+            var query = dialect.BuildUpdateReturning(schemaName, request.TableName, setClause, whereClause);
 
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            using var command = new SqlCommand(query, connection);
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = _connectionFactory.CreateCommand(query, connection);
 
             // Add SET parameters
             foreach (var kvp in updateData)
             {
-                var convertedValue = ConvertJsonElementValue(kvp.Value);
-                command.Parameters.Add(new SqlParameter($"@{kvp.Key}", convertedValue));
+                var convertedValue = ConvertCrudDataValue(kvp.Value);
+                command.Parameters.Add(_connectionFactory.CreateParameter($"@{kvp.Key}", convertedValue));
             }
 
             // Add WHERE parameters
             foreach (var kvp in request.WhereConditions)
             {
                 var convertedValue = ConvertJsonElementValue(kvp.Value);
-                command.Parameters.Add(new SqlParameter($"@Where_{kvp.Key}", convertedValue));
+                command.Parameters.Add(_connectionFactory.CreateParameter($"@Where_{kvp.Key}", convertedValue));
             }
 
             await connection.OpenAsync();
@@ -725,19 +638,20 @@ namespace ApiCore.Services.Implementation
         {
             ValidateSecurityConstraints(request.TableName, request.SchemaName ?? "dbo");
 
-            var whereClause = string.Join(" AND ", request.WhereConditions.Keys.Select(k => $"[{k}] = @{k}"));
+            var dialect = _connectionFactory.Dialect;
+            var whereClause = string.Join(" AND ", request.WhereConditions.Keys.Select(k => $"{dialect.QuoteIdentifier(k)} = @{k}"));
 
             var query = $@"
-                DELETE FROM [{request.SchemaName ?? "dbo"}].[{request.TableName}]
+                DELETE FROM {dialect.QuoteTable(request.SchemaName ?? "dbo", request.TableName)}
                 WHERE {whereClause}";
 
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            using var command = new SqlCommand(query, connection);
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = _connectionFactory.CreateCommand(query, connection);
 
             foreach (var kvp in request.WhereConditions)
             {
                 var convertedValue = ConvertJsonElementValue(kvp.Value);
-                command.Parameters.Add(new SqlParameter($"@{kvp.Key}", convertedValue));
+                command.Parameters.Add(_connectionFactory.CreateParameter($"@{kvp.Key}", convertedValue));
             }
 
             await connection.OpenAsync();
@@ -754,8 +668,9 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using var connection = new SqlConnection(_context.Database.GetConnectionString());
-                using var command = new SqlCommand($"[{schemaName}].[{procedureName}]", connection);
+                var dialect = _connectionFactory.Dialect;
+                using var connection = _connectionFactory.CreateConnection();
+                using var command = _connectionFactory.CreateCommand($"{dialect.QuoteTable(schemaName, procedureName)}", connection);
                 command.CommandType = CommandType.StoredProcedure;
 
                 if (parameters != null)
@@ -763,7 +678,7 @@ namespace ApiCore.Services.Implementation
                     foreach (var kvp in parameters)
                     {
                         var convertedValue = ConvertJsonElementValue(kvp.Value);
-                        command.Parameters.Add(new SqlParameter($"@{kvp.Key}", convertedValue));
+                        command.Parameters.Add(_connectionFactory.CreateParameter($"@{kvp.Key}", convertedValue));
                     }
                 }
 
@@ -881,30 +796,12 @@ namespace ApiCore.Services.Implementation
         {
             ValidateSecurityConstraints(procedureName, schemaName);
 
-            var query = @"
-                SELECT 
-                    p.name AS PROCEDURE_NAME,
-                    s.name AS SCHEMA_NAME,
-                    p.create_date,
-                    p.modify_date,
-                    pr.name AS PARAMETER_NAME,
-                    t.name AS DATA_TYPE,
-                    pr.is_output,
-                    pr.has_default_value,
-                    pr.default_value,
-                    pr.max_length
-                FROM sys.procedures p
-                INNER JOIN sys.schemas s ON p.schema_id = s.schema_id
-                LEFT JOIN sys.parameters pr ON p.object_id = pr.object_id
-                LEFT JOIN sys.types t ON pr.user_type_id = t.user_type_id
-                WHERE p.name = @ProcedureName 
-                    AND s.name = @SchemaName
-                ORDER BY pr.parameter_id";
+            var query = _connectionFactory.Dialect.GetStoredProcedureMetadataQuery();
 
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            using var command = new SqlCommand(query, connection);
-            command.Parameters.Add(new SqlParameter("@ProcedureName", procedureName));
-            command.Parameters.Add(new SqlParameter("@SchemaName", schemaName));
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = _connectionFactory.CreateCommand(query, connection);
+            command.Parameters.Add(_connectionFactory.CreateParameter("@ProcedureName", procedureName));
+            command.Parameters.Add(_connectionFactory.CreateParameter("@SchemaName", schemaName));
 
             await connection.OpenAsync();
             using var reader = await command.ExecuteReaderAsync();
@@ -942,19 +839,15 @@ namespace ApiCore.Services.Implementation
 
         public async Task<bool> TableExistsAsync(string tableName, string schemaName = "dbo")
         {
-            var query = @"
-                SELECT COUNT(*)
-                FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_NAME = @TableName 
-                    AND TABLE_SCHEMA = @SchemaName";
+            var query = _connectionFactory.Dialect.GetTableExistsQuery();
 
-            using var connection = new SqlConnection(_context.Database.GetConnectionString());
-            using var command = new SqlCommand(query, connection);
-            command.Parameters.Add(new SqlParameter("@TableName", tableName));
-            command.Parameters.Add(new SqlParameter("@SchemaName", schemaName));
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = _connectionFactory.CreateCommand(query, connection);
+            command.Parameters.Add(_connectionFactory.CreateParameter("@TableName", tableName));
+            command.Parameters.Add(_connectionFactory.CreateParameter("@SchemaName", schemaName));
 
             await connection.OpenAsync();
-            var count = (int)await command.ExecuteScalarAsync();
+            var count = Convert.ToInt32(await command.ExecuteScalarAsync());
 
             return count > 0;
         }
@@ -984,15 +877,15 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using var connection = new SqlConnection(_context.Database.GetConnectionString());
-                using var command = new SqlCommand(sqlQuery, connection);
+                using var connection = _connectionFactory.CreateConnection();
+                using var command = _connectionFactory.CreateCommand(sqlQuery, connection);
 
                 if (parameters != null)
                 {
                     foreach (var kvp in parameters)
                     {
                         var convertedValue = ConvertJsonElementValue(kvp.Value);
-                        command.Parameters.Add(new SqlParameter($"@{kvp.Key}", convertedValue));
+                        command.Parameters.Add(_connectionFactory.CreateParameter($"@{kvp.Key}", convertedValue));
                     }
                 }
 
@@ -1079,6 +972,7 @@ namespace ApiCore.Services.Implementation
         private string BuildDynamicWhereClause(DynamicDataGridRequest request, DynamicTableMetadata metadata)
         {
             var conditions = new List<string>();
+            var dialect = _connectionFactory.Dialect;
 
             // Custom WHERE clause (from BSDataGrid ObjWh or ComboBox ObjWh)
             if (!string.IsNullOrEmpty(request.CustomWhere))
@@ -1098,20 +992,21 @@ namespace ApiCore.Services.Implementation
                     if (column == null) continue;
 
                     // Use table alias 't.' to avoid ambiguous column name when using JOINs
+                    var qf = $"t.{dialect.QuoteIdentifier(filter.Field)}";
                     var condition = filter.Operator.ToLower() switch
                     {
-                        "contains" => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter",
-                        "equals" => $"t.[{filter.Field}] = @{filter.Field}_Filter",
-                        "startswith" => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter",
-                        "endswith" => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter",
-                        "isempty" => $"(t.[{filter.Field}] IS NULL OR t.[{filter.Field}] = '')",
-                        "isnotempty" => $"(t.[{filter.Field}] IS NOT NULL AND t.[{filter.Field}] != '')",
-                        ">" => $"t.[{filter.Field}] > @{filter.Field}_Filter",
-                        ">=" => $"t.[{filter.Field}] >= @{filter.Field}_Filter",
-                        "<" => $"t.[{filter.Field}] < @{filter.Field}_Filter",
-                        "<=" => $"t.[{filter.Field}] <= @{filter.Field}_Filter",
-                        "!=" => $"t.[{filter.Field}] != @{filter.Field}_Filter",
-                        _ => $"t.[{filter.Field}] LIKE @{filter.Field}_Filter"
+                        "contains"    => $"{qf} LIKE @{filter.Field}_Filter",
+                        "equals"      => $"{qf} = @{filter.Field}_Filter",
+                        "startswith"  => $"{qf} LIKE @{filter.Field}_Filter",
+                        "endswith"    => $"{qf} LIKE @{filter.Field}_Filter",
+                        "isempty"     => $"({qf} IS NULL OR {qf} = '')",
+                        "isnotempty"  => $"({qf} IS NOT NULL AND {qf} != '')",
+                        ">"  => $"{qf} > @{filter.Field}_Filter",
+                        ">=" => $"{qf} >= @{filter.Field}_Filter",
+                        "<"  => $"{qf} < @{filter.Field}_Filter",
+                        "<=" => $"{qf} <= @{filter.Field}_Filter",
+                        "!=" => $"{qf} != @{filter.Field}_Filter",
+                        _    => $"{qf} LIKE @{filter.Field}_Filter"
                     };
                     conditions.Add(condition);
                 }
@@ -1136,7 +1031,7 @@ namespace ApiCore.Services.Implementation
                 foreach (var column in metadata.Columns.Where(c => IsSearchableColumn(c)))
                 {
                     // Use table alias 't.' to avoid ambiguous column name when using JOINs (e.g., User Lookup)
-                    quickFilterConditions.Add($"CAST(t.[{column.ColumnName}] AS NVARCHAR(MAX)) LIKE @QuickFilter");
+                    quickFilterConditions.Add($"{dialect.BuildCastToText("t", column.ColumnName)} LIKE @QuickFilter");
                 }
 
                 if (quickFilterConditions.Any())
@@ -1151,7 +1046,7 @@ namespace ApiCore.Services.Implementation
             return conditions.Count > 0 ? string.Join(logicOperator, conditions) : "";
         }
 
-        private void AddFilterParameters(SqlCommand command, DynamicDataGridRequest request, DynamicTableMetadata metadata)
+        private void AddFilterParameters(DbCommand command, DynamicDataGridRequest request, DynamicTableMetadata metadata)
         {
             if (request.FilterModel?.Items == null)
             {
@@ -1174,7 +1069,7 @@ namespace ApiCore.Services.Implementation
                 };
 
                 var convertedValue = ConvertJsonElementValue(paramValue);
-                command.Parameters.Add(new SqlParameter($"@{filter.Field}_Filter", convertedValue));
+                command.Parameters.Add(_connectionFactory.CreateParameter($"@{filter.Field}_Filter", convertedValue));
             }
 
             // Quick filter parameter - รองรับทั้ง QuickFilterValues และ QuickFilter
@@ -1186,13 +1081,15 @@ namespace ApiCore.Services.Implementation
 
             if (!string.IsNullOrEmpty(quickFilterValue))
             {
-                command.Parameters.Add(new SqlParameter("@QuickFilter", $"%{quickFilterValue}%"));
+                command.Parameters.Add(_connectionFactory.CreateParameter("@QuickFilter", $"%{quickFilterValue}%"));
                 _logger.LogInformation("🔍 Quick Filter Parameter Added: @QuickFilter = '%{QuickFilterParam}'", $"%{quickFilterValue}%");
             }
         }
 
         private string BuildDynamicOrderByClause(List<DataGridSortModel> sortModel, DynamicTableMetadata metadata, string customOrderBy = null)
         {
+            var dialect = _connectionFactory.Dialect;
+
             // Priority 1: Custom ORDER BY (from BSDataGrid ObjBy or ComboBox ObjBy)
             if (!string.IsNullOrEmpty(customOrderBy))
             {
@@ -1211,8 +1108,8 @@ namespace ApiCore.Services.Implementation
                     if (column != null)
                     {
                         var direction = sort.Sort?.ToUpper() == "DESC" ? "DESC" : "ASC";
-                        orderByClauses.Add($"[{sort.Field}] {direction}");
-                        _logger.LogInformation("✅ Added ORDER BY clause: [{SortField}] {SortDirection}", sort.Field, direction);
+                        orderByClauses.Add($"{dialect.QuoteIdentifier(sort.Field)} {direction}");
+                        _logger.LogInformation("✅ Added ORDER BY clause: {SortField} {SortDirection}", sort.Field, direction);
                     }
                 }
                 if (orderByClauses.Any())
@@ -1224,15 +1121,15 @@ namespace ApiCore.Services.Implementation
             // Priority 3: Default sort by primary key or first column
             _logger.LogInformation("🏗️ No sorting specified, using default.");
             var defaultColumn = metadata.PrimaryKeys.FirstOrDefault() ?? metadata.Columns.FirstOrDefault()?.ColumnName;
-            return defaultColumn != null ? $"ORDER BY [{defaultColumn}] ASC" : "ORDER BY 1 ASC";
-
+            return defaultColumn != null ? $"ORDER BY {dialect.QuoteIdentifier(defaultColumn)} ASC" : "ORDER BY 1 ASC";
         }
 
 
         private bool IsSearchableColumn(DynamicColumnInfo column)
         {
             var searchableTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext" };
-            return searchableTypes.Contains(column.DataType.ToLower());
+            return !GlobalFilterExcludedColumns.Contains(column.ColumnName)
+                && searchableTypes.Contains(column.DataType.ToLower());
         }
 
         /// <summary>
@@ -1244,6 +1141,12 @@ namespace ApiCore.Services.Implementation
             if (string.IsNullOrEmpty(whereClause))
                 return whereClause;
 
+            var dialect = _connectionFactory.Dialect;
+            // Derive quote characters from dialect (e.g. "[" and "]" for SQL Server, '"' for PostgreSQL)
+            var sampleQuoted = dialect.QuoteIdentifier("x");
+            var openQuote  = sampleQuoted[0].ToString();
+            var closeQuote = sampleQuoted[^1].ToString();
+
             var result = whereClause;
 
             // Get all column names from metadata
@@ -1253,13 +1156,12 @@ namespace ApiCore.Services.Implementation
 
                 // Skip if column already has alias (contains '.')
                 // Use regex patterns to match column names that are not already aliased
-                // Pattern matches: column_name followed by operator or space
                 var patterns = new[]
                 {
-                    // Match column_name at start or after space/( followed by operator
+                    // Match column_name followed by operator
                     $@"(?<![\w.])({System.Text.RegularExpressions.Regex.Escape(columnName)})(?=\s*[=<>!]|\s+(?:LIKE|IN|IS|BETWEEN|NOT)\b)",
-                    // Match column_name at start or after space/( - general case
-                    $@"(?<![\w.])({System.Text.RegularExpressions.Regex.Escape(columnName)})(?=\s*[=<>!('""\[])"
+                    // Match column_name followed by space/parenthesis
+                    $@"(?<![\w.])({System.Text.RegularExpressions.Regex.Escape(columnName)})(?=\s*[=<>!('""\[])" 
                 };
 
                 foreach (var pattern in patterns)
@@ -1267,7 +1169,7 @@ namespace ApiCore.Services.Implementation
                     result = System.Text.RegularExpressions.Regex.Replace(
                         result,
                         pattern,
-                        $"{tableAlias}.[$1]",
+                        $"{tableAlias}.{openQuote}$1{closeQuote}",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase
                     );
                 }
@@ -1299,20 +1201,23 @@ namespace ApiCore.Services.Implementation
             var hasUpdateBy = metadata?.Columns?.Any(c =>
                 c.ColumnName.Equals("update_by", StringComparison.OrdinalIgnoreCase)) ?? true;
 
+            var dialect = _connectionFactory.Dialect;
+            var quotedUserTable = dialect.QuoteTable(userSchema, userTable);
+
             // JOIN for create_by (only if column exists)
             if (hasCreateBy)
             {
                 joins.AppendLine($@"
-                LEFT JOIN [{userSchema}].[{userTable}] AS creator 
-                    ON {tableAlias}.[create_by] = creator.[{userIdField}]");
+                LEFT JOIN {quotedUserTable} AS creator 
+                    ON {tableAlias}.{dialect.QuoteIdentifier("create_by")} = creator.{dialect.QuoteIdentifier(userIdField)}");
             }
 
             // JOIN for update_by (only if column exists)
             if (hasUpdateBy)
             {
                 joins.AppendLine($@"
-                LEFT JOIN [{userSchema}].[{userTable}] AS updater 
-                    ON {tableAlias}.[update_by] = updater.[{userIdField}]");
+                LEFT JOIN {quotedUserTable} AS updater 
+                    ON {tableAlias}.{dialect.QuoteIdentifier("update_by")} = updater.{dialect.QuoteIdentifier(userIdField)}");
             }
 
             _logger.LogInformation("🔗 User Lookup JOIN: hasCreateBy={HasCreateBy}, hasUpdateBy={HasUpdateBy}", hasCreateBy, hasUpdateBy);
@@ -1340,22 +1245,26 @@ namespace ApiCore.Services.Implementation
             var hasUpdateBy = metadata?.Columns?.Any(c =>
                 c.ColumnName.Equals("update_by", StringComparison.OrdinalIgnoreCase)) ?? true;
 
+            var dialect = _connectionFactory.Dialect;
+
             // Concatenate display fields for create_by (only if column exists)
             // Use COALESCE to fallback to user_id if JOIN returns NULL
             if (hasCreateBy)
             {
-                var displayFields = userLookup.DisplayFields.Select(f => $"creator.[{f}]");
+                var displayFields = userLookup.DisplayFields.Select(f => $"creator.{dialect.QuoteIdentifier(f)}");
                 var concatFields = string.Join($", '{separator}', ", displayFields);
-                selects.Append($",\n    COALESCE(CONCAT({concatFields}), CAST({tableAlias}.[create_by] AS NVARCHAR(50))) AS create_by_display");
+                var fallback = dialect.BuildCastToText(tableAlias, "create_by");
+                selects.Append($",\n    {dialect.BuildCoalesce($"CONCAT({concatFields})", fallback)} AS create_by_display");
             }
 
             // Concatenate display fields for update_by (only if column exists)
             // Use COALESCE to fallback to user_id if JOIN returns NULL
             if (hasUpdateBy)
             {
-                var updateFields = userLookup.DisplayFields.Select(f => $"updater.[{f}]");
+                var updateFields = userLookup.DisplayFields.Select(f => $"updater.{dialect.QuoteIdentifier(f)}");
                 var concatFields = string.Join($", '{separator}', ", updateFields);
-                selects.Append($",\n    COALESCE(CONCAT({concatFields}), CAST({tableAlias}.[update_by] AS NVARCHAR(50))) AS update_by_display");
+                var fallback = dialect.BuildCastToText(tableAlias, "update_by");
+                selects.Append($",\n    {dialect.BuildCoalesce($"CONCAT({concatFields})", fallback)} AS update_by_display");
             }
 
             _logger.LogInformation("📝 User Lookup SELECT: hasCreateBy={HasCreateBy}, hasUpdateBy={HasUpdateBy}", hasCreateBy, hasUpdateBy);
@@ -1391,27 +1300,35 @@ namespace ApiCore.Services.Implementation
             return value ?? DBNull.Value;
         }
 
+        private object ConvertCrudDataValue(object? value)
+        {
+            var convertedValue = ConvertJsonElementValue(value);
+            return convertedValue is string stringValue ? stringValue.Trim() : convertedValue;
+        }
+
+        private static bool IsDefaultValueSentinel(object? value)
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
+            {
+                return string.Equals(jsonElement.GetString()?.Trim(), "DEFAULT", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return value is string stringValue &&
+                string.Equals(stringValue.Trim(), "DEFAULT", StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Get stored procedure parameter names from database for dynamic mapping
         /// </summary>
-        private async Task<Dictionary<string, string>> GetSpParameterMappingAsync(SqlConnection connection, string schemaName, string procedureName)
+        private async Task<Dictionary<string, string>> GetSpParameterMappingAsync(DbConnection connection, string schemaName, string procedureName)
         {
             var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            var query = @"
-                SELECT 
-                    p.name AS PARAMETER_NAME
-                FROM sys.parameters p
-                INNER JOIN sys.procedures sp ON p.object_id = sp.object_id
-                INNER JOIN sys.schemas s ON sp.schema_id = s.schema_id
-                WHERE s.name = @SchemaName 
-                    AND sp.name = @ProcedureName
-                    AND p.name IS NOT NULL
-                ORDER BY p.parameter_id";
+            var query = _connectionFactory.Dialect.GetSpParameterMappingQuery();
 
-            using var command = new SqlCommand(query, connection);
-            command.Parameters.Add(new SqlParameter("@SchemaName", schemaName));
-            command.Parameters.Add(new SqlParameter("@ProcedureName", procedureName));
+            using var command = _connectionFactory.CreateCommand(query, connection);
+            command.Parameters.Add(_connectionFactory.CreateParameter("@SchemaName", schemaName));
+            command.Parameters.Add(_connectionFactory.CreateParameter("@ProcedureName", procedureName));
 
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -1504,7 +1421,8 @@ namespace ApiCore.Services.Implementation
                 using var command = connection.CreateCommand();
 
                 // Build stored procedure call
-                var fullProcedureName = $"[{request.SchemaName}].[{request.ProcedureName}]";
+                var dialect = _connectionFactory.Dialect;
+                var fullProcedureName = $"{dialect.QuoteTable(request.SchemaName, request.ProcedureName)}";
                 command.CommandText = fullProcedureName;
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandTimeout = 120; // 2 minutes timeout
@@ -1516,9 +1434,9 @@ namespace ApiCore.Services.Implementation
                 }
 
                 // Add standard parameters - dynamically mapped
-                command.Parameters.Add(new SqlParameter(FindSpParamName("Operation", "@in_vchOperation"), request.Operation ?? "SELECT"));
-                command.Parameters.Add(new SqlParameter(FindSpParamName("Page", "@in_intPage"), request.Page ?? 1));
-                command.Parameters.Add(new SqlParameter(FindSpParamName("PageSize", "@in_intPageSize"), request.PageSize ?? 25));
+                command.Parameters.Add(_connectionFactory.CreateParameter(FindSpParamName("Operation", "@in_vchOperation"), request.Operation ?? "SELECT"));
+                command.Parameters.Add(_connectionFactory.CreateParameter(FindSpParamName("Page", "@in_intPage"), request.Page ?? 1));
+                command.Parameters.Add(_connectionFactory.CreateParameter(FindSpParamName("PageSize", "@in_intPageSize"), request.PageSize ?? 25));
 
                 // Only add UserId if not already provided in custom parameters
                 // Check all possible key formats: UserId, userId, User_Id, in_vchUserId
@@ -1528,7 +1446,7 @@ namespace ApiCore.Services.Implementation
                                          request.Parameters?.ContainsKey("in_vchUserId") == true;
                 if (!hasUserIdInParams)
                 {
-                    command.Parameters.Add(new SqlParameter(FindSpParamName("UserId", "@in_vchUserId"), request.UserId ?? "system"));
+                    command.Parameters.Add(_connectionFactory.CreateParameter(FindSpParamName("UserId", "@in_vchUserId"), request.UserId ?? "system"));
                 }
 
                 // Add sort model as JSON if SP has SortModel parameter
@@ -1538,7 +1456,7 @@ namespace ApiCore.Services.Implementation
                     if (parameterMapping.ContainsKey("SortModel") || !parameterMapping.Any())
                     {
                         var sortJson = JsonSerializer.Serialize(request.SortModel);
-                        command.Parameters.Add(new SqlParameter(sortParamName, sortJson));
+                        command.Parameters.Add(_connectionFactory.CreateParameter(sortParamName, sortJson));
                     }
                 }
 
@@ -1549,7 +1467,7 @@ namespace ApiCore.Services.Implementation
                     if (parameterMapping.ContainsKey("FilterModel") || !parameterMapping.Any())
                     {
                         var filterJson = JsonSerializer.Serialize(request.FilterModel);
-                        command.Parameters.Add(new SqlParameter(filterParamName, filterJson));
+                        command.Parameters.Add(_connectionFactory.CreateParameter(filterParamName, filterJson));
                     }
                 }
 
@@ -1570,7 +1488,7 @@ namespace ApiCore.Services.Implementation
                             continue;
                         }
 
-                        command.Parameters.Add(new SqlParameter(spParamName, ConvertJsonElementValue(param.Value)));
+                        command.Parameters.Add(_connectionFactory.CreateParameter(spParamName, ConvertJsonElementValue(param.Value)));
                         _logger.LogDebug("Added parameter: {ParamKey} -> {SpParamName} (dynamic)", param.Key, spParamName);
                     }
                 }
@@ -1579,26 +1497,24 @@ namespace ApiCore.Services.Implementation
                 if (request.Data != null)
                 {
                     var dataJson = JsonSerializer.Serialize(request.Data);
-                    command.Parameters.Add(new SqlParameter("@Data", dataJson));
+                    command.Parameters.Add(_connectionFactory.CreateParameter("@Data", dataJson));
                 }
 
                 // Add OUTPUT parameters that most Enhanced Stored Procedures expect
-                var outputRowCountParam = new SqlParameter("@out_intRowCount", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
+                var outputRowCountParam = _connectionFactory.CreateParameter("@out_intRowCount", DBNull.Value);
+                outputRowCountParam.DbType = DbType.Int32;
+                outputRowCountParam.Direction = ParameterDirection.Output;
                 command.Parameters.Add(outputRowCountParam);
 
-                var outputMessageParam = new SqlParameter("@out_vchMessage", SqlDbType.NVarChar, 4000)
-                {
-                    Direction = ParameterDirection.Output
-                };
+                var outputMessageParam = _connectionFactory.CreateParameter("@out_vchMessage", DBNull.Value);
+                outputMessageParam.DbType = DbType.String;
+                outputMessageParam.Size = 4000;
+                outputMessageParam.Direction = ParameterDirection.Output;
                 command.Parameters.Add(outputMessageParam);
 
-                var outputErrorCodeParam = new SqlParameter("@out_intErrorCode", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
+                var outputErrorCodeParam = _connectionFactory.CreateParameter("@out_intErrorCode", DBNull.Value);
+                outputErrorCodeParam.DbType = DbType.Int32;
+                outputErrorCodeParam.Direction = ParameterDirection.Output;
                 command.Parameters.Add(outputErrorCodeParam);
 
                 // Execute stored procedure

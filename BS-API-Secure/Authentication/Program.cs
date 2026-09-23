@@ -5,7 +5,8 @@ using Authentication.Services.Auth;
 using Authentication.Services.Resource;
 using Authentication.Services.Users;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Data.SqlClient;
+using System.Data.Common;
+using TokenManagement.Database;
 using TokenManagement.Extensions;
 using TokenManagement.Handler;
 using TokenManagement.Interfaces;
@@ -32,7 +33,18 @@ builder.Services.AddCors(options => {
                              .AllowAnyMethod();
         });
 });
-var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB") ?? throw new ArgumentNullException("Environment.GetEnvironmentVariable(SERVERDB) ");
+var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") 
+    ?? Environment.GetEnvironmentVariable("SERVERDB") 
+    ?? throw new ArgumentNullException("SERVERDB_SECURITY or SERVERDB environment variable is required.");
+
+// Determine database provider from environment variable
+// Supports aliases: SqlServer/mssql/sql, PostgreSql/postgres/pgsql/pg, MySql/mariadb/maria
+var dbProviderStr = Environment.GetEnvironmentVariable("DB_PROVIDER");
+var dbProvider = DatabaseProviderParser.Parse(dbProviderStr);
+
+// Register IDbConnectionFactory as singleton
+builder.Services.AddSingleton<IDbConnectionFactory>(new DbConnectionFactory(defaultConnection, dbProvider));
+
 // Update the registration of JwtHelper to use IOptions<JwtSettings>
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
@@ -88,38 +100,34 @@ builder.Services.AddOpenApi();
 //})
 //.AddScheme<AuthenticationSchemeOptions, CustomJwtAuthenticationHandler>("CustomJwtAuthentication", null);
 var app = builder.Build();
-app.MapGet("/test-db", async () =>
+app.MapGet("/test-db", async (IDbConnectionFactory connectionFactory) =>
 {
-    string connectionString = defaultConnection;
     string message;
     bool connected = false;
 
     try
     {
-        using (SqlConnection conn = new SqlConnection(connectionString))
+        using (DbConnection conn = connectionFactory.CreateConnection())
         {
             await conn.OpenAsync();
             connected = true;
-            message = $"Connected to {conn.DataSource}, DB: {conn.Database}";
+            message = $"Connected to {conn.DataSource}, DB: {conn.Database}, Provider: {connectionFactory.CurrentProvider}";
         }
-    }
-    catch (SqlException ex)
-    {
-        message = $"SQL Error: {ex.Message}";
     }
     catch (Exception ex)
     {
-        message = $"General Error: {ex.Message}";
+        message = $"Error: {ex.Message}";
     }
 
     return Results.Json(new
     {
         connected,
-        message
+        message,
+        provider = connectionFactory.CurrentProvider.ToString()
     });
 });
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (Environment.GetEnvironmentVariable("IS_USE_SCARLA") == "true")
 {
     app.UseSwagger();
     app.UseSwaggerUI();

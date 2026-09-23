@@ -7,9 +7,10 @@ namespace Authentication.Models.Requests
         [Required]
         public string application_license { get; set; } = string.Empty;
         [Required]
-        public string usersname { get; set; } = string.Empty;
+        public string username { get; set; } = string.Empty;
         [Required]
         public string password { get; set; } = string.Empty;
-        public string fcm_token { get; set; } = string.Empty;
+        public string? fcm_token { get; set; } = string.Empty;
+        public string platform { get; set; } = string.Empty;
     }
 }

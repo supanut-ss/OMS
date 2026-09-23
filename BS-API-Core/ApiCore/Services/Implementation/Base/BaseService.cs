@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 using ApiCore.Data;
 using ApiCore.Data.Repositories;
 using ApiCore.Models.Base;
 using ApiCore.Services.Interfaces;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 
 namespace ApiCore.Services.Implementation.Base
@@ -37,7 +37,7 @@ namespace ApiCore.Services.Implementation.Base
         protected abstract string GetUniqueIdentifier(TCreateRequest request);
         protected abstract string GetUniqueIdentifier(TUpdateRequest request);
         protected abstract string GetStoredProcedureName();
-        protected abstract TResponse MapFromDataReader(SqlDataReader reader);
+        protected abstract TResponse MapFromDataReader(DbDataReader reader);
 
         public virtual async Task<List<TResponse>> GetAllAsync()
         {
@@ -122,25 +122,28 @@ namespace ApiCore.Services.Implementation.Base
                 var whereClause = BuildWhereClause(request);
                 var orderByClause = BuildOrderByClause(request.SortModel);
 
-                var parameters = new List<SqlParameter>
-                {
-                    new SqlParameter("@PageNumber", page),
-                    new SqlParameter("@PageSize", pageSize),
-                    new SqlParameter("@Search", (object?)request.FilterModel.QuickFilterValues ?? DBNull.Value),
-                    new SqlParameter("@WhereClause", whereClause),
-                    new SqlParameter("@OrderByClause", orderByClause)
-                };
+                var parameters = new List<DbParameter>();
 
                 var response = new DataGridResponse<TResponse>();
 
                 try
                 {
-                    using var connection = new SqlConnection(_context.Database.GetConnectionString());
-                    using var command = new SqlCommand(GetStoredProcedureName(), connection);
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddRange(parameters.ToArray());
+                    var connection = _context.Database.GetDbConnection();
+                    if (connection.State != ConnectionState.Open)
+                        await connection.OpenAsync();
 
-                    await connection.OpenAsync();
+                    using var command = connection.CreateCommand();
+                    command.CommandText = GetStoredProcedureName();
+                    command.CommandType = CommandType.StoredProcedure;
+
+                    // Add parameters using DbParameter
+                    void AddParam(string name, object val) { var p = command.CreateParameter(); p.ParameterName = name; p.Value = val; command.Parameters.Add(p); }
+                    AddParam("@PageNumber", page);
+                    AddParam("@PageSize", pageSize);
+                    AddParam("@Search", (object?)request.FilterModel.QuickFilterValues ?? DBNull.Value);
+                    AddParam("@WhereClause", whereClause);
+                    AddParam("@OrderByClause", orderByClause);
+
                     using var reader = await command.ExecuteReaderAsync();
 
                     // Read total count (first result set)
@@ -160,7 +163,7 @@ namespace ApiCore.Services.Implementation.Base
                         response.Rows = items;
                     }
                 }
-                catch (SqlException ex) when (ex.Message.Contains("Could not find stored procedure"))
+                catch (DbException ex) when (ex.Message.Contains("Could not find stored procedure") || ex.Message.Contains("does not exist"))
                 {
                     // Fallback to Entity Framework
                     var entities = await _repository.GetAllAsync();
@@ -215,20 +218,38 @@ namespace ApiCore.Services.Implementation.Base
 
             foreach (var filter in request.FilterModel.Items)
             {
-                var condition = filter.Operator.ToLower() switch
+                var operatorLower = filter.Operator.ToLower();
+                var valueStr = filter.Value?.ToString() ?? "";
+
+                // For "is" / "equals" operator: detect date values and convert to range query
+                // so that datetime columns match all times within the selected date
+                if (operatorLower == "is" || operatorLower == "equals")
                 {
-                    "contains" => $"{filter.Field} LIKE '%{filter.Value}%'",
-                    "equals" => $"{filter.Field} = '{filter.Value}'",
-                    "startswith" => $"{filter.Field} LIKE '{filter.Value}%'",
-                    "endswith" => $"{filter.Field} LIKE '%{filter.Value}'",
+                    if (TryParseDateValue(valueStr, out var parsedDate))
+                    {
+                        var dateStart = parsedDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                        var dateEnd = parsedDate.AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                        conditions.Add($"{filter.Field} >= '{dateStart}' AND {filter.Field} < '{dateEnd}'");
+                        continue;
+                    }
+                    // Non-date "is"/"equals" — fall through to exact match
+                    conditions.Add($"{filter.Field} = '{valueStr}'");
+                    continue;
+                }
+
+                var condition = operatorLower switch
+                {
+                    "contains" => $"{filter.Field} LIKE '%{valueStr}%'",
+                    "startswith" => $"{filter.Field} LIKE '{valueStr}%'",
+                    "endswith" => $"{filter.Field} LIKE '%{valueStr}'",
                     "isempty" => $"({filter.Field} IS NULL OR {filter.Field} = '')",
                     "isnotempty" => $"({filter.Field} IS NOT NULL AND {filter.Field} != '')",
-                    ">" => $"{filter.Field} > '{filter.Value}'",
-                    ">=" => $"{filter.Field} >= '{filter.Value}'",
-                    "<" => $"{filter.Field} < '{filter.Value}'",
-                    "<=" => $"{filter.Field} <= '{filter.Value}'",
-                    "!=" => $"{filter.Field} != '{filter.Value}'",
-                    _ => $"{filter.Field} LIKE '%{filter.Value}%'"
+                    ">" => $"{filter.Field} > '{valueStr}'",
+                    ">=" => $"{filter.Field} >= '{valueStr}'",
+                    "<" => $"{filter.Field} < '{valueStr}'",
+                    "<=" => $"{filter.Field} <= '{valueStr}'",
+                    "!=" => $"{filter.Field} != '{valueStr}'",
+                    _ => $"{filter.Field} LIKE '%{valueStr}%'"
                 };
                 conditions.Add(condition);
             }
@@ -249,6 +270,35 @@ namespace ApiCore.Services.Implementation.Base
             // Override in derived classes to define quick filter fields
             return string.Empty;
         }
+
+        /// <summary>
+        /// Parses date-only ("yyyy-MM-dd") or ISO datetime ("yyyy-MM-ddTHH:mm:ss.fffZ") strings
+        /// into a DateTime representing midnight of that date (date part only).
+        /// </summary>
+        private static bool TryParseDateValue(string? value, out DateTime date)
+        {
+            date = default;
+            if (string.IsNullOrWhiteSpace(value)) return false;
+
+            // Date-only: "2026-05-12"
+            if (DateTime.TryParseExact(value, "yyyy-MM-dd",
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out date))
+                return true;
+
+            // ISO datetime: "2026-05-12T00:00:00.000Z" or "2026-05-12T00:00:00"
+            if (DateTime.TryParse(value,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var parsed))
+            {
+                date = parsed.Date; // strip time — use date part only
+                return true;
+            }
+
+            return false;
+        }
+
+
 
         protected virtual string BuildOrderByClause(List<DataGridSortModel> sortModel)
         {

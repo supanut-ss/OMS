@@ -1,25 +1,38 @@
-using Microsoft.Data.SqlClient;
 using ApiCore.Services.Interfaces;
 using System.Data;
-using System;
+using System.Data.Common;
 
 namespace ApiCore.Services.Implementation
 {
     /// <summary>
-    /// Factory implementation for creating SQL connections
-    /// Supports multi-database architecture with ADO.NET, Entity Framework Core, and Dapper
+    /// Provider-agnostic factory for creating database connections.
+    /// Supports SQL Server, PostgreSQL, and future providers via ISqlDialect.
+    /// Compatible with ADO.NET, Entity Framework Core, and Dapper.
     /// </summary>
     public class SqlConnectionFactory : ISqlConnectionFactory
     {
         private readonly Dictionary<DatabaseType, string> _connectionStrings;
+        private readonly ISqlDialect _dialect;
+
+        /// <summary>
+        /// Gets the current database provider type
+        /// </summary>
+        public DatabaseProvider CurrentProvider => _dialect.Provider;
+
+        /// <summary>
+        /// Gets the SQL dialect for the current provider
+        /// </summary>
+        public ISqlDialect Dialect => _dialect;
 
         /// <summary>
         /// Gets the main database connection string (for backward compatibility)
         /// </summary>
         public string ConnectionString => _connectionStrings[DatabaseType.Main];
 
-        public SqlConnectionFactory(IConfiguration configuration)
+        public SqlConnectionFactory(IConfiguration configuration, ISqlDialect dialect)
         {
+            _dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
+
             // Read connection string from environment variable SERVERDB
             var defaultConnection = Environment.GetEnvironmentVariable("SERVERDB")
                 ?? configuration.GetConnectionString("DefaultConnection")
@@ -45,8 +58,6 @@ namespace ApiCore.Services.Implementation
         /// <summary>
         /// Gets the connection string for the specified database type
         /// </summary>
-        /// <param name="databaseType">The database type</param>
-        /// <returns>The connection string</returns>
         public string GetConnectionString(DatabaseType databaseType)
         {
             if (!_connectionStrings.TryGetValue(databaseType, out var connectionString))
@@ -57,44 +68,34 @@ namespace ApiCore.Services.Implementation
         }
 
         /// <summary>
-        /// Creates a new SQL connection for the main database (not opened)
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Creates a new database connection for the main database (not opened)
         /// </summary>
-        /// <returns>A new SQL connection instance</returns>
-        public SqlConnection CreateConnection()
+        public DbConnection CreateConnection()
         {
             return CreateConnection(DatabaseType.Main);
         }
 
         /// <summary>
-        /// Creates a new SQL connection for the specified database type (not opened)
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Creates a new database connection for the specified database type (not opened)
         /// </summary>
-        /// <param name="databaseType">The database type to connect to</param>
-        /// <returns>A new SQL connection instance</returns>
-        public SqlConnection CreateConnection(DatabaseType databaseType)
+        public DbConnection CreateConnection(DatabaseType databaseType)
         {
             var connectionString = GetConnectionString(databaseType);
-            return new SqlConnection(connectionString);
+            return _dialect.CreateConnection(connectionString);
         }
 
         /// <summary>
-        /// Creates and opens a new SQL connection for the main database
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Creates and opens a new database connection for the main database
         /// </summary>
-        /// <returns>An opened SQL connection instance</returns>
-        public async Task<SqlConnection> CreateAndOpenConnectionAsync()
+        public async Task<DbConnection> CreateAndOpenConnectionAsync()
         {
             return await CreateAndOpenConnectionAsync(DatabaseType.Main);
         }
 
         /// <summary>
-        /// Creates and opens a new SQL connection for the specified database type
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Creates and opens a new database connection for the specified database type
         /// </summary>
-        /// <param name="databaseType">The database type to connect to</param>
-        /// <returns>An opened SQL connection instance</returns>
-        public async Task<SqlConnection> CreateAndOpenConnectionAsync(DatabaseType databaseType)
+        public async Task<DbConnection> CreateAndOpenConnectionAsync(DatabaseType databaseType)
         {
             var connection = CreateConnection(databaseType);
             await connection.OpenAsync();
@@ -103,9 +104,7 @@ namespace ApiCore.Services.Implementation
 
         /// <summary>
         /// Creates a new connection as IDbConnection interface for the main database
-        /// Useful for generic database operations and testing
         /// </summary>
-        /// <returns>A new connection as IDbConnection</returns>
         public IDbConnection CreateDbConnection()
         {
             return CreateConnection(DatabaseType.Main);
@@ -113,10 +112,7 @@ namespace ApiCore.Services.Implementation
 
         /// <summary>
         /// Creates a new connection as IDbConnection interface for the specified database type
-        /// Useful for generic database operations and testing
         /// </summary>
-        /// <param name="databaseType">The database type to connect to</param>
-        /// <returns>A new connection as IDbConnection</returns>
         public IDbConnection CreateDbConnection(DatabaseType databaseType)
         {
             return CreateConnection(databaseType);
@@ -124,9 +120,7 @@ namespace ApiCore.Services.Implementation
 
         /// <summary>
         /// Creates and opens a new connection as IDbConnection interface for the main database
-        /// Useful for Dapper operations
         /// </summary>
-        /// <returns>An opened connection as IDbConnection</returns>
         public async Task<IDbConnection> CreateAndOpenDbConnectionAsync()
         {
             return await CreateAndOpenConnectionAsync(DatabaseType.Main);
@@ -134,15 +128,28 @@ namespace ApiCore.Services.Implementation
 
         /// <summary>
         /// Creates and opens a new connection as IDbConnection interface for the specified database type
-        /// Useful for Dapper operations
         /// </summary>
-        /// <param name="databaseType">The database type to connect to</param>
-        /// <returns>An opened connection as IDbConnection</returns>
         public async Task<IDbConnection> CreateAndOpenDbConnectionAsync(DatabaseType databaseType)
         {
             var connection = CreateConnection(databaseType);
             await connection.OpenAsync();
             return connection;
+        }
+
+        /// <summary>
+        /// Creates a DbCommand using the current dialect
+        /// </summary>
+        public DbCommand CreateCommand(string query, DbConnection connection)
+        {
+            return _dialect.CreateCommand(query, connection);
+        }
+
+        /// <summary>
+        /// Creates a DbParameter using the current dialect
+        /// </summary>
+        public DbParameter CreateParameter(string name, object value)
+        {
+            return _dialect.CreateParameter(name, value);
         }
     }
 }

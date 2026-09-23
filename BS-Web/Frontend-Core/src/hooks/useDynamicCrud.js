@@ -712,7 +712,7 @@ export const useDynamicCrud = (tableName) => {
         const response = await AxiosMaster.post("/dynamic/bulk-delete", {
           tableName: table,
           schemaName: schema,
-          conditions,
+          whereConditions: conditions,
         });
 
         Logger.log("✅ Bulk delete completed via Gateway:", response.data);

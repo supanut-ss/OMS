@@ -1,7 +1,7 @@
 using Dapper;
-using Microsoft.Data.SqlClient;
 using ApiCore.Services.Interfaces;
 using System.Data;
+using System.Data.Common;
 
 namespace ApiCore.Services.Implementation
 {
@@ -87,20 +87,20 @@ namespace ApiCore.Services.Implementation
         public async Task<DataTable> ExecuteAdoNetQueryAsync(string sql, Dictionary<string, object>? parameters = null)
         {
             using var connection = _connectionFactory.CreateConnection();
-            using var command = new SqlCommand(sql, connection);
+            using var command = _connectionFactory.CreateCommand(sql, connection);
 
             if (parameters != null)
             {
                 foreach (var param in parameters)
                 {
-                    command.Parameters.AddWithValue($"@{param.Key}", param.Value ?? DBNull.Value);
+                    command.Parameters.Add(_connectionFactory.CreateParameter($"@{param.Key}", param.Value ?? DBNull.Value));
                 }
             }
 
             await connection.OpenAsync();
-            using var adapter = new SqlDataAdapter(command);
+            using var reader = await command.ExecuteReaderAsync();
             var dataTable = new DataTable();
-            adapter.Fill(dataTable);
+            dataTable.Load(reader);
 
             return dataTable;
         }
@@ -113,13 +113,13 @@ namespace ApiCore.Services.Implementation
             var results = new List<Dictionary<string, object>>();
 
             using var connection = _connectionFactory.CreateConnection();
-            using var command = new SqlCommand(sql, connection);
+            using var command = _connectionFactory.CreateCommand(sql, connection);
 
             if (parameters != null)
             {
                 foreach (var param in parameters)
                 {
-                    command.Parameters.AddWithValue($"@{param.Key}", param.Value ?? DBNull.Value);
+                    command.Parameters.Add(_connectionFactory.CreateParameter($"@{param.Key}", param.Value ?? DBNull.Value));
                 }
             }
 
@@ -181,18 +181,19 @@ namespace ApiCore.Services.Implementation
             using var connection = _connectionFactory.CreateConnection();
             await connection.OpenAsync();
 
-            using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+            using var transaction = await connection.BeginTransactionAsync();
             try
             {
                 foreach (var (sql, parameters) in commands)
                 {
-                    using var command = new SqlCommand(sql, connection, transaction);
+                    using var command = _connectionFactory.CreateCommand(sql, connection);
+                    command.Transaction = (DbTransaction)transaction;
 
                     if (parameters != null)
                     {
                         foreach (var param in parameters)
                         {
-                            command.Parameters.AddWithValue($"@{param.Key}", param.Value ?? DBNull.Value);
+                            command.Parameters.Add(_connectionFactory.CreateParameter($"@{param.Key}", param.Value ?? DBNull.Value));
                         }
                     }
 
@@ -225,11 +226,21 @@ namespace ApiCore.Services.Implementation
                 using var connection = _connectionFactory.CreateConnection();
                 await connection.OpenAsync();
 
-                using var bulkCopy = new SqlBulkCopy(connection);
-                bulkCopy.DestinationTableName = tableName;
-                bulkCopy.BulkCopyTimeout = 300; // 5 minutes
+                // Bulk insert is provider-specific; use Dapper for a portable approach
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var columns = string.Join(", ", dataTable.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
+                    var values = string.Join(", ", dataTable.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
+                    var sql = $"INSERT INTO {tableName} ({columns}) VALUES ({values})";
 
-                await bulkCopy.WriteToServerAsync(dataTable);
+                    var parameters = new DynamicParameters();
+                    foreach (DataColumn col in dataTable.Columns)
+                    {
+                        parameters.Add($"@{col.ColumnName}", row[col] == DBNull.Value ? null : row[col]);
+                    }
+                    await connection.ExecuteAsync(sql, parameters);
+                }
+
                 _logger.LogInformation("Bulk insert completed for {RowCount} rows", dataTable.Rows.Count);
                 return true;
             }

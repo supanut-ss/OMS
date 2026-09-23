@@ -17,6 +17,8 @@ namespace Authentication.Models.Requests
         public string application_email { get; set; } = string.Empty;
         [Required]
         public DateOnly application_expire { get; set; }
+        [Required]
+        public string license_type { get; set; }
     }
     public class ApplicationUpdateRequest 
     {

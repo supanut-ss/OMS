@@ -8,6 +8,15 @@ namespace TokenManagement.Middleware
     {
         private readonly RequestDelegate _next;
 
+        // Paths that should skip JWT blacklist validation (public endpoints)
+        private static readonly HashSet<string> _publicPaths = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "/auth/login",
+            "/auth/refresh",
+            "/gateway/v1/api/login",
+            "/gateway/v1/api/refresh",
+        };
+
         public JwtBlacklistMiddleware(RequestDelegate next)
         {
             _next = next;
@@ -15,6 +24,14 @@ namespace TokenManagement.Middleware
 
         public async Task Invoke(HttpContext context, ITokenValidatorService tokenValidator)
         {
+            // Skip blacklist check for public endpoints
+            var path = context.Request.Path.Value ?? string.Empty;
+            if (_publicPaths.Contains(path))
+            {
+                await _next(context);
+                return;
+            }
+
             var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
             var token = authHeader?.StartsWith("Bearer ") == true
                 ? authHeader.Substring("Bearer ".Length).Trim()

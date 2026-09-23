@@ -10,5 +10,8 @@ namespace Import_Export_Manager.Interfaces
         Task<ImportMasterResponse> CreateImportMaster(ImportMasterRequest request);
         Task<ImportMasterResponse> UpdateImportMaster(int import_id, ImportMasterRequest request);
         Task<ImportMasterResponse> DeleteImportMaster(int import_id);
+        Task<(List<Dictionary<string, object?>>, int)> GetStagingTableData(int import_id);
+        Task<ImportMasterResponse> CreateStagingTable(int import_id, string created_by);
+        Task<ImportMasterResponse> DropStagingTable(int import_id);
     }
 }

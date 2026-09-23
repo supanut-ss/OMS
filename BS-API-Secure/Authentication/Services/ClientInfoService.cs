@@ -13,35 +13,46 @@ namespace Authentication.Services
 
         public string GetClientIpAddress()
         {
-            var context = _httpContextAccessor.HttpContext;
+            // 1. ดึง IP Address ขาเข้ามาปกติ  
+            var remoteIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress;
+            string ipAddress = null;
 
-            if (context == null)
-                return "Unknown";
-            var ip = context?.Request.Headers["X-Client-IP"].FirstOrDefault() ?? context?.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
-
-            if (!string.IsNullOrEmpty(ip))
+            if (remoteIp != null)
             {
-                return ip.Split(',')[0].Trim();
+                // 🔥 ไม้เด็ด: ถ้ามันเป็น IPv4-Mapped (มี ::ffff:) ให้ดึงเฉพาะ IPv4 ข้างหลังออกมา  
+                if (remoteIp.IsIPv4MappedToIPv6)
+                {
+                    ipAddress = remoteIp.MapToIPv4().ToString(); // จะเหลือแค่ "192.168.1.55"  
+                }
+                else
+                {
+                    ipAddress = remoteIp.ToString();
+                }
             }
-            if (context?.Connection?.RemoteIpAddress != null) // Check for null explicitly
+
+            // 2. กรณีถ้าระบบผ่าน Proxy / Load Balancer (ดึงจาก Header)  
+            if (_httpContextAccessor.HttpContext?.Request?.Headers.TryGetValue("X-Forwarded-For", out var forwardedHeader) == true)
             {
-                var remoteIp = context.Connection.RemoteIpAddress; // No need for null coalescing operator
-
-                // Check if the IP is a loopback address
-                if (IPAddress.IsLoopback(remoteIp))
-                    return "127.0.0.1";
-
-                return remoteIp.MapToIPv4().ToString(); // Convert to IPv4 if necessary
+                var forwardedIp = forwardedHeader.FirstOrDefault();
+                if (!string.IsNullOrEmpty(forwardedIp))
+                {
+                    // เผื่อใน Header ก็ติด ::ffff: มาด้วย ให้ล้างออกซะ  
+                    if (forwardedIp.StartsWith("::ffff:"))
+                    {
+                        forwardedIp = forwardedIp.Replace("::ffff:", "");
+                    }
+                    ipAddress = forwardedIp;
+                }
             }
-            return "Unknown";
+
+            return ipAddress ?? "UNKNOWN_IP";
         }
-
 
         public string GetClientDeviceInfo()
         {
             var context = _httpContextAccessor.HttpContext;
-            var userAgent = context?.Request.Headers["User-Agent"].ToString() ?? "Unknown"; 
-            return userAgent; // สามารถ parse เพิ่มเติมเป็น Browser/OS ได้
+            var userAgent = context?.Request.Headers["X-Client-Device"].FirstOrDefault() ?? context?.Request.Headers["User-Agent"].ToString() ?? "Unknown";
+            return userAgent; // สามารถ parse เพิ่มเติมเป็น Browser/OS ได้  
         }
     }
 }

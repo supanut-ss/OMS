@@ -1,3 +1,46 @@
+import { DATE_FORMAT, DATETIME_FORMAT } from "../config/dateConfig";
+
+const pad2 = (value) => String(value).padStart(2, "0");
+
+const formatWithPattern = (date, pattern, locale) => {
+  const isThai = locale === "th";
+  const year = date.getFullYear() + (isThai ? 543 : 0);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours24 = date.getHours();
+  const hours12 = hours24 % 12 || 12;
+  const minutes = date.getMinutes();
+  const seconds = date.getSeconds();
+
+  const replacements = {
+    YYYY: String(year),
+    yyyy: String(year),
+    YY: String(year).slice(-2),
+    yy: String(year).slice(-2),
+    DD: pad2(day),
+    dd: pad2(day),
+    D: String(day),
+    d: String(day),
+    MM: pad2(month),
+    M: String(month),
+    HH: pad2(hours24),
+    H: String(hours24),
+    hh: pad2(hours12),
+    h: String(hours12),
+    mm: pad2(minutes),
+    m: String(minutes),
+    ss: pad2(seconds),
+    s: String(seconds),
+    A: hours24 >= 12 ? "PM" : "AM",
+    a: hours24 >= 12 ? "pm" : "am",
+  };
+
+  return String(pattern || DATE_FORMAT).replace(
+    /YYYY|yyyy|YY|yy|DD|dd|D|d|MM|M|HH|H|hh|h|mm|m|ss|s|A|a/g,
+    (token) => replacements[token] ?? token,
+  );
+};
+
 /**
  * Date Utility Functions
  * Shared date formatting utilities for consistent date display across the application
@@ -27,7 +70,7 @@
  * formatDate(new Date(), { includeTime: true, locale: "th" }) // "17/12/2567 14:30"
  */
 export const formatDate = (dateValue, options = {}) => {
-  const { includeTime = false, locale = "en" } = options;
+  const { includeTime = false, locale = "en", format } = options;
 
   if (!dateValue) return "";
 
@@ -38,25 +81,8 @@ export const formatDate = (dateValue, options = {}) => {
     // Validate date
     if (isNaN(date.getTime())) return "";
 
-    const isThai = locale === "th";
-
-    // Get year with locale-specific calendar
-    let year = date.getFullYear();
-    if (isThai) {
-      year += 543; // Convert to Buddhist Era (พ.ศ.)
-    }
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const formattedDate = `${day}/${month}/${year}`;
-
-    if (includeTime) {
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      return `${formattedDate} ${hours}:${minutes}`;
-    }
-
-    return formattedDate;
+    const defaultFormat = includeTime ? DATETIME_FORMAT : DATE_FORMAT;
+    return formatWithPattern(date, format || defaultFormat, locale);
   } catch {
     return "";
   }

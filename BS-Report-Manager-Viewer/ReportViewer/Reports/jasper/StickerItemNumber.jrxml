@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="LandscapeStickerItemNumber" pageWidth="1417" pageHeight="708" orientation="Landscape" columnWidth="1397" leftMargin="10" rightMargin="10" topMargin="10" bottomMargin="10" uuid="3dedc18c-ae5b-45e0-b7f9-9901cae10fe2">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="StickerItemNumber"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<style name="Default" isDefault="true" forecolor="#000000" fontName="Tahoma" fontSize="10"/>
+	<subDataset name="report_data" uuid="6eca445b-fb22-43e4-9e6b-3c8cf9a8268f">
+		<field name="barcode_data" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="barcode_data"/>
+			<fieldDescription><![CDATA[barcode_data]]></fieldDescription>
+		</field>
+		<field name="item_number" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="item_number"/>
+			<fieldDescription><![CDATA[item_number]]></fieldDescription>
+		</field>
+		<field name="item_category" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="item_category"/>
+			<fieldDescription><![CDATA[item_category]]></fieldDescription>
+		</field>
+		<field name="description" class="java.lang.String">
+			<property name="net.sf.jasperreports.jsonql.field.expression" value="description"/>
+			<fieldDescription><![CDATA[description]]></fieldDescription>
+		</field>
+	</subDataset>
+	<queryString language="jsonql">
+		<![CDATA[]]>
+	</queryString>
+	<detail>
+		<band height="688" splitType="Stretch">
+			<componentElement>
+				<reportElement x="0" y="0" width="1397" height="688" uuid="9c9af93c-839e-495e-93d1-4d3b2815d2be">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Horizontal" ignoreWidth="false">
+					<datasetRun subDataset="report_data" uuid="b1c2d3e4-f5a6-7890-bcde-f01234567890">
+						<dataSourceExpression><![CDATA[((net.sf.jasperreports.engine.data.JsonQLDataSource)$P{REPORT_DATA_SOURCE}).subDataSource("details")]]></dataSourceExpression>
+					</datasetRun>
+					<jr:listContents height="680" width="1397">
+						<componentElement>
+							<reportElement x="0" y="0" width="500" height="500" uuid="6d485108-3884-40f0-ac40-30cacc9c626f">
+								<property name="com.jaspersoft.studio.unit.margin" value="px"/>
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="px"/>
+							</reportElement>
+							<jr:QRCode margin="1">
+								<jr:codeExpression><![CDATA[$F{barcode_data}]]></jr:codeExpression>
+							</jr:QRCode>
+						</componentElement>
+						<textField>
+							<reportElement style="Default" x="0" y="520" width="500" height="100" uuid="e80974de-3283-4864-a487-ac968516c88b">
+								<property name="com.jaspersoft.studio.unit.leftIndent" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.x" value="px"/>
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
+							<textElement textAlignment="Center" verticalAlignment="Middle">
+								<font size="45" isBold="true"/>
+								<paragraph leftIndent="10"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{item_number}]]></textFieldExpression>
+						</textField>
+						<textField>
+							<reportElement style="Default" x="500" y="10" width="880" height="488" uuid="89d24b36-64df-4073-8dd7-631074ce240e">
+								<property name="com.jaspersoft.studio.unit.firstLineIndent" value="px"/>
+								<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								<property name="com.jaspersoft.studio.unit.x" value="px"/>
+								<property name="com.jaspersoft.studio.unit.y" value="px"/>
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
+							<textElement>
+								<font size="45" isBold="true"/>
+								<paragraph firstLineIndent="10"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+						</textField>
+					</jr:listContents>
+				</jr:list>
+			</componentElement>
+		</band>
+	</detail>
+</jasperReport>

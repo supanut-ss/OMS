@@ -30,7 +30,7 @@ namespace Import_Export_Manager.Services
                 string sortByNormalized = sortBy.ToLowerInvariant();
                 string sortOrderNormalized = sortOrder.ToLowerInvariant();
 
-                switch(sortByNormalized)
+                switch (sortByNormalized)
                 {
                     case "import_id":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ImportId) : data.OrderBy(x => x.ImportId);
@@ -44,17 +44,17 @@ namespace Import_Export_Manager.Services
                     case "exec_sql_command":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ExecSqlCommand) : data.OrderBy(x => x.ExecSqlCommand);
                         break;
-                    case "excel_example_file_path":
-                        data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ExcelExampleFilePath) : data.OrderBy(x => x.ExcelExampleFilePath);
-                        break;
                     case "seq":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.Seq) : data.OrderBy(x => x.Seq);
                         break;
                     case "is_active":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.IsActive) : data.OrderBy(x => x.IsActive);
                         break;
-                    case "confirm_message":
-                        data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ConfirmMessage) : data.OrderBy(x => x.ConfirmMessage);
+                    case "confirm_message_th":
+                        data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ConfirmMessageTh) : data.OrderBy(x => x.ConfirmMessageTh);
+                        break;
+                    case "import_status":
+                        data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.ImportStatus) : data.OrderBy(x => x.ImportStatus);
                         break;
                     case "create_by":
                         data = sortOrderNormalized == "desc" ? data.OrderByDescending(x => x.CreateBy) : data.OrderBy(x => x.CreateBy);
@@ -84,17 +84,21 @@ namespace Import_Export_Manager.Services
                         import_name = item.ImportName,
                         description = item.Description,
                         exec_sql_command = item.ExecSqlCommand,
-                        excel_example_file_path = item.ExcelExampleFilePath,
                         seq = item.Seq,
                         is_active = item.IsActive,
-                        confirm_message = item.ConfirmMessage,
+                        confirm_message_th = item.ConfirmMessageTh,
+                        confirm_message_en = item.ConfirmMessageEn,
+                        confirm_message_other = item.ConfirmMessageOther,
+                        import_batch_size = item.ImportBatchSize,
+                        import_temp_table_name = item.ImportTempTableName,
+                        import_status = item.ImportStatus,
                         create_by = item.CreateBy,
                         created_date = item.CreatedDate,
                         update_by = item.UpdateBy,
                         update_date = item.UpdateDate
                     });
                 }
-                if(importMasters.Count > 0)
+                if (importMasters.Count > 0)
                 {
                     response.code = "0";
                     response.message = "Success";
@@ -124,7 +128,7 @@ namespace Import_Export_Manager.Services
             {
                 ImportMasterResponse response = new ImportMasterResponse();
                 var data = await _context.TImportMasters.FirstOrDefaultAsync(x => x.ImportId == import_id);
-                if(data != null)
+                if (data != null)
                 {
                     response.data = new List<ImportMasterListResponse?>();
                     response.data.Add(new ImportMasterListResponse
@@ -133,10 +137,14 @@ namespace Import_Export_Manager.Services
                         import_name = data.ImportName,
                         description = data.Description,
                         exec_sql_command = data.ExecSqlCommand,
-                        excel_example_file_path = data.ExcelExampleFilePath,
                         seq = data.Seq,
                         is_active = data.IsActive,
-                        confirm_message = data.ConfirmMessage,
+                        confirm_message_th = data.ConfirmMessageTh,
+                        confirm_message_en = data.ConfirmMessageEn,
+                        confirm_message_other = data.ConfirmMessageOther,
+                        import_batch_size = data.ImportBatchSize,
+                        import_temp_table_name = data.ImportTempTableName,
+                        import_status = data.ImportStatus,
                         create_by = data.CreateBy,
                         created_date = data.CreatedDate,
                         update_by = data.UpdateBy,
@@ -206,6 +214,67 @@ namespace Import_Export_Manager.Services
             try
             {
                 return await _context.DeleteImportMaster(import_id);
+            }
+            catch (Exception ex)
+            {
+                return new ImportMasterResponse
+                {
+                    code = "1",
+                    message = ex.Message,
+                    data = null,
+                    total = 0
+                };
+            }
+        }
+
+        public async Task<(List<Dictionary<string, object?>>, int)> GetStagingTableData(int import_id)
+        {
+            try
+            {
+                var importMaster = await _context.TImportMasters
+                    .FirstOrDefaultAsync(x => x.ImportId == import_id);
+
+                if (importMaster == null || string.IsNullOrEmpty(importMaster.ImportTempTableName))
+                {
+                    return (new List<Dictionary<string, object?>>(), 0);
+                }
+
+                var columnMappings = await _context.TImportColumnMappings
+                    .Where(x => x.ImportId == import_id)
+                    .OrderBy(x => x.MappingId)
+                    .ToListAsync();
+
+                return await _context.GetStagingTableData(importMaster.ImportTempTableName, columnMappings);
+            }
+            catch (Exception)
+            {
+                return (new List<Dictionary<string, object?>>(), 0);
+            }
+        }
+
+        public async Task<ImportMasterResponse> CreateStagingTable(int import_id, string created_by)
+        {
+            try
+            {
+                return await _context.CreateStagingTable(import_id, created_by);
+            }
+            catch (Exception ex)
+            {
+                return new ImportMasterResponse
+                {
+                    code = "1",
+                    message = ex.Message,
+                    data = null,
+                    total = 0
+                };
+            }
+        }
+
+        public async Task<ImportMasterResponse> DropStagingTable(int import_id)
+        {
+            try
+            {
+                return await _context.DropStagingTable(import_id);
             }
             catch (Exception ex)
             {

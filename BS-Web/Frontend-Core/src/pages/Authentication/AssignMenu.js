@@ -16,6 +16,7 @@ import CustomTreeView from "../../components/CustomTreeView";
 import Logger from "../../utils/logger";
 import { useResource } from "../../hooks/useResource";
 import { useOutletContext } from "react-router-dom";
+import { ButtonConfigs } from "../../utils/ButtonConfigs";
 
 const MenuTreeView = (props) => {
   const { permission } = useOutletContext();
@@ -39,6 +40,7 @@ const MenuTreeView = (props) => {
       console.error("getResources(AssignMenu) error:", error);
     }
   };
+  const { ACTION_BUTTON_THEMES } = ButtonConfigs();
 
   // โหลด resource ตอน mount และเมื่อ props.lang เปลี่ยน — ตอนนี้จะรีโหลด resource และ rebuild menu tree หากมีการเลือก group+platform อยู่
   useEffect(() => {
@@ -61,23 +63,37 @@ const MenuTreeView = (props) => {
       const perms = [
         {
           id: `add-${id}`,
-          label: "➕ " + getResourceByGroupAndName("AssignMenu", "is_add_view", localeId)?.resource_value || "Add",
+          label:
+            "➕ " +
+            getResourceByGroupAndName("AssignMenu", "is_add_view", localeId)
+              ?.resource_value || "Add",
           isCheck: toBool(r.is_add_view),
         },
         {
           id: `edit-${id}`,
-          label: "✏️ " + getResourceByGroupAndName("AssignMenu", "is_edit_view", localeId)?.resource_value || "Edit",
+          label:
+            "✏️ " +
+            getResourceByGroupAndName("AssignMenu", "is_edit_view", localeId)
+              ?.resource_value || "Edit",
           isCheck: toBool(r.is_edit_view),
         },
         {
           id: `delete-${id}`,
           label:
-            "🗑️ " + getResourceByGroupAndName("AssignMenu", "is_delete_view", localeId)?.resource_value || "Delete",
+            "🗑️ " +
+            getResourceByGroupAndName(
+              "AssignMenu",
+              "is_delete_view",
+              localeId,
+            )?.resource_value || "Delete",
           isCheck: toBool(r.is_delete_view),
         },
         {
           id: `view-${id}`,
-          label: "👁️ " + getResourceByGroupAndName("AssignMenu", "is_view", localeId)?.resource_value || "View",
+          label:
+            "👁️ " +
+            getResourceByGroupAndName("AssignMenu", "is_view", localeId)
+              ?.resource_value || "View",
           isCheck: toBool(r.is_view),
         },
       ];
@@ -85,7 +101,8 @@ const MenuTreeView = (props) => {
       nodes[id] = {
         id,
         label:
-          getResourceByGroupAndName("Menu", r.menu_name, localeId)?.resource_value ||
+          getResourceByGroupAndName("Menu", r.menu_name, localeId)
+            ?.resource_value ||
           r.menu_name ||
           `menu-${id}`,
         isCheck: toBool(r.is_view),
@@ -115,7 +132,7 @@ const MenuTreeView = (props) => {
 
     const buildNode = (node) => {
       const sortedMenuChildren = (node.menuChildren || []).sort(
-        (a, b) => (a.sequence || 0) - (b.sequence || 0)
+        (a, b) => (a.sequence || 0) - (b.sequence || 0),
       );
       const menuChildrenNodes = sortedMenuChildren.map((c) => buildNode(c));
       // ถ้ามีเมนูลูก ให้ไม่สร้าง permission leaves สำหรับเมนูนี้
@@ -156,7 +173,7 @@ const MenuTreeView = (props) => {
         try {
           const result = await getMenuAssign(
             selectedGroup ?? "",
-            selectedPlatform ?? ""
+            selectedPlatform ?? "",
           );
           const tree = buildMenuTree(result?.data || []);
           setMenuData(tree);
@@ -166,7 +183,7 @@ const MenuTreeView = (props) => {
           setTabIndex(0);
           BSAlertSwal2.show(
             "error",
-            "เกิดข้อผิดพลาดหรือ API ไม่พบข้อมูล (404)"
+            "เกิดข้อผิดพลาดหรือ API ไม่พบข้อมูล (404)",
           );
         } finally {
           setLoading(false);
@@ -181,7 +198,9 @@ const MenuTreeView = (props) => {
 
   const updateParentChildren = (parentId, newChildren) => {
     setMenuData((prev) =>
-      prev.map((p) => (p.id === parentId ? { ...p, children: newChildren } : p))
+      prev.map((p) =>
+        p.id === parentId ? { ...p, children: newChildren } : p,
+      ),
     );
   };
 
@@ -189,7 +208,7 @@ const MenuTreeView = (props) => {
     items = [],
     platform,
     userGroupId,
-    result = []
+    result = [],
   ) => {
     // ดึงค่า id ที่ backend ต้องการ
     const userGroupIdValue = userGroupId?.user_group_id
@@ -207,17 +226,17 @@ const MenuTreeView = (props) => {
             userGroupId: userGroupIdValue,
             menu_id: menuId,
             platform: platformValue,
-            isAddView: "NO",
-            isEditView: "NO",
-            isDeleteView: "NO",
-            isView: "NO",
+            isAddView: false,
+            isEditView: false,
+            isDeleteView: false,
+            isView: false,
           };
           result.push(rec);
         }
-        if (type === "add") rec.isAddView = item.isCheck ? "YES" : "NO";
-        if (type === "edit") rec.isEditView = item.isCheck ? "YES" : "NO";
-        if (type === "delete") rec.isDeleteView = item.isCheck ? "YES" : "NO";
-        if (type === "view") rec.isView = item.isCheck ? "YES" : "NO";
+        if (type === "add") rec.isAddView = item.isCheck;
+        if (type === "edit") rec.isEditView = item.isCheck;
+        if (type === "delete") rec.isDeleteView = item.isCheck;
+        if (type === "view") rec.isView = item.isCheck;
       }
       if (Array.isArray(item.children) && item.children.length) {
         collectCheckedMenus(item.children, platform, userGroupId, result);
@@ -233,7 +252,7 @@ const MenuTreeView = (props) => {
       const checkedMenus = collectCheckedMenus(
         menuData,
         selectedPlatform,
-        selectedGroup
+        selectedGroup,
       );
       const result = await saveMenuAssign(checkedMenus);
       if (result && result.message_code === "0") {
@@ -243,7 +262,7 @@ const MenuTreeView = (props) => {
       } else {
         BSAlertSwal2.show(
           "error",
-          result?.message_text || "บันทึกข้อมูลไม่สำเร็จ"
+          result?.message_text || "บันทึกข้อมูลไม่สำเร็จ",
         );
       }
     } finally {
@@ -260,9 +279,15 @@ const MenuTreeView = (props) => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsMode="single"
-              bsTitle={getResourceByGroupAndName("AssignMenu", "user_group_id", localeId)?.resource_value || "User Group"}
-              bsPreObj="sec.t_com_"
-              bsObj="user_group"
+              bsTitle={
+                getResourceByGroupAndName(
+                  "AssignMenu",
+                  "user_group_id",
+                  localeId,
+                )?.resource_value || "User Group"
+              }
+              bsPreObj="sec"
+              bsObj="t_com_user_group"
               bsColumes={[
                 {
                   field: "user_group_id",
@@ -284,9 +309,12 @@ const MenuTreeView = (props) => {
           <FormControl fullWidth sx={{ mb: 2 }} variant="outlined">
             <BsAutoComplete
               bsMode="single"
-              bsTitle={getResourceByGroupAndName("AssignMenu", "platform", localeId)?.resource_value || "Platform"}
-              bsPreObj="sec.t_com_"
-              bsObj="combobox_item"
+              bsTitle={
+                getResourceByGroupAndName("AssignMenu", "platform", localeId)
+                  ?.resource_value || "Platform"
+              }
+              bsPreObj="sec"
+              bsObj="t_com_combobox_item"
               bsColumes={[
                 {
                   field: "display_member",
@@ -302,7 +330,7 @@ const MenuTreeView = (props) => {
                 },
               ]}
               bsObjBy=""
-              bsObjWh="group_name='platform' AND is_active='YES'"
+              bsObjWh="group_name='platform' AND is_active=1"
               bsValue={selectedPlatform} // ค่าเริ่มต้น = code ของ option
               //bsCacheKey="platform"
               bsLoadOnOpen={true}
@@ -317,8 +345,12 @@ const MenuTreeView = (props) => {
             <Button
               variant="contained"
               color="success"
-              size="large"
+              size="small"
               onClick={handleSave}
+              sx={{
+                ...ACTION_BUTTON_THEMES.success,
+                mt: 1,
+              }}
               disabled={saving || menuData.length === 0} // ปิดปุ่มจนกว่าจะมีข้อมูล
             >
               {saving ? (
@@ -329,7 +361,8 @@ const MenuTreeView = (props) => {
                   Saving...
                 </Box>
               ) : (
-                getResourceByGroupAndName("AssignMenu", "save", localeId)?.resource_value || "Save"
+                getResourceByGroupAndName("AssignMenu", "save", localeId)
+                  ?.resource_value || "Save"
               )}
             </Button>
           </Box>
@@ -347,7 +380,10 @@ const MenuTreeView = (props) => {
               {menuData.map((parent) => (
                 <Tab
                   key={parent.id}
-                  label={getResourceByGroupAndName("Menu", parent.label, localeId)?.resource_value || parent.label}
+                  label={
+                    getResourceByGroupAndName("Menu", parent.label, localeId)
+                      ?.resource_value || parent.label
+                  }
                 />
               ))}
             </Tabs>

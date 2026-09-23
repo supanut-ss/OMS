@@ -1,35 +1,29 @@
 {
   "Routes": [
     {
-      "DownstreamPathTemplate": "/test-db",
+      "DownstreamPathTemplate": "/bs_auth/test-db",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/test",
-      "UpstreamHttpMethod": [
-        "get"
-      ]
+      "UpstreamPathTemplate": "/v1/api/test",
+      "UpstreamHttpMethod": ["get"]
     },
     {
-      "DownstreamPathTemplate": "/auth/login",
+      "DownstreamPathTemplate": "/bs_auth/auth/login",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/login",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "DelegatingHandlers": [
-        "AddClientIpDelegatingHandler"
-      ],
+      "UpstreamPathTemplate": "/v1/api/login",
+      "UpstreamHttpMethod": ["post"],
+      "DelegatingHandlers": ["AddClientIpDelegatingHandler"],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -38,248 +32,220 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/auth/logout",
+      "DownstreamPathTemplate": "/bs_auth/auth/logout",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/logout",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/logout",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/users/role",
+      "DownstreamPathTemplate": "/bs_auth/users/role",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/role",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/role",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/users/reset_password",
+      "DownstreamPathTemplate": "/bs_auth/users/reset_password",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/reset_password",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/reset_password",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/auth/refresh",
+      "DownstreamPathTemplate": "/bs_auth/auth/refresh",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/refresh",
-      "UpstreamHttpMethod": [
-        "post"
-      ]
+      "UpstreamPathTemplate": "/v1/api/refresh",
+      "UpstreamHttpMethod": ["post"]
     },
     {
-      "DownstreamPathTemplate": "/alive/user",
+      "DownstreamPathTemplate": "/bs_auth/alive/user",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/alive",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/alive",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/alive/status",
+      "DownstreamPathTemplate": "/bs_auth/alive/status",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/alive/status",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/alive/status",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/resource",
+      "DownstreamPathTemplate": "/bs_auth/resource",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/resource",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/resource",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/resource/save",
+      "DownstreamPathTemplate": "/bs_auth/resource/save",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/resource/save",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/resource/save",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/users/switch/lang",
+      "DownstreamPathTemplate": "/bs_auth/users/switch/lang",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/users/switch/lang",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/users/switch/lang",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/menu",
+      "DownstreamPathTemplate": "/bs_auth/menu",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/menu",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/menu",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/menu/menuAssign",
+      "DownstreamPathTemplate": "/bs_auth/menu/menuAssign",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/menu/menuAssign",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/menu/menuAssign",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/menu/saveAssign",
+      "DownstreamPathTemplate": "/bs_auth/menu/saveAssign",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/menu/saveAssign",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/menu/saveAssign",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/autocomplete",
+      "DownstreamPathTemplate": "/bs_api_core/autocomplete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/autocomplete",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/autocomplete",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/schema",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/schema",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/schema",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/schema",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -292,36 +258,32 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/metadata/{tableName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/metadata/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/metadata/{tableName}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/metadata/{tableName}",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/datagrid",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/datagrid",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/datagrid",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -334,18 +296,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bs-datagrid",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bs-datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bs-datagrid",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bs-datagrid",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -358,36 +318,32 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/record/{tableName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/record/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/record/{tableName}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/record/{tableName}",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/create",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/create",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/create",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -400,18 +356,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/update",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/update",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/update",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -424,18 +378,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/delete",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/delete",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/delete",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -448,18 +400,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bulk-create",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bulk-create",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bulk-create",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -472,18 +422,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/bulk-update",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bulk-update",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bulk-update",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -500,14 +448,12 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/bulk-delete",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bulk-delete",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -520,18 +466,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/combobox",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/combobox",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/combobox",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/combobox",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -544,18 +488,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/enhanced-procedure",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/enhanced-procedure",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/enhanced-procedure",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/enhanced-procedure",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -568,18 +510,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/procedure/{procedureName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/procedure/{procedureName}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/procedure/{procedureName}",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -592,36 +532,32 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/procedure-metadata/{procedureName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure-metadata/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/procedure-metadata/{procedureName}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/procedure-metadata/{procedureName}",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/query",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/query",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/query",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/query",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -634,60 +570,368 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/dynamic/exists/{tableName}",
+      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/exists/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/dynamic/exists/{tableName}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/exists/{tableName}",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
     },
     {
-      "DownstreamPathTemplate": "/api/Gantt/timeline",
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Gantt/timeline",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/{outbound_master_id}",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
-      },
-      "RateLimitOptions": {
-        "ClientWhitelist": [],
-        "EnableRateLimiting": true,
-        "Period": "1s",
-        "Limit": 50
       }
     },
     {
-      "DownstreamPathTemplate": "/api/Import/UploadExcel",
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/update/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_import_export_manager",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/UploadExcel",
-      "UpstreamHttpMethod": [
-        "post"
+      "UpstreamPathTemplate": "/v1/api/outbound/update/{outbound_master_id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
       ],
+      "UpstreamPathTemplate": "/v1/api/outbound",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/{outbound_master_id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/{outbound_master_id}",
+      "UpstreamHttpMethod": ["delete"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/delete/{outbound_master_id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/delete/{outbound_master_id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/release-user",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/release-user",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/release",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/release",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/unrelease-user",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/unrelease-user",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/unrelease",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/unrelease",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/cancel-order",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/cancel-order",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/confirm-ship/{outbound_master_id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/confirm-ship/{outbound_master_id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/save",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/delete-order",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/delete-order",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/close-order",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/close-order",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/close-receipt",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/close-receipt",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/save-receipt",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/save-receipt",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/receipt/{receiptHeaderId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/receipt/{receiptHeaderId}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inbound/details/{inboundMasterId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/details/{inboundMasterId}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/count/insert",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/count/insert",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/count/delete",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/count/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/count/cycleCountData",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/count/cycleCountData",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/ChangeLocation",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/ChangeLocation",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -700,18 +944,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/ImportMaster/GetImportMasters",
+      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/StatusChange",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_import_export_manager",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/GetImportMasters",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/StatusChange",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -724,18 +966,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/ImportMaster/GetImportMaster",
+      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/Adjustment",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_import_export_manager",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/GetImportMaster",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/Adjustment",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -748,18 +988,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/ImportMaster/CreateImportMaster",
+      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/AdjustIn",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_import_export_manager",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/CreateImportMaster",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/AdjustIn",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -772,18 +1010,1091 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/ImportMaster/UpdateImportMaster",
+      "DownstreamPathTemplate": "/bs_auth/users/register",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_import_export_manager",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/UpdateImportMaster",
-      "UpstreamHttpMethod": [
-        "post"
+      "UpstreamPathTemplate": "/v1/api/users/register",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/users/update",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
       ],
+      "UpstreamPathTemplate": "/v1/api/users/update",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/users/delete",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/users/reset",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/reset",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/users/clear_logon",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/clear_logon",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/version",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/version",
+      "UpstreamHttpMethod": ["post"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/menu/favorite",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/menu/favorite",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/all",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/all",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/user/{userId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/user/{userId}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/delete/{userId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/delete/{userId}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/read/{notifyId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/read/{notifyId}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/manage",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner/manage",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/{id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner/{id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/delete",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/detail/{banner_id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/detail/{banner_id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_auth/api/activity-log",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/activity-log",
+      "UpstreamHttpMethod": ["post", "options"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/logging/log",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/logging/log",
+      "UpstreamHttpMethod": ["post", "options"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/inventory-viewer/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inventory-viewer/{everything}",
+      "UpstreamHttpMethod": ["get", "post", "options"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/checkversion",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/checkversion",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/GetDecimal",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/GetDecimal",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/downloadApp",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/downloadApp",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetProductionHeader",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetProductionHeader",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/ScanItemInProductionDetail",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/ScanItemInProductionDetail",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetItemTranDetail",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetItemTranDetail",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/SaveIssueForProduction",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/SaveIssueForProduction",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/SaveReceiveForProduction",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/SaveReceiveForProduction",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetQuantityRemain",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetQuantityRemain",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Combobox/GetCombobox",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Combobox/GetCombobox",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetSaleHeader",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetSaleHeader",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetDeliveryDetails",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetDeliveryDetails",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetScanSaleDetailByDocNum",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetScanSaleDetailByDocNum",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetQuantityRemainSale",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetQuantityRemainSale",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveDeliveryOrder",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveDeliveryOrder",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveBlindDeliveryOrder",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveBlindDeliveryOrder",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetScanItemBlindDelivery",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetScanItemBlindDelivery",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetBlindDeliveryHeader",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetBlindDeliveryHeader",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/ConfigApp/GetBarcodeFormat",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/ConfigApp/GetBarcodeFormat",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveBlindDeliveryDetails",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveBlindDeliveryDetails",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/save",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/item/{itemNumber}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/item/{itemNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/{docNumber}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/{docNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/pending-success-status",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/pending-success-status",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/save",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/item/{itemNumber}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/item/{itemNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/pending-success-status",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/pending-success-status",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/{docNumber}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/{docNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Uom/GetUom",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GetUom",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetComboboxPo",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetComboboxPo",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataReceiptPage",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataReceiptPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataForAddItem",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataForAddItem",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataForEdit",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataForEdit",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataConfirmPage",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataConfirmPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/SaveGoodsReceipt",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/SaveGoodsReceipt",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetComboboxTransfer",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetComboboxTransfer",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataTransferPage",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataTransferPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataForAddItem",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataForAddItem",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataForEdit",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataForEdit",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataConfirmPage",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataConfirmPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/SaveTransferItem",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/SaveTransferItem",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/ValidateToyota",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/ValidateToyota",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/ValidateGtec",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/ValidateGtec",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/PartAttachment/{attachmentId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/PartAttachment/{attachmentId}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/MyItemCount",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/MyItemCount",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/SaveDelivery",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/SaveDelivery",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/PartAttachment/{partId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PartAttachment/{partId}",
+      "UpstreamHttpMethod": ["get", "post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/PartAttachment/{partId}/delete",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PartAttachment/{partId}/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/PartAttachment/part/{partId}/delete",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PartAttachment/part/{partId}/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_core/api/GtecAttachment/Download",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/GtecAttachment/Download",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/UploadExcelBulk",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "192.168.12.122",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/UploadExcelBulk",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -796,18 +2107,16 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/ImportMaster/DeleteImportMaster",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/UploadHistory",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_import_export_manager",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/DeleteImportMaster",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/UploadHistory",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -820,755 +2129,205 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/users/register",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/CreateStagingTable",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/users/register",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/CreateStagingTable",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/users/update",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/DropStagingTable",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/users/update",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/DropStagingTable",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/users/delete",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/GridConfig",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/users/delete",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/GridConfig",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/users/reset",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/DownloadTemplateByMapping",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/users/reset",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/DownloadTemplateByMapping",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/users/clear_logon",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/GetImportMasters",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/users/clear_logon",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/GetImportMasters",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/api/Excel/ExportSummaryReport",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/GetImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Excel/ExportSummaryReport",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/GetImportMaster",
+      "UpstreamHttpMethod": ["get"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/version",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/CreateImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "auth_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/version",
-      "UpstreamHttpMethod": [
-        "post"
-      ]
-    },
-    {
-      "DownstreamPathTemplate": "/menu/favorite",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "auth_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/menu/favorite",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
+      "UpstreamPathTemplate": "/v1/api/CreateImportMaster",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/api/projects/{projectId}",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/UpdateImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/{projectId}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/UpdateImportMaster",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     },
     {
-      "DownstreamPathTemplate": "/api/projects/task/phases/{projectId}",
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/DeleteImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "bs_core_api",
-          "Port": 8080
+          "Host": "192.168.12.122",
+          "Port": 80
         }
       ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/phases/{projectId}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
+      "UpstreamPathTemplate": "/v1/api/DeleteImportMaster",
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/task",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/task/delete/{projectTaskId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/delete/{projectTaskId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ]
-    },
-    {
-      "DownstreamPathTemplate": "/api/mytask",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/mytask",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/mytask/tracking",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/mytask/tracking",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/mytask/tracking/save",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/mytask/tracking/save",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/mytask/tracking/delete/{projectTaskTrackingId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/mytask/tracking/delete/{projectTaskTrackingId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/mytask/task/{projectTaskId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/mytask/task/{projectTaskId}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/task/{projectTaskId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/{projectTaskId}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/task/assign_team",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/assign_team",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/task/assign_team/delete/{projectTaskMemberId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/task/assign_team/delete/{projectTaskMemberId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/team",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/team",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/projects/team/delete/{projectMemberId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/projects/team/delete/{projectMemberId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/invoice/delete/{projectInvoiceId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/invoice/delete/{projectInvoiceId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/invoice",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/invoice",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/file/upload",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/files/upload",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/file/download",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/files/download",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/file/delete",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/files/delete",
-      "UpstreamHttpMethod": [
-        "delete"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/all",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/all",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/user/{userId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/user/{userId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/delete/{userId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/delete/{userId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/read/{notifyId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/read/{notifyId}",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/banner",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/banner",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/banner/manage",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/banner/manage",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/banner/{id}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/banner/{id}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/banner/delete",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/banner/delete",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Notify/banner/detail/{banner_id}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_notification",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/notify/detail/{banner_id}",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/MyTask/dashboard/stats",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/MyTask/dashboard/stats",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Projects/incentive",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Projects/incentive",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/Projects/performance",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "bs_core_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/Projects/performance",
-      "UpstreamHttpMethod": [
-        "get"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/api/activity-log",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "auth_api",
-          "Port": 8080
-        }
-      ],
-      "UpstreamPathTemplate": "/gateway/v1/api/activity-log",
-      "UpstreamHttpMethod": [
-        "post"
-      ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
       }
     }
   ],
   "GlobalConfiguration": {
-    "BaseUrl": "http://0.0.0.0:8080"
+    "BaseUrl": "http://0.0.0.0/gateway"
   }
 }

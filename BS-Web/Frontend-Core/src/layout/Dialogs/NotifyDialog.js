@@ -190,7 +190,7 @@ const NotifyDialog = ({ open, onClose }) => {
                           component="div"
                           color="text.disabled"
                         >
-                          {FormatTimeToText(n.create_at)}
+                          {FormatTimeToText(n.create_date)}
                         </Typography>
                       </Box>
                     }

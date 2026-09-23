@@ -1,9 +1,11 @@
+import { useCallback } from "react";
 import SecureStorage from "../utils/SecureStorage";
+
 export const useMenuItems = () => {
-  const menuItems = () => {
+  const menuItems = useCallback(() => {
     const storedMenu = SecureStorage.get("menu");
-    if (storedMenu) {
-      let menu = Object.values(storedMenu)
+    if (storedMenu && storedMenu.length > 0) {
+      const menu = Object.values(storedMenu)
         .sort((a, b) => a.menu_group_sequence - b.menu_group_sequence)
         .map((m) => ({
           text: m.menu_group_name,
@@ -25,8 +27,7 @@ export const useMenuItems = () => {
       return menu;
     }
     return [];
-  }
+  }, []);
+
   return { menuItems };
-}
-
-
+};

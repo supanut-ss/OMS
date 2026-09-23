@@ -13,10 +13,10 @@ namespace Authentication.Models.Data
         public string application_email { get; set; } = string.Empty;
         public DateOnly application_expire { get; set; }
         public string license_type { get; set; } = string.Empty;
-        public DateTime license_date { get; set; } 
+        public DateTime license_date { get; set; }
         public DateTime? license_update_date { get; set; }
         public string license_key { get; set; } = string.Empty;
-        public string is_active { get; set; } = string.Empty;
+        public bool is_active { get; set; }
         public int access_failed_count_limit { get; set; }
         public string created_by { get; set; } = string.Empty;
         public DateTime created_date { get; set; }

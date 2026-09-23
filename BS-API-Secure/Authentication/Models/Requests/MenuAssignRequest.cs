@@ -3,10 +3,10 @@
     public class MenuAssignRequest
     {
         public int UserGroupId { get; set; }
-        public string IsAddView { get; set; } = string.Empty;
-        public string IsEditView { get; set; } = string.Empty;
-        public string IsDeleteView { get; set; } = string.Empty;
-        public string IsView { get; set; } = string.Empty;
+        public bool IsAddView { get; set; } = false;
+        public bool IsEditView { get; set; } = false;
+        public bool IsDeleteView { get; set; } = false;
+        public bool IsView { get; set; } = false;
         public int menu_id { get; set; }
         public string Platform { get; set; } = string.Empty;
     }

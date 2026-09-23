@@ -1,12 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-// Import Roboto font
-import "@fontsource/roboto/300.css";
-import "@fontsource/roboto/400.css";
-import "@fontsource/roboto/500.css";
-import "@fontsource/roboto/700.css";
-
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
@@ -35,11 +29,15 @@ if (process.env.NODE_ENV === "production") {
 muiLicenseManager.initialize();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
+const shouldUseStrictMode = process.env.REACT_APP_ENABLE_STRICT_MODE === "true";
+
+root.render(shouldUseStrictMode ? (
   <React.StrictMode>
     <App />
   </React.StrictMode>
-);
+) : (
+  <App />
+));
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

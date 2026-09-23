@@ -1,8 +1,8 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormHelperText, IconButton, Input, InputAdornment, InputLabel, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, Input, InputAdornment, InputLabel, Typography } from "@mui/material";
 import { useState } from "react";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { CheckCircle, Visibility, VisibilityOff } from "@mui/icons-material";
 import { UserContext } from "../../contexts/UserContext";
 
 const ResetPasswordDialog = ({ open, onClose, lang, currentUser, loading, setLoading }) => {
@@ -257,11 +257,7 @@ const ResetPasswordDialog = ({ open, onClose, lang, currentUser, loading, setLoa
               </InputAdornment>
             }
           />
-          {errorPassword.new_password.status && (
-            <FormHelperText sx={{ color: "red" }}>
-              {errorPassword.new_password.message}
-            </FormHelperText>
-          )}
+
         </FormControl>
         <FormControl fullWidth sx={{ mt: 2 }}>
           <InputLabel htmlFor="confirm-password">
@@ -286,12 +282,52 @@ const ResetPasswordDialog = ({ open, onClose, lang, currentUser, loading, setLoa
               </InputAdornment>
             }
           />
-          {errorPassword.confirm_password.status && (
-            <FormHelperText sx={{ color: "red" }}>
-              {errorPassword.confirm_password.message}
-            </FormHelperText>
-          )}
+
         </FormControl>
+        <Box sx={{ mt: 1 }}>
+          {[
+            {
+              met: password.new_password.length >= 8,
+              th: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
+              en: "Password must be at least 8 characters long",
+            },
+            {
+              met: /[A-Z]/.test(password.new_password),
+              th: "ต้องมีตัวอักษรพิมพ์ใหญ่ (A-Z) อย่างน้อยหนึ่งตัว",
+              en: "At least one uppercase letter (A-Z)",
+            },
+            {
+              met: /[a-z]/.test(password.new_password),
+              th: "ต้องมีตัวอักษรพิมพ์เล็ก (a-z) อย่างน้อยหนึ่งตัว",
+              en: "At least one lowercase letter (a-z)",
+            },
+            {
+              met: /[0-9]/.test(password.new_password),
+              th: "ต้องมีตัวเลข (0-9) อย่างน้อยหนึ่งตัว",
+              en: "At least one number (0-9)",
+            },
+            {
+              met: /[!@#$%^&*]/.test(password.new_password),
+              th: "ต้องมีอักขระพิเศษอย่างน้อยหนึ่งตัว (!@#$%^&*)",
+              en: "At least one special character (!@#$%^&*)",
+            },
+            {
+              met:
+                password.new_password.length > 0 &&
+                (!(currentUser?.FirstName) || !password.new_password.toLowerCase().includes(currentUser.FirstName.toLowerCase())) &&
+                (!(currentUser?.LastName) || !password.new_password.toLowerCase().includes(currentUser.LastName.toLowerCase())),
+              th: "ต้องไม่ตรงกับชื่อผู้ใช้หรืออีเมล",
+              en: "Must not match Username or Email",
+            },
+          ].map((req, idx) => (
+            <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography variant="caption" color={req.met ? "success.main" : "error.main"}>
+                {lang === "th" ? req.th : req.en}
+              </Typography>
+              {req.met && <CheckCircle sx={{ fontSize: 12, color: "success.main" }} />}
+            </Box>
+          ))}
+        </Box>
       </DialogContent>
       <DialogActions>
         <Button

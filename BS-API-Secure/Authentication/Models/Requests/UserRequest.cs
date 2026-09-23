@@ -25,6 +25,8 @@ namespace Authentication.Models.Requests
         [JsonPropertyName("domain")]
         public string Domian { get; set; } = string.Empty;
         [JsonPropertyName("is_active")]
-        public string IsActive { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        [JsonPropertyName("location")]
+        public string Location { get; set; } = string.Empty;
     }
 }

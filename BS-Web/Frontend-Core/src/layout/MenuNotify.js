@@ -112,7 +112,7 @@ const MenuNoti = ({ notifications, handleNotificationClose }) => {
                             color="text.disabled"
                             sx={{ mt: 0.5, display: "block" }}
                         >
-                            {FormatTimeToText(n.create_at)}
+                            {FormatTimeToText(n.create_date)}
                         </Typography>
                     </Box>
                 </MenuItem>

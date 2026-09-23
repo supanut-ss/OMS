@@ -4,6 +4,7 @@ using ApiCore.Models.Base;
 using ApiCore.Models.Dynamic;
 using ApiCore.Services.Interfaces;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Security;
 
 namespace ApiCore.Controllers
@@ -131,6 +132,122 @@ namespace ApiCore.Controllers
         {
             try
             {
+                // Translate BSFilterCustom customFilters to standard FilterModel.Items.
+                // Service layer already applies FilterModel in SQL generation.
+                if (request.CustomFilters != null && request.CustomFilters.Any())
+                {
+                    if (request.FilterModel == null)
+                    {
+                        request.FilterModel = new DataGridFilterModel();
+                    }
+
+                    foreach (var customFilter in request.CustomFilters)
+                    {
+                        if (string.IsNullOrWhiteSpace(customFilter.Field))
+                        {
+                            continue;
+                        }
+
+                        var normalizedOperator = (customFilter.Operator ?? "contains").Trim();
+                        var hasValue = customFilter.Value != null && !string.IsNullOrWhiteSpace(customFilter.Value.ToString());
+                        var hasValue2 = customFilter.Value2 != null && !string.IsNullOrWhiteSpace(customFilter.Value2.ToString());
+
+                        var normalizedOperatorLower = normalizedOperator.ToLowerInvariant();
+
+                        // Between is represented as two predicates: >= and <=.
+                        if (normalizedOperatorLower == "isbetween" || normalizedOperatorLower == "between")
+                        {
+                            if (hasValue)
+                            {
+                                request.FilterModel.Items.Add(new DataGridFilterItem
+                                {
+                                    Field = customFilter.Field,
+                                    Operator = ">=",
+                                    Value = customFilter.Value
+                                });
+                            }
+
+                            if (hasValue2)
+                            {
+                                var endOperator = "<=";
+                                var endValue = customFilter.Value2;
+
+                                if (TryGetDateOnlyValue(customFilter.Value2, out var dateOnlyEnd))
+                                {
+                                    endOperator = "<";
+                                    endValue = dateOnlyEnd.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                                }
+
+                                request.FilterModel.Items.Add(new DataGridFilterItem
+                                {
+                                    Field = customFilter.Field,
+                                    Operator = endOperator,
+                                    Value = endValue
+                                });
+                            }
+
+                            continue;
+                        }
+
+                        if (!hasValue)
+                        {
+                            continue;
+                        }
+
+                        if ((normalizedOperatorLower == "is" || normalizedOperatorLower == "equals") &&
+                            TryGetDateOnlyValue(customFilter.Value, out var dateOnlyValue))
+                        {
+                            request.FilterModel.Items.Add(new DataGridFilterItem
+                            {
+                                Field = customFilter.Field,
+                                Operator = ">=",
+                                Value = dateOnlyValue.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                            });
+
+                            request.FilterModel.Items.Add(new DataGridFilterItem
+                            {
+                                Field = customFilter.Field,
+                                Operator = "<",
+                                Value = dateOnlyValue.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                            });
+
+                            continue;
+                        }
+
+                        var filterOperator = normalizedOperatorLower switch
+                        {
+                            "is" => "equals",
+                            "onorafter" => ">=",
+                            "after" => ">",
+                            "onorbefore" when TryGetDateOnlyValue(customFilter.Value, out _) => "<",
+                            "onorbefore" => "<=",
+                            "before" => "<",
+                            "notequals" => "!=",
+                            "greaterthan" => ">",
+                            "greaterthanorequal" => ">=",
+                            "lessthan" => "<",
+                            "lessthanorequal" => "<=",
+                            _ => normalizedOperator
+                        };
+
+                        var filterValue = normalizedOperatorLower == "onorbefore" &&
+                            TryGetDateOnlyValue(customFilter.Value, out var dateOnlyEndValue)
+                            ? dateOnlyEndValue.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                            : customFilter.Value;
+
+                        request.FilterModel.Items.Add(new DataGridFilterItem
+                        {
+                            Field = customFilter.Field,
+                            Operator = filterOperator,
+                            Value = filterValue
+                        });
+                    }
+
+                    // CustomFilters are translated to FilterModel.Items above.
+                    // Keep only one filtering path to avoid duplicate WHERE clauses and missing parameters.
+                    request.CustomFilters = null;
+                }
+
                 // Map BS Platform properties to standard DataGrid properties
                 if (request.Page > 0 && request.PageSize > 0)
                 {
@@ -192,6 +309,17 @@ namespace ApiCore.Controllers
                 _logger.LogError(ex, "Error retrieving BSDataGrid data for {TableName}", request.TableName);
                 return BadRequest(new { message = $"Error retrieving data: {ex.Message}" });
             }
+        }
+
+        private static bool TryGetDateOnlyValue(object? value, out DateTime date)
+        {
+            var text = value?.ToString();
+            return DateTime.TryParseExact(
+                text,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date);
         }
 
         /// <summary>

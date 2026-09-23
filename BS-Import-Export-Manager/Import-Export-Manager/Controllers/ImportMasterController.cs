@@ -76,5 +76,35 @@ namespace Import_Export_Manager.Controllers
                 return NotFound(result);
             }
         }
+
+        // POST api/ImportMaster/CreateStagingTable - Auto-create staging table from column mappings
+        [HttpPost("CreateStagingTable")]
+        public async Task<IActionResult> CreateStagingTable(int import_id, string created_by)
+        {
+            var result = await _importMasterService.CreateStagingTable(import_id, created_by);
+            if (result.code == "0")
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+
+        // POST api/ImportMaster/DropStagingTable - Drop staging table
+        [HttpPost("DropStagingTable")]
+        public async Task<IActionResult> DropStagingTable(int import_id)
+        {
+            var result = await _importMasterService.DropStagingTable(import_id);
+            if (result.code == "0")
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
     }
 }

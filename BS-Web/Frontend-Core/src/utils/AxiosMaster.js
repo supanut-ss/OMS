@@ -2,6 +2,7 @@ import axios from "axios";
 import SecureStorage from "./SecureStorage";
 import Config from "./Config";
 import StorageRecovery from "./StorageRecovery";
+import Logger from "./logger";
 
 const AxiosMaster = axios.create({
   baseURL: Config.API_URL,
@@ -94,8 +95,45 @@ const shouldSkipActivityLog = (config = {}) => {
   return Boolean(skipHeader) || url.includes("/activity-log");
 };
 
-const sendApiRequestActivityLog = ({ config, token, clientIp }) => {
+const CLIENT_DEVICE_ID_KEY = "client_device_id";
+
+const generateClientDeviceId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `${Config.APP_ENV}-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+};
+
+const getClientDeviceId = () => {
+  try {
+    const existing =
+      SecureStorage.get(CLIENT_DEVICE_ID_KEY) ||
+      localStorage.getItem(CLIENT_DEVICE_ID_KEY) ||
+      sessionStorage.getItem(CLIENT_DEVICE_ID_KEY);
+
+    if (existing && String(existing).trim()) {
+      return String(existing).trim();
+    }
+
+    const created = generateClientDeviceId();
+    try {
+      SecureStorage.set(CLIENT_DEVICE_ID_KEY, created);
+      localStorage.setItem(CLIENT_DEVICE_ID_KEY, created);
+    } catch (_) {
+      localStorage.setItem(CLIENT_DEVICE_ID_KEY, created);
+    }
+
+    return created;
+  } catch (e) {
+    console.warn("Failed to get persistent client device id:", e);
+    return generateClientDeviceId();
+  }
+};
+
+const sendApiRequestActivityLog = ({ config, token, clientIp, clientDeviceId }) => {
   if (shouldSkipActivityLog(config)) return;
+  if (!token || typeof token !== "string" || !token.trim()) return;
 
   const method = String(config.method || "GET").toUpperCase();
   const requestData = sanitizePayload(config.data);
@@ -117,6 +155,7 @@ const sendApiRequestActivityLog = ({ config, token, clientIp }) => {
   if (clientIp) {
     activityHeaders["X-Client-IP"] = clientIp;
   }
+  activityHeaders["X-Client-Device"] = clientDeviceId || "unknown";
 
   axios
     .post(
@@ -183,6 +222,7 @@ const fetchAndCacheIp = async () => {
       const info = { ip, ts: Date.now() };
       try {
         SecureStorage.set(IP_CACHE_KEY, JSON.stringify(info));
+        localStorage.setItem(IP_CACHE_KEY, JSON.stringify(info));
       } catch (_) {
         localStorage.setItem(IP_CACHE_KEY, JSON.stringify(info));
       }
@@ -203,8 +243,13 @@ const getClientIp = async () => {
 AxiosMaster.interceptors.request.use(
   async (config) => {
     try {
+      config.headers = config.headers || {};
+
       const existingAuthHeader =
         config.headers?.Authorization || config.headers?.authorization;
+
+      const clientDeviceId = getClientDeviceId();
+      config.headers["X-Client-Device"] = clientDeviceId;
 
       let token = SecureStorage.get("token");
       if (!token) {
@@ -213,12 +258,17 @@ AxiosMaster.interceptors.request.use(
       }
 
       if (token && typeof token === "string") {
-        const validation = StorageRecovery.validateToken(token);
+        const validation =
+          StorageRecovery.validateToken(token);
+
         if (validation.valid) {
-          config.headers["Authorization"] = `Bearer ${token}`;
+          config.headers["Authorization"] =
+            `Bearer ${token}`;
         } else {
-          console.warn("⚠️ Token validation failed:", validation.reason);
-          await StorageRecovery.autoFixTokenIssues();
+          console.warn(
+            "⚠️ Token validation failed:",
+            validation.reason
+          );
         }
       } else {
         console.warn("⚠️ No valid JWT token found in any storage");
@@ -246,6 +296,7 @@ AxiosMaster.interceptors.request.use(
         config,
         token: tokenForLog,
         clientIp,
+        clientDeviceId,
       });
 
       return config;
@@ -261,28 +312,178 @@ AxiosMaster.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+const REFRESH_LOCK_KEY = "refresh_lock";
+const REFRESH_RESULT_KEY = "refresh_result";
+const acquireRefreshLock = () => {
+  const existing =
+    localStorage.getItem(
+      REFRESH_LOCK_KEY
+    );
 
-let isRefreshing = false;
-let refreshSubscribers = [];
+  if (existing) {
+    const lockTime =
+      parseInt(existing, 10);
 
+    if (
+      Date.now() - lockTime <
+      30000
+    ) {
+      return false;
+    }
+  }
 
+  localStorage.setItem(
+    REFRESH_LOCK_KEY,
+    Date.now().toString()
+  );
 
-const subscribeTokenRefresh = (cb) => refreshSubscribers.push(cb);
-const onRefreshed = (token) => {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
+  return true;
 };
-const onRefreshFailed = (err) => {
-  refreshSubscribers.forEach((cb) => cb(null, err));
-  refreshSubscribers = [];
+const isRefreshInProgress = () => {
+  const lock = localStorage.getItem(REFRESH_LOCK_KEY);
+
+  if (!lock) return false;
+
+  const lockTime = parseInt(lock, 10);
+
+  // lock หมดอายุใน 30 วินาที
+  if (Date.now() - lockTime > 30000) {
+    localStorage.removeItem(
+      REFRESH_LOCK_KEY
+    );
+    return false;
+  }
+
+  return true;
 };
 
+const waitForRefreshResult = () =>
+  new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      window.removeEventListener("storage", listener);
+      window.location.href = Config.BASE_URL + "/login";
+    }, 30000);
 
+    const listener = (event) => {
+      if (
+        event.key === REFRESH_RESULT_KEY &&
+        event.newValue
+      ) {
+        clearTimeout(timeout);
+
+        window.removeEventListener(
+          "storage",
+          listener
+        );
+
+        const result = JSON.parse(
+          event.newValue
+        );
+
+        if (result.success) {
+          resolve(result.token);
+        } else {
+          reject(
+            new Error("Refresh failed")
+          );
+        }
+      }
+    };
+
+    window.addEventListener(
+      "storage",
+      listener
+    );
+  });
+
+let refreshPromise = null;
+
+const refreshAccessToken = async (originalRequest) => {
+  try {
+    const refreshToken =
+      SecureStorage.get("refresh_token") ||
+      localStorage.getItem("refresh_token") ||
+      sessionStorage.getItem("refresh_token");
+
+    if (!refreshToken) {
+      clearCorruptedTokens();
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = Config.BASE_URL + "/login";
+      }
+      throw new Error("No refresh token found");
+    }
+    const response = await axios.post(
+      Config.API_URL + "/refresh",
+      {
+        refresh_token: refreshToken,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-IP":
+            originalRequest?.headers?.["X-Client-IP"] || "",
+          "X-Client-Device":
+            originalRequest?.headers?.["X-Client-Device"] ||
+            getClientDeviceId(),
+        },
+      }
+    );
+
+    if (response?.data?.message_code !== "0") {
+      clearCorruptedTokens();
+
+      window.location.href =
+        Config.BASE_URL + "/login";
+
+      throw new Error(
+        response?.data?.message ||
+        "Refresh token failed"
+      );
+    }
+
+    const newToken = response.data.data.access_token;
+    const newRefreshToken = response.data.data.refresh_token;
+
+    SecureStorage.set("token", newToken);
+    SecureStorage.set("refresh_token", newRefreshToken);
+
+    localStorage.setItem(
+      REFRESH_RESULT_KEY,
+      JSON.stringify({
+        success: true,
+        token: newToken,
+        refreshToken: newRefreshToken,
+        ts: Date.now(),
+      })
+    );
+    AxiosMaster.defaults.headers.common.Authorization =
+      `Bearer ${newToken}`;
+
+    return newToken;
+
+  }
+  catch (err) {
+    localStorage.setItem(
+      REFRESH_RESULT_KEY,
+      JSON.stringify({
+        success: false,
+        ts: Date.now()
+      })
+    );
+
+    throw err;
+  }
+  finally {
+    localStorage.removeItem(
+      REFRESH_LOCK_KEY
+    );
+  }
+};
 
 AxiosMaster.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.error("❌ API Error:", {
+    Logger.error("API Error:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       url: error.config?.url,
@@ -303,108 +504,88 @@ AxiosMaster.interceptors.response.use(
         await StorageRecovery.autoFixTokenIssues();
       } catch (fixError) {
         console.error("Failed to auto-fix token corruption:", fixError);
-        clearCorruptedTokens();
       }
+      // ponytail: corrupted/expired token can't be recovered for THIS request
+      // (header throws client-side, never reaches server -> no 401). Force re-login.
+      clearCorruptedTokens();
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = Config.BASE_URL + "/login";
+      }
+      return Promise.reject(error);
     }
 
     // 🔒 Handle 401 Unauthorized with single-refresh queue
-    if (error.response && error.response.status === 401) {
-      console.warn("🔒 401 Unauthorized - Token may be expired or invalid");
-
+    if (error.response?.status === 401) {
       const originalRequest = error.config;
 
+      if (originalRequest._skipAuthOnError) {
+        return Promise.reject(error);
+      }
 
-      // ป้องกัน loop 401 ซ้ำ
-      if (originalRequest._retry) {
-        console.error("🚫 Token refresh retry already attempted, redirecting to login");
+      if (originalRequest.url?.includes("/refresh")) {
         clearCorruptedTokens();
         window.location.href = Config.BASE_URL + "/login";
+        return Promise.reject(error);
+      }
+
+      if (originalRequest._retry) {
         return Promise.reject(error);
       }
 
       originalRequest._retry = true;
 
-      // ดึง refresh token
-      let refreshToken =
-        SecureStorage.get("refresh_token") ||
-        localStorage.getItem("refresh_token") ||
-        sessionStorage.getItem("refresh_token");
+      try {
 
-      if (!refreshToken) {
-        console.error("❌ No refresh token found - redirecting to login");
-        clearCorruptedTokens();
-        window.location.href = Config.BASE_URL + "/login";
-        return Promise.reject(error);
-      }
+        let newToken;
 
-      // ถ้ามีการ refresh อยู่แล้ว ให้รอผล (subscribe)
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          subscribeTokenRefresh((token, err) => {
-            const storedToken = SecureStorage.get("token") ||
-              localStorage.getItem("token") ||
-              sessionStorage.getItem("token") || token;
-            if (err || !token) {
-              reject(err || new Error("Token refresh failed"));
-              return;
-            }
-            try {
-              AxiosMaster.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
-            } catch (e) {
-              console.warn("Failed to update Axios default header:", e);
-            }
-            originalRequest.headers = originalRequest.headers || {};
-            originalRequest.headers["Authorization"] = `Bearer ${storedToken}`;
-            const retryRequest = { ...originalRequest, headers: { ...originalRequest.headers } };
-            resolve(AxiosMaster(retryRequest));
-          });
-        });
-      }
-
-      isRefreshing = true;
-
-      // เริ่ม refresh และแจ้ง subscribers เมื่อเสร็จ
-      return new Promise(async (resolve, reject) => {
-        try {
-          console.log("🔄 Attempting to refresh token...");
-          const refreshResponse = await axios.post(
-            Config.API_URL + "/refresh",
-            { refresh_token: refreshToken },
-            { headers: { "Content-Type": "application/json", "X-Client-IP": originalRequest.headers["X-Client-IP"] || "" } }
-          );
-
-          if (refreshResponse.data.message_code === "0") {
-            console.log("✅ Token refreshed successfully");
-
-            const newToken = refreshResponse.data.data.access_token;
-            const newRefresh = refreshResponse.data.data.refresh_token;
-
-            // เก็บ token ใหม่
-            SecureStorage.set("token", newToken);
-            SecureStorage.set("refresh_token", newRefresh);
-
-            // แจ้ง subscribers
-            onRefreshed(newToken);
-
-            // อัปเดต header ของ request เดิม
-            originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
-
-            // 🔁 เรียก API เดิมใหม่อีกครั้ง
-            // note: do NOT finalize the queue here; the retried request will finalize when it completes
-            resolve(AxiosMaster(originalRequest));
-          } else {
-            throw new Error(refreshResponse.data.message || "Token refresh failed");
+        if (!acquireRefreshLock()) {
+          newToken =
+            await waitForRefreshResult();
+          if (newToken) {
+            SecureStorage.set(
+              "token",
+              newToken
+            );
           }
-        } catch (refreshError) {
-          console.error("❌ Token refresh failed:", refreshError);
-          onRefreshFailed(refreshError);
-          clearCorruptedTokens();
-          window.location.href = Config.BASE_URL + "/login";
-          reject(refreshError);
-        } finally {
-          isRefreshing = false;
+        } else {
+          if (!refreshPromise) {
+            refreshPromise =
+              refreshAccessToken(
+                originalRequest
+              ).finally(() => {
+                refreshPromise = null;
+              });
+          }
+
+          newToken =
+            await refreshPromise;
         }
-      });
+        originalRequest.headers =
+          originalRequest.headers || {};
+
+        originalRequest.headers.Authorization =
+          `Bearer ${newToken}`;
+        return AxiosMaster(originalRequest);
+      } catch (refreshError) {
+        console.error(
+          "Refresh token failed:",
+          refreshError
+        );
+
+        const status =
+          refreshError?.response?.status;
+        const missingRefreshToken =
+          refreshError?.message === "No refresh token found";
+
+        if (status === 401 || status === 403 || missingRefreshToken) {
+          clearCorruptedTokens();
+
+          window.location.href =
+            Config.BASE_URL + "/login";
+        }
+
+        return Promise.reject(refreshError);
+      }
     }
 
 
@@ -414,16 +595,31 @@ AxiosMaster.interceptors.response.use(
 
 const clearCorruptedTokens = () => {
   try {
-    console.log("🧹 Clearing potentially corrupted tokens...");
     SecureStorage.remove("token");
     SecureStorage.remove("refresh_token");
+    SecureStorage.remove("isAuthenticated");
+
     localStorage.removeItem("token");
     localStorage.removeItem("refresh_token");
+    localStorage.removeItem("isAuthenticated");
+
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("refresh_token");
+    sessionStorage.removeItem("isAuthenticated");
   } catch (error) {
-    console.error("❌ Error clearing tokens:", error);
+    console.error(error);
   }
 };
-
+window.addEventListener(
+  "storage",
+  (event) => {
+    if (
+      event.key === "token" &&
+      event.newValue
+    ) {
+      AxiosMaster.defaults.headers.common.Authorization =
+        `Bearer ${event.newValue}`;
+    }
+  }
+);
 export default AxiosMaster;

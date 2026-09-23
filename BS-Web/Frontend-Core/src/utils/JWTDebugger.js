@@ -79,9 +79,8 @@ class JWTDebugger {
 
     const dummyToken = `${header}.${payload}.${signature}`;
 
-    // Set in all storages
+    // Set only in SecureStorage (do not store auth tokens in plain localStorage)
     SecureStorage.set("token", dummyToken);
-    localStorage.setItem("token", dummyToken);
 
     console.log("✅ Dummy token set successfully");
     return dummyToken;

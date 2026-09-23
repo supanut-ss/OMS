@@ -1,5 +1,5 @@
-using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Data.Common;
 
 namespace ApiCore.Services.Interfaces
 {
@@ -20,40 +20,50 @@ namespace ApiCore.Services.Interfaces
     }
 
     /// <summary>
-    /// Factory interface for creating SQL connections
-    /// Supports multi-database architecture with ADO.NET, Entity Framework Core, and Dapper
+    /// Factory interface for creating database connections.
+    /// Provider-agnostic: supports SQL Server, PostgreSQL, and future providers.
+    /// Compatible with ADO.NET, Entity Framework Core, and Dapper.
     /// </summary>
     public interface ISqlConnectionFactory
     {
         /// <summary>
-        /// Creates a new SQL connection for the main database
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Gets the current database provider type
         /// </summary>
-        /// <returns>A new SQL connection instance</returns>
-        SqlConnection CreateConnection();
+        DatabaseProvider CurrentProvider { get; }
 
         /// <summary>
-        /// Creates a new SQL connection for the specified database type
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Gets the SQL dialect for the current provider.
+        /// Use this to generate provider-specific SQL queries.
+        /// </summary>
+        ISqlDialect Dialect { get; }
+
+        /// <summary>
+        /// Creates a new database connection for the main database (not opened)
+        /// Returns DbConnection which works with any provider
+        /// </summary>
+        /// <returns>A new DbConnection instance</returns>
+        DbConnection CreateConnection();
+
+        /// <summary>
+        /// Creates a new database connection for the specified database type (not opened)
+        /// Returns DbConnection which works with any provider
         /// </summary>
         /// <param name="databaseType">The database type to connect to</param>
-        /// <returns>A new SQL connection instance</returns>
-        SqlConnection CreateConnection(DatabaseType databaseType);
+        /// <returns>A new DbConnection instance</returns>
+        DbConnection CreateConnection(DatabaseType databaseType);
 
         /// <summary>
-        /// Creates and opens a new SQL connection for the main database
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Creates and opens a new database connection for the main database
         /// </summary>
-        /// <returns>An opened SQL connection instance</returns>
-        Task<SqlConnection> CreateAndOpenConnectionAsync();
+        /// <returns>An opened DbConnection instance</returns>
+        Task<DbConnection> CreateAndOpenConnectionAsync();
 
         /// <summary>
-        /// Creates and opens a new SQL connection for the specified database type
-        /// Compatible with ADO.NET, EF Core, and Dapper
+        /// Creates and opens a new database connection for the specified database type
         /// </summary>
         /// <param name="databaseType">The database type to connect to</param>
-        /// <returns>An opened SQL connection instance</returns>
-        Task<SqlConnection> CreateAndOpenConnectionAsync(DatabaseType databaseType);
+        /// <returns>An opened DbConnection instance</returns>
+        Task<DbConnection> CreateAndOpenConnectionAsync(DatabaseType databaseType);
 
         /// <summary>
         /// Creates a new connection as IDbConnection interface for the main database
@@ -84,6 +94,16 @@ namespace ApiCore.Services.Interfaces
         /// <param name="databaseType">The database type to connect to</param>
         /// <returns>An opened connection as IDbConnection</returns>
         Task<IDbConnection> CreateAndOpenDbConnectionAsync(DatabaseType databaseType);
+
+        /// <summary>
+        /// Creates a DbCommand using the current dialect
+        /// </summary>
+        DbCommand CreateCommand(string query, DbConnection connection);
+
+        /// <summary>
+        /// Creates a DbParameter using the current dialect
+        /// </summary>
+        DbParameter CreateParameter(string name, object value);
 
         /// <summary>
         /// Gets the connection string for the specified database type

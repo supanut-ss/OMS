@@ -2,6 +2,7 @@ using Import_Export_Manager.Extensions;
 using Import_Export_Manager.Interfaces;
 using Import_Export_Manager.Services;
 using Microsoft.EntityFrameworkCore;
+using TokenManagement.Database;
 using TokenManagement.Extensions;
 using TokenManagement.Interfaces;
 using TokenManagement.Middleware;
@@ -19,16 +20,29 @@ builder.Services.AddCors(options =>
                    .AllowAnyMethod();
         });
 });
-DotNetEnv.Env.Load();
+// In containerized production, rely on Docker-provided env vars to keep JWT settings consistent across services.
+if (!builder.Environment.IsProduction())
+{
+    DotNetEnv.Env.Load();
+}
 builder.Services.AddCustomJwtAuthentication(builder.Configuration);
 
 string DefaultConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION") ?? "DefaultServerdb";
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(DefaultConnectionString));
+    options.UseSqlServer(DefaultConnectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null);
+    }));
 
 builder.Services.AddScoped<IImportMaster, ImportMasterService>();
+builder.Services.AddScoped<IImportColumnMapping, ImportColumnMappingService>();
 builder.Services.AddScoped<IExcelImport, ExcelImportService>();
 builder.Services.AddScoped<ITokenValidatorService, TokenValidatorService>();
+builder.Services.AddScoped<IDbConnectionFactory>(sp =>
+    new DbConnectionFactory(DefaultConnectionString, DatabaseProvider.SqlServer));
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -57,6 +71,7 @@ builder.Services.AddSwaggerGen(options =>
 
     options.UseAllOfToExtendReferenceSchemas();
 });
+//builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

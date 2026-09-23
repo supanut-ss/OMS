@@ -1,16 +1,18 @@
 ﻿using ApiCore.Services.Interfaces;
 using ApiCore.Models.Requests;
 using ApiCore.Models.Responses;
-using Microsoft.Data.SqlClient;
-using DotNetEnv;
-using System.Dynamic;
+using System.Data.Common;
 
 namespace ApiCore.Services.Implementation
 {
     public class AutoCompleteServices : IAutoComplete
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY")
-            ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly ISqlConnectionFactory _connectionFactory;
+
+        public AutoCompleteServices(ISqlConnectionFactory connectionFactory)
+        {
+            _connectionFactory = connectionFactory;
+        }
 
         public async Task<AutoCompleteResponse> AutoCompleteAsync(AutoCompleteRequest request)
         {
@@ -23,7 +25,7 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection(DatabaseType.Security))
                 {
                     await conn.OpenAsync();
 
@@ -70,16 +72,16 @@ namespace ApiCore.Services.Implementation
                     // ---------- SQL ----------
                     var sql = $@"
 SELECT TOP (@limit) {selectColumns}
-FROM {request.schema}{request.table}
+FROM {request.schema}.{request.table}
 {whereSql}
 {orderSql}";
 
-                    using (var cmd = new SqlCommand(sql, conn))
+                    using (var cmd = _connectionFactory.CreateCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@limit", request.limit > 0 ? request.limit : 30);
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@limit", request.limit > 0 ? request.limit : 30));
 
                         if (!string.IsNullOrWhiteSpace(request.keyword))
-                            cmd.Parameters.AddWithValue("@keyword", $"%{request.keyword}%");
+                            cmd.Parameters.Add(_connectionFactory.CreateParameter("@keyword", $"%{request.keyword}%"));
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {

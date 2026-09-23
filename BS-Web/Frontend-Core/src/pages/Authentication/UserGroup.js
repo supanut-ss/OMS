@@ -5,7 +5,7 @@ import { useResource } from "../../hooks/useResource";
 import { useOutletContext } from "react-router-dom";
 
 const UserGroupPage = (props) => {
- const { permission } = useOutletContext();
+  const { permission } = useOutletContext();
   const { getResources } = useResource();
   const [resourceData, setResourceData] = useState([]);
 
@@ -28,12 +28,13 @@ const UserGroupPage = (props) => {
   console.log("UserGroupPage permissions:", permission);
   return (
     <>
-      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
+      <Paper sx={{ p: 2, width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
         <BSDataGrid
           bsLocale={props.lang}
           // bsAutoPermission={true}
           bsPreObj="sec"
           bsObj="t_com_user_group"
+          bsKeyId="user_group_id"
           bsCols="app_id,name,description,is_active,create_by,create_date,update_by,update_date"
           bsObjBy="name asc"
           bsShowDescColumn={false}
@@ -51,16 +52,16 @@ const UserGroupPage = (props) => {
               Default: "--- Select Application ---",
               PreObj: "sec",
               Obj: "t_com_application",
-              ObjWh: "is_active='YES'",
+              ObjWh: "is_active=1",
               ObjBy: "application_name asc",
             },
           ]}
           bsBulkMode={{
             enable: false, // Enable all bulk operations
             addInline: permission.is_add, // Add new rows inline instead of dialog
-            edit: permission.is_edit,      // Enabled by default when enable=true
-            delete: permission.is_delete,    // Enabled by default when enable=true
-            add: permission.is_add,       // Enabled by default when enable=true
+            edit: permission.is_edit, // Enabled by default when enable=true
+            delete: permission.is_delete, // Enabled by default when enable=true
+            add: permission.is_add, // Enabled by default when enable=true
             // showCheckbox: false,
             // showSplitButton: false,
           }}
@@ -71,7 +72,7 @@ const UserGroupPage = (props) => {
             // },
             {
               field: "is_active",
-              defaultValue: "YES",
+              defaultValue: 1,
             },
           ]}
         />

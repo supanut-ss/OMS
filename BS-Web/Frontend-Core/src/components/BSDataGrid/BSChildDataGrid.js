@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Box, Typography, CircularProgress } from "@mui/material";
+import { Box, Typography, Skeleton } from "@mui/material";
 import BSDataGrid from "./BSDataGrid";
 import Logger from "../../utils/logger";
 
@@ -154,10 +154,18 @@ const BSChildDataGrid = forwardRef((props, ref) => {
           p: 4,
         }}
       >
-        <CircularProgress size={24} sx={{ mr: 2 }} />
-        <Typography variant="body2" color="text.secondary">
-          {localeText.bsLoadingChildData || "Loading child data..."}
-        </Typography>
+        <Box sx={{ width: "100%", maxWidth: 440 }}>
+          <Skeleton variant="rounded" height={34} sx={{ mb: 1.5 }} />
+          <Skeleton variant="text" height={26} />
+          <Skeleton variant="text" height={26} />
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 1, textAlign: "center" }}
+          >
+            {localeText.bsLoadingChildData || "Loading child data..."}
+          </Typography>
+        </Box>
       </Box>
     );
   }

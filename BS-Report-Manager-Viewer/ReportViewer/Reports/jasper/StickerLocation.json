@@ -1,0 +1,192 @@
+{
+    "report_title": "Sticker Location",
+    "header": {
+        "barcode_type": "QRCODE"
+    },
+    "details": [
+        {
+            "barcode_data": "A1-01",
+            "location": "A1-01",
+            "description": "A1-01"
+        },
+        {
+            "barcode_data": "A1-02",
+            "location": "A1-02",
+            "description": "A1-02"
+        },
+        {
+            "barcode_data": "Test6",
+            "location": "Test6"
+        },
+        {
+            "barcode_data": "1000",
+            "location": "1000"
+        },
+        {
+            "barcode_data": "1",
+            "location": "1"
+        },
+        {
+            "barcode_data": "loc001",
+            "location": "loc001",
+            "description": "loc001"
+        },
+        {
+            "barcode_data": "loc002",
+            "location": "loc002",
+            "description": "loc002"
+        },
+        {
+            "barcode_data": "krit",
+            "location": "krit",
+            "description": "sdsdsd"
+        },
+        {
+            "barcode_data": "A1-01-001",
+            "location": "A1-01-001",
+            "description": "Rack A1 Row 01 Bin 001"
+        },
+        {
+            "barcode_data": "A1-01-002",
+            "location": "A1-01-002",
+            "description": "Rack A1 Row 01 Bin 002"
+        },
+        {
+            "barcode_data": "A1-01-003",
+            "location": "A1-01-003",
+            "description": "Rack A1 Row 01 Bin 003"
+        },
+        {
+            "barcode_data": "A1-01-004",
+            "location": "A1-01-004",
+            "description": "Rack A1 Row 01 Bin 004"
+        },
+        {
+            "barcode_data": "A1-01-005",
+            "location": "A1-01-005",
+            "description": "Rack A1 Row 01 Bin 005"
+        },
+        {
+            "barcode_data": "A1-01-006",
+            "location": "A1-01-006",
+            "description": "Rack A1 Row 01 Bin 006"
+        },
+        {
+            "barcode_data": "A1-01-007",
+            "location": "A1-01-007",
+            "description": "Rack A1 Row 01 Bin 007"
+        },
+        {
+            "barcode_data": "A1-01-008",
+            "location": "A1-01-008",
+            "description": "Rack A1 Row 01 Bin 008"
+        },
+        {
+            "barcode_data": "A1-01-009",
+            "location": "A1-01-009",
+            "description": "Rack A1 Row 01 Bin 009"
+        },
+        {
+            "barcode_data": "A1-01-010",
+            "location": "A1-01-010",
+            "description": "Rack A1 Row 01 Bin 010"
+        },
+        {
+            "barcode_data": "A1-01-011",
+            "location": "A1-01-011",
+            "description": "Rack A1 Row 01 Bin 011"
+        },
+        {
+            "barcode_data": "A1-01-012",
+            "location": "A1-01-012",
+            "description": "Rack A1 Row 01 Bin 012"
+        },
+        {
+            "barcode_data": "A1-01-013",
+            "location": "A1-01-013",
+            "description": "Rack A1 Row 01 Bin 013"
+        },
+        {
+            "barcode_data": "A1-01-014",
+            "location": "A1-01-014",
+            "description": "Rack A1 Row 01 Bin 014"
+        },
+        {
+            "barcode_data": "A1-01-015",
+            "location": "A1-01-015",
+            "description": "Rack A1 Row 01 Bin 015"
+        },
+        {
+            "barcode_data": "A1-01-016",
+            "location": "A1-01-016",
+            "description": "Rack A1 Row 01 Bin 016"
+        },
+        {
+            "barcode_data": "A1-01-017",
+            "location": "A1-01-017",
+            "description": "Rack A1 Row 01 Bin 017"
+        },
+        {
+            "barcode_data": "A1-01-018",
+            "location": "A1-01-018",
+            "description": "Rack A1 Row 01 Bin 018"
+        },
+        {
+            "barcode_data": "A1-01-019",
+            "location": "A1-01-019",
+            "description": "Rack A1 Row 01 Bin 019"
+        },
+        {
+            "barcode_data": "A1-01-020",
+            "location": "A1-01-020",
+            "description": "Rack A1 Row 01 Bin 020"
+        },
+        {
+            "barcode_data": "A1-01-021",
+            "location": "A1-01-021",
+            "description": "Rack A1 Row 01 Bin 021"
+        },
+        {
+            "barcode_data": "A1-01-022",
+            "location": "A1-01-022",
+            "description": "Rack A1 Row 01 Bin 022"
+        },
+        {
+            "barcode_data": "A1-01-023",
+            "location": "A1-01-023",
+            "description": "Rack A1 Row 01 Bin 023"
+        },
+        {
+            "barcode_data": "A1-01-024",
+            "location": "A1-01-024",
+            "description": "Rack A1 Row 01 Bin 024"
+        },
+        {
+            "barcode_data": "A1-01-025",
+            "location": "A1-01-025",
+            "description": "Rack A1 Row 01 Bin 025"
+        },
+        {
+            "barcode_data": "A1-01-026",
+            "location": "A1-01-026",
+            "description": "Rack A1 Row 01 Bin 026"
+        },
+        {
+            "barcode_data": "A1-01-027",
+            "location": "A1-01-027",
+            "description": "Rack A1 Row 01 Bin 027"
+        },
+        {
+            "barcode_data": "A1-01-028",
+            "location": "A1-01-028",
+            "description": "Rack A1 Row 01 Bin 028"
+        },
+        {
+            "barcode_data": "A1-01-029",
+            "location": "A1-01-029",
+            "description": "Rack A1 Row 01 Bin 029"
+        }
+    ],
+    "summary": null,
+    "footer": null
+}

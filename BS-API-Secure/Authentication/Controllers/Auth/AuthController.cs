@@ -30,9 +30,9 @@ namespace Authentication.Controllers.Auth
             {
                 return _iauth == null
                     ? ResponseUnauthorized("Authentication service is not available.")
-                    : string.IsNullOrEmpty(request.usersname) || string.IsNullOrEmpty(request.password)
+                    : string.IsNullOrEmpty(request.username) || string.IsNullOrEmpty(request.password)
                         ? ResponseError("Username and password are required.", 2)
-                        : await _iauth.GetTokenAsync(request.application_license, request.usersname, request.password,request.fcm_token) is AuthResponse token
+                        : await _iauth.GetTokenAsync(request.application_license, request.username, request.password,request.fcm_token, request.platform) is AuthResponse token
                             ? AccessResponseSuccess("success", token)
                             : ResponseUnauthorized("Invalid username or password.");
             }
@@ -55,7 +55,7 @@ namespace Authentication.Controllers.Auth
             return _iauth == null
                     ? ResponseUnauthorized("Authentication service is not available.") :
                     await _iauth.EndRevoke(request.refresh_token, userId) is AuthResponse token
-                            ? AccessResponseSuccess("success", token)
+                            ? AccessResponseSuccess("success", new {message_code=token.message_code,message_status=token.message_text})
                             : ResponseUnauthorized("Invalid username or password.");
         }
 

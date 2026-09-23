@@ -16,4 +16,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BS-API-Secure\TokenManagement\TokenManagement.csproj" />
+  </ItemGroup>
+
 </Project>

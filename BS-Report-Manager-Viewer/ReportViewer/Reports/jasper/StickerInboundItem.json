@@ -1,0 +1,111 @@
+{
+  "report_title": "My Inventory",
+  "header": {
+    "barcode_type": "",
+    "image_logo": ""
+  },
+  "details": [
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "AUT-101-204",
+      "item_description": "Engine Coolant",
+      "uom": "EA",
+      "lot_number": "B20260611",
+      "expiry_date": "2026-06-30",
+      "serial_number": "SN20260601"
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "AUT-110-796B",
+      "item_description": "Wiper Blade Plus",
+      "uom": "EA",
+      "lot_number": "",
+      "expiry_date": null,
+      "serial_number": ""
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "SMH-TUY-001",
+      "item_description": "Tuya Zigbee Smart Switch 2-Gang",
+      "uom": "EA",
+      "lot_number": "B20260611",
+      "expiry_date": "2026-06-30",
+      "serial_number": ""
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "SMH-SAM-75Q",
+      "item_description": "Smart TV 75-inch 4K UHD",
+      "uom": "EA",
+      "lot_number": "",
+      "expiry_date": null,
+      "serial_number": ""
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "DIY-HAB-CLM",
+      "item_description": "Habotest Digital Clamp Meter",
+      "uom": "EA",
+      "lot_number": "",
+      "expiry_date": null,
+      "serial_number": ""
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "DIY-SCH-SW1",
+      "item_description": "Schneider Electric 1-Way Switch",
+      "uom": "EA",
+      "lot_number": "",
+      "expiry_date": null,
+      "serial_number": ""
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "DIY-OSK-TRM",
+      "item_description": "Osuka Cordless Wood Trimmer",
+      "uom": "EA",
+      "lot_number": "B20260611",
+      "expiry_date": "2026-06-30",
+      "serial_number": "SN20260602"
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "DIY-HDP-012",
+      "item_description": "HDPE Conduit Pipe 1/2\" (50m)",
+      "uom": "EA",
+      "lot_number": "",
+      "expiry_date": null,
+      "serial_number": "SN20260603"
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "DIY-TOA-A70",
+      "item_description": "TOA A7000 Ceiling Paint (1 Gal)",
+      "uom": "EA",
+      "lot_number": "B20260611",
+      "expiry_date": null,
+      "serial_number": "SN20260604"
+    },
+    {
+      "barcode_data": "",
+      "inbound_order_number": "IB202606110001",
+      "item_number": "CAM-DJI-OP4",
+      "item_description": "DJI Osmo Pocket 4",
+      "uom": "EA",
+      "lot_number": "B20260611",
+      "expiry_date": null,
+      "serial_number": "SN20260605"
+    }
+  ],
+  "summary": null,
+  "footer": null
+}

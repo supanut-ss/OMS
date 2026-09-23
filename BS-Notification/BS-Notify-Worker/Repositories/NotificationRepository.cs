@@ -1,32 +1,28 @@
-﻿using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
 using BS_Notify_Worker.Interfaces;
 using BS_Notify_Worker.Models;
+using TokenManagement.Database;
 
 namespace BS_Notify_Worker.Repositories
 {
     public class NotificationRepository : INotificationRepository
     {
-        private readonly string _conn;
+        private readonly IDbConnectionFactory _connectionFactory;
 
-        public NotificationRepository(IConfiguration config)
+        public NotificationRepository(IDbConnectionFactory connectionFactory)
         {
-            _conn = Environment.GetEnvironmentVariable("SERVERDB")
-                ?? throw new ArgumentNullException("ConnectionString");
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
         }
 
         public async Task<List<NotificationItem>> PickForDispatchAsync(int limit)
         {
             var list = new List<NotificationItem>();
 
-            using var conn = new SqlConnection(_conn);
+            using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
 
-            using var cmd = new SqlCommand("noti.usp_noti_pick_for_dispatch", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            cmd.Parameters.AddWithValue("@limit", limit);
+            using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_pick_for_dispatch", conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@limit", limit));
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -48,16 +44,14 @@ namespace BS_Notify_Worker.Repositories
 
         public async Task MarkDispatchedAsync(int id)
         {
-            using var conn = new SqlConnection(_conn);
+            using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
 
-            using var cmd = new SqlCommand("noti.usp_noti_mark_dispatched", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            cmd.Parameters.AddWithValue("@in_intId", id);
+            using var cmd = _connectionFactory.CreateProcedureCommand("noti.usp_noti_mark_dispatched", conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intId", id));
 
             await cmd.ExecuteNonQueryAsync();
         }
     }
 }
+

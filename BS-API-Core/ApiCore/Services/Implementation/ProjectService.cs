@@ -1,27 +1,54 @@
 ﻿using ApiCore.Models.Requests;
 using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
-using Sprache;
 using System;
 using System.Data;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+using System.Data.Common;
 
 namespace ApiCore.Services.Implementation
 {
     public class ProjectService : IProjectsService
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB")
-                  ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly ISqlConnectionFactory _connectionFactory;
+
+        public ProjectService(ISqlConnectionFactory connectionFactory)
+        {
+            _connectionFactory = connectionFactory;
+        }
+
+        /// <summary>
+        /// Helper: add a typed parameter to a DbCommand
+        /// </summary>
+        private void AddParam(DbCommand cmd, string name, DbType type, object? value, int size = 0)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = name;
+            p.DbType = type;
+            if (size > 0) p.Size = size;
+            p.Value = value ?? DBNull.Value;
+            cmd.Parameters.Add(p);
+        }
+
+        /// <summary>
+        /// Helper: add an output parameter to a DbCommand
+        /// </summary>
+        private DbParameter AddOutputParam(DbCommand cmd, string name, DbType type, int size = 0)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = name;
+            p.DbType = type;
+            if (size > 0) p.Size = size;
+            p.Direction = ParameterDirection.Output;
+            cmd.Parameters.Add(p);
+            return p;
+        }
 
         public async Task<ProjectsResponse> GetProjectsByIdAsync(int projectId)
         {
             ProjectsResponse response = new ProjectsResponse();
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
                     await conn.OpenAsync();
                     var sql = @$"SELECT project_header_id,master_project_id, project_no, project_name, project_status, application_type, project_type, iso_type_id, 
@@ -30,9 +57,9 @@ namespace ApiCore.Services.Implementation
                                         year, record_type,remark, is_active, create_by, create_date, update_by, update_date
                                  FROM tmt.t_tmt_project_header
                                  WHERE project_header_id = @ProjectId";
-                    using (var cmd = new SqlCommand(sql, conn))
+                    using (var cmd = _connectionFactory.CreateCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@ProjectId", projectId);
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@ProjectId", projectId));
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             if (await reader.ReadAsync())
@@ -60,7 +87,7 @@ namespace ApiCore.Services.Implementation
                                 response.year = reader.IsDBNull(20) ? (int?)null : reader.GetInt32(20);
                                 response.record_type = reader.GetString(21);
                                 response.remark = reader.GetString(22);
-                                response.is_active = reader.GetString(23);
+                                response.is_active = reader.IsDBNull(23) ? (bool?)null : Convert.ToBoolean(reader.GetValue(23));
                                 response.create_by = reader.GetString(24);
                                 response.create_date = reader.GetDateTime(25);
                                 response.update_by = reader.IsDBNull(26) ? null : reader.GetString(26);
@@ -85,7 +112,7 @@ namespace ApiCore.Services.Implementation
             try
             {
                 List<ProjectTaskPhaseResponse> response = new List<ProjectTaskPhaseResponse>();
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
                     await conn.OpenAsync();
                     var sql = @$"SELECT project_task_phase_id, project_header_id, phase_name, progress_percent,description, sequence, create_by, create_date, update_by, update_date
@@ -93,9 +120,9 @@ namespace ApiCore.Services.Implementation
                                  WHERE project_header_id = @ProjectId
                                 ORDER BY sequence asc
                     ";
-                    using (var cmd = new SqlCommand(sql, conn))
+                    using (var cmd = _connectionFactory.CreateCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@ProjectId", projectId);
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@ProjectId", projectId));
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             while (await reader.ReadAsync())
@@ -131,66 +158,43 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_upsert_project_header", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-
-                // --- Helper function ---
-                void AddParam(string name, SqlDbType type, object? value, int size = 0)
-                {
-                    var p = cmd.Parameters.Add(name, type);
-                    if (size > 0) p.Size = size;
-                    p.Value = value ?? DBNull.Value;
-                }
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_upsert_project_header", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Input parameters (type-safe)
-                AddParam("@in_intProjectHeaderId", SqlDbType.Int, project.project_header_id);
-                AddParam("@in_intMasterProjectId", SqlDbType.Int, project.master_project_id ?? null);
-                AddParam("@in_vchProjectNo", SqlDbType.VarChar, project.project_no ?? null, 25);
-                AddParam("@in_vchProjectName", SqlDbType.NVarChar, project.project_name, 200);
-                AddParam("@in_vchProjectStatus", SqlDbType.VarChar, project.project_status, 25);
-                AddParam("@in_vchApplicationType", SqlDbType.VarChar, project.application_type, 30);
-                AddParam("@in_vchProjectType", SqlDbType.VarChar, project.project_type, 30);
-                AddParam("@in_intIsoTypeId", SqlDbType.Int, project.iso_type_id);
-                AddParam("@in_vchPoNumber", SqlDbType.NVarChar, project.po_number, 50);
-                AddParam("@in_intSaleId", SqlDbType.Int, project.sale_id);
-                AddParam("@in_intCustomerId", SqlDbType.Int, project.customer_id);
-                AddParam("@in_decManday", SqlDbType.Decimal, project.manday ?? null);
-                AddParam("@in_decManagementCost", SqlDbType.Decimal, project.management_cost ?? null);
-                AddParam("@in_decTravelCost", SqlDbType.Decimal, project.travel_cost ?? null);
-                AddParam("@in_datePlanProjectStart", SqlDbType.DateTime, project.plan_project_start);
-                AddParam("@in_datePlanProjectEnd", SqlDbType.DateTime, project.plan_project_end);
-                AddParam("@in_dateReviseProjectStart", SqlDbType.DateTime, project.revise_project_start ?? null);
-                AddParam("@in_dateReviseProjectEnd", SqlDbType.DateTime, project.revise_project_end ?? null);
-                AddParam("@in_dateActualProjectStart", SqlDbType.DateTime, project.actual_project_start ?? null);
-                AddParam("@in_dateActualProjectEnd", SqlDbType.DateTime, project.actual_project_end ?? null);
-                AddParam("@in_vchRecordType", SqlDbType.NVarChar, project.record_type ?? null, 50);
-                AddParam("@in_vchRemark", SqlDbType.NVarChar, project.remark ?? null, 500);
-                AddParam("@in_vchIsActive", SqlDbType.VarChar, project.is_active ?? "YES", 3);
-                AddParam("@in_intYear", SqlDbType.Int, project.year ?? null);
-                AddParam("@in_vchUserId", SqlDbType.NVarChar, userId, 40);
+                AddParam(cmd, "@in_intProjectHeaderId", DbType.Int32, project.project_header_id);
+                AddParam(cmd, "@in_intMasterProjectId", DbType.Int32, project.master_project_id ?? null);
+                AddParam(cmd, "@in_vchProjectNo", DbType.AnsiString, project.project_no ?? null, 25);
+                AddParam(cmd, "@in_vchProjectName", DbType.String, project.project_name, 200);
+                AddParam(cmd, "@in_vchProjectStatus", DbType.AnsiString, project.project_status, 25);
+                AddParam(cmd, "@in_vchApplicationType", DbType.AnsiString, project.application_type, 30);
+                AddParam(cmd, "@in_vchProjectType", DbType.AnsiString, project.project_type, 30);
+                AddParam(cmd, "@in_intIsoTypeId", DbType.Int32, project.iso_type_id);
+                AddParam(cmd, "@in_vchPoNumber", DbType.String, project.po_number, 50);
+                AddParam(cmd, "@in_intSaleId", DbType.Int32, project.sale_id);
+                AddParam(cmd, "@in_intCustomerId", DbType.Int32, project.customer_id);
+                AddParam(cmd, "@in_decManday", DbType.Decimal, project.manday ?? null);
+                AddParam(cmd, "@in_decManagementCost", DbType.Decimal, project.management_cost ?? null);
+                AddParam(cmd, "@in_decTravelCost", DbType.Decimal, project.travel_cost ?? null);
+                AddParam(cmd, "@in_datePlanProjectStart", DbType.DateTime, project.plan_project_start);
+                AddParam(cmd, "@in_datePlanProjectEnd", DbType.DateTime, project.plan_project_end);
+                AddParam(cmd, "@in_dateReviseProjectStart", DbType.DateTime, project.revise_project_start ?? null);
+                AddParam(cmd, "@in_dateReviseProjectEnd", DbType.DateTime, project.revise_project_end ?? null);
+                AddParam(cmd, "@in_dateActualProjectStart", DbType.DateTime, project.actual_project_start ?? null);
+                AddParam(cmd, "@in_dateActualProjectEnd", DbType.DateTime, project.actual_project_end ?? null);
+                AddParam(cmd, "@in_vchRecordType", DbType.String, project.record_type ?? null, 50);
+                AddParam(cmd, "@in_vchRemark", DbType.String, project.remark ?? null, 500);
+                AddParam(cmd, "@in_bitIsActive", DbType.Boolean, project.is_active ?? true);
+                AddParam(cmd, "@in_intYear", DbType.Int32, project.year ?? null);
+                AddParam(cmd, "@in_vchUserId", DbType.String, userId, 40);
 
                 // Output parameters
-                var pOutId = new SqlParameter("@out_intProjectHeaderId", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
-
-                cmd.Parameters.Add(pOutId);
-                cmd.Parameters.Add(pOutCode);
-                cmd.Parameters.Add(pOutMsg);
+                var pOutId = AddOutputParam(cmd, "@out_intProjectHeaderId", DbType.Int32);
+                var pOutCode = AddOutputParam(cmd, "@out_vchErrorCode", DbType.String, 50);
+                var pOutMsg = AddOutputParam(cmd, "@out_vchErrorMessage", DbType.String, 500);
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -213,73 +217,50 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
-                using var cmd = new SqlCommand("tmt.usp_upsert_project_task", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                // --- Helper function ---
-                void AddParam(string name, SqlDbType type, object? value, int size = 0)
-                {
-                    var p = cmd.Parameters.Add(name, type);
-                    if (size > 0) p.Size = size;
-                    p.Value = value ?? DBNull.Value;
-                }
-                AddParam("@in_intProjectTaskId", SqlDbType.Int, request.project_task_id);
-                AddParam("@in_intProjectTaskPhaseId", SqlDbType.Int, request.project_task_phase_id);
-                AddParam("@in_intProjectHeaderId", SqlDbType.Int, request.project_header_id);
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_upsert_project_task", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
-                AddParam("@in_vchTaskNo", SqlDbType.VarChar, request.task_no, 25);
-                AddParam("@in_vchTaskName", SqlDbType.NVarChar, request.task_name, 200);
-                AddParam("@in_vchTaskDescription", SqlDbType.NVarChar, request.task_description); // NVARCHAR(MAX)
+                AddParam(cmd, "@in_intProjectTaskId", DbType.Int32, request.project_task_id);
+                AddParam(cmd, "@in_intProjectTaskPhaseId", DbType.Int32, request.project_task_phase_id);
+                AddParam(cmd, "@in_intProjectHeaderId", DbType.Int32, request.project_header_id);
 
-                AddParam("@in_vchTaskStatus", SqlDbType.VarChar, request.task_status, 25);
-                AddParam("@in_vchIssueType", SqlDbType.VarChar, request.issue_type, 30);
-                AddParam("@in_vchPriority", SqlDbType.VarChar, request.priority, 25);
+                AddParam(cmd, "@in_vchTaskNo", DbType.AnsiString, request.task_no, 25);
+                AddParam(cmd, "@in_vchTaskName", DbType.String, request.task_name, 200);
+                AddParam(cmd, "@in_vchTaskDescription", DbType.String, request.task_description);
 
-                var manday = cmd.Parameters.Add("@in_decManday", SqlDbType.Decimal);
-                manday.Precision = 18;
-                manday.Scale = 5;
-                manday.Value = request.manday ?? (object)DBNull.Value;
+                AddParam(cmd, "@in_vchTaskStatus", DbType.AnsiString, request.task_status, 25);
+                AddParam(cmd, "@in_vchIssueType", DbType.AnsiString, request.issue_type, 30);
+                AddParam(cmd, "@in_vchPriority", DbType.AnsiString, request.priority, 25);
 
-                AddParam("@in_dateStartDate", SqlDbType.DateTime, request.start_date);
-                AddParam("@in_dateEndDate", SqlDbType.DateTime, request.end_date);
-                AddParam("@in_intSequence", SqlDbType.Int, request.sequence);
-                AddParam("@in_vchRemark", SqlDbType.NVarChar, request.remark, 500);
+                AddParam(cmd, "@in_decManday", DbType.Decimal, request.manday ?? null);
 
-                AddParam("@in_vchIsIncident", SqlDbType.VarChar, request.is_incident ?? "YES", 3);
-                AddParam("@in_vchIncidentNo", SqlDbType.NVarChar, request.incident_no, 25);
-                AddParam("@in_intResponseTime", SqlDbType.Int, request.response_time);
-                AddParam("@in_intResolveDuration", SqlDbType.Int, request.resolve_duration);
-                AddParam("@in_dateStartIncidentDate", SqlDbType.DateTime, request.start_incident_date);
-                AddParam("@in_dateResponseDate", SqlDbType.DateTime, request.response_date);
-                AddParam("@in_dateResolveDurationDate", SqlDbType.DateTime, request.resolve_duration_date);
-                AddParam("@in_datePlanResponseDate", SqlDbType.DateTime, request.plan_response_date);
-                AddParam("@in_datePlanResolveDurationDate", SqlDbType.DateTime, request.plan_resolve_duration_date);
+                AddParam(cmd, "@in_dateStartDate", DbType.DateTime, request.start_date);
+                AddParam(cmd, "@in_dateEndDate", DbType.DateTime, request.end_date);
+                AddParam(cmd, "@in_intSequence", DbType.Int32, request.sequence);
+                AddParam(cmd, "@in_vchRemark", DbType.String, request.remark, 500);
 
-                AddParam("@in_vchCloseBy", SqlDbType.NVarChar, request.close_by, 40);
-                AddParam("@in_dateCloseDate", SqlDbType.DateTime, request.close_date);
-                AddParam("@in_vchCloseRemark", SqlDbType.NVarChar, request.close_remark, 255);
+                AddParam(cmd, "@in_vchIsIncident", DbType.AnsiString, request.is_incident ?? "YES", 3);
+                AddParam(cmd, "@in_vchIncidentNo", DbType.String, request.incident_no, 25);
+                AddParam(cmd, "@in_intResponseTime", DbType.Int32, request.response_time);
+                AddParam(cmd, "@in_intResolveDuration", DbType.Int32, request.resolve_duration);
+                AddParam(cmd, "@in_dateStartIncidentDate", DbType.DateTime, request.start_incident_date);
+                AddParam(cmd, "@in_dateResponseDate", DbType.DateTime, request.response_date);
+                AddParam(cmd, "@in_dateResolveDurationDate", DbType.DateTime, request.resolve_duration_date);
+                AddParam(cmd, "@in_datePlanResponseDate", DbType.DateTime, request.plan_response_date);
+                AddParam(cmd, "@in_datePlanResolveDurationDate", DbType.DateTime, request.plan_resolve_duration_date);
 
-                AddParam("@in_vchUserId", SqlDbType.NVarChar, userId, 40);
+                AddParam(cmd, "@in_vchCloseBy", DbType.String, request.close_by, 40);
+                AddParam(cmd, "@in_dateCloseDate", DbType.DateTime, request.close_date);
+                AddParam(cmd, "@in_vchCloseRemark", DbType.String, request.close_remark, 255);
+
+                AddParam(cmd, "@in_vchUserId", DbType.String, userId, 40);
 
                 // Output parameters
-                var pOutId = new SqlParameter("@out_intProjectTaskId", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                cmd.Parameters.Add(pOutId);
-                cmd.Parameters.Add(pOutCode);
-                cmd.Parameters.Add(pOutMsg);
+                var pOutId = AddOutputParam(cmd, "@out_intProjectTaskId", DbType.Int32);
+                var pOutCode = AddOutputParam(cmd, "@out_vchErrorCode", DbType.String, 50);
+                var pOutMsg = AddOutputParam(cmd, "@out_vchErrorMessage", DbType.String, 500);
                 await cmd.ExecuteNonQueryAsync();
                 int newId = pOutId.Value is DBNull ? 0 : (int)pOutId.Value;
                 Console.WriteLine(pOutCode.Value);
@@ -297,15 +278,15 @@ namespace ApiCore.Services.Implementation
             ProjectsTaskResponse response = new ProjectsTaskResponse();
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
                 var sql = @$"SELECT project_task_id, project_header_id, project_task_phase_id, task_no, task_name, task_description, task_status, 
                                    issue_type, priority, manday, start_date, end_date,end_date_extend, sequence, remark , close_by, close_date, close_remark, is_incident, incident_no, response_time,
                                    resolve_duration ,start_incident_date,response_date, resolve_duration_date,plan_response_date,plan_resolve_duration_date,create_by, create_date, update_by, update_date
                             FROM tmt.t_tmt_project_task
                             WHERE project_task_id = @ProjectTaskId";
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@ProjectTaskId", projectTaskId);
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@ProjectTaskId", projectTaskId));
                 using var reader = await cmd.ExecuteReaderAsync();
                 {
                     if (await reader.ReadAsync())
@@ -354,22 +335,20 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_tmt_project_task", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_project_task", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Parameters - ตาม Coding Standards
-                cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
-                cmd.Parameters.AddWithValue("@in_intProjectTaskId", projectTaskId);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "DELETE"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectTaskId", projectTaskId));
 
                 // Output parameters (ต้องใส่ เพราะ procedure มี output)
-                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@out_intErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
+                AddOutputParam(cmd, "@out_intErrorCode", DbType.Int32);
 
                 await cmd.ExecuteNonQueryAsync();
 
@@ -396,39 +375,27 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
                     await conn.OpenAsync();
 
-                    using (var cmd = new SqlCommand("tmt.usp_upsert_project_task_member", conn))
+                    using (var cmd = _connectionFactory.CreateCommand("tmt.usp_upsert_project_task_member", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
 
                         // --- INPUT ---
-                        void AddIn(string name, SqlDbType type, object value, int? size = null)
-                        {
-                            var p = cmd.Parameters.Add(name, type);
-                            if (size.HasValue) p.Size = size.Value;
-                            p.Value = value ?? DBNull.Value;
-                        }
-
-                        AddIn("@in_intProjectTaskMemberId", SqlDbType.Int, req.project_task_member_id ?? null);
-                        AddIn("@in_intProjectTaskId", SqlDbType.Int, req.project_task_id);
-                        AddIn("@in_intProjectHeaderId", SqlDbType.Int, req.project_header_id);
-                        AddIn("@in_vchUserId", SqlDbType.NVarChar, req.user_id, 40);
-                        AddIn("@in_decManday", SqlDbType.Decimal, req.manday);
-                        AddIn("@in_vchDescription", SqlDbType.NVarChar, "", 500);
-                        AddIn("@in_vchActionUser", SqlDbType.NVarChar, userId, 40);
+                        AddParam(cmd, "@in_intProjectTaskMemberId", DbType.Int32, req.project_task_member_id ?? null);
+                        AddParam(cmd, "@in_intProjectTaskId", DbType.Int32, req.project_task_id);
+                        AddParam(cmd, "@in_intProjectHeaderId", DbType.Int32, req.project_header_id);
+                        AddParam(cmd, "@in_vchUserId", DbType.String, req.user_id, 40);
+                        AddParam(cmd, "@in_decManday", DbType.Decimal, req.manday);
+                        AddParam(cmd, "@in_vchDescription", DbType.String, "", 500);
+                        AddParam(cmd, "@in_vchActionUser", DbType.String, userId, 40);
 
                         // --- OUTPUT ---
-                        var outId = cmd.Parameters.Add("@out_intProjectTaskMemberId", SqlDbType.Int);
-                        outId.Direction = ParameterDirection.Output;
-
-                        var outCode = cmd.Parameters.Add("@out_vchErrorCode", SqlDbType.NVarChar, 50);
-                        outCode.Direction = ParameterDirection.Output;
-
-                        var outMsg = cmd.Parameters.Add("@out_vchErrorMessage", SqlDbType.NVarChar, 500);
-                        outMsg.Direction = ParameterDirection.Output;
+                        var outId = AddOutputParam(cmd, "@out_intProjectTaskMemberId", DbType.Int32);
+                        var outCode = AddOutputParam(cmd, "@out_vchErrorCode", DbType.String, 50);
+                        var outMsg = AddOutputParam(cmd, "@out_vchErrorMessage", DbType.String, 500);
 
                         // Execute
                         await cmd.ExecuteNonQueryAsync();
@@ -454,19 +421,19 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new SqlCommand("tmt.usp_tmt_project_task_member", conn))
+                    using (var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_project_task_member", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         // Parameters - ตาม Coding Standards
-                        cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
-                        cmd.Parameters.AddWithValue("@in_intProjectTaskMemberId", assignTaskMemberId);
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "DELETE"));
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectTaskMemberId", assignTaskMemberId));
                         // Output parameters (ต้องใส่ เพราะ procedure มี output)
-                        cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@out_intErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                        AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                        AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
+                        AddOutputParam(cmd, "@out_intErrorCode", DbType.Int32);
                         await cmd.ExecuteNonQueryAsync();
                         int errorCode = (int)cmd.Parameters["@out_intErrorCode"].Value;
                         return new ProjectAssignTaskMemberResponse
@@ -494,42 +461,23 @@ namespace ApiCore.Services.Implementation
             try
             {
                 ProjectTeamResponse response = new ProjectTeamResponse();
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new SqlCommand("tmt.usp_upsert_project_team", conn))
+                    using (var cmd = _connectionFactory.CreateCommand("tmt.usp_upsert_project_team", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
-                        // --- Helper function ---
-                        void AddParam(string name, SqlDbType type, object? value, int size = 0)
-                        {
-                            var p = cmd.Parameters.Add(name, type);
-                            if (size > 0) p.Size = size;
-                            p.Value = value ?? DBNull.Value;
-                        }
                         // Input parameters (type-safe)
-                        AddParam("@in_intProjectMemberId", SqlDbType.Int, project.project_member_id ?? null);
-                        AddParam("@in_intProjectHeaderId", SqlDbType.Int, project.project_header_id);
-                        AddParam("@in_vchUserId", SqlDbType.NVarChar, project.user_id, 40);
-                        AddParam("@in_vchRole", SqlDbType.NVarChar, project.role, 100);
-                        AddParam("@in_vchDescription", SqlDbType.NVarChar, project.description ?? null, 500);
-                        AddParam("@in_vchActionUser", SqlDbType.NVarChar, userId, 40);
+                        AddParam(cmd, "@in_intProjectMemberId", DbType.Int32, project.project_member_id ?? null);
+                        AddParam(cmd, "@in_intProjectHeaderId", DbType.Int32, project.project_header_id);
+                        AddParam(cmd, "@in_vchUserId", DbType.String, project.user_id, 40);
+                        AddParam(cmd, "@in_vchRole", DbType.String, project.role, 100);
+                        AddParam(cmd, "@in_vchDescription", DbType.String, project.description ?? null, 500);
+                        AddParam(cmd, "@in_vchActionUser", DbType.String, userId, 40);
                         // Output parameters
-                        var pOutId = new SqlParameter("@out_intProjectMemberId", SqlDbType.Int)
-                        {
-                            Direction = ParameterDirection.Output
-                        };
-                        var pOutCode = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                        {
-                            Direction = ParameterDirection.Output
-                        };
-                        var pOutMsg = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                        {
-                            Direction = ParameterDirection.Output
-                        };
-                        cmd.Parameters.Add(pOutId);
-                        cmd.Parameters.Add(pOutCode);
-                        cmd.Parameters.Add(pOutMsg);
+                        var pOutId = AddOutputParam(cmd, "@out_intProjectMemberId", DbType.Int32);
+                        var pOutCode = AddOutputParam(cmd, "@out_vchErrorCode", DbType.String, 50);
+                        var pOutMsg = AddOutputParam(cmd, "@out_vchErrorMessage", DbType.String, 500);
                         await cmd.ExecuteNonQueryAsync();
                         int newId = pOutId.Value is DBNull ? 0 : (int)pOutId.Value;
                         response.message_code = pOutCode.Value?.ToString();
@@ -554,19 +502,19 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
                     await conn.OpenAsync();
-                    using (var cmd = new SqlCommand("tmt.usp_project_teams", conn))
+                    using (var cmd = _connectionFactory.CreateCommand("tmt.usp_project_teams", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         // Parameters - ตาม Coding Standards
-                        cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
-                        cmd.Parameters.AddWithValue("@in_intProjectMemberId", projectTeamId);
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "DELETE"));
+                        cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectMemberId", projectTeamId));
                         // Output parameters (ต้องใส่ เพราะ procedure มี output)
-                        cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
-                        cmd.Parameters.Add("@out_intErrorCode", SqlDbType.Int).Direction = ParameterDirection.Output;
+                        AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                        AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
+                        AddOutputParam(cmd, "@out_intErrorCode", DbType.Int32);
                         await cmd.ExecuteNonQueryAsync();
                         int errorCode = (int)cmd.Parameters["@out_intErrorCode"].Value;
                         return new ProjectTeamResponse
@@ -592,22 +540,19 @@ namespace ApiCore.Services.Implementation
             try
             {
                 var result = new List<ProjectIncentiveResponse>();
-                using var conn = new SqlConnection(_connectionString) ;
+                using var conn = _connectionFactory.CreateConnection();
 
-                    using var cmd = new SqlCommand(
-                    "[tmt].[usp_calculate_project_incentive]",
-                    conn
-                );
+                using var cmd = _connectionFactory.CreateCommand("[tmt].[usp_calculate_project_incentive]", conn);
 
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue(
+                cmd.Parameters.Add(_connectionFactory.CreateParameter(
                     "@in_intProjectHeaderId",
                     (object?)projectId ?? DBNull.Value
-                );
-                cmd.Parameters.AddWithValue(
+                ));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter(
                     "@in_intYear",
                     (object?)year ?? DBNull.Value
-                );
+                ));
 
                 await conn.OpenAsync();
 
@@ -671,7 +616,7 @@ namespace ApiCore.Services.Implementation
                 }
                 return result;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 return null;
@@ -684,14 +629,14 @@ namespace ApiCore.Services.Implementation
             {
                 var result = new List<MonthlyPerformanceInvoiceDto>();
 
-                using (var conn = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand(
+                using (var conn = _connectionFactory.CreateConnection())
+                using (var cmd = _connectionFactory.CreateCommand(
                     "tmt.usp_calculate_monthly_performance_voice", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
-                    cmd.Parameters.AddWithValue("@in_intYear", year);
-                    cmd.Parameters.AddWithValue("@in_intMonth", month);
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intYear", year));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intMonth", month));
 
                     await conn.OpenAsync();
 

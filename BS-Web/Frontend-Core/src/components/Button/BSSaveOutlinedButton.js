@@ -1,27 +1,8 @@
 import React from "react";
-import { styled } from '@mui/material/styles';
-import Button from '@mui/material/Button';
-import { logActivity } from '../../utils/ActivityLogger';
-
-const StyledSaveOutlinedButton = styled(Button)(({ theme }) => ({
-  borderColor: theme.palette.custom?.saveButton || theme.palette.primary.main,
-  color: theme.palette.custom?.saveButton || theme.palette.primary.main,
-  '&:hover': {
-    borderColor: theme.palette.custom?.saveButton || theme.palette.primary.main,
-    backgroundColor: theme.palette.custom?.saveButton || theme.palette.primary.main,
-    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
-  },
-  '&.Mui-focusVisible': {
-    borderColor: theme.palette.primary.dark,
-    backgroundColor: theme.palette.primary.dark,
-    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
-  },
-  '&:active': {
-    borderColor: theme.palette.primary.dark,
-    backgroundColor: theme.palette.primary.dark,
-    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
-  }
-}));
+import Button from "@mui/material/Button";
+import { logActivity } from "../../utils/ActivityLogger";
+import { ButtonConfigs } from "../../utils/ButtonConfigs";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 
 const resolveButtonText = (children) => {
   if (typeof children === "string") return children;
@@ -32,27 +13,45 @@ const resolveButtonText = (children) => {
   return "Save";
 };
 
-const BSSaveOutlinedButton = React.forwardRef(({ onClick, children, ...props }, ref) => {
-  const handleClick = (event) => {
-    logActivity({
-      action_type: "SAVE_CLICK",
-      page: window.location.pathname,
-      entity: resolveButtonText(children),
-      entity_id: "-",
-      description: "Save button clicked",
-    });
+const BSSaveOutlinedButton = React.forwardRef(
+  ({ onClick, children, sx, ...props }, ref) => {
+    const { ACTION_BUTTON_THEMES } = ButtonConfigs();
 
-    if (onClick) {
-      onClick(event);
-    }
-  };
+    const handleClick = (event) => {
+      logActivity({
+        action_type: "SAVE_CLICK",
+        page: window.location.pathname,
+        entity: resolveButtonText(children),
+        entity_id: "-",
+        description: "Save button clicked",
+      });
 
-  return (
-    <StyledSaveOutlinedButton ref={ref} onClick={handleClick} {...props}>
-      {children}
-    </StyledSaveOutlinedButton>
-  );
-});
+      if (onClick) {
+        onClick(event);
+      }
+    };
+
+    return (
+      <Button
+        ref={ref}
+        variant="contained"
+        startIcon={<SaveOutlinedIcon />}
+        onClick={handleClick}
+        sx={{
+          ...(ACTION_BUTTON_THEMES.success || {}),
+          color: "#FFFFFF",
+          "&:focus-visible": {
+            boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.35)",
+          },
+          ...sx,
+        }}
+        {...props}
+      >
+        {children}
+      </Button>
+    );
+  },
+);
 
 BSSaveOutlinedButton.displayName = "BSSaveOutlinedButton";
 

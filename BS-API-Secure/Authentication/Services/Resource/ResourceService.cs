@@ -1,16 +1,22 @@
-﻿using Authentication.Interfaces;
+using Authentication.Interfaces;
 using Authentication.Models.Data;
 using Authentication.Models.Requests;
 using Authentication.Models.Responses;
-using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Data.Common;
+using TokenManagement.Database;
 
 namespace Authentication.Services.Resource
 {
     public class ResourceService : IResource
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly IDbConnectionFactory _connectionFactory;
         private readonly string schema = Environment.GetEnvironmentVariable("DB_SCHEMA") ?? "sec";
+
+        public ResourceService(IDbConnectionFactory connectionFactory)
+        {
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+        }
         public async Task<ResourceResponse> GetAsync(ResourceRequest request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
@@ -21,18 +27,19 @@ namespace Authentication.Services.Resource
             {
                 response.message_code = "0";
                 response.message_text = "success";
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
                 var sql = @$"  
                SELECT r.*
-               FROM [{schema}].t_com_resource r  
-               INNER JOIN [{schema}].t_com_application a ON a.app_id = r.app_id  
-               WHERE r.platform = @platform AND r.is_active = 'YES' AND a.license_key = @licenseKey";
+               FROM {schema}.t_com_resource r  
+               INNER JOIN {schema}.t_com_application a ON a.app_id = r.app_id  
+               WHERE r.platform = @platform AND r.is_active = @isActive AND a.license_key = @licenseKey";
 
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@platform", platform);
-                cmd.Parameters.AddWithValue("@licenseKey", licenseKey);
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@platform", platform));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@isActive", 1));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@licenseKey", licenseKey));
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -57,7 +64,7 @@ namespace Authentication.Services.Resource
                             description_en = reader["description_en"]?.ToString() ?? string.Empty,
                             description_th = reader["description_th"]?.ToString() ?? string.Empty,
                             descrption_other = reader["descrption_other"]?.ToString() ?? string.Empty,
-                            is_active = reader["is_active"]?.ToString() ?? string.Empty,
+                            is_active = reader["is_active"] != DBNull.Value && Convert.ToBoolean(reader["is_active"]),
                             create_by = reader["create_by"]?.ToString() ?? string.Empty,
                             create_date = reader["create_date"] != DBNull.Value ? Convert.ToDateTime(reader["create_date"]).ToString("yyyy-MM-dd HH:mm:ss") : string.Empty
                         };
@@ -90,37 +97,31 @@ namespace Authentication.Services.Resource
                     return response;
                 }
 
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using (var cmd = new SqlCommand($"[{schema}].usp_update_resource", conn))
+                using (var cmd = _connectionFactory.CreateCommand($"{schema}.usp_update_resource", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
-                    cmd.Parameters.AddWithValue("@in_intResourceID", resourceDataRequest?.resource_id ?? 0);
-                    cmd.Parameters.AddWithValue("@in_intAppID", resourceDataRequest.app_id);
-                    cmd.Parameters.AddWithValue("@in_vchPlatform", resourceDataRequest.platform);
-                    cmd.Parameters.AddWithValue("@in_vchResourceGroup", resourceDataRequest.resource_group);
-                    cmd.Parameters.AddWithValue("@in_vchResourceName", resourceDataRequest.resource_name);
-                    cmd.Parameters.AddWithValue("@in_vchResourceEN", resourceDataRequest.resource_en);
-                    cmd.Parameters.AddWithValue("@in_vchResourceTH", resourceDataRequest.resource_th);
-                    cmd.Parameters.AddWithValue("@in_vchResourceOther", resourceDataRequest.resource_other);
-                    cmd.Parameters.AddWithValue("@in_vchDescriptionEN", resourceDataRequest.description_en);
-                    cmd.Parameters.AddWithValue("@in_vchDescriptionTH", resourceDataRequest.description_th);
-                    cmd.Parameters.AddWithValue("@in_vchDescriptionOther", resourceDataRequest.descrption_other);
-                    cmd.Parameters.AddWithValue("@in_vchIsActive", resourceDataRequest.is_active);
-                    cmd.Parameters.AddWithValue("@in_vchCreateBy", userId);
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_int_Resource_ID", resourceDataRequest?.resource_id ?? 0));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_int_App_ID", resourceDataRequest.app_id));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Platform", resourceDataRequest.platform));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Resource_Group", resourceDataRequest.resource_group));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Resource_Name", resourceDataRequest.resource_name));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Resource_EN", resourceDataRequest.resource_en));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Resource_TH", resourceDataRequest.resource_th));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Resource_Other", resourceDataRequest.resource_other));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Description_EN", resourceDataRequest.description_en));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Description_TH", resourceDataRequest.description_th));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Description_Other", resourceDataRequest.descrption_other));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_bit_Is_Active", resourceDataRequest.is_active));
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_Create_By", userId));
 
-                    var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                    {
-                        Direction = ParameterDirection.Output
-                    };
+                    var errorCodeParam = _connectionFactory.CreateOutputParameter("@out_vch_ErrorCode", DbType.String, 50);
                     cmd.Parameters.Add(errorCodeParam);
 
-                    var errorMessageParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                    {
-                        Direction = ParameterDirection.Output
-                    };
+                    var errorMessageParam = _connectionFactory.CreateOutputParameter("@out_vch_ErrorMessage", DbType.String, 500);
                     cmd.Parameters.Add(errorMessageParam);
 
                     await cmd.ExecuteNonQueryAsync();

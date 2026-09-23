@@ -1,5 +1,6 @@
 using Notification.Hubs;
 using Notification.Services;
+using TokenManagement.Database;
 using TokenManagement.Extensions;
 using TokenManagement.Interfaces;
 using TokenManagement.Services;
@@ -7,16 +8,21 @@ using TokenManagement.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
+
+// ---- Database Provider (central factory) ----
+var notiConnectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY")
+    ?? throw new InvalidOperationException("Missing SERVERDB_SECURITY environment variable");
+var notiDbProviderStr = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer";
+var notiDbProvider = Enum.TryParse<DatabaseProvider>(notiDbProviderStr, true, out var notiParsedProvider)
+    ? notiParsedProvider
+    : DatabaseProvider.SqlServer;
+builder.Services.AddSingleton<IDbConnectionFactory>(new DbConnectionFactory(notiConnectionString, notiDbProvider));
 // Add services to the container.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins(
-        "http://localhost:3000",
-        "http://10.10.60.60",
-         "https://10.10.60.60"
-     )
+        policy.WithOrigins("10.10.60.67")
      .AllowAnyHeader()
      .AllowAnyMethod().AllowCredentials();
 

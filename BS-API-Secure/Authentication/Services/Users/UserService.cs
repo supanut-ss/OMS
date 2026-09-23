@@ -1,26 +1,28 @@
-﻿using Authentication.Interfaces;
+using Authentication.Interfaces;
 using Authentication.Models.Requests;
 using Authentication.Models.Responses;
 using Authentication.Models.Responses.Auth;
 using Authentication.Prototype;
 using Azure;
-using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Net.Mail;
 using System.Transactions;
+using TokenManagement.Database;
 
 namespace Authentication.Services.Users
 {
     public class UserService : IUsers
     {
         private readonly IAuth _auth;
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly IDbConnectionFactory _connectionFactory;
         private readonly string schema = Environment.GetEnvironmentVariable("DB_SCHEMA") ?? "sec";
-        public UserService(IAuth auth)
+        public UserService(IAuth auth, IDbConnectionFactory connectionFactory)
         {
             _auth = auth;
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
         }
 
 
@@ -32,13 +34,13 @@ namespace Authentication.Services.Users
                 if (validationResponse.message_code != "0")
                     return validationResponse;
                 // Update the password in the database  
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                var sql = $"UPDATE [{schema}].t_com_user SET password = @password WHERE user_id = @userId";
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userId);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(newPassword));
+                var sql = $"UPDATE {schema}.t_com_user SET password = @password WHERE user_id = @userId";
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@password", Encryption.Encrypt(newPassword)));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
 
@@ -66,14 +68,14 @@ namespace Authentication.Services.Users
                 if (validationResponse.message_code != "0")
                     return validationResponse;
 
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
                 // Check if user id already exists
-                var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
-                using (var checkCmd = new SqlCommand(checkSql, conn))
+                var checkSql = $"SELECT COUNT(1) FROM {schema}.t_com_user WHERE user_id = @userId";
+                using (var checkCmd = _connectionFactory.CreateCommand(checkSql, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@userId", userReq.UserId ?? string.Empty);
+                    checkCmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userReq.UserId ?? string.Empty));
                     var existsObj = await checkCmd.ExecuteScalarAsync();
                     if (existsObj != null && Convert.ToInt32(existsObj) > 0)
                     {
@@ -81,7 +83,7 @@ namespace Authentication.Services.Users
                     }
                 }
 
-                var sql = $" INSERT INTO [{schema}].t_com_user " +
+                var sql = $" INSERT INTO {schema}.t_com_user " +
                       "([user_id]" +
                       ", [user_group_id]" +
                       ", [first_name]" +
@@ -110,20 +112,20 @@ namespace Authentication.Services.Users
                       ",@create_by" +
                       ",@create_date) ";
 
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@user_id", userReq.UserId);
-                cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
-                cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
-                cmd.Parameters.AddWithValue("@first_name", userReq.FirstName);
-                cmd.Parameters.AddWithValue("@last_name", userReq.LastName);
-                cmd.Parameters.AddWithValue("@locale_id", userReq.LocaleId);
-                cmd.Parameters.AddWithValue("@department", userReq.Department);
-                cmd.Parameters.AddWithValue("@supervisor", userReq.Supervisor);
-                cmd.Parameters.AddWithValue("@email_address", userReq.Email);
-                cmd.Parameters.AddWithValue("@domain", userReq.Domian);
-                cmd.Parameters.AddWithValue("@is_active", userReq.IsActive);
-                cmd.Parameters.AddWithValue("@create_by", userId);
-                cmd.Parameters.AddWithValue("@create_date", DateTime.Now);
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@user_id", userReq.UserId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@password", Encryption.Encrypt(userReq.Password)));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@user_group_id", userReq.UserGroupId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@first_name", userReq.FirstName));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@last_name", userReq.LastName));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@locale_id", userReq.LocaleId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@department", userReq.Department));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@supervisor", userReq.Supervisor));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@email_address", userReq.Email));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@domain", userReq.Domian));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@is_active", userReq.IsActive));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@create_by", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@create_date", DateTime.Now));
 
                 var rowsAffected = await cmd.ExecuteNonQueryAsync();
                 if (rowsAffected == 0)
@@ -149,21 +151,21 @@ namespace Authentication.Services.Users
                 if (userReq == null || string.IsNullOrWhiteSpace(userReq.UserId))
                     return _auth.CreateErrorResponse("1", "UserId is required for update.");
 
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
                 // Check that the target user exists
-                var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
-                using (var checkCmd = new SqlCommand(checkSql, conn))
+                var checkSql = $"SELECT COUNT(1) FROM {schema}.t_com_user WHERE user_id = @userId";
+                using (var checkCmd = _connectionFactory.CreateCommand(checkSql, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@userId", userReq.UserId);
+                    checkCmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userReq.UserId));
                     var existsObj = await checkCmd.ExecuteScalarAsync();
                     if (existsObj == null || Convert.ToInt32(existsObj) == 0)
                         return _auth.CreateErrorResponse("1", "User not found.");
                 }
 
                 // Build update statement; include password only if provided
-                var sql = $"UPDATE [{schema}].t_com_user SET " +
+                var sql = $"UPDATE {schema}.t_com_user SET " +
                           "user_group_id = @user_group_id, " +
                           "first_name = @first_name, " +
                           "last_name = @last_name, " +
@@ -182,19 +184,19 @@ namespace Authentication.Services.Users
 
                 sql += " WHERE user_id = @userId";
 
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userReq.UserId);
-                cmd.Parameters.AddWithValue("@user_group_id", userReq.UserGroupId);
-                cmd.Parameters.AddWithValue("@first_name", userReq.FirstName ?? string.Empty);
-                cmd.Parameters.AddWithValue("@last_name", userReq.LastName ?? string.Empty);
-                cmd.Parameters.AddWithValue("@locale_id", userReq.LocaleId ?? string.Empty);
-                cmd.Parameters.AddWithValue("@department", userReq.Department ?? string.Empty);
-                cmd.Parameters.AddWithValue("@supervisor", userReq.Supervisor ?? string.Empty);
-                cmd.Parameters.AddWithValue("@email_address", userReq.Email ?? string.Empty);
-                cmd.Parameters.AddWithValue("@domain", userReq.Domian ?? string.Empty);
-                cmd.Parameters.AddWithValue("@is_active", userReq.IsActive ?? string.Empty);
-                cmd.Parameters.AddWithValue("@update_by", userId);
-                cmd.Parameters.AddWithValue("@update_date", DateTime.Now);
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userReq.UserId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@user_group_id", userReq.UserGroupId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@first_name", userReq.FirstName ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@last_name", userReq.LastName ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@locale_id", userReq.LocaleId ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@department", userReq.Department ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@supervisor", userReq.Supervisor ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@email_address", userReq.Email ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@domain", userReq.Domian ?? string.Empty));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@is_active", userReq.IsActive));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@update_by", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@update_date", DateTime.Now));
 
                 //if (includePassword)
                 //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
@@ -222,26 +224,26 @@ namespace Authentication.Services.Users
                 if (userIdDel == null || string.IsNullOrWhiteSpace(userIdDel))
                     return _auth.CreateErrorResponse("1", "UserId is required for update.");
 
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
                 // Check that the target user exists
-                var checkSql = $"SELECT COUNT(1) FROM [{schema}].t_com_user WHERE user_id = @userId";
-                using (var checkCmd = new SqlCommand(checkSql, conn))
+                var checkSql = $"SELECT COUNT(1) FROM {schema}.t_com_user WHERE user_id = @userId";
+                using (var checkCmd = _connectionFactory.CreateCommand(checkSql, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@userId", userIdDel);
+                    checkCmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userIdDel));
                     var existsObj = await checkCmd.ExecuteScalarAsync();
                     if (existsObj == null || Convert.ToInt32(existsObj) == 0)
                         return _auth.CreateErrorResponse("1", "User not found.");
                 }
 
                 // Build update statement; include password only if provided
-                var sql = $"DELETE FROM [{schema}].t_com_user";
+                var sql = $"DELETE FROM {schema}.t_com_user";
 
                 sql += " WHERE user_id = @userId";
 
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userIdDel);
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userIdDel));
 
                 //if (includePassword)
                 //    cmd.Parameters.AddWithValue("@password", Encryption.Encrypt(userReq.Password));
@@ -273,14 +275,14 @@ namespace Authentication.Services.Users
                     response.message_text = "UserId is required.";
                     return response;
                 }
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
                 var sql = $"SELECT ug.name " +
-                          $"FROM [{schema}].t_com_user u " +
-                          $"JOIN [{schema}].t_com_user_group ug ON u.user_group_id = ug.user_group_id " +
+                          $"FROM {schema}.t_com_user u " +
+                          $"JOIN {schema}.t_com_user_group ug ON u.user_group_id = ug.user_group_id " +
                           $"WHERE u.user_id = @userId";
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userId);
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
                 var roleObj = await cmd.ExecuteScalarAsync();
                 if (roleObj != null)
                 {
@@ -312,12 +314,12 @@ namespace Authentication.Services.Users
                     response.message_code = "1";
                     response.message_text = "lang is required.";
                 }
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
-                var sql = $"UPDATE [{schema}].t_com_user SET locale_id = @locale_id WHERE user_id = @userId";
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userId);
-                cmd.Parameters.AddWithValue("@locale_id", userReq.lang);
+                var sql = $"UPDATE {schema}.t_com_user SET locale_id = @locale_id WHERE user_id = @userId";
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@locale_id", userReq.lang));
                 await cmd.ExecuteNonQueryAsync();
                 conn.Close();
                 response.message_code = "0";
@@ -342,18 +344,18 @@ namespace Authentication.Services.Users
 
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = _connectionFactory.CreateConnection())
                 {
-                    //ทำการลบข้อมูล ที่ไม่ได้ทำการ Check ออกทั้งหมดก่อนจะ Insert หรืออัพเดทเมนูเข้าไป
-                    using var cmd = new SqlCommand("sec.usp_clear_user_logon_token", conn);
-                     
+                    //????????????? ?????????????? Check ???????????????? Insert ????????????????????
+                    using var cmd = _connectionFactory.CreateCommand("sec.usp_clear_user_logon_token", conn);
+
                     cmd.CommandType = CommandType.StoredProcedure;
 
-                    var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50) { Direction = ParameterDirection.Output };
-                    var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500) { Direction = ParameterDirection.Output };
+                    var errorCodeParam = _connectionFactory.CreateOutputParameter("@out_vch_error_code", DbType.String, 50);
+                    var errorMsgParam = _connectionFactory.CreateOutputParameter("@out_vch_error_message", DbType.String, 500);
 
                     // You need to provide groupId and platform variables or get them from item
-                    cmd.Parameters.AddWithValue("@in_vchUserId", userId);
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_user_id", userId));
 
                     cmd.Parameters.Add(errorCodeParam);
                     cmd.Parameters.Add(errorMsgParam);
@@ -364,7 +366,7 @@ namespace Authentication.Services.Users
                     if (errorCodeParam.Value.ToString() != "0")
                     {
                         response.message_code = errorCodeParam.Value.ToString() ?? "1";
-                        response.message_text = errorMsgParam.Value.ToString() ?? "1"; 
+                        response.message_text = errorMsgParam.Value.ToString() ?? "1";
                     }
 
                     return response;

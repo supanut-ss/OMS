@@ -11,7 +11,7 @@ namespace ReportViewer.Models
         /// <summary>
         /// Report code to look up in rpt.t_com_config_report
         /// </summary>
-        public string ReportCode { get; set; }
+        public string? ReportCode { get; set; }
 
         /// <summary>
         /// Parameters for SQL replacement
@@ -24,7 +24,7 @@ namespace ReportViewer.Models
         /// <summary>
         /// Output format: "view", "pdf", "excel", "word"
         /// </summary>
-        public string OutputFormat { get; set; }
+        public string? OutputFormat { get; set; }
 
         public ReportRequest()
         {

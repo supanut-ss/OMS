@@ -1,4 +1,4 @@
-﻿using ApiCore.Models.Responses;
+using ApiCore.Models.Responses;
 
 namespace ApiCore.Services.Interfaces
 {

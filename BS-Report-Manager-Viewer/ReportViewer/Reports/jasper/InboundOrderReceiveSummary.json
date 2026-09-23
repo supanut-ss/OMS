@@ -1,0 +1,44 @@
+{
+  "report_title": "Inbound Order Receive Summary",
+  "header": {
+    "inbound_order_number": "13112556-001",
+    "order_type": "PO",
+    "order_status": "CLOSE",
+    "receive_date": "2025-05-14",
+    "order_date": "2025-05-14",
+    "warehouse": "PDC",
+    "customer_code": "customer_code",
+    "customer_name": "customer_name"
+  },
+  "details": [
+    {
+      "line_number": 1,
+      "item_number": "0BB2000000-06",
+      "item_description": "Aura 500ml 1x24 - Aura 500ml 1x24 - Aura 500ml 1x24 - Aura 500ml 1x24 - Aura 500ml 1x24 - Aura 500ml 1x24",
+      "quantity_order": 1105.00,
+      "quantity_received": 1105.00,
+      "quantity_balance": 0
+    },
+    {
+      "line_number": 2,
+      "item_number": "0BB2000000-50",
+      "item_description": "Aura 500ml 1x12",
+      "quantity_order": 435.00,
+      "quantity_received": 435.00,
+      "quantity_balance": 0
+    }
+  ],
+  "summary": {
+    "total_quantity_ordered": 1540.00,
+    "total_quantity_received": 1540.00,
+    "total_quantity_remaining": 0
+  },
+  "footer": {
+    "role_1": "GR BY",
+    "name_1": "string",
+    "date_1": null,
+	  "role_2": "GR BY",
+    "name_2": "string",
+    "date_2": null
+  }
+}

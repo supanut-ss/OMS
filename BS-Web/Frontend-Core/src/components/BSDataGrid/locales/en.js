@@ -240,6 +240,8 @@ export const englishLocaleText = {
   bsSaving: "Saving...",
   bsCancel: "Cancel",
   bsClose: "Close",
+  bsMinimizeDialog: "Minimize",
+  bsRestoreDialog: "Restore",
   bsRefresh: "Refresh",
   bsExportExcel: "Export Excel",
   bsExportExcelError: "Failed to export Excel",
@@ -248,7 +250,7 @@ export const englishLocaleText = {
   bsShowFilters: "Show Filters",
   bsHeaderFiltersEnabled: "Header Filters Enabled",
   bsOfflineToolbar: "🔧 Offline Toolbar",
-  bsBulkEditMode: "🔄 Bulk Mode",
+  bsBulkEditMode: "Bulk Mode",
   bsBulkEditMessage:
     "Edit cells directly in the grid. Changes are tracked but not saved until you click Save.",
   bsUnsavedChanges: "unsaved changes",
@@ -277,6 +279,8 @@ export const englishLocaleText = {
 
   // BSDataGrid Validation Messages
   bsValidationErrors: "Validation Errors",
+  bsValidationError: "Validation Errors",
+  bsFieldRequired: "This field is required",
   bsDuplicateValueError: "Duplicate Value Error",
   bsFieldAlreadyExists: (fieldName, value) =>
     `${fieldName}: "${value}" already exists in the system. Please use a different value.`,

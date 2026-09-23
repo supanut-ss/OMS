@@ -1,0 +1,142 @@
+{
+  "report_title": "Picking Slip",
+  "header": {
+    "outbound_order_number": "OB202605260001",
+    "order_status": "Open",
+    "order_type": "Blind Pick",
+    "order_date": "2026-05-26",
+    "warehouse": "WH01",
+    "customer_code": "cust001",
+    "customer_name": "cust001",
+    "customer_address1": "cust001",
+    "customer_address2": "cust001",
+    "customer_address3": "cust001",
+    "remark": ""
+  },
+  "details": [
+    {
+  "line_number": "00001",
+  "item_number": "krit",
+  "item_description": "krit  desc",
+  "zone": "krit",
+  "location": "A1-01",
+  "lot_number": "krit 02 41",
+  "expiry_date": "2026-06-27",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "item099",
+  "item_description": "item099",
+  "zone": "krit",
+  "location": "A1-01-001",
+  "lot_number": "L2905",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 0.00000,
+  "quantity_pick": 0.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "krit",
+  "item_description": "krit  desc",
+  "zone": "krit",
+  "location": "A1-01-001",
+  "lot_number": "sss",
+  "expiry_date": "2026-06-13",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "krit",
+  "item_description": "krit  desc",
+  "zone": "krit",
+  "location": "A1-01-001",
+  "lot_number": "krit 1200",
+  "expiry_date": "2026-06-13",
+  "quantity_plan": 6.00000,
+  "quantity_pick": 6.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "krit",
+  "item_description": "krit  desc",
+  "zone": "krit",
+  "location": "A1-01-001",
+  "lot_number": "krit001",
+  "expiry_date": "2026-06-20",
+  "quantity_plan": 3.00000,
+  "quantity_pick": 3.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "zone": "krit",
+  "location": "A1-02",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 5.00000,
+  "quantity_pick": 0.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "zone": "krit",
+  "location": "A1-02",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "zone": "krit",
+  "location": "A1-02",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "zone": "krit",
+  "location": "A1-02",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 3.00000,
+  "quantity_pick": 3.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "zone": "krit",
+  "location": "A1-02",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+}
+  ],
+  "summary": {
+    "total_quantity_ordered": 1540,
+    "total_quantity_allocated": 1540
+  }
+}

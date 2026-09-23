@@ -1,15 +1,30 @@
 using ApiCore.Models.Requests;
 using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
-using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Data.Common;
 
 namespace ApiCore.Services.Implementation
 {
     public class MyTaskService : IMyTaskService
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB")
-                  ?? throw new ArgumentNullException("SERVERDB connection string not found");
+        private readonly ISqlConnectionFactory _connectionFactory;
+
+        public MyTaskService(ISqlConnectionFactory connectionFactory)
+        {
+            _connectionFactory = connectionFactory;
+        }
+
+        private DbParameter AddOutputParam(DbCommand cmd, string name, DbType type, int size = 0)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = name;
+            p.DbType = type;
+            if (size > 0) p.Size = size;
+            p.Direction = ParameterDirection.Output;
+            cmd.Parameters.Add(p);
+            return p;
+        }
 
         /// <summary>
         /// Get My Tasks with pagination and filtering by calling tmt.usp_tmt_my_task
@@ -20,27 +35,25 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_tmt_my_task", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_my_task", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Input parameters - ตาม Coding Standards
-                cmd.Parameters.AddWithValue("@in_vchOperation", "SELECT");
-                cmd.Parameters.AddWithValue("@in_intPage", request.Page);
-                cmd.Parameters.AddWithValue("@in_intPageSize", request.PageSize);
-                cmd.Parameters.AddWithValue("@in_vchOrderBy", (object?)request.OrderBy ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchFilterModel", (object?)request.FilterModel ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchQuickFilter", (object?)request.QuickFilter ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchTaskStatus", (object?)request.TaskStatus ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "SELECT"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intPage", request.Page));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intPageSize", request.PageSize));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOrderBy", (object?)request.OrderBy ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchFilterModel", (object?)request.FilterModel ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchQuickFilter", (object?)request.QuickFilter ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchTaskStatus", (object?)request.TaskStatus ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
 
                 // Output parameters
-                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -104,25 +117,23 @@ namespace ApiCore.Services.Implementation
 
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_tmt_project_task_tracking", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_project_task_tracking", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Input parameters - ตาม Coding Standards
-                cmd.Parameters.AddWithValue("@in_vchOperation", "SELECT");
-                cmd.Parameters.AddWithValue("@in_intPage", request.Page);
-                cmd.Parameters.AddWithValue("@in_intPageSize", request.PageSize);
-                cmd.Parameters.AddWithValue("@in_vchOrderBy", (object?)request.OrderBy ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_vchQuickFilter", (object?)request.QuickFilter ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@in_intProjectTaskId", request.ProjectTaskId);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "SELECT"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intPage", request.Page));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intPageSize", request.PageSize));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOrderBy", (object?)request.OrderBy ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchQuickFilter", (object?)request.QuickFilter ?? DBNull.Value));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectTaskId", request.ProjectTaskId));
 
                 // Output parameters
-                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -176,28 +187,26 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_tmt_project_task_tracking", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_project_task_tracking", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Input parameters - ตาม Coding Standards
-                cmd.Parameters.AddWithValue("@in_vchOperation", "INSERT");
-                cmd.Parameters.AddWithValue("@in_intProjectTaskId", request.ProjectTaskId);
-                cmd.Parameters.AddWithValue("@in_vchIssueType", request.IssueType);
-                cmd.Parameters.AddWithValue("@in_decActualWork", request.ActualWork);
-                cmd.Parameters.AddWithValue("@in_dtActualDate", request.ActualDate);
-                cmd.Parameters.AddWithValue("@in_vchProcessUpdate", request.ProcessUpdate);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "INSERT"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectTaskId", request.ProjectTaskId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchIssueType", request.IssueType));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_decActualWork", request.ActualWork));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_dtActualDate", request.ActualDate));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchProcessUpdate", request.ProcessUpdate));
                 // AssigneeUserId = who the task is assigned to, UserId = who is creating the record
-                cmd.Parameters.AddWithValue("@in_vchAssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
-                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchAssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
 
                 // Output parameters
-                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -236,28 +245,26 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_tmt_project_task_tracking", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_project_task_tracking", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Input parameters - ตาม Coding Standards
-                cmd.Parameters.AddWithValue("@in_vchOperation", "UPDATE");
-                cmd.Parameters.AddWithValue("@in_intProjectTaskTrackingId", request.ProjectTaskTrackingId ?? 0);
-                cmd.Parameters.AddWithValue("@in_vchIssueType", request.IssueType);
-                cmd.Parameters.AddWithValue("@in_decActualWork", request.ActualWork);
-                cmd.Parameters.AddWithValue("@in_dtActualDate", request.ActualDate);
-                cmd.Parameters.AddWithValue("@in_vchProcessUpdate", request.ProcessUpdate);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "UPDATE"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectTaskTrackingId", request.ProjectTaskTrackingId ?? 0));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchIssueType", request.IssueType));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_decActualWork", request.ActualWork));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_dtActualDate", request.ActualDate));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchProcessUpdate", request.ProcessUpdate));
                 // AssigneeUserId = who the task is assigned to, UserId = who is updating the record
-                cmd.Parameters.AddWithValue("@in_vchAssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId);
-                cmd.Parameters.AddWithValue("@in_vchUserId", userId);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchAssigneeUserId", string.IsNullOrEmpty(request.AssigneeUserId) ? userId : request.AssigneeUserId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
 
                 // Output parameters
-                cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int).Direction = ParameterDirection.Output;
-                cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000).Direction = ParameterDirection.Output;
+                AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -298,23 +305,19 @@ namespace ApiCore.Services.Implementation
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
 
-                using var cmd = new SqlCommand("tmt.usp_tmt_project_task_tracking", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
+                using var cmd = _connectionFactory.CreateCommand("tmt.usp_tmt_project_task_tracking", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
 
                 // Input parameters - ตาม Coding Standards
-                cmd.Parameters.AddWithValue("@in_vchOperation", "DELETE");
-                cmd.Parameters.AddWithValue("@in_intProjectTaskTrackingId", projectTaskTrackingId);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchOperation", "DELETE"));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_intProjectTaskTrackingId", projectTaskTrackingId));
 
                 // Output parameters
-                var rowCountParam = cmd.Parameters.Add("@out_intRowCount", SqlDbType.Int);
-                rowCountParam.Direction = ParameterDirection.Output;
-                var messageParam = cmd.Parameters.Add("@out_vchMessage", SqlDbType.NVarChar, 4000);
-                messageParam.Direction = ParameterDirection.Output;
+                var rowCountParam = AddOutputParam(cmd, "@out_intRowCount", DbType.Int32);
+                var messageParam = AddOutputParam(cmd, "@out_vchMessage", DbType.String, 4000);
 
                 await cmd.ExecuteNonQueryAsync();
 

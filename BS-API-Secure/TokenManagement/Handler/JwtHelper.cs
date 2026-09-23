@@ -10,13 +10,22 @@ namespace TokenManagement.Handler
 
         public JwtHelper(){}
 
-        public string GenerateToken(string username, string role, string name, string firstName, string lastname, string emailaddress, string localeId)
+        public string GenerateToken(
+            string username,
+            string role,
+            string name,
+            string firstName,
+            string lastname,
+            string emailaddress,
+            string localeId,
+            int expiresInMinutes,
+            string platform)
         {
             var jwt = new JwtSettings
             {
                 SecretKey = Environment.GetEnvironmentVariable("ISSUER_SIGIN_KEY") ?? "",
                 Issuer = Environment.GetEnvironmentVariable("VALID_ISSUER") ?? "",
-                ExpiresInMinutes = int.Parse(Environment.GetEnvironmentVariable("EXPIRES")?.ToString() ?? "30")
+                ExpiresInMinutes = expiresInMinutes
             };
             string validAudienceEnv = Environment.GetEnvironmentVariable("VALID_AUDIENCE") ?? "";
             jwt.ValidAudiences = validAudienceEnv
@@ -44,6 +53,7 @@ namespace TokenManagement.Handler
                     new Claim("LastName", lastname),
                     new Claim("Email", emailaddress),
                     new Claim("LocaleId", localeId),
+                    new Claim("Platform", platform),
                     new Claim("LoginDate", DateTime.Now.ToString("O")) // ISO8601 format
                 }),
                 Expires = DateTime.Now.AddMinutes(jwt.ExpiresInMinutes),

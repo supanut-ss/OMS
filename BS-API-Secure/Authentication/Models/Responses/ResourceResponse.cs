@@ -16,7 +16,7 @@
         public string description_en { get; set; } = string.Empty;
         public string description_th { get; set; } = string.Empty;
         public string descrption_other { get; set; } = string.Empty;
-        public string is_active { get; set; } = string.Empty;
+        public bool is_active { get; set; } = true;
         public string create_by { get; set; } = string.Empty;
         public string create_date { get; set; } = string.Empty;
     }

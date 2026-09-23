@@ -21,6 +21,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - TZ=Asia/Bangkok
+      # --- Database Provider (pick one) ---
+      # - DB_PROVIDER=SqlServer
+      # - SERVERDB=Server=bs-sqlserver;Database=mydb;User Id=sa;Password=YourStrong@Passw0rd;Encrypt=False;
+      # - DB_PROVIDER=PostgreSql
+      # - SERVERDB=Host=bs-postgres;Port=5432;Database=mydb;Username=postgres;Password=YourPassword;
+      # - DB_PROVIDER=MySql
+      # - SERVERDB=Server=bs-mysql;Port=3306;Database=mydb;User=root;Password=YourPassword;
     volumes:
       # Mount logs directory for debugging
       - ./logs:/app/logs
@@ -48,6 +55,9 @@ services:
       start_period: 40s
     depends_on:
       - sqlserver
+      # Uncomment the database service you are using:
+      # - postgres
+      # - mysql
     logging:
       driver: json-file
       options:
@@ -83,6 +93,56 @@ services:
       retries: 3
       start_period: 60s
 
+  # PostgreSQL Database (alternative provider)
+  postgres:
+    image: postgres:16-alpine
+    container_name: bs-postgres
+    environment:
+      - POSTGRES_DB=mydb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=YourPassword
+      - TZ=Asia/Bangkok
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./SQL/postgres:/docker-entrypoint-initdb.d:ro
+    networks:
+      - bs-platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # MySQL / MariaDB Database (alternative provider)
+  mysql:
+    image: mysql:8.4
+    container_name: bs-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=YourPassword
+      - MYSQL_DATABASE=mydb
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=AppPassword
+      - TZ=Asia/Bangkok
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./SQL/mysql:/docker-entrypoint-initdb.d:ro
+    networks:
+      - bs-platform-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pYourPassword"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
   # Redis Cache (optional)
   redis:
     image: redis:7-alpine
@@ -112,6 +172,10 @@ networks:
 # Volumes
 volumes:
   sqlserver_data:
+    driver: local
+  postgres_data:
+    driver: local
+  mysql_data:
     driver: local
   redis_data:
     driver: local

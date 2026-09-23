@@ -1,24 +1,33 @@
-import { styled } from '@mui/material/styles';
-import Button from '@mui/material/Button';
+import React from "react";
+import Button from "@mui/material/Button";
+import { ButtonConfigs } from "../../utils/ButtonConfigs";
+import CloseIcon from "@mui/icons-material/Close";
 
-const BSCloseOutlinedButton = styled(Button)(({ theme }) => ({
-  borderColor: theme.palette.custom?.closeButton || theme.palette.error.main,
-  color: theme.palette.custom?.closeButton || theme.palette.error.main,
-  '&:hover': {
-    borderColor: theme.palette.custom?.closeButton || theme.palette.error.main,
-    backgroundColor: theme.palette.custom?.closeButton || theme.palette.error.main,
-    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
+const BSCloseOutlinedButton = React.forwardRef(
+  ({ children, sx, ...props }, ref) => {
+    const { ACTION_BUTTON_THEMES } = ButtonConfigs();
+
+    return (
+      <Button
+        ref={ref}
+        variant="contained"
+        sx={{
+          ...(ACTION_BUTTON_THEMES.close || {}),
+          color: "#FFFFFF",
+          "&:focus-visible": {
+            boxShadow: "0 0 0 3px rgba(100, 116, 139, 0.35)",
+          },
+          ...sx,
+        }}
+        {...props}
+        startIcon={<CloseIcon />}
+      >
+        {children}
+      </Button>
+    );
   },
-  '&.Mui-focusVisible': {
-    borderColor: theme.palette.error.dark,
-    backgroundColor: theme.palette.error.dark,
-    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
-  },
-  '&:active': {
-    borderColor: theme.palette.error.dark,
-    backgroundColor: theme.palette.error.dark,
-    color: theme.palette.mode === 'dark' ? '#000000' : '#FFFFFF',
-  }
-}));
+);
+
+BSCloseOutlinedButton.displayName = "BSCloseOutlinedButton";
 
 export default BSCloseOutlinedButton;

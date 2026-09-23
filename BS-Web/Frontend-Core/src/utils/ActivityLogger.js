@@ -1,4 +1,13 @@
 import AxiosMaster from "./AxiosMaster";
+import SecureStorage from "./SecureStorage";
+
+const getAccessToken = () => {
+  return (
+    SecureStorage.get("token") ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token")
+  );
+};
 
 export const logActivity = async ({
   action_type,
@@ -9,6 +18,11 @@ export const logActivity = async ({
   url = window.location.pathname,
   description = ""
 }) => {
+  const accessToken = getAccessToken();
+  if (!accessToken || typeof accessToken !== "string" || !accessToken.trim()) {
+    return;
+  }
+
   try {
     await AxiosMaster.post("/activity-log", {
       action_type: action_type,

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -8,11 +8,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   MenuItem,
   IconButton,
 } from "@mui/material";
 import BSDataGrid from "../../components/BSDataGrid";
+import BSTextField from "../../components/BSTextField";
 import BsAutoComplete from "../../components/BSAutoComplete";
 import { UserContext } from "../../contexts/UserContext";
 import BSAlertSwal2 from "../../components/BSAlertSwal2";
@@ -21,10 +21,10 @@ import { useResource } from "../../hooks/useResource";
 import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../components/Button/BSSaveOutlinedButton";
 import { useOutletContext } from "react-router-dom";
-
+import { ButtonConfigs } from "../../utils/ButtonConfigs";
 const activeOptions = [
-  { value: "YES", label: "YES" },
-  { value: "NO", label: "NO" },
+  { value: true, label: "YES" },
+  { value: false, label: "NO" },
 ];
 
 const initialForm = {
@@ -37,11 +37,39 @@ const initialForm = {
   supervisor: "",
   email_address: "",
   domain: "",
-  is_active: "YES",
+  is_active: true,
   password: "",
+  location: "",
+};
+
+const USER_GROUP_COLUMNS = [
+  { field: "user_group_id", display: false, filter: false, key: true },
+  { field: "name", display: true, filter: true, key: false },
+];
+
+const LOCALE_COLUMNS = [
+  { field: "value_member", display: false, filter: false, key: true },
+  { field: "display_member", display: true, filter: false, key: false },
+];
+
+const SUPERVISOR_COLUMNS = [
+  { field: "user_id", display: true, filter: false, key: true },
+];
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_PATTERN = /^[A-Za-z0-9_.-]+$/;
+
+const normalizeIsActive = (value) => {
+  if (value === true || value === false) return value;
+  if (value === 1 || value === "1") return true;
+  if (value === 0 || value === "0") return false;
+
+  const normalized = String(value).toUpperCase();
+  return normalized === "YES" || normalized === "TRUE";
 };
 
 const UserPage = (props) => {
+  const { ACTION_BUTTON_THEMES } = ButtonConfigs();
   const { permission } = useOutletContext();
   const [locale_id, setLocale_id] = useState(props.lang || "en");
   const { getResourceByGroupAndName } = useResource();
@@ -50,9 +78,6 @@ const UserPage = (props) => {
   const [editMode, setEditMode] = useState(false);
   const { registerUser, updateUser, deleteUser, resetPassword } = UserContext();
   const [emailError, setEmailError] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [selectLocale, setSelectLocale] = useState("");
-  const [selectSupervisor, setSelectSupervisor] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPopupResetPasswordOpen, setIsPopupResetPasswordOpen] =
     useState(false);
@@ -60,12 +85,26 @@ const UserPage = (props) => {
   const [newPassword, setNewPassword] = useState("");
   const [openPwDialog, setOpenPwDialog] = useState(false);
 
-  
-
   useEffect(() => {
     setLocale_id(props.lang || "en");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.lang]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const timer = setTimeout(() => {
+      const val = form.email_address || "";
+      setEmailError(
+        val && !EMAIL_PATTERN.test(val)
+          ? getResourceByGroupAndName("t_com_user", "InvalidEmail", locale_id)
+              ?.resource_value || "Invalid email address"
+          : "",
+      );
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [form.email_address, getResourceByGroupAndName, locale_id, open]);
 
   // Helper to produce a readable label for a field key.
   const humanize = (key) => {
@@ -82,26 +121,129 @@ const UserPage = (props) => {
       .join(" ");
   };
 
-  const getLabelText = (key) => getResourceByGroupAndName("t_com_user", key, locale_id)?.resource_description || humanize(key);
+  const getLabelText = (key) =>
+    getResourceByGroupAndName("t_com_user", key, locale_id)
+      ?.resource_description || humanize(key);
+
+  const labels = useMemo(
+    () => ({
+      user_id:
+        getResourceByGroupAndName("t_com_user", "user_id", locale_id)
+          ?.resource_value || "User ID",
+      password:
+        getResourceByGroupAndName("t_com_user", "password", locale_id)
+          ?.resource_value || "Password",
+      first_name:
+        getResourceByGroupAndName("t_com_user", "first_name", locale_id)
+          ?.resource_value || "First Name",
+      last_name:
+        getResourceByGroupAndName("t_com_user", "last_name", locale_id)
+          ?.resource_value || "Last Name",
+      user_group_id:
+        getResourceByGroupAndName("t_com_user", "user_group_id", locale_id)
+          ?.resource_value || "User Group",
+      locale_id:
+        getResourceByGroupAndName("t_com_user", "locale_id", locale_id)
+          ?.resource_value || "Locale ID",
+      department:
+        getResourceByGroupAndName("t_com_user", "department", locale_id)
+          ?.resource_value || "Department",
+      supervisor:
+        getResourceByGroupAndName("t_com_user", "supervisor", locale_id)
+          ?.resource_value || "Supervisor",
+      email_address:
+        getResourceByGroupAndName("t_com_user", "email_address", locale_id)
+          ?.resource_value || "Email Address",
+      domain:
+        getResourceByGroupAndName("t_com_user", "domain", locale_id)
+          ?.resource_value || "Domain",
+      is_active:
+        getResourceByGroupAndName("t_com_user", "is_active", locale_id)
+          ?.resource_value || "Is Active",
+      EditUser:
+        getResourceByGroupAndName("t_com_user", "EditUser", locale_id)
+          ?.resource_value || "Edit User",
+      AddUser:
+        getResourceByGroupAndName("t_com_user", "AddUser", locale_id)
+          ?.resource_value || "Add User",
+      SaveFailed:
+        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id)
+          ?.resource_value || "Save failed",
+      ResetPassword:
+        getResourceByGroupAndName("t_com_user", "ResetPassword", locale_id)
+          ?.resource_value || "Reset Password",
+      Cancel:
+        getResourceByGroupAndName("t_com_user", "Cancel", locale_id)
+          ?.resource_value || "Cancel",
+      SaveChanges:
+        getResourceByGroupAndName("t_com_user", "SaveChanges", locale_id)
+          ?.resource_value || "Save Changes",
+      Add:
+        getResourceByGroupAndName("t_com_user", "Add", locale_id)
+          ?.resource_value || "Add",
+      Confirm:
+        getResourceByGroupAndName("t_com_user", "Confirm", locale_id)
+          ?.resource_value || "Confirm",
+      ConfirmResetPassword:
+        getResourceByGroupAndName(
+          "t_com_user",
+          "ConfirmResetPassword",
+          locale_id,
+        )?.resource_value || "Confirm resetting the user's password.",
+      NewPassword:
+        getResourceByGroupAndName("t_com_user", "NewPassword", locale_id)
+          ?.resource_value || "New Password",
+      Close:
+        getResourceByGroupAndName("t_com_user", "Close", locale_id)
+          ?.resource_value || "Close",
+      FillRequiredFields:
+        getResourceByGroupAndName("t_com_user", "FillRequiredFields", locale_id)
+          ?.resource_value || "Please fill all required fields.",
+      SelectUserGroup:
+        getResourceByGroupAndName("t_com_user", "SelectUserGroup", locale_id)
+          ?.resource_value || "--- Select User Group ---",
+      InvalidEmail:
+        getResourceByGroupAndName("t_com_user", "InvalidEmail", locale_id)
+          ?.resource_value || "Invalid email address",
+    }),
+    [getResourceByGroupAndName, locale_id],
+  );
+
+  const gridComboOptions = useMemo(
+    () => [
+      {
+        Column: "group_name",
+        Display: "name",
+        Value: "name",
+        Default: labels.SelectUserGroup,
+        PreObj: "sec",
+        Obj: "t_com_user_group",
+        ObjWh: "is_active=1",
+        ObjBy: "name asc",
+      },
+    ],
+    [labels.SelectUserGroup],
+  );
 
   const handleOpenAdd = () => {
     setForm(initialForm);
-    setSelectedGroup("");
-    setSelectLocale("");
-    setSelectSupervisor("");
     setEditMode(false);
     setOpen(true);
   };
 
   const handleOpenEdit = (row) => {
+    const rawActive = row.is_active;
+    const normalizedActive =
+      rawActive === true ||
+      rawActive === 1 ||
+      String(rawActive).toUpperCase() === "YES" ||
+      String(rawActive).toUpperCase() === "TRUE";
+
     setForm({
       ...row,
       [row.name]: row.val === null ? "" : row.val,
+      is_active: normalizedActive,
     });
-
-    setSelectedGroup(row.user_group_id || "");
-    setSelectLocale(row.locale_id || "");
-    setSelectSupervisor(row.supervisor || "");
 
     setEditMode(true);
     setOpen(true);
@@ -112,12 +254,7 @@ const UserPage = (props) => {
     if (result && String(result.message_code) === "0") {
       BSAlertSwal2.show("success", result.message_text, { timer: 2000 });
     } else {
-      BSAlertSwal2.show(
-        "error",
-        result?.message_text ||
-        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id) ||
-        "Save failed"
-      );
+      BSAlertSwal2.show("error", result?.message_text || labels.SaveFailed);
     }
   };
 
@@ -125,43 +262,39 @@ const UserPage = (props) => {
   const handleResetPass = () => setIsPopupResetPasswordOpen(true);
 
   const handleChange = (eOrName, value) => {
-    let name, val;
+    let name;
+    let val;
 
     if (eOrName?.target) {
       name = eOrName.target.name;
       val = eOrName.target.value ?? "";
-    } else {
-      if (eOrName === "user_group_id") {
-        name = eOrName;
-        val = value?.user_group_id ?? null;
-      } else if (eOrName === "locale_id") {
-        name = eOrName;
-        val = value?.value ?? null;
-      }
+    } else if (typeof eOrName === "string") {
+      name = eOrName;
+      val = value ?? "";
     }
 
-    setForm({ ...form, [name]: val });
+    if (!name) return;
 
-    if (name === "email_address") {
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      setEmailError(
-        val && !emailPattern.test(val)
-          ? getResourceByGroupAndName("t_com_user", "InvalidEmail", locale_id)?.resource_value || "Invalid email address"
-          : ""
-      );
+    if (name === "user_id") {
+      val = String(val).replace(/[^A-Za-z0-9_.-]/g, "");
     }
+
+    if (name === "is_active") {
+      val = normalizeIsActive(val);
+    }
+
+    setForm((prev) => ({ ...prev, [name]: val }));
   };
-
   const handleGroupChange = (val) => {
-    setForm({ ...form, user_group_id: val?.user_group_id ?? "" });
+    setForm((prev) => ({ ...prev, user_group_id: val?.user_group_id ?? "" }));
   };
 
   const handleLocaleChange = (val) => {
-    setForm({ ...form, locale_id: val?.code ?? "" });
+    setForm((prev) => ({ ...prev, locale_id: val?.code ?? "" }));
   };
 
   const handleSupervisorChange = (val) => {
-    setForm({ ...form, supervisor: val?.code ?? "" });
+    setForm((prev) => ({ ...prev, supervisor: val?.code ?? "" }));
   };
 
   const handleSave = async () => {
@@ -181,19 +314,30 @@ const UserPage = (props) => {
     });
 
     if (missing.length > 0) {
-      const labels = missing.map((k) => getLabelText(k));
-      const baseMsg =
-        getResourceByGroupAndName("t_com_user", "FillRequiredFields", locale_id)?.resource_value ||
-        "Please fill all required fields.";
-      BSAlertSwal2.show("warning", `${baseMsg} (${labels.join(", ")})`);
+      const missingLabels = missing.map((k) => getLabelText(k));
+      const baseMsg = labels.FillRequiredFields;
+      BSAlertSwal2.show("warning", `${baseMsg} (${missingLabels.join(", ")})`);
+      return;
+    }
+
+    if (!USERNAME_PATTERN.test(String(form.user_id || ""))) {
+      BSAlertSwal2.show(
+        "warning",
+        "Username can only contain A-Z, a-z, 0-9, _, -, and .",
+      );
       return;
     }
 
     let result;
+    const payload = {
+      ...form,
+      is_active: normalizeIsActive(form.is_active),
+    };
+
     if (editMode) {
-      result = await updateUser(form);
+      result = await updateUser(payload);
     } else {
-      result = await registerUser(form);
+      result = await registerUser(payload);
     }
 
     if (result && String(result.message_code) === "0") {
@@ -201,12 +345,7 @@ const UserPage = (props) => {
       setOpen(false);
       gridRef.current?.refreshData();
     } else {
-      BSAlertSwal2.show(
-        "error",
-        result?.message_text ||
-        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id)?.resource_value ||
-        "Save failed"
-      );
+      BSAlertSwal2.show("error", result?.message_text || labels.SaveFailed);
     }
   };
 
@@ -218,62 +357,21 @@ const UserPage = (props) => {
       setNewPassword(result.message_text);
       setOpenPwDialog(true);
     } else {
-      BSAlertSwal2.show(
-        "error",
-        result?.message_text ||
-        getResourceByGroupAndName("t_com_user", "SaveFailed", locale_id)?.resource_value ||
-        "Save failed"
-      );
-    }
-  };
-
-  const handleCopy = async (text) => {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      // HTTPS / secure context
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          alert("Copied to clipboard!");
-        })
-        .catch(() => fallbackCopy(text));
-    } else {
-      // HTTP / insecure context
-      fallbackCopy(text);
-    }
-  };
-
-  const fallbackCopy = async (text) => {
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-
-      // ต้องกำหนด style แบบนี้เพื่อให้ Chrome/Edge ยอม copy
-      textarea.style.position = "fixed";
-      textarea.style.top = "0";
-      textarea.style.left = "0";
-      textarea.style.opacity = "0";
-
-      document.body.appendChild(textarea);
-
-      // ปล่อยให้ DOM attach ก่อน
-      await new Promise((r) => setTimeout(r, 0));
-
-      textarea.focus();
-      textarea.select();
-
-      const success = document.execCommand("copy");
-
-      document.body.removeChild(textarea);
-
-      alert(success ? "Copied OK!" : "Copy failed");
-    } catch (err) {
-      alert("Copy error: " + err);
+      BSAlertSwal2.show("error", result?.message_text || labels.SaveFailed);
     }
   };
 
   return (
     <>
-      <Paper sx={{ p: 2, mb: 3 ,width: "100%"}}>
+      <Paper
+        sx={{
+          p: 2,
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <BSDataGrid
           ref={gridRef}
           bsLocale={locale_id}
@@ -295,29 +393,18 @@ const UserPage = (props) => {
           update_date,
           user_group_id"
           bsObjBy="user_id asc"
-          bsComboBox={[
-            {
-              Column: "group_name",
-              Display: "name",
-              Value: "name",
-              Default:
-                getResourceByGroupAndName("t_com_user", "SelectUserGroup", locale_id)?.resource_value ||
-                "--- Select User Group ---",
-              PreObj: "sec",
-              Obj: "t_com_user_group",
-              ObjWh: "is_active='YES'",
-              ObjBy: "name asc",
-            },
-          ]}
+          bsComboBox={gridComboOptions}
           bsShowDescColumn={false}
           onEdit={handleOpenEdit}
           onAdd={handleOpenAdd}
           onDelete={handleOpenDelete}
           bsKeyId="user_id"
-          bsColumnDefs={{
-            field: "user_group_id",
-            hide: true,
-          }}
+          bsColumnDefs={[
+            {
+              field: "user_group_id",
+              hide: true,
+            },
+          ]}
           showAdd={permission.is_add}
           bsVisibleEdit={permission.is_edit}
           bsVisibleDelete={permission.is_delete}
@@ -335,29 +422,28 @@ const UserPage = (props) => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>
-          {editMode
-            ? getResourceByGroupAndName("t_com_user", "EditUser", locale_id)?.resource_value || "Edit User"
-            : getResourceByGroupAndName("t_com_user", "AddUser", locale_id)?.resource_value || "Add User"}
-        </DialogTitle>
+        <DialogTitle>{editMode ? labels.EditUser : labels.AddUser}</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 1 }}>
             {/* Row 1 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
+              <BSTextField
                 sx={{ flex: 1 }}
-                label={getResourceByGroupAndName("t_com_user", "user_id", locale_id)?.resource_value || "User ID"}
+                label={labels.user_id}
                 name="user_id"
                 value={form.user_id}
-                onChange={handleChange}
+                onChange={(val) => handleChange("user_id", val)}
                 required
                 disabled={editMode}
+                inputProps={{
+                  maxLength: 50,
+                }}
               />
-              <TextField
-                label={getResourceByGroupAndName("t_com_user", "password", locale_id)?.resource_value || "Password"}
+              <BSTextField
+                label={labels.password}
                 name="password"
                 value={form.password}
-                onChange={handleChange}
+                onChange={(val) => handleChange("password", val)}
                 required
                 disabled={editMode}
                 type={showPassword ? "text" : "password"}
@@ -377,20 +463,20 @@ const UserPage = (props) => {
             </Box>
             {/* Row 2 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
+              <BSTextField
                 fullWidth
-                label={getResourceByGroupAndName("t_com_user", "first_name", locale_id)?.resource_value || "First Name"}
+                label={labels.first_name}
                 name="first_name"
                 value={form.first_name}
-                onChange={handleChange}
+                onChange={(val) => handleChange("first_name", val)}
                 required
               />
-              <TextField
+              <BSTextField
                 fullWidth
-                label={getResourceByGroupAndName("t_com_user", "last_name", locale_id)?.resource_value || "Last Name"}
+                label={labels.last_name}
                 name="last_name"
                 value={form.last_name}
-                onChange={handleChange}
+                onChange={(val) => handleChange("last_name", val)}
                 required
               />
             </Box>
@@ -399,25 +485,12 @@ const UserPage = (props) => {
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="single"
-                  bsTitle={getResourceByGroupAndName("t_com_user", "user_group_id", locale_id)?.resource_value || "User Group"}
-                  bsPreObj="sec.t_com_"
-                  bsObj="user_group"
-                  bsColumes={[
-                    {
-                      field: "user_group_id",
-                      display: false,
-                      filter: false,
-                      key: true,
-                    },
-                    {
-                      field: "name",
-                      display: true,
-                      filter: true,
-                      key: false,
-                    },
-                  ]}
+                  bsTitle={labels.user_group_id}
+                  bsPreObj="sec"
+                  bsObj="t_com_user_group"
+                  bsColumes={USER_GROUP_COLUMNS}
                   bsObjBy=""
-                  bsObjWh="is_active='YES'"
+                  bsObjWh="is_active=1"
                   cacheKey="group_name"
                   //bsLoadOnOpen={true}
                   bsOnChange={(val) => {
@@ -429,24 +502,11 @@ const UserPage = (props) => {
               </Box>
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
-                  bsMode="single"
-                  bsTitle={getResourceByGroupAndName("t_com_user", "locale_id", locale_id)?.resource_value || "Locale ID"}
-                  bsPreObj="sec.t_com_"
-                  bsObj="combobox_item"
-                  bsColumes={[
-                    {
-                      field: "value_member",
-                      display: false,
-                      filter: false,
-                      key: true,
-                    },
-                    {
-                      field: "display_member",
-                      display: true,
-                      filter: false,
-                      key: false,
-                    }
-                  ]}
+                  bsMode="select"
+                  bsTitle={labels.locale_id}
+                  bsPreObj="sec"
+                  bsObj="t_com_combobox_item"
+                  bsColumes={LOCALE_COLUMNS}
                   bsObjBy=""
                   bsObjWh="group_name='locale_id'"
                   cacheKey="locale_id"
@@ -460,67 +520,57 @@ const UserPage = (props) => {
             {/* Row 4 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               <Box sx={{ flex: 1 }}>
-                <TextField
+                <BSTextField
                   fullWidth
-                  label={getResourceByGroupAndName("t_com_user", "department", locale_id)?.resource_value || "Department"}
+                  label={labels.department}
                   name="department"
                   value={form.department}
-                  onChange={handleChange}
+                  onChange={(val) => handleChange("department", val)}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
                 <BsAutoComplete
                   bsMode="single"
-                  bsTitle={getResourceByGroupAndName("t_com_user", "supervisor", locale_id)?.resource_value || "Supervisor"}
-                  bsPreObj="sec.t_com_"
-                  bsObj="user"
-                  bsColumes={[
-                    {
-                      field: "user_id",
-                      display: true,
-                      filter: false,
-                      key: true,
-                    },
-                  ]}
+                  bsTitle={labels.supervisor}
+                  bsPreObj="sec"
+                  bsObj="t_com_user"
+                  bsColumes={SUPERVISOR_COLUMNS}
                   bsObjBy=""
                   bsObjWh={`user_id<>'${form.user_id}'`}
                   bsCacheKey="supervisor"
-                  //bsLoadOnOpen={frue}
-                  bsOnChange={(val) =>
-                    handleSupervisorChange(val?.user_id ?? "")
-                  }
+                  bsOnChange={(val) => handleSupervisorChange(val)}
                   bsValue={form.supervisor}
                 />
               </Box>
             </Box>
             {/* Row 5 */}
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
+              <BSTextField
                 fullWidth
-                label={getResourceByGroupAndName("t_com_user", "email_address", locale_id)?.resource_value || "Email Address"}
+                label={labels.email_address}
                 name="email_address"
                 value={form.email_address}
-                onChange={handleChange}
+                onChange={(val) => handleChange("email_address", val)}
                 type="email"
                 error={!!emailError}
                 helperText={emailError}
               />
-              <TextField
+              <BSTextField
                 fullWidth
-                label={getResourceByGroupAndName("t_com_user", "domain", locale_id)?.resource_value || "Domain"}
+                label={labels.domain}
                 name="domain"
                 value={form.domain}
-                onChange={handleChange}
+                onChange={(val) => handleChange("domain", val)}
               />
             </Box>
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField
+              <BSTextField
                 fullWidth
                 select
-                label={getResourceByGroupAndName("t_com_user", "is_active", locale_id)?.resource_value || "Is Active"}
+                label={labels.is_active}
                 name="is_active"
                 value={form.is_active}
-                onChange={handleChange}
+                onChange={(val) => handleChange("is_active", val)}
                 required
               >
                 {activeOptions.map((a) => (
@@ -528,7 +578,7 @@ const UserPage = (props) => {
                     {a.label}
                   </MenuItem>
                 ))}
-              </TextField>
+              </BSTextField>
             </Box>
           </Box>
         </DialogContent>
@@ -536,19 +586,22 @@ const UserPage = (props) => {
           sx={editMode && { display: "flex", justifyContent: "space-between" }}
         >
           {editMode && (
-            <Button onClick={handleResetPass} variant="contained" color="error">
-              {getResourceByGroupAndName("t_com_user", "ResetPassword", locale_id)?.resource_value || "Reset Password"}
+            <Button
+              onClick={handleResetPass}
+              variant="contained"
+              color="error"
+              sx={ACTION_BUTTON_THEMES.error}
+            >
+              {labels.ResetPassword}
             </Button>
           )}
           <Box>
             <BSCloseOutlinedButton onClick={handleClose}>
-              {getResourceByGroupAndName("t_com_user", "Cancel", locale_id)?.resource_value || "Cancel"}
+              {labels.Cancel}
             </BSCloseOutlinedButton>
 
-            <BSSaveOutlinedButton onClick={handleSave}>
-              {editMode
-                ? getResourceByGroupAndName("t_com_user", "SaveChanges", locale_id)?.resource_value || "Save Changes"
-                : getResourceByGroupAndName("t_com_user", "Add", locale_id)?.resource_value || "Add"}
+            <BSSaveOutlinedButton onClick={handleSave} sx={{ ml: 1 }}>
+              {labels.SaveChanges /* } {editMode ?  : labels.Add} */}
             </BSSaveOutlinedButton>
           </Box>
         </DialogActions>
@@ -564,13 +617,10 @@ const UserPage = (props) => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>
-          {getResourceByGroupAndName("t_com_user", "ResetPassword", locale_id)?.resource_value || "Reset Password"}
-        </DialogTitle>
+        <DialogTitle>{labels.ResetPassword}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            {getResourceByGroupAndName("t_com_user", "ConfirmResetPassword", locale_id)?.resource_value ||
-              "Confirm resetting the user's password."}
+            {labels.ConfirmResetPassword}
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -578,14 +628,14 @@ const UserPage = (props) => {
             onClick={() => setIsPopupResetPasswordOpen(false)}
             color="primary"
           >
-            {getResourceByGroupAndName("t_com_user", "Cancel", locale_id)?.resource_value || "Cancel"}
+            {labels.Cancel}
           </Button>
           <Button
             onClick={sendChangePassword}
             color="primary"
             variant="contained"
           >
-            {getResourceByGroupAndName("t_com_user", "Confirm", locale_id)?.resource_value || "Confirm"}
+            {labels.Confirm}
           </Button>
         </DialogActions>
       </Dialog>
@@ -602,10 +652,10 @@ const UserPage = (props) => {
         <DialogTitle
           sx={{ fontWeight: "bold", textAlign: "center", fontSize: "1.3rem" }}
         >
-          {getResourceByGroupAndName("t_com_user", "NewPassword", locale_id)?.resource_value || "New Password"}
+          {labels.NewPassword}
         </DialogTitle>
         <DialogContent>
-          <TextField
+          <BSTextField
             fullWidth
             value={newPassword}
             InputProps={{
@@ -623,7 +673,7 @@ const UserPage = (props) => {
             Copy
           </Button> */}
           <Button variant="outlined" onClick={() => setOpenPwDialog(false)}>
-            {getResourceByGroupAndName("t_com_user", "Close", locale_id)?.resource_value || "Close"}
+            {labels.Close}
           </Button>
         </DialogActions>
       </Dialog>

@@ -18,8 +18,8 @@
         public bool is_read { get; set; }
         public string from_user { get; set; }
         public string to_user { get; set; }
-        public DateTime create_at { get; set; }
-        public DateTime? read_at { get; set; }
+        public DateTime create_date { get; set; }
+        public DateTime? read_date { get; set; }
     }
     
 }

@@ -1,38 +1,74 @@
+import React, { memo, useCallback } from "react";
 import BSTextField from "../components/BSTextField";
 import BSAutoComplete from "../components/BSAutoComplete";
 import BSDatepicker from "../components/BSDatepicker";
 import dayjs from "dayjs";
 
-export const renderInput = ({
+const RenderInputField = ({
   item,
-  formData,
-  errors,
+  value,
+  startValue,
+  endValue,
+  error,
+  startError,
+  endError,
   updateField,
-  locale = "th",
+  locale,
 }) => {
+  const itemField = item?.field;
+  const itemStart = item?.start;
+  const itemEnd = item?.end;
+  const itemComponent = item?.component;
+
+  const textOnChange = useCallback(
+    (nextValue) => updateField(itemField, nextValue),
+    [itemField, updateField]
+  );
+
+  const autoCompleteOnChange = useCallback(
+    (val) => updateField(itemField, val ?? ""),
+    [itemField, updateField]
+  );
+
+  const dateRangeOnChange = useCallback(
+    (val) => {
+      updateField(itemStart, val[0] ? val[0].format("YYYY-MM-DD") : null);
+      updateField(itemEnd, val[1] ? val[1].format("YYYY-MM-DD") : null);
+    },
+    [itemEnd, itemStart, updateField]
+  );
+
+  const dateSingleOnChange = useCallback(
+    (val) => {
+      updateField(itemField, val ? val : null);
+    },
+    [itemField, updateField]
+  );
+
   if (!item) return null;
 
-  switch (item.component) {
+  switch (itemComponent) {
     case "BSTextField":
       return (
         <BSTextField
           label={item.headerName}
-          value={formData[item.field] ? formData[item.field] : item.value ?? ""}
+          value={value}
           type={item.type}
           fullWidth
           required={item.required}
           readOnly={item.readOnly || false}
-          onChange={(e) => updateField(item.field, e)}
+          onChange={textOnChange}
           variant={item.variant || "outlined"}
           multiline={item.multiline}
           minRows={item.minRows || 1}
           maxRows={item.maxRows}
-          error={!!errors[item.field]}
-          helperText={errors[item.field] || ""}
+          error={!!error}
+          helperText={error || ""}
           disabled={item.readOnly || item.disabled}
           showCharacterCount={item.showCharacterCount || false}
           maxLength={item.maxLength}
           locale={locale}
+          placeholder={item.placeholder}
         />
       );
 
@@ -40,11 +76,9 @@ export const renderInput = ({
       return (
         <BSAutoComplete
           label={item.headerName}
-          bsValue={
-            formData[item.field] ? formData[item.field] : item.value ?? ""
-          }
+          bsValue={value}
           fullWidth
-          bsOnChange={(e) => updateField(item.field, e?.code || "")}
+          bsOnChange={autoCompleteOnChange}
           bsMode={item.bsMode}
           bsTitle={item.headerName || item.bsTitle}
           bsPreObj={item.bsPreObj}
@@ -52,9 +86,12 @@ export const renderInput = ({
           bsColumes={item.bsColumes}
           bsObjBy={item.bsObjBy}
           bsObjWh={item.bsObjWh}
+          bsLoadOnOpen={item.bsLoadOnOpen || false}
+          bsRefreshKey={item.bsRefreshKey}
+          bsRefreshOnRequestChange={item.bsRefreshOnRequestChange ?? true}
           variant={item.variant || "outlined"}
-          error={!!errors[item.field]}
-          helperText={errors[item.field] || ""}
+          error={!!error}
+          helperText={error || ""}
           required={item.required}
           disabled={item.readOnly || item.disabled}
           bsFlagColor={item.bsFlagColor || false}
@@ -70,26 +107,17 @@ export const renderInput = ({
           <BSDatepicker
             label={item.headerName}
             value={[
-              formData[item.start] ? dayjs(formData[item.start]) : null,
-              formData[item.end] ? dayjs(formData[item.end]) : null,
+              startValue ? dayjs(startValue) : null,
+              endValue ? dayjs(endValue) : null,
             ]}
             fullWidth
             isRange
             isDateOnly={item.isDateOnly !== false}
             format={item.format || "DD/MM/YYYY"}
-            onChange={(val) => {
-              updateField(
-                item.start,
-                val[0] ? val[0].format("YYYY-MM-DD") : null
-              );
-              updateField(
-                item.end,
-                val[1] ? val[1].format("YYYY-MM-DD") : null
-              );
-            }}
+            onChange={dateRangeOnChange}
             readOnly={item.readOnly || false}
-            error={!!errors[item.start] || !!errors[item.end]}
-            helperText={errors[item.start] || errors[item.end] || ""}
+            error={!!startError || !!endError}
+            helperText={startError || endError || ""}
             minDate={item.minDate ? dayjs(item.minDate) : undefined}
             maxDate={item.maxDate ? dayjs(item.maxDate) : undefined}
           />
@@ -99,15 +127,13 @@ export const renderInput = ({
         return (
           <BSDatepicker
             label={item.headerName}
-            value={formData[item.field] ? dayjs(formData[item.field]) : null}
+            value={value ? dayjs(value) : null}
             fullWidth
             isDateOnly={item.isDateOnly !== false}
             format={item.format || "DD/MM/YYYY"}
-            onChange={(val) => {
-              updateField(item.field, val ? val : null);
-            }}
-            error={!!errors[item.field]}
-            helperText={errors[item.field] || ""}
+            onChange={dateSingleOnChange}
+            error={!!error}
+            helperText={error || ""}
             minDate={item.minDate ? dayjs(item.minDate) : undefined}
             maxDate={item.maxDate ? dayjs(item.maxDate) : undefined}
             required={item.required}
@@ -119,4 +145,56 @@ export const renderInput = ({
     default:
       return null;
   }
+};
+
+const MemoRenderInputField = memo(RenderInputField, (prev, next) => {
+  return (
+    prev.locale === next.locale &&
+    prev.updateField === next.updateField &&
+    prev.value === next.value &&
+    prev.startValue === next.startValue &&
+    prev.endValue === next.endValue &&
+    prev.error === next.error &&
+    prev.startError === next.startError &&
+    prev.endError === next.endError &&
+    prev.item?.component === next.item?.component &&
+    prev.item?.field === next.item?.field &&
+    prev.item?.start === next.item?.start &&
+    prev.item?.end === next.item?.end &&
+    prev.item?.disabled === next.item?.disabled &&
+    prev.item?.readOnly === next.item?.readOnly &&
+    prev.item?.required === next.item?.required &&
+    prev.item?.variant === next.item?.variant &&
+    prev.item?.bsObjWh === next.item?.bsObjWh &&
+    prev.item?.bsRefreshKey === next.item?.bsRefreshKey
+  );
+});
+
+export const renderInput = ({
+  item,
+  formData,
+  errors,
+  updateField,
+  locale = "th",
+}) => {
+  const value = formData?.[item?.field] ?? item?.value ?? "";
+  const startValue = formData?.[item?.start] ?? null;
+  const endValue = formData?.[item?.end] ?? null;
+  const error = errors?.[item?.field] || "";
+  const startError = errors?.[item?.start] || "";
+  const endError = errors?.[item?.end] || "";
+
+  return (
+    <MemoRenderInputField
+      item={item}
+      value={value}
+      startValue={startValue}
+      endValue={endValue}
+      error={error}
+      startError={startError}
+      endError={endError}
+      updateField={updateField}
+      locale={locale}
+    />
+  );
 };

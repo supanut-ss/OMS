@@ -10,10 +10,10 @@
     public class MenuDataResponse
     {
         public int user_group_id { get; set; }
-        public string is_add_view { get; set; } = string.Empty;
-        public string is_edit_view { get; set; } = string.Empty;
-        public string is_delete_view { get; set; } = string.Empty;
-        public string is_view { get; set; } = string.Empty;
+        public bool is_add_view { get; set; } = false;
+        public bool is_edit_view { get; set; } = false;
+        public bool is_delete_view { get; set; } = false;
+        public bool is_view { get; set; } = false;
         public int menu_id { get; set; }
         public int parent_menu_id { get; set; }
         //    public string IsActive { get; set; } = string.Empty;

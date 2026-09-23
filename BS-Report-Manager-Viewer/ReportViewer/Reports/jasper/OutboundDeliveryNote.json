@@ -1,0 +1,101 @@
+{
+  "report_title": "Delivery Note",
+  "header": {
+  "outbound_order_number": "OB202605260001",
+  "order_status": "Open",
+  "order_type": "Blind Pick",
+  "order_date": "2026-05-26",
+  "warehouse": "WH01",
+  "owner_code": "1",
+  "customer_code": "cust001",
+  "customer_name": "cust001",
+  "customer_address1": "cust001",
+  "customer_address2": "cust001",
+  "customer_address3": "cust001",
+  "ship_to_code": "",
+  "ship_to_name": "",
+  "ship_to_address_line1": "",
+  "ship_to_address_line2": "",
+  "ship_to_address_line3": "",
+  "customer_order_number": "",
+  "customer_purchase_order": "",
+  "delivery_date_actual": "2026-06-09",
+  "remark": ""
+},
+  "details": [
+    {
+  "line_number": "00001",
+  "item_number": "item099",
+  "item_description": "item099",
+  "lot_number": "L2905",
+  "expiry_date": "2027-05-29",
+  "list_serial_numbers": "SR00000001",
+  "quantity_plan": 0.00000,
+  "quantity_pick": 0.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "quantity_plan": 5.00000,
+  "quantity_pick": 0.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "list_serial_numbers": "SNX005",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "list_serial_numbers": "SNX001",
+  "quantity_plan": 1.00000,
+  "quantity_pick": 1.00000,
+  "uom": "EA"
+},
+{
+  "line_number": "00001",
+  "item_number": "ภาคใต้",
+  "item_description": "AA",
+  "lot_number": "20260512003",
+  "expiry_date": "2027-05-29",
+  "list_serial_numbers": "SNX002",
+  "quantity_plan": 3.00000,
+  "quantity_pick": 3.00000,
+  "uom": "EA"
+}
+  ],
+  "summary": {
+    "total_unit_despatched_in": 1540,
+    "total_line_ordered": 1540,
+    "total_line_despatched": 1540,
+    "total_case_counted": 1540,
+    "total_weight_despatched": 1540,
+    "remark": "string"
+  },
+  "footer": {
+    "released_by": "",
+    "released_date": "2026-05-14",
+    "despatched_by": "",
+    "despatched_date": "2026-05-14",
+    "transported_by": "",
+    "transported_date": "2026-05-14",
+    "shipment_receive_by": "",
+    "shipment_receive_date": "2026-05-14",
+    "pod_return_receive_by": "",
+    "pod_return_receive_date": "2026-05-14"
+  }
+}

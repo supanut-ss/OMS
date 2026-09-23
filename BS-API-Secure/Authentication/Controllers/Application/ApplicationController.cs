@@ -26,6 +26,7 @@ namespace Authentication.Controllers.Application
             try
             {
                 var userId = User.FindFirst("UserId")?.Value;
+                //var userId = "system";
                 if (string.IsNullOrEmpty(userId))
                 {
                     return ResponseUnauthorized("Unauthorized");

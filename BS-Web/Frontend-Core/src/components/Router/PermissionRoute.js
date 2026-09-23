@@ -5,27 +5,42 @@ export default function PermissionRoute() {
   const location = useLocation();
   const menus = secureStorage.get("menu") || [];
 
-  const isMatch = (path, menuPath) =>
-    path === menuPath || path.startsWith(menuPath + "/");
+  const isMatch = (pathname, fullPath, menuPath) => {
+    if (!menuPath) return false;
+    if (menuPath.includes("?")) return fullPath === menuPath;
+    return pathname === menuPath || pathname.startsWith(menuPath + "/");
+  };
 
   // รวมทุก menu + submenu
-  const allMenus = menus.flatMap(g => [
+  const allMenus = menus.flatMap((g) => [
     ...(g.menu_group_path
-      ? [{
-          menu_path: g.menu_group_path,
-          ...g
-        }]
+      ? [
+          {
+            menu_path: g.menu_group_path,
+            ...g,
+          },
+        ]
       : []),
-    ...(g.submenu || [])
+    ...(g.submenu || []),
   ]);
 
   // เรียงจาก menu_sequence และ menu_group_sequence (match ให้แม่น)
   const sorted = allMenus
-    .filter(m => m.menu_path)
-    .sort((a, b) => a.menu_sequence - b.menu_sequence || (a.menu_group_sequence || 0) - (b.menu_group_sequence || 0));
+    .filter((m) => m.menu_path)
+    .sort(
+      (a, b) =>
+        a.menu_sequence - b.menu_sequence ||
+        (a.menu_group_sequence || 0) - (b.menu_group_sequence || 0),
+    );
 
   // หา menu ที่ match path ปัจจุบัน
-  const current = sorted.find(m => isMatch(location.pathname, m.menu_path));
+  const current = sorted.find((m) =>
+    isMatch(
+      location.pathname,
+      `${location.pathname}${location.search}`,
+      m.menu_path,
+    ),
+  );
   // 🔹 CASE 1: path = "/" แต่ไม่มี permission
   if (location.pathname === "/") {
     if (current?.is_view) {
@@ -33,9 +48,7 @@ export default function PermissionRoute() {
     }
 
     // หา menu แรกที่เปิดได้
-    const firstAllowed = sorted.find(
-      m => m.menu_path !== "/" && m.is_view
-    );
+    const firstAllowed = sorted.find((m) => m.menu_path !== "/" && m.is_view);
 
     if (firstAllowed) {
       return <Navigate to={firstAllowed.menu_path} replace />;

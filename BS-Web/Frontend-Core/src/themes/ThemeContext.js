@@ -6,7 +6,7 @@ import secureStorage from '../utils/SecureStorage';
 const ColorModeContext = createContext({
   toggleColorMode: () => { },
   mode: 'light',
-  themeName: 'theme-1',
+  themeName: 'theme-dark-navy',
   setThemeName: () => { },
 });
 
@@ -16,12 +16,12 @@ export function useColorMode() {
 
 export default function ThemeContextProvider({ children }) {
   const supportedThemes = new Set([
-    "theme-1",
-    "theme-2",
     "theme-purple",
     "theme-teal",
     "theme-orange",
     "theme-pastel",
+    "theme-dark-navy",
+    "theme-red-accent",
   ]);
 
   // Initialize mode from secureStorage or default to 'light'
@@ -34,13 +34,13 @@ export default function ThemeContextProvider({ children }) {
     }
   });
 
-  // Initialize theme palette from secureStorage or default to 'theme-1'
+  // Initialize theme palette from secureStorage or default to 'theme-dark-navy'
   const [themeName, setThemeName] = useState(() => {
     try {
       const savedTheme = secureStorage.get('theme');
-      return supportedThemes.has(savedTheme) ? savedTheme : 'theme-1';
+      return supportedThemes.has(savedTheme) ? savedTheme : 'theme-dark-navy';
     } catch {
-      return 'theme-1';
+      return 'theme-dark-navy';
     }
   });
 

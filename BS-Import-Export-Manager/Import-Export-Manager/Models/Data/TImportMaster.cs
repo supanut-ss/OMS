@@ -9,17 +9,21 @@ namespace Import_Export_Manager.Models.Data
         public string ImportName { get; set; }
         public string? Description { get; set; }
         public string ExecSqlCommand { get; set; }
-        public string? ExcelExampleFilePath { get; set; }
         public int Seq { get; set; }
-        public string IsActive { get; set; } = "YES";
-        public string? ConfirmMessage { get; set; }
+        public bool IsActive { get; set; } = true;
+        public string? ConfirmMessageTh { get; set; }
+        public string? ConfirmMessageEn { get; set; }
+        public string? ConfirmMessageOther { get; set; }
+        public int ImportBatchSize { get; set; }
+        public string ImportTempTableName { get; set; }
+        public string ImportStatus { get; set; }
         public string CreateBy { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public string? UpdateBy { get; set; }
         public DateTime? UpdateDate { get; set; }
 
-        [Timestamp] // ✅ บอก EF ว่านี่คือ rowversion column
+        [Timestamp]
         [Column("rowversion")]
-        public byte[] RowVersion { get; set; } = Array.Empty<byte>(); // ✅ ต้องใช้ byte[]
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     }
 }

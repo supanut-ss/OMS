@@ -1,0 +1,70 @@
+{
+    "report_title": "Sticker Item",
+    "header": {
+        "barcode_type": "QRCODE"
+    },
+    "details": [
+        {
+            "barcode_data": "SMH-TUY-001",
+            "item_number": "SMH-TUY-001",
+            "item_category": "Smart Home & Automation",
+            "description": "Tuya Zigbee Smart Switch 2-Gang"
+        },
+        {
+            "barcode_data": "SMH-SAM-75Q",
+            "item_number": "SMH-SAM-75Q",
+            "item_category": "Smart Home & Automation",
+            "description": "Smart TV 75-inch 4K UHD"
+        },
+        {
+            "barcode_data": "DIY-HAB-CLM",
+            "item_number": "DIY-HAB-CLM",
+            "item_category": "DIY & Electrical Tools",
+            "description": "Habotest Digital Clamp Meter"
+        },
+        {
+            "barcode_data": "DIY-SCH-SW1",
+            "item_number": "DIY-SCH-SW1",
+            "item_category": "DIY & Electrical Tools",
+            "description": "Schneider Electric 1-Way Switch"
+        },
+        {
+            "barcode_data": "DIY-OSK-TRM",
+            "item_number": "DIY-OSK-TRM",
+            "item_category": "DIY & Electrical Tools",
+            "description": "Osuka Cordless Wood Trimmer"
+        },
+        {
+            "barcode_data": "DIY-HDP-012",
+            "item_number": "DIY-HDP-012",
+            "item_category": "DIY & Electrical Tools",
+            "description": "HDPE Conduit Pipe 1/2\" (50m)"
+        },
+        {
+            "barcode_data": "DIY-TOA-A70",
+            "item_number": "DIY-TOA-A70",
+            "item_category": "DIY & Electrical Tools",
+            "description": "TOA A7000 Ceiling Paint (1 Gal)"
+        },
+        {
+            "barcode_data": "CAM-DJI-OP4",
+            "item_number": "CAM-DJI-OP4",
+            "item_category": "Photography & Video",
+            "description": "DJI Osmo Pocket 4"
+        },
+        {
+            "barcode_data": "GDN-WPC-PLK",
+            "item_number": "GDN-WPC-PLK",
+            "item_category": "Gardening & Outdoor",
+            "description": "WPC Artificial Wood Plank (2m)"
+        },
+        {
+            "barcode_data": "CAM-INS-X30",
+            "item_number": "CAM-INS-X30",
+            "item_category": "Photography & Video",
+            "description": "Insta360 Action Camera"
+        }
+    ],
+    "summary": null,
+    "footer": null
+}

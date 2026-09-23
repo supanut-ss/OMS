@@ -1,0 +1,6 @@
+@BS_Printing_Manager_HostAddress = http://localhost:5088
+
+GET {{BS_Printing_Manager_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

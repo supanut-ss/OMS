@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useRef,
   forwardRef,
   useImperativeHandle,
@@ -10,10 +11,11 @@ import React, {
 import {
   Paper,
   Box,
+  Autocomplete,
   Typography,
   Alert,
   Chip,
-  CircularProgress,
+  Skeleton,
   Button,
   IconButton,
   Dialog,
@@ -57,6 +59,7 @@ import {
   GridToolbarDensitySelector,
   GridRowModes,
   GridRowEditStopReasons,
+  GridEditSingleSelectCell,
   useGridApiRef,
   gridFilteredSortedRowIdsSelector,
 } from "@mui/x-data-grid-pro";
@@ -78,6 +81,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   AttachFile as AttachFileIcon,
   RadioButtonUnchecked,
+  RadioButtonChecked,
 } from "@mui/icons-material";
 import { useDynamicCrud } from "../../hooks/useDynamicCrud";
 import { getSchemaFromPreObj } from "../../utils/SchemaMapping";
@@ -101,12 +105,253 @@ import {
 import muiLicenseManager from "../../utils/muiLicenseManager";
 import BSAlertSwal2 from "../BSAlertSwal2";
 import BSChildDataGrid from "./BSChildDataGrid";
+import BSDialog from "../BSDialog";
 import BSFileUploadDialog from "../BSFileUploadDialog";
 import { BSSwitchField } from "../BSSwitch";
+import BSTextField from "../BSTextField";
+import BSDatepicker from "../BSDatepicker";
+import BSAutoComplete from "../BSAutoComplete";
+import { initializeFieldValue, resolveFormMode } from "./formDataUtils";
+import { buildExportData, getExportCellValue } from "./exportUtils";
+import {
+  getDateFieldDataType,
+  isDateLikeFieldName,
+  isDateLikeValue,
+  isDateOnlyDataType,
+  isDateTimeDataType,
+  normalizeColumnDataType,
+  resolveDateDisplayDataType,
+} from "./dateTypeUtils";
 import BSSaveOutlinedButton from "../Button/BSSaveOutlinedButton";
 import BSCloseOutlinedButton from "../Button/BSCloseOutlinedButton";
 import secureStorage from "../../utils/SecureStorage";
 import { logActivity } from "../../utils/ActivityLogger";
+
+const GLOBAL_FILTER_EXCLUDED_FIELDS = new Set(["create_by", "update_by"]);
+
+const excludesGlobalFilter = (field) =>
+  GLOBAL_FILTER_EXCLUDED_FIELDS.has(String(field || "").toLowerCase());
+
+// Canvas text measurement, deterministic and font-aware (handles Thai). Falls
+// back to a char estimate if canvas is unavailable.
+let __bsMeasureCanvas = null;
+const measureTextWidth = (text, bold) => {
+  const str = String(text ?? "");
+  try {
+    __bsMeasureCanvas = __bsMeasureCanvas || document.createElement("canvas");
+    const ctx = __bsMeasureCanvas.getContext("2d");
+    // Must match the grid's actual font (Prompt) or measurements under-shoot.
+    ctx.font = `${bold ? 700 : 400} 14px Prompt, Roboto, Inter, Helvetica, Arial, sans-serif`;
+    return ctx.measureText(str).width;
+  } catch {
+    return str.length * (bold ? 9 : 8);
+  }
+};
+
+// minWidth floor that fits the header text + room for sort/menu icons + padding.
+const headerMinWidthFloor = (headerName) =>
+  Math.min(
+    320,
+    Math.max(80, Math.round(measureTextWidth(headerName, true) + 64)),
+  );
+
+// Deterministically size "auto" columns (the given fields) to fit their header
+// and the content of the loaded rows. MUI's autosizeColumns only measures the
+// cells currently rendered in the DOM, so it gives wrong/unstable widths for
+// columns scrolled off-screen or values in non-rendered rows. Measuring the
+// data strings directly avoids that entirely.
+const AUTOFIT_MAX_WIDTH = 420;
+const isInlineBulkAddRow = (row, id) => {
+  if (row?.isNew === false || row?.isNew === "false") return false;
+
+  const rowId = row?.id ?? id;
+  return (
+    row?.isNew === true ||
+    row?.isNew === "true" ||
+    (typeof rowId === "string" && rowId.startsWith("new-"))
+  );
+};
+
+const autoFitColumnsToContent = (api, fields) => {
+  if (!api?.getAllColumns || !api?.setColumnWidth || !fields?.length) return;
+  const skip = new Set(["actions", "__rowNumber", "__check__"]);
+  const fieldSet = new Set(fields.filter((f) => !skip.has(f)));
+  if (!fieldSet.size) return;
+  const rowIds = api.getAllRowIds ? api.getAllRowIds().slice(0, 300) : [];
+  api.getAllColumns().forEach((col) => {
+    if (!fieldSet.has(col.field)) return;
+    let max = measureTextWidth(col.headerName, true) + 64; // header + icons/padding
+    for (let i = 0; i < rowIds.length; i++) {
+      let raw;
+      try {
+        const p = api.getCellParams(rowIds[i], col.field);
+        raw = p?.formattedValue ?? p?.value;
+      } catch {
+        raw = undefined;
+      }
+      // Only measure plain text/number; skip objects (e.g. Date) and elements.
+      if (typeof raw !== "string" && typeof raw !== "number") continue;
+      if (raw === "") continue;
+      const w = measureTextWidth(raw, false) + 28; // cell horizontal padding
+      if (w > max) max = w;
+    }
+    const width = Math.min(AUTOFIT_MAX_WIDTH, Math.max(80, Math.round(max)));
+    // setColumnWidth only changes width; updateColumns would replace the whole
+    // colDef and wipe headerName/renderCell/type.
+    if (Math.round(col.computedWidth || col.width || 0) !== width) {
+      api.setColumnWidth(col.field, width);
+    }
+  });
+};
+
+const getColumnFieldName = (column) =>
+  column?.columnName || column?.column_name || column?.field;
+
+// Normalize SQL bit / numeric / string booleans (1, 0, "1", "true", "YES") into a
+// real boolean so they match the true/false <Select> options used by is_active
+// style fields. Unrecognized values (null, undefined, "") are returned as-is so
+// empty selections still render empty instead of triggering MUI's
+// "out-of-range value" warning.
+const normalizeBooleanValue = (value) => {
+  if (
+    value === true ||
+    value === 1 ||
+    value === "1" ||
+    value === "true" ||
+    value === "YES"
+  ) {
+    return true;
+  }
+  if (
+    value === false ||
+    value === 0 ||
+    value === "0" ||
+    value === "false" ||
+    value === "NO"
+  ) {
+    return false;
+  }
+  return value;
+};
+
+const getComboBoxOptionParts = (option, config = {}) => {
+  const optionObj =
+    option && typeof option === "object"
+      ? option
+      : { value: option, display: option };
+  const valueData =
+    optionObj.data && typeof optionObj.data === "object"
+      ? optionObj.data
+      : optionObj;
+
+  const itemValue =
+    (config.Value &&
+    valueData[config.Value] !== undefined &&
+    valueData[config.Value] !== null
+      ? valueData[config.Value]
+      : undefined) ??
+    optionObj.value ??
+    valueData.value ??
+    option;
+
+  const itemDisplay =
+    optionObj.display ??
+    (config.Display &&
+    valueData[config.Display] !== undefined &&
+    valueData[config.Display] !== null
+      ? valueData[config.Display]
+      : undefined) ??
+    optionObj.label ??
+    valueData.label ??
+    optionObj.value ??
+    itemValue ??
+    "";
+
+  return { value: itemValue, label: itemDisplay };
+};
+
+const normalizeComboBoxOptions = (options, config = {}) => {
+  if (!Array.isArray(options)) return [];
+
+  const seen = new Set();
+  return options.reduce((normalized, option) => {
+    const item = getComboBoxOptionParts(option, config);
+    if (item.value === undefined || item.value === null) return normalized;
+
+    const key = `${typeof item.value}:${String(item.value)}`;
+    if (seen.has(key)) return normalized;
+    seen.add(key);
+
+    normalized.push(item);
+    return normalized;
+  }, []);
+};
+
+const isLazyComboBoxConfig = (config = {}) =>
+  Boolean(
+    config.DropdownLazy ||
+      config.dropdownLazy ||
+      config.Lazy ||
+      config.lazy ||
+      config.UseAutoComplete ||
+      config.useAutoComplete ||
+      config.Searchable ||
+      config.searchable,
+  );
+
+// Display is used both as the lookup label field and, historically, as the
+// denormalized field to sync after a selection. Allow callers to keep the
+// lookup label without mutating that field when the two concepts differ.
+const getComboBoxDisplayTarget = (config = {}) => {
+  if (config.SyncDisplay !== true) return null;
+  return config.DisplayTarget || config.Display || null;
+};
+
+const buildAutoCompleteColumns = (config = {}) => {
+  const columns = [];
+  const addColumn = (field, extra = {}) => {
+    if (!field || columns.some((column) => column.field === field)) return;
+    columns.push({ field, ...extra });
+  };
+
+  addColumn(config.Value, { display: false, filter: false, key: true });
+  addColumn(config.Display, { display: true, filter: true, key: false });
+
+  return columns;
+};
+
+const resolveComboBoxWhereClause = (objWh, parentVal) => {
+  if (!objWh) return objWh || "";
+  if (parentVal == null || parentVal === "") return objWh;
+  return String(objWh).replace(/\{([^}]+)\}/g, () => parentVal);
+};
+
+const getAutoCompleteSelectedValue = (selected, config = {}) => {
+  if (selected == null) return "";
+  if (typeof selected !== "object") return selected;
+  return (
+    selected.code ??
+    (config.Value && selected[config.Value] !== undefined
+      ? selected[config.Value]
+      : undefined) ??
+    selected.value ??
+    ""
+  );
+};
+
+const getAutoCompleteSelectedDisplay = (selected, config = {}) => {
+  if (selected == null) return "";
+  if (typeof selected !== "object") return selected;
+  return (
+    selected.value ??
+    selected.label ??
+    selected.name ??
+    (config.Display && selected[config.Display] !== undefined
+      ? selected[config.Display]
+      : undefined) ??
+    ""
+  );
+};
 
 // BSDataGrid verbose logging (disabled by default)
 // Enable by setting REACT_APP_BSDATAGRID_VERBOSE_LOG=true and rebuilding the frontend.
@@ -116,6 +361,86 @@ const bsLog = (...args) => {
   if (BSDATAGRID_VERBOSE_LOG) {
     Logger.log(...args);
   }
+};
+
+// Decimal places configuration from environment
+const getEnvDecimalPlaces = () => {
+  const envVal = process.env.REACT_APP_DECIMAL_PLACES;
+  if (envVal !== undefined && envVal !== null && envVal !== "") {
+    const parsed = parseInt(envVal, 10);
+    if (!isNaN(parsed) && parsed >= 0) return parsed;
+  }
+  return 3; // Default fallback
+};
+const DEFAULT_DECIMAL_PLACES = getEnvDecimalPlaces();
+
+const parseDialogColumnList = (columns) => {
+  if (Array.isArray(columns)) {
+    return columns.map((c) => String(c).trim()).filter(Boolean);
+  }
+
+  if (typeof columns === "string") {
+    return columns
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const DialogSectionHead = ({ icon, children, sx }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      fontWeight: 600,
+      color: "primary.main",
+      mt: 2.5,
+      mb: 1.5,
+      pb: 0.75,
+      borderBottom: "1px solid",
+      borderColor: "divider",
+      fontSize: "0.95rem",
+      ...sx,
+    }}
+  >
+    {icon && (
+      <Box
+        component="span"
+        sx={{ display: "inline-flex", alignItems: "center" }}
+      >
+        {icon}
+      </Box>
+    )}
+    <Typography component="span" variant="subtitle2" fontWeight={600}>
+      {children}
+    </Typography>
+  </Box>
+);
+
+const LoadingSkeletonBlock = ({ message, lines = 3 }) => {
+  return (
+    <Box sx={{ width: "100%", maxWidth: 460, mx: "auto", px: 2 }}>
+      <Skeleton variant="rounded" height={34} sx={{ mb: 1.25 }} />
+      {Array.from({ length: lines }).map((_, index) => (
+        <Skeleton
+          key={`skeleton-line-${index}`}
+          variant="text"
+          height={26}
+          sx={{ mb: 0.5 }}
+        />
+      ))}
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ mt: 1.25, textAlign: "center" }}
+      >
+        {message}
+      </Typography>
+    </Box>
+  );
 };
 
 // Initialize MUI X License
@@ -194,6 +519,18 @@ const sanitizeDataForApi = (data, columns = []) => {
   if (!data || typeof data !== "object") return data;
 
   const sanitized = { ...data };
+
+  // Filter out fields that do not exist in database columns metadata to prevent "Invalid column name" SQL errors
+  if (columns && columns.length > 0) {
+    const validColumnNames = new Set(
+      columns.map((col) => col.columnName.toLowerCase()),
+    );
+    Object.keys(sanitized).forEach((key) => {
+      if (!validColumnNames.has(key.toLowerCase())) {
+        delete sanitized[key];
+      }
+    });
+  }
 
   // Get date column names from metadata
   const dateColumns = new Set(
@@ -339,17 +676,21 @@ const OverflowTooltipCell = ({ value, children }) => {
   const textRef = React.useRef(null);
   const [isOverflowed, setIsOverflowed] = useState(false);
 
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     const element = textRef.current;
     if (element) {
-      // Check if text is overflowing
+      // Check if text is overflowing (useLayoutEffect ensures DOM is measured after render)
       setIsOverflowed(element.scrollWidth > element.clientWidth);
     }
   }, [value, children]);
 
-  const displayContent = children || value;
+  const displayContent = children ?? value;
   const tooltipValue =
-    typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+    typeof children === "string" || typeof children === "number"
+      ? String(children)
+      : typeof value === "object"
+        ? JSON.stringify(value)
+        : String(value ?? "");
 
   return (
     <Tooltip
@@ -382,6 +723,140 @@ const OverflowTooltipCell = ({ value, children }) => {
     </Tooltip>
   );
 };
+
+/**
+ * GridHeaderFilterAutocomplete Component
+ * Custom header filter component for high-cardinality singleSelect columns.
+ * Uses Autocomplete with option rendering limit to prevent browser lag.
+ */
+const GridHeaderFilterAutocomplete = ({
+  colDef,
+  item,
+  apiRef,
+  options = [],
+}) => {
+  const [inputValue, setInputValue] = useState("");
+
+  // Find the selected option matching the current filter value
+  const currentValue = item?.value ?? "";
+  const selectedOption = useMemo(() => {
+    return (
+      options.find((opt) => String(opt.value) === String(currentValue)) || null
+    );
+  }, [options, currentValue]);
+
+  // Synchronize input value with selected option display when value changes
+  useEffect(() => {
+    setInputValue(
+      selectedOption
+        ? String(selectedOption.label ?? selectedOption.value)
+        : "",
+    );
+  }, [selectedOption]);
+
+  // Performance optimization: Filter options in JS and limit DOM elements to 100
+  const filterOptions = useCallback((options, state) => {
+    const input = (state.inputValue || "").trim().toLowerCase();
+    const filtered = options.filter(
+      (opt) =>
+        String(opt.label || "")
+          .toLowerCase()
+          .includes(input) ||
+        String(opt.value || "")
+          .toLowerCase()
+          .includes(input),
+    );
+    return filtered.slice(0, 100);
+  }, []);
+
+  const handleChange = (event, newValue) => {
+    const filterValue = newValue ? newValue.value : "";
+    apiRef.current.upsertFilterItem({
+      ...item,
+      value: filterValue,
+      operator: "is", // Standard operator for singleSelect
+    });
+  };
+
+  return (
+    <Autocomplete
+      options={options}
+      value={selectedOption}
+      onChange={handleChange}
+      inputValue={inputValue}
+      onInputChange={(event, newInputValue, reason) => {
+        if (reason === "input" || reason === "clear") {
+          setInputValue(newInputValue);
+        }
+      }}
+      filterOptions={filterOptions}
+      getOptionLabel={(option) => String(option?.label ?? option?.value ?? "")}
+      isOptionEqualToValue={(option, val) =>
+        String(option.value) === String(val.value)
+      }
+      size="small"
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          variant="standard"
+          placeholder="ค้นหา..."
+          onClick={(e) => e.stopPropagation()} // Prevent column sorting/menu
+          onKeyDown={(e) => e.stopPropagation()} // Prevent grid shortcuts
+          InputProps={{
+            ...params.InputProps,
+            disableUnderline: true,
+            style: { fontSize: "0.8125rem", padding: "0 4px" },
+          }}
+        />
+      )}
+      renderOption={(props, option) => (
+        <li {...props} style={{ fontSize: "0.8125rem" }}>
+          {option.label || option.value}
+        </li>
+      )}
+      slotProps={{
+        paper: {
+          sx: {
+            zIndex: 1400,
+            "& .MuiAutocomplete-option": {
+              padding: "4px 8px",
+            },
+          },
+        },
+      }}
+      sx={{
+        width: "100%",
+        "& .MuiAutocomplete-inputRoot": {
+          padding: "2px 4px !important",
+        },
+        "& .MuiAutocomplete-clearIndicator": {
+          padding: 0,
+        },
+        "& .MuiAutocomplete-popupIndicator": {
+          padding: 0,
+        },
+      }}
+    />
+  );
+};
+
+// Use radio icons in the selection column for single-select mode.
+const RadioSelectionCheckbox = React.forwardRef(
+  function RadioSelectionCheckbox(props, ref) {
+    const { indeterminate, ...rest } = props;
+    void indeterminate;
+
+    return (
+      <Checkbox
+        ref={ref}
+        {...rest}
+        indeterminate={false}
+        icon={<RadioButtonUnchecked fontSize="small" />}
+        checkedIcon={<RadioButtonChecked fontSize="small" />}
+      />
+    );
+  },
+);
 
 // Split Button Component for Bulk Operations
 const BulkSplitButton = ({
@@ -525,7 +1000,12 @@ const BulkSplitButton = ({
 };
 
 // Split Button Component for Add Record (Inline Add vs Dialog Add)
-const AddRecordSplitButton = ({ onAdd, onInlineAdd, localeText }) => {
+const AddRecordSplitButton = ({
+  onAdd,
+  onInlineAdd,
+  localeText,
+  disableDialogAdd = false,
+}) => {
   const [open, setOpen] = useState(false);
   const anchorRef = React.useRef(null);
 
@@ -602,6 +1082,7 @@ const AddRecordSplitButton = ({ onAdd, onInlineAdd, localeText }) => {
           aria-label="select add method"
           aria-haspopup="menu"
           onClick={handleToggle}
+          disabled={disableDialogAdd}
           sx={{
             borderColor: "primary.main",
             "&:hover": {
@@ -640,7 +1121,10 @@ const AddRecordSplitButton = ({ onAdd, onInlineAdd, localeText }) => {
                       {localeText.bsAddInline || "Add Inline"}
                     </Box>
                   </MenuListItem> */}
-                  <MenuListItem onClick={() => handleMenuItemClick(onAdd)}>
+                  <MenuListItem
+                    disabled={disableDialogAdd}
+                    onClick={() => handleMenuItemClick(onAdd)}
+                  >
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Add fontSize="small" />
                       {localeText.bsAddByDialog || "Add by Dialog"}
@@ -836,7 +1320,7 @@ const BulkEditToolbar = ({
         variant="contained"
         onClick={onSave}
         disabled={formLoading || !hasUnsavedChanges}
-        startIcon={formLoading ? <CircularProgress size={16} /> : undefined}
+        startIcon={<SaveIcon fontSize="small" />}
         sx={{ bgcolor: "success.main", "&:hover": { bgcolor: "success.dark" } }}
       >
         {formLoading ? localeText.bsSaving : localeText.bsSave}
@@ -849,13 +1333,22 @@ const BulkEditToolbar = ({
 // Custom Quick Filter - ค้นหาเมื่อกด Enter เท่านั้น
 // รับ value และ onChange จาก props เพื่อเก็บ state ไว้ที่ parent component
 const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
+  // Use local state for typing to avoid triggering parent re-render on every keystroke
+  const [localValue, setLocalValue] = useState(value);
+
+  // Sync local value when the prop value changes (e.g. if cleared from outside)
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
   const handleSearch = useCallback(() => {
+    onChange?.(localValue);
     if (apiRef?.current) {
       apiRef.current.setQuickFilterValues(
-        value ? value.split(" ").filter((word) => word) : [],
+        localValue ? localValue.split(" ").filter((word) => word) : [],
       );
     }
-  }, [apiRef, value]);
+  }, [apiRef, localValue, onChange]);
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -868,6 +1361,7 @@ const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
   );
 
   const handleClear = useCallback(() => {
+    setLocalValue("");
     onChange?.("");
     if (apiRef?.current) {
       apiRef.current.setQuickFilterValues([]);
@@ -876,8 +1370,8 @@ const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
 
   return (
     <TextField
-      value={value}
-      onChange={(e) => onChange?.(e.target.value)}
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
       onKeyDown={handleKeyDown}
       placeholder={localeText?.toolbarQuickFilterPlaceholder || "Search..."}
       variant="outlined"
@@ -888,7 +1382,7 @@ const CustomQuickFilter = ({ apiRef, localeText, value = "", onChange }) => {
             <SearchIcon sx={{ color: "action.active", fontSize: "1.25rem" }} />
           </InputAdornment>
         ),
-        endAdornment: value ? (
+        endAdornment: localValue ? (
           <InputAdornment position="end">
             <IconButton
               size="small"
@@ -928,6 +1422,7 @@ const DynamicGridToolbar = ({
   onAdd,
   onInlineAdd,
   showAdd = true,
+  bsCustomActions = [],
   headerFiltersEnabled,
   onToggleHeaderFilters,
   bsBulkEdit = false,
@@ -956,6 +1451,8 @@ const DynamicGridToolbar = ({
   hasUnsavedChanges = false,
   formLoading = false,
   changesCount = 0,
+  disableReloadActions = false,
+  disableDialogAdd = false,
 }) => {
   // Debug: Log bulkEditMode and hasUnsavedChanges values
   bsLog("🔧 DynamicGridToolbar props:", {
@@ -1006,6 +1503,7 @@ const DynamicGridToolbar = ({
           onAdd={onAdd}
           onInlineAdd={onInlineAdd}
           localeText={localeText}
+          disableDialogAdd={disableDialogAdd}
         />
       ) : showAdd ? (
         <Button
@@ -1031,6 +1529,36 @@ const DynamicGridToolbar = ({
           {localeText.bsAddRecord}
         </Button>
       ) : null}
+
+      {/* Custom action buttons - rendered right after Add Record */}
+      {(bsCustomActions || [])
+        .filter((a) => a && !a.hidden)
+        .map((action, idx) => (
+          <Button
+            key={action.key || action.label || idx}
+            size="small"
+            variant={action.variant || "outlined"}
+            color={action.color || "primary"}
+            startIcon={action.icon}
+            disabled={action.disabled}
+            onClick={() => action.onClick && action.onClick(apiRef)}
+            sx={{
+              textTransform: "none",
+              fontWeight: 500,
+              fontSize: "0.8125rem",
+              padding: "4px 8px",
+              minHeight: "32px",
+              borderColor: "primary.main",
+              "&:hover": {
+                backgroundColor: "primary.main",
+                color: "white",
+              },
+              ...action.sx,
+            }}
+          >
+            {action.label}
+          </Button>
+        ))}
 
       {/* Bulk Edit/Delete Split Button - show only when rows are selected and checkbox is enabled */}
       {/* Controlled by bsShowBulkSplitButton prop (default: false) */}
@@ -1095,7 +1623,7 @@ const DynamicGridToolbar = ({
             variant="contained"
             onClick={onBulkSave}
             disabled={formLoading || !hasUnsavedChanges}
-            startIcon={formLoading ? <CircularProgress size={14} /> : undefined}
+            startIcon={<SaveIcon fontSize="small" />}
             sx={{
               bgcolor: "success.main",
               "&:hover": { bgcolor: "success.dark" },
@@ -1121,6 +1649,7 @@ const DynamicGridToolbar = ({
       <Button
         size="small"
         onClick={onToggleHeaderFilters}
+        disabled={disableReloadActions}
         startIcon={
           headerFiltersEnabled ? <FilterListIcon /> : <FilterListOffIcon />
         }
@@ -1154,6 +1683,7 @@ const DynamicGridToolbar = ({
         onClick={
           onRefresh || (() => Logger.warn("No onRefresh handler provided"))
         }
+        disabled={disableReloadActions}
         sx={{
           textTransform: "none",
           fontWeight: 500,
@@ -1274,10 +1804,14 @@ const ComboBoxField = ({
   description,
   localeText,
   parentValue = null, // Value from parent ComboBox for hierarchy filtering
+  label,
+  error = false,
+  disabled = false,
 }) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const { getComboBoxData } = useDynamicCrud(config.Obj || "dummy");
+  const isLazyDropdown = isLazyComboBoxConfig(config);
 
   // Determine if this is a child ComboBox that depends on a parent
   const hasParent = !!config.ParentColumn;
@@ -1291,17 +1825,23 @@ const ComboBoxField = ({
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
+  const normalizedOptions = useMemo(
+    () => normalizeComboBoxOptions(options, config),
+    [options, config],
+  );
+
   /**
    * Resolve {placeholder} tokens in ObjWh with actual parent value
    * e.g., "province_id={province_id}" → "province_id=10"
    */
-  const resolveWhereClause = (objWh, parentVal) => {
-    if (!objWh || parentVal == null || parentVal === "") return objWh;
-    return objWh.replace(/\{([^}]+)\}/g, () => parentVal);
-  };
+  const lazyColumns = useMemo(() => buildAutoCompleteColumns(config), [config]);
+  const resolvedWhere = hasParent
+    ? resolveComboBoxWhereClause(config.ObjWh, parentValue)
+    : config.ObjWh || "";
 
   useEffect(() => {
     const loadOptions = async () => {
+      if (isLazyDropdown) return;
       if (!config.Obj) return;
 
       // If this is a child ComboBox and parent is not selected, clear options
@@ -1312,11 +1852,6 @@ const ComboBoxField = ({
 
       setLoading(true);
       try {
-        // Resolve {placeholder} in ObjWh with parentValue
-        const resolvedWhere = hasParent
-          ? resolveWhereClause(config.ObjWh, parentValue)
-          : config.ObjWh || null;
-
         const comboConfig = {
           tableName: config.Obj,
           schemaName: config.PreObj
@@ -1357,20 +1892,21 @@ const ComboBoxField = ({
     config.ObjWh,
     config.ObjBy,
     config.ObjGrp,
+    isLazyDropdown,
     parentValue, // ✅ Reload when parent value changes
   ]);
 
   // Auto-select if only one option available and current value is empty
   useEffect(() => {
-    if (options.length === 1 && (!value || value === "" || value === 0)) {
-      const singleOption = options[0];
-      const valueData = singleOption.data || singleOption;
-      const autoSelectValue = valueData[config.Value] || singleOption.value;
-
-      onChange(autoSelectValue);
+    if (isLazyDropdown) return;
+    if (
+      normalizedOptions.length === 1 &&
+      (!value || value === "" || value === 0)
+    ) {
+      onChange(normalizedOptions[0].value);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options.length]);
+  }, [normalizedOptions.length]);
 
   // Build tooltip text
   const tooltipText = loading
@@ -1384,32 +1920,84 @@ const ComboBoxField = ({
         `Please select ${config.ParentColumn?.replace(/[_-]/g, " ")} first`
       : "";
 
+  if (isLazyDropdown) {
+    const lazyContent = (
+      <Box>
+        <BSAutoComplete
+          bsMode="single"
+          bsTitle={label || formatColumnName(columnName)}
+          bsPreObj={config.PreObj ? getSchemaFromPreObj(config.PreObj) : "tmt"}
+          bsObj={config.Obj}
+          bsColumes={lazyColumns}
+          bsObjWh={resolvedWhere || ""}
+          bsObjBy={config.ObjBy || ""}
+          bsValue={value ?? ""}
+          bsOnChange={(selected) => {
+            onChange(
+              getAutoCompleteSelectedValue(selected, config),
+              getAutoCompleteSelectedDisplay(selected, config),
+            );
+          }}
+          bsLoadOnOpen
+          required={required}
+          error={error}
+          disabled={disabled || !isParentSelected}
+        />
+        {helperText && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 0.5, ml: 1.5, display: "block" }}
+          >
+            {helperText}
+          </Typography>
+        )}
+      </Box>
+    );
+
+    return tooltipText ? (
+      <Tooltip title={tooltipText} arrow placement="top">
+        {lazyContent}
+      </Tooltip>
+    ) : (
+      lazyContent
+    );
+  }
+
   const comboBoxContent = (
-    <FormControl fullWidth size="small" required={required}>
-      <InputLabel>{formatColumnName(columnName)}</InputLabel>
+    <FormControl fullWidth size="small" required={required} error={error}>
+      <InputLabel>{label || formatColumnName(columnName)}</InputLabel>
       <Select
         value={value || ""}
-        label={formatColumnName(columnName)}
+        label={label || formatColumnName(columnName)}
         onChange={(e) => onChange(e.target.value)}
-        disabled={loading || !isParentSelected}
+        disabled={disabled || loading || !isParentSelected}
+        sx={{
+          // Match BSTextField / BSAutoComplete compact 44px height
+          minHeight: 44,
+          "& .MuiSelect-select": {
+            height: 20,
+            minHeight: "20px !important",
+            paddingTop: "0 !important",
+            paddingBottom: "0 !important",
+            lineHeight: "20px",
+            display: "flex",
+            alignItems: "center",
+          },
+        }}
       >
         {config.Default && (
           <MenuItem value="">
             <em>{config.Default}</em>
           </MenuItem>
         )}
-        {options.map((option) => {
-          // Handle both direct field access and nested data structure
-          const valueData = option.data || option;
-
-          const itemValue = valueData[config.Value] || option.value;
-          // Prefer option.display (from API) over field lookup
-          const itemDisplay =
-            option.display || valueData[config.Display] || option.value;
-
+        {normalizedOptions.map((option, index) => {
           return (
-            <MenuItem key={itemValue} value={itemValue}>
-              {itemDisplay}
+            <MenuItem
+              key={`${columnName}-${String(option.value)}-${index}`}
+              value={option.value}
+            >
+              {option.label}
             </MenuItem>
           );
         })}
@@ -1447,10 +2035,12 @@ const BulkAddComboBoxField = ({
   onChange,
   required,
   parentValue = null, // Value from parent ComboBox for hierarchy filtering
+  error = false,
 }) => {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const { getComboBoxData } = useDynamicCrud(config.Obj || "dummy");
+  const isLazyDropdown = isLazyComboBoxConfig(config);
 
   // Determine if this is a child ComboBox that depends on a parent
   const hasParent = !!config.ParentColumn;
@@ -1464,16 +2054,22 @@ const BulkAddComboBoxField = ({
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
+  const normalizedOptions = useMemo(
+    () => normalizeComboBoxOptions(options, config),
+    [options, config],
+  );
+
   /**
    * Resolve {placeholder} tokens in ObjWh with actual parent value
    */
-  const resolveWhereClause = (objWh, parentVal) => {
-    if (!objWh || parentVal == null || parentVal === "") return objWh;
-    return objWh.replace(/\{([^}]+)\}/g, () => parentVal);
-  };
+  const lazyColumns = useMemo(() => buildAutoCompleteColumns(config), [config]);
+  const resolvedWhere = hasParent
+    ? resolveComboBoxWhereClause(config.ObjWh, parentValue)
+    : config.ObjWh || "";
 
   useEffect(() => {
     const loadOptions = async () => {
+      if (isLazyDropdown) return;
       if (!config.Obj) return;
 
       // If this is a child ComboBox and parent is not selected, clear options
@@ -1484,11 +2080,6 @@ const BulkAddComboBoxField = ({
 
       setLoading(true);
       try {
-        // Resolve {placeholder} in ObjWh with parentValue
-        const resolvedWhere = hasParent
-          ? resolveWhereClause(config.ObjWh, parentValue)
-          : config.ObjWh || null;
-
         const comboConfig = {
           tableName: config.Obj,
           schemaName: config.PreObj
@@ -1524,8 +2115,44 @@ const BulkAddComboBoxField = ({
     parentValue, // ✅ Reload when parent value changes
   ]);
 
+  if (isLazyDropdown) {
+    return (
+      <Box>
+        <BSAutoComplete
+          bsMode="single"
+          bsTitle={formatColumnName(columnName)}
+          bsPreObj={config.PreObj ? getSchemaFromPreObj(config.PreObj) : "tmt"}
+          bsObj={config.Obj}
+          bsColumes={lazyColumns}
+          bsObjWh={resolvedWhere || ""}
+          bsObjBy={config.ObjBy || ""}
+          bsValue={value ?? ""}
+          bsOnChange={(selected) => {
+            onChange(
+              getAutoCompleteSelectedValue(selected, config),
+              getAutoCompleteSelectedDisplay(selected, config),
+            );
+          }}
+          bsLoadOnOpen
+          required={required}
+          error={error}
+          disabled={!isParentSelected}
+        />
+        {hasParent && !isParentSelected && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 0.5, ml: 1.5, display: "block" }}
+          >
+            {`Please select ${config.ParentColumn?.replace(/[_-]/g, " ")} first`}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
+
   return (
-    <FormControl fullWidth size="small" required={required}>
+    <FormControl fullWidth size="small" required={required} error={error}>
       <InputLabel>
         {formatColumnName(columnName)}
         {required && <span style={{ color: "error.main" }}> *</span>}
@@ -1533,7 +2160,14 @@ const BulkAddComboBoxField = ({
       <Select
         value={value || ""}
         label={formatColumnName(columnName)}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          const selectedVal = e.target.value;
+          const selectedOption = normalizedOptions.find(
+            (opt) => String(opt.value) === String(selectedVal),
+          );
+          const displayVal = selectedOption ? selectedOption.label : "";
+          onChange(selectedVal, displayVal);
+        }}
         disabled={loading || !isParentSelected}
       >
         {config.Default && (
@@ -1541,16 +2175,13 @@ const BulkAddComboBoxField = ({
             <em>{config.Default}</em>
           </MenuItem>
         )}
-        {options.map((option) => {
-          const valueData = option.data || option;
-          const itemValue = valueData[config.Value] || option.value;
-          // Prefer option.display (from API) over field lookup
-          const itemDisplay =
-            option.display || valueData[config.Display] || option.value;
-
+        {normalizedOptions.map((option, index) => {
           return (
-            <MenuItem key={itemValue} value={itemValue}>
-              {itemDisplay}
+            <MenuItem
+              key={`${columnName}-${String(option.value)}-${index}`}
+              value={option.value}
+            >
+              {option.label}
             </MenuItem>
           );
         })}
@@ -1620,7 +2251,8 @@ const BulkAddComboBoxField = ({
  *       Obj: "t_wms_status",
  *       ObjWh: "active=1",
  *       ObjBy: "name asc",
- *       ObjGrp: "id, name"
+ *       ObjGrp: "id, name",
+ *       DropdownLazy: true // Optional: use searchable BSAutoComplete instead of preloaded Select
  *     }
  *   ]}
  *
@@ -1748,6 +2380,8 @@ const BulkAddComboBoxField = ({
  * - filterable: boolean - Allow filtering (default: true)
  * - hideable: boolean - Allow hiding column (default: true)
  * - hide: boolean - Initially hide column (default: false)
+ * - hideInForm: boolean - Hide this field from dialog forms while keeping it in the grid (default: false)
+ * - showInForm: boolean - Keep a hidden grid column visible in dialog forms (default: false)
  *
  * Type-specific Properties:
  * Number/Currency:
@@ -1841,8 +2475,15 @@ const BulkAddComboBoxField = ({
  * @bsShowCheckbox Configuration:
  * - bsShowCheckbox={false} (default): Checkbox selection is hidden
  * - bsShowCheckbox={true}: Force show checkbox selection column
- *   * Checkbox will also auto-show when bsBulkEdit, bsBulkDelete is true or onCheckBoxSelected is provided
+ *   * Checkbox also shows when onCheckBoxSelected is provided
+ *   * Radio selection also shows a single-selection control when bsSelectionType="radio"
+ *   * Bulk flags alone do not auto-show checkbox; use bsShowCheckbox or bsBulkMode.showCheckbox
  *   * Use this prop when you need checkbox selection without bulk operations
+ *
+ * @bsSelectionType Configuration:
+ * - bsSelectionType="checkbox" (default): Multi-select with checkbox
+ * - bsSelectionType="radio": Single-select with radio button (select only one row)
+ *   * Also supports bsBulkMode.selectionType
  *
  * @bsShowRowNumber Configuration:
  * - bsShowRowNumber={false}: Row number column is hidden
@@ -1937,6 +2578,12 @@ const BulkAddComboBoxField = ({
  *     - "FullScreen": Full screen dialog
  *   * Example: <BSDataGrid bsDialogSize="Large" />
  *
+ * @bsDialogDraggable Configuration:
+ * - bsDialogDraggable: Allows dragging the add/edit dialog by its title bar (default: true)
+ *   * Set bsDialogDraggable={false} to disable dragging
+ *   * Disabled automatically in FullScreen dialog mode
+ *   * Example: <BSDataGrid bsDialogDraggable />
+ *
  * @bsDialogTab Configuration:
  * - bsDialogTab: Organize form fields into tabs within the dialog
  *   * Structure: Array of tab configurations
@@ -1964,8 +2611,25 @@ const BulkAddComboBoxField = ({
  *     ]}
  *     ```
  *
+ * @bsDialogSection Configuration:
+ * - bsDialogSection: Organize form fields into stacked sections within the dialog
+ *   * Structure and parsing are similar to bsDialogTab
+ *   * Each section contains:
+ *     - Column: Comma-separated list of column names to include in this section
+ *     - name: Display/resource name for the section
+ *     - icon: Optional React icon node for the section header
+ *   * Section names are resolved from the table resource group first, then fallback to the name text
+ *   * Fields not assigned to any section will appear under "Other"
+ *   * Example:
+ *     ```jsx
+ *     bsDialogSection={[
+ *       { Column: "name,email,phone", name: "General Info", icon: <PersonIcon /> },
+ *       { Column: "address,city,country", name: "Address" }
+ *     ]}
+ *     ```
+ *
  * @bsDialogColumns Configuration:
- * - bsDialogColumns: Number of columns per row in the dialog form (default: 3)
+ * - bsDialogColumns: Number of columns per row in the dialog form (default: 4)
  *   * Valid values: 1, 2, 3, 4, 6, or 12 (must be a divisor of 12 for MUI Grid)
  *   * 1 = Full width (1 field per row)
  *   * 2 = Half width (2 fields per row)
@@ -2013,6 +2677,7 @@ const BulkAddComboBoxField = ({
  *   * Examples:
  *     - Direct text: bsParentRecordLabel="ข้อมูลหลัก"
  *     - Resource key: bsParentRecordLabel="resource:bsParentRecordLabel"
+ *     - Field value: bsParentRecordLabel="field:item_number"
  *   * Default: localeText.bsParentRecord or "Parent Record"
  *
  * @bsPrimaryKeys Configuration (Hierarchical Data):
@@ -2034,8 +2699,8 @@ const BulkAddComboBoxField = ({
  *   * Example: bsHiddenColumns={["iso_type_id", "parent_id"]}
  *
  * @bsAutoPermission Configuration:
- * - bsAutoPermission={false} (default): Permission must be set manually via showAdd, bsVisibleEdit, etc.
- * - bsAutoPermission={true}: Auto-apply permissions from menu settings
+ * - bsAutoPermission={true} (default): Auto-apply permissions from menu settings
+ * - bsAutoPermission={false}: Permission must be set manually via showAdd, bsVisibleEdit, etc.
  *   * Reads permissions from SecureStorage based on current route path
  *   * Overrides showAdd, bsVisibleEdit, bsVisibleDelete, bsVisibleView based on canAdd, canEdit, canDelete, canView
  *   * Menu permissions are set via AssignMenu page for each user group
@@ -2082,6 +2747,11 @@ const BSDataGrid = forwardRef(
       readOnly = false,
       showToolbar = true,
       showAdd = true,
+      addRecordText, // Custom text for the Add Record button (overrides default/resource)
+      // Custom toolbar buttons rendered right after Add Record.
+      // Array of { label, icon?, onClick, color?, disabled?, hidden? }.
+      // onClick receives apiRef so the handler can read selection.
+      bsCustomActions = [],
       height = "auto",
       autoLoad = true,
 
@@ -2099,6 +2769,7 @@ const BSDataGrid = forwardRef(
       bsBulkAddInline = false, // Inline bulk add mode
       bsEnableBulkMode = false, // Enable all bulk operations (default: disabled)
       bsShowCheckbox = false, // Show checkbox selection
+      bsSelectionType = "checkbox", // "checkbox" | "radio"
       bsShowBulkSplitButton = false, // Show Bulk Split Button (Edit/Delete dropdown)
 
       // ===== NEW: Consolidated Bulk Mode Configuration =====
@@ -2115,12 +2786,15 @@ const BSDataGrid = forwardRef(
       bsPinColsRight,
       bsRowPerPage = 20,
       bsComboBox = [],
+      bsSyncDisplayDefault = true, // Default SyncDisplay value for combo configs
       bsFilterMode = "server", // "server" | "client"
       bsShowCharacterCount = false, // Show character count in helper text
       bsColumnDefs = [], // Custom column definitions (overrides metadata)
+      bsDataTransform = null, // Optional outbound transform before save
       bsKeyId, // Manual primary key specification (fallback if metadata unavailable)
       bsCustomFilters = [], // Custom filters from BSFilterCustom component
       bsExportFileName, // Custom filename for export (default: table name)
+      bsPrintTitle, // Custom title displayed in print header (default: auto-formatted table name)
 
       // Row-level configuration function
       // bsRowConfig={(row) => ({ showCheckbox: true, showEdit: true, showDelete: true, backgroundColor: null, textColor: null, disabled: false })}
@@ -2138,7 +2812,10 @@ const BSDataGrid = forwardRef(
       // Dialog configuration
       bsDialogSize = "Default", // Dialog size: "Small" | "Default" | "Large" | "FullScreen"
       bsDialogTab, // Tab configuration for form fields: [{ Tabs: [{ Tab: { Column: "col1,col2", name: "Tab Name" } }] }]
+      bsDialogSection, // Section configuration for form fields: [{ Column: "col1,col2", name: "Section Name", icon }]
       bsDialogColumns = 4, // Number of columns per row in dialog form: 1, 2, 3, 4, 6, or 12
+      bsDialogDraggable = true, // Enable dragging the add/edit dialog by title bar
+      bsDialogExtraContent, // Optional render function appended to Add/Edit dialog content
 
       // Hierarchical Data configuration
       bsChildGrids = [], // Child grid configurations: [{ name: "Tab Name", bsPreObj, bsObj, foreignKeys: ["fk_col"], ...gridProps }]
@@ -2155,12 +2832,15 @@ const BSDataGrid = forwardRef(
 
       // Cell Tooltip configuration
       bsCellTooltip = true, // Show tooltip when cell text overflows (text is truncated)
+      bsColumnWidth = "auto", // Default column width: "auto" or a number (e.g. 150)
 
       onCheckBoxSelected,
 
       // Data binding callback
       onDataBind, // Callback to receive loaded data for external processing
       onFilteredDataChange, // Callback to receive filtered/visible data for summary calculations
+      bsOnBeforeSave, // Optional async callback fired before save; return false to cancel
+      bsOnAfterSave, // Optional callback fired after a successful add or edit save
       bsPageSizeOptions = [20, 100, 200, 500, 1000],
       ...props
     },
@@ -2200,6 +2880,8 @@ const BSDataGrid = forwardRef(
     const resolvedBulkDelete = bulkModeConfig.delete ?? bsBulkDelete;
     const resolvedBulkAddInline = bulkModeConfig.addInline ?? bsBulkAddInline;
     const resolvedShowCheckbox = bulkModeConfig.showCheckbox ?? bsShowCheckbox;
+    const resolvedSelectionType =
+      bulkModeConfig.selectionType ?? bsSelectionType;
     const resolvedShowSplitButton =
       bulkModeConfig.showSplitButton ?? bsShowBulkSplitButton;
 
@@ -2220,6 +2902,7 @@ const BSDataGrid = forwardRef(
       ? resolvedBulkAddInline !== false
       : resolvedBulkAddInline === true;
     const effectiveShowCheckbox = resolvedShowCheckbox;
+    const effectiveSingleSelection = resolvedSelectionType === "radio";
     const effectiveShowSplitButton = resolvedShowSplitButton;
 
     // Get permissions from menu settings (when bsAutoPermission is enabled)
@@ -2316,12 +2999,18 @@ const BSDataGrid = forwardRef(
       if (Array.isArray(bsComboBox)) {
         bsComboBox.forEach((combo) => {
           if (combo.Column) {
-            config[combo.Column] = combo;
+            config[combo.Column] = {
+              ...combo,
+              SyncDisplay:
+                combo.SyncDisplay === undefined
+                  ? bsSyncDisplayDefault
+                  : combo.SyncDisplay,
+            };
           }
         });
       }
       return config;
-    }, [bsComboBox]);
+    }, [bsComboBox, bsSyncDisplayDefault]);
 
     // Parse bsColumnDefs into a lookup object
     // Supports both array format: [{ field: "name", ... }]
@@ -2342,6 +3031,14 @@ const BSDataGrid = forwardRef(
       }
       return config;
     }, [bsColumnDefs]);
+
+    const customColumnDefs = useMemo(
+      () =>
+        Object.values(columnDefsConfig).filter(
+          (colDef) => colDef?.customColumn === true,
+        ),
+      [columnDefsConfig],
+    );
 
     // Build columnVisibilityModel from bsColumnDefs (hide: true)
     // CRITICAL: Create a stable key to track when visibility actually changes
@@ -2449,20 +3146,14 @@ const BSDataGrid = forwardRef(
             // Format: [{ Tabs: [{ Tab: { Column: "...", name: "..." } }] }]
             tabConfig.Tabs.forEach((tabItem) => {
               if (tabItem.Tab) {
-                const columns = tabItem.Tab.Column
-                  ? tabItem.Tab.Column.split(",")
-                      .map((c) => c.trim())
-                      .filter(Boolean)
-                  : [];
+                const columns = parseDialogColumnList(tabItem.Tab.Column);
                 tabs.push({
                   name: tabItem.Tab.name || `Tab ${tabs.length + 1}`,
                   columns: columns,
                 });
               } else if (tabItem.Column && tabItem.name) {
                 // Alternate format: [{ Tabs: [{ Column: "...", name: "..." }] }]
-                const columns = tabItem.Column.split(",")
-                  .map((c) => c.trim())
-                  .filter(Boolean);
+                const columns = parseDialogColumnList(tabItem.Column);
                 tabs.push({
                   name: tabItem.name,
                   columns: columns,
@@ -2471,9 +3162,7 @@ const BSDataGrid = forwardRef(
             });
           } else if (tabConfig.Column && tabConfig.name) {
             // Simple format: [{ Column: "...", name: "..." }]
-            const columns = tabConfig.Column.split(",")
-              .map((c) => c.trim())
-              .filter(Boolean);
+            const columns = parseDialogColumnList(tabConfig.Column);
             tabs.push({
               name: tabConfig.name,
               columns: columns,
@@ -2492,6 +3181,57 @@ const BSDataGrid = forwardRef(
       }
     }, [bsDialogTab]);
 
+    // Parse bsDialogSection configuration
+    const parsedDialogSections = useMemo(() => {
+      if (
+        !bsDialogSection ||
+        !Array.isArray(bsDialogSection) ||
+        bsDialogSection.length === 0
+      ) {
+        return null;
+      }
+
+      try {
+        const sections = [];
+        const addSection = (sectionConfig) => {
+          if (!sectionConfig) return;
+
+          const columns = parseDialogColumnList(
+            sectionConfig.Column || sectionConfig.columns,
+          );
+
+          if (columns.length === 0) return;
+
+          sections.push({
+            name:
+              sectionConfig.name ||
+              sectionConfig.title ||
+              `Section ${sections.length + 1}`,
+            icon: sectionConfig.icon,
+            showHeader: sectionConfig.showHeader !== false,
+            columns,
+          });
+        };
+
+        bsDialogSection.forEach((sectionConfig) => {
+          if (sectionConfig.Sections && Array.isArray(sectionConfig.Sections)) {
+            sectionConfig.Sections.forEach((sectionItem) => {
+              addSection(sectionItem.Section || sectionItem);
+            });
+          } else if (sectionConfig.Section) {
+            addSection(sectionConfig.Section);
+          } else {
+            addSection(sectionConfig);
+          }
+        });
+
+        return sections.length > 0 ? sections : null;
+      } catch (error) {
+        Logger.error("Error parsing bsDialogSection:", error);
+        return null;
+      }
+    }, [bsDialogSection]);
+
     // State for active tab in dialog
     const [activeDialogTab, setActiveDialogTab] = useState(0);
 
@@ -2504,8 +3244,9 @@ const BSDataGrid = forwardRef(
     const { user } = useAuth();
 
     // Get resource hook for multi-language support
-    const { getResource, getResources } = useResource();
+    const { getResource, getResourceDescription, getResources } = useResource();
     const [resourceData, setResourceData] = useState(null);
+    const [resourceRefreshToken, setResourceRefreshToken] = useState(0);
 
     // Internal lang state that syncs with secureStorage to detect language changes
     // This is needed because bsLocale prop may not update when React Router caches route elements
@@ -2556,9 +3297,13 @@ const BSDataGrid = forwardRef(
 
     // Helper: Get effective locale for date formatting
     const getEffectiveLocale = useCallback(() => {
-      // Priority: bsLocale prop > user.locale_id > default 'en'
+      // Priority: bsLocale prop > internalLang > user.locale_id > default 'en'
       if (bsLocale && bsLocale !== "default") {
         return bsLocale;
+      }
+
+      if (internalLang) {
+        return internalLang;
       }
 
       if (user) {
@@ -2606,12 +3351,21 @@ const BSDataGrid = forwardRef(
 
     // Helper: Custom date formatter for consistent dd/MM/yyyy format
     // Uses shared dateUtils for consistent formatting across application
-    const formatDateCustom = useCallback(
-      (date, includeTime = false, effectiveLocale) => {
-        return formatDate(date, { includeTime, locale: effectiveLocale });
-      },
-      [],
-    );
+    // const formatDateCustom = useCallback(
+    //   (date, includeTime = false, effectiveLocale) => {
+    //     return formatDate(date, { includeTime, locale: effectiveLocale });
+    //   },
+    //   [],
+    // );
+    // locale hardcoded to "en" so dates stay Gregorian (dd/MM/yyyy) regardless
+    // of the UI language — do not switch to the effective locale.
+    const formatDateCustom = useCallback((date, includeTime = false) => {
+      return formatDate(date, {
+        includeTime,
+        locale: "en",
+        format: includeTime ? DATETIME_FORMAT : DATE_FORMAT,
+      });
+    }, []);
 
     // Helper: Get locale-specific date/time formatting options
     const getLocaleFormatOptions = useCallback((effectiveLocale) => {
@@ -2644,8 +3398,8 @@ const BSDataGrid = forwardRef(
         },
         // Number formatting
         numberOptions: {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
+          minimumFractionDigits: DEFAULT_DECIMAL_PLACES,
+          maximumFractionDigits: DEFAULT_DECIMAL_PLACES,
         },
         // Locale string for toLocaleString()
         localeString: isThai ? "th-TH" : "en-US",
@@ -2786,6 +3540,26 @@ const BSDataGrid = forwardRef(
       ],
     );
 
+    const applyOutboundTransform = useCallback(
+      (data, context = {}) => {
+        if (typeof bsDataTransform !== "function") {
+          return data;
+        }
+
+        const transformed = bsDataTransform(data, {
+          ...context,
+          preObj: bsPreObj,
+          obj: bsObj,
+          columns: metadata?.columns || [],
+        });
+
+        return transformed && typeof transformed === "object"
+          ? transformed
+          : data;
+      },
+      [bsDataTransform, bsPreObj, bsObj, metadata?.columns],
+    );
+
     // DataGrid state
     const [rows, setRows] = useState([]);
     const [rowCount, setRowCount] = useState(0);
@@ -2846,20 +3620,68 @@ const BSDataGrid = forwardRef(
 
     // Dialog & form states for built-in CRUD
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogMinimized, setDialogMinimized] = useState(false);
     const [dialogMode, setDialogMode] = useState("add"); // 'add' | 'edit' | 'bulkAdd'
     const [selectedRow, setSelectedRow] = useState(null);
     const [formData, setFormData] = useState({});
     const [formLoading, setFormLoading] = useState(false);
     const [isLoadMetadata, setIsLoadMetadata] = useState(false);
+
+    // Clear values of conditionally hidden fields to prevent stale data in payload.
+    useEffect(() => {
+      if (!dialogOpen || !columnDefsConfig || !formData) return;
+
+      const fieldsToClear = [];
+
+      Object.entries(columnDefsConfig).forEach(([fieldName, customDef]) => {
+        if (typeof customDef?.visible !== "function") return;
+
+        let isVisible = true;
+        try {
+          isVisible = customDef.visible(formData);
+        } catch (error) {
+          Logger.error(
+            `❌ Error evaluating visible() for field "${fieldName}":`,
+            error,
+          );
+          isVisible = true;
+        }
+
+        if (!isVisible && formData[fieldName] !== null) {
+          fieldsToClear.push(fieldName);
+        }
+      });
+
+      if (fieldsToClear.length === 0) return;
+
+      setFormData((prev) => {
+        let changed = false;
+        const updated = { ...prev };
+
+        fieldsToClear.forEach((fieldName) => {
+          if (updated[fieldName] !== null) {
+            updated[fieldName] = null;
+            changed = true;
+          }
+        });
+
+        return changed ? updated : prev;
+      });
+    }, [dialogOpen, formData, columnDefsConfig]);
+
     // Bulk Add specific states
     const [bulkAddDialogOpen, setBulkAddDialogOpen] = useState(false);
     const [bulkAddRows, setBulkAddRows] = useState([]);
     const [bulkRowCount, setBulkRowCount] = useState(5);
+    const [showValidationErrors, setShowValidationErrors] = useState(false);
+    const [showBulkValidationErrors, setShowBulkValidationErrors] =
+      useState(false);
 
     // Bulk Edit states
     const [bulkEditMode, setBulkEditMode] = useState(false);
     const unsavedChangesRef = React.useRef({});
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [invalidRowIds, setInvalidRowIds] = useState(() => new Set());
     const isBulkSavingRef = React.useRef(false); // Track if bulk save is in progress
     const isDiscardingRef = React.useRef(false); // Track if discard is in progress
     const isCancellingRef = React.useRef(false); // Track if cancel is in progress (to skip validation)
@@ -2868,7 +3690,14 @@ const BSDataGrid = forwardRef(
 
     // Inline Bulk Add states
     const [rowModesModel, setRowModesModelState] = useState({});
+    const [inlineAddSessionActive, setInlineAddSessionActive] = useState(false);
+    const inlineAddSessionActiveRef = useRef(false);
     const rowModesModelRef = useRef({}); // Ref to avoid stale closure in action column
+    const bulkReloadLocked =
+      bulkEditMode &&
+      hasUnsavedChanges &&
+      !isBulkSavingRef.current &&
+      !isDiscardingRef.current;
 
     // Wrapper function to update both state and ref synchronously
     // This prevents the one-render delay that occurs with useEffect sync
@@ -2894,6 +3723,77 @@ const BSDataGrid = forwardRef(
     const [savedParentKeyValues, setSavedParentKeyValues] = useState({}); // Saved parent PK values for child grids
     const childGridRefs = useRef({}); // Refs for child grid components
 
+    const getParentRecordLabel = useCallback(() => {
+      const fallbackLabel =
+        getLocaleText(getEffectiveLocale()).bsParentRecord || "Parent Record";
+
+      if (!bsParentRecordLabel) {
+        return fallbackLabel;
+      }
+
+      if (bsParentRecordLabel.startsWith("field:")) {
+        const fieldParam = bsParentRecordLabel.substring(6);
+        let fieldName = fieldParam;
+        let customFallback = fallbackLabel;
+
+        if (fieldParam.includes("|")) {
+          const parts = fieldParam.split("|");
+          fieldName = parts[0];
+          const rawFallback = parts[1];
+          if (rawFallback) {
+            if (rawFallback.startsWith("resource:")) {
+              const resourceKey = rawFallback.substring(9);
+              const resourceValue = getResource(resourceData, resourceKey);
+
+              // bsLog("🏷️ bsParentRecordLabel field fallback resource lookup:", {
+              //   bsParentRecordLabel,
+              //   resourceKey,
+              //   resourceValue,
+              // });
+
+              customFallback = resourceValue || resourceKey;
+            } else {
+              customFallback = rawFallback;
+            }
+          }
+        }
+
+        const fieldValue =
+          formData?.[fieldName] ??
+          selectedRow?.[fieldName] ??
+          savedParentKeyValues?.[fieldName];
+
+        return fieldValue === undefined ||
+          fieldValue === null ||
+          fieldValue === ""
+          ? customFallback
+          : String(fieldValue);
+      }
+
+      if (bsParentRecordLabel.startsWith("resource:")) {
+        const resourceKey = bsParentRecordLabel.substring(9);
+        const resourceValue = getResource(resourceData, resourceKey);
+
+        // bsLog("🏷️ bsParentRecordLabel resource lookup:", {
+        //   bsParentRecordLabel,
+        //   resourceKey,
+        //   resourceValue,
+        // });
+
+        return resourceValue || resourceKey;
+      }
+
+      return bsParentRecordLabel;
+    }, [
+      bsParentRecordLabel,
+      getEffectiveLocale,
+      formData,
+      selectedRow,
+      savedParentKeyValues,
+      getResource,
+      resourceData,
+    ]);
+
     // AttachFile Dialog states
     const [attachFileDialogOpen, setAttachFileDialogOpen] = useState(false);
     const [attachFileRowData, setAttachFileRowData] = useState(null);
@@ -2901,6 +3801,186 @@ const BSDataGrid = forwardRef(
 
     // API ref for accessing DataGrid internal state (filtered rows, etc.)
     const apiRef = useGridApiRef();
+    const lastHorizontalScrollLeftRef = useRef(0);
+    const pendingHorizontalScrollRestoreRef = useRef(false);
+    const restoringHorizontalScrollRef = useRef(false);
+
+    // Row queued to receive focus once its edit cells have actually rendered.
+    // Set by the add / validation flows; consumed by the effect below.
+    const pendingFocusRef = useRef(null);
+
+    const focusEditableRow = useCallback((id, fieldToFocus) => {
+      pendingFocusRef.current = { id: String(id), field: fieldToFocus };
+    }, []);
+
+    // Focus the queued row once its edit cells exist. The row enters edit mode
+    // and MUI mounts the <input> a frame or two *after* this commit, and that
+    // mount doesn't re-trigger the effect — so poll with rAF until the editor
+    // appears and focus actually sticks (which also survives the re-render that
+    // toggling bulk edit mode / recomputing columns causes). Never changes the
+    // page: server pagination would reload and drop the unsaved row.
+    useEffect(() => {
+      if (!pendingFocusRef.current || !apiRef.current) return;
+
+      let raf = 0;
+      let tries = 0;
+      const maxTries = 20; // ~20 frames ≈ 1/3s, then give up
+
+      const attempt = () => {
+        const pending = pendingFocusRef.current;
+        if (!pending || !apiRef.current) return;
+        const { id, field } = pending;
+
+        const rowEl = apiRef.current.getRowElement?.(id);
+        if (rowEl) {
+          try {
+            const idx = apiRef.current.getRowIndexRelativeToVisibleRows?.(id);
+            if (typeof idx === "number" && idx >= 0) {
+              apiRef.current.scrollToIndexes({ rowIndex: idx });
+            }
+          } catch (err) {
+            /* ignore scroll errors */
+          }
+
+          const cell = field
+            ? apiRef.current.getCellElement?.(id, field)
+            : null;
+          const scope = cell || rowEl;
+          const input =
+            scope.querySelector("input, textarea, [contenteditable='true']") ||
+            scope.querySelector("[role='combobox'], select, [tabindex]");
+          if (input) {
+            input.focus();
+            if (
+              document.activeElement === input ||
+              scope.contains(document.activeElement)
+            ) {
+              pendingFocusRef.current = null;
+              return; // focus landed
+            }
+          }
+        }
+
+        if (++tries < maxTries) raf = requestAnimationFrame(attempt);
+      };
+
+      raf = requestAnimationFrame(attempt);
+      return () => cancelAnimationFrame(raf);
+    }, [rows, rowModesModel, apiRef]);
+
+    // Pick which field to focus when adding a record: the first *required*
+    // column, falling back to the first column when none are required.
+    // "required" mirrors the form logic: an explicit columnDefs `required`
+    // overrides metadata, otherwise a non-nullable column is treated as
+    // required. NOTE: readOnly is intentionally NOT skipped — readOnly only
+    // applies to existing rows, so on a new row those cells are editable.
+    const getFocusFieldFromColumns = useCallback(
+      (editableColumns) => {
+        if (!editableColumns || editableColumns.length === 0) return undefined;
+
+        const isColumnRequired = (col) => {
+          const field = getColumnFieldName(col);
+          const customDef = field ? columnDefsConfig[field] : undefined;
+          if (customDef?.required !== undefined) {
+            return customDef.required === true;
+          }
+          const nullable =
+            col.isNullable !== undefined ? col.isNullable : col.is_nullable;
+          return nullable === false;
+        };
+
+        const requiredCol = editableColumns.find(isColumnRequired);
+        return getColumnFieldName(requiredCol || editableColumns[0]);
+      },
+      [columnDefsConfig],
+    );
+
+    const markInvalidRows = useCallback((rowIds) => {
+      const invalidIds = new Set(
+        rowIds.map((id) => String(id || "")).filter(Boolean),
+      );
+
+      setInvalidRowIds(invalidIds);
+      setRows((prevRows) =>
+        prevRows.map((row) => {
+          const candidates = [row.id, row.Id, row.ID]
+            .map((id) => String(id || ""))
+            .filter(Boolean);
+          const isInvalid = candidates.some((id) => invalidIds.has(id));
+          if (!!row.__bsInvalid === isInvalid) return row;
+          return { ...row, __bsInvalid: isInvalid };
+        }),
+      );
+    }, []);
+
+    const clearInvalidRows = useCallback(() => {
+      setInvalidRowIds(new Set());
+      setRows((prevRows) =>
+        prevRows.map((row) =>
+          row.__bsInvalid ? { ...row, __bsInvalid: false } : row,
+        ),
+      );
+    }, []);
+
+    const captureGridHorizontalScroll = useCallback(
+      (scheduleRestore = false) => {
+        try {
+          const scrollPosition = apiRef.current?.getScrollPosition?.();
+          const left = Number(scrollPosition?.left || 0);
+
+          lastHorizontalScrollLeftRef.current = left;
+          pendingHorizontalScrollRestoreRef.current =
+            scheduleRestore && left > 0;
+        } catch (err) {
+          bsLog("Could not capture grid horizontal scroll:", err);
+        }
+      },
+      [apiRef],
+    );
+
+    const restoreGridHorizontalScroll = useCallback(() => {
+      if (!pendingHorizontalScrollRestoreRef.current) return;
+
+      const left = lastHorizontalScrollLeftRef.current;
+
+      if (!left || !apiRef.current?.scroll) {
+        pendingHorizontalScrollRestoreRef.current = false;
+        return;
+      }
+
+      const restore = () => {
+        try {
+          if (!pendingHorizontalScrollRestoreRef.current) return;
+
+          const currentPosition = apiRef.current?.getScrollPosition?.() || {};
+          const currentLeft = Number(currentPosition.left || 0);
+
+          if (currentLeft >= left - 2) return;
+
+          restoringHorizontalScrollRef.current = true;
+          apiRef.current.scroll({
+            top: currentPosition.top || 0,
+            left,
+          });
+
+          setTimeout(() => {
+            restoringHorizontalScrollRef.current = false;
+          }, 0);
+        } catch (err) {
+          restoringHorizontalScrollRef.current = false;
+          bsLog("Could not restore grid horizontal scroll:", err);
+        }
+      };
+
+      requestAnimationFrame(() => {
+        restore();
+        setTimeout(restore, 0);
+        setTimeout(restore, 80);
+        setTimeout(() => {
+          pendingHorizontalScrollRestoreRef.current = false;
+        }, 120);
+      });
+    }, [apiRef]);
 
     // ComboBox Lookup Data state - stores fetched data from combobox configs for display in grid
     const [comboBoxLookupData, setComboBoxLookupData] = useState({});
@@ -2979,6 +4059,21 @@ const BSDataGrid = forwardRef(
         const valueOptionsData = {};
 
         for (const [columnName, config] of Object.entries(comboBoxConfig)) {
+          if (isLazyComboBoxConfig(config)) {
+            const staticOptions = normalizeComboBoxOptions(
+              config.valueOptions || [],
+              { Value: "value", Display: "label" },
+            );
+            const lookupMap = {};
+            staticOptions.forEach((item) => {
+              lookupMap[item.value] = item.label;
+              lookupMap[String(item.value)] = item.label;
+            });
+            lookupData[columnName] = lookupMap;
+            valueOptionsData[columnName] = staticOptions;
+            continue;
+          }
+
           try {
             const comboConfig = {
               tableName: config.Obj,
@@ -2990,6 +4085,7 @@ const BSDataGrid = forwardRef(
               customWhere: config.ObjWh || null,
               customOrderBy: config.ObjBy || null,
               groupBy: config.ObjGrp || null,
+              maxItems: config.MaxItems || null,
             };
 
             const result = await getComboBoxData(comboConfig);
@@ -2999,22 +4095,11 @@ const BSDataGrid = forwardRef(
               // Create valueOptions array for dropdown editing
               const options = [];
 
-              result.forEach((item) => {
-                const valueData =
-                  item.value !== undefined ? item : item.data || item;
-                const itemValue = valueData[config.Value] || item.value;
-                // Prefer valueData[config.Display] (direct field lookup), then item.display (from API format)
-                const itemDisplay =
-                  valueData[config.Display] ||
-                  item.display ||
-                  (item.data && item.data[config.Display]) ||
-                  item.value;
-                if (itemValue !== undefined) {
-                  // Store with both original and string key for type mismatch handling
-                  lookupMap[itemValue] = itemDisplay;
-                  lookupMap[String(itemValue)] = itemDisplay;
-                  options.push({ value: itemValue, label: itemDisplay });
-                }
+              normalizeComboBoxOptions(result, config).forEach((item) => {
+                // Store with both original and string key for type mismatch handling
+                lookupMap[item.value] = item.label;
+                lookupMap[String(item.value)] = item.label;
+                options.push(item);
               });
 
               lookupData[columnName] = lookupMap;
@@ -3073,7 +4158,26 @@ const BSDataGrid = forwardRef(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [comboBoxConfig]);
 
-    // Load resources for multi-language support when table or locale changes
+    useEffect(() => {
+      const handleResourceStorageChange = (event) => {
+        if (event?.detail?.key === "resource") {
+          setResourceRefreshToken((value) => value + 1);
+        }
+      };
+
+      window.addEventListener(
+        "secureStorageChange",
+        handleResourceStorageChange,
+      );
+      return () => {
+        window.removeEventListener(
+          "secureStorageChange",
+          handleResourceStorageChange,
+        );
+      };
+    }, []);
+
+    // Load resources for multi-language support when table, locale, or resource cache changes
     useEffect(() => {
       const loadResourceData = async () => {
         if (effectiveTableName || bsStoredProcedure) {
@@ -3093,7 +4197,12 @@ const BSDataGrid = forwardRef(
       };
       loadResourceData();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [effectiveTableName, bsStoredProcedure, effectiveLang]);
+    }, [
+      effectiveTableName,
+      bsStoredProcedure,
+      effectiveLang,
+      resourceRefreshToken,
+    ]);
 
     // Load metadata when table name changes or for Enhanced Stored Procedure
     useEffect(() => {
@@ -3109,7 +4218,10 @@ const BSDataGrid = forwardRef(
 
     useEffect(() => {
       if (isLoadMetadata) {
-        loadMetadata(bsPreObj);
+        // loadMetadata re-throws on failure (useDynamicCrud.js) - it already
+        // sets its own error state, so just swallow the rejection here to
+        // avoid an unhandled promise rejection crashing the whole page.
+        loadMetadata(bsPreObj).catch(() => {});
       }
     }, [bsPreObj, isLoadMetadata, loadMetadata]);
 
@@ -3123,139 +4235,234 @@ const BSDataGrid = forwardRef(
     sortModelRef.current = sortModel;
     filterModelRef.current = filterModel;
 
+    const isDefaultSortModel = useCallback(
+      (model = []) => {
+        if (!Array.isArray(model) || model.length !== parsedObjBy.length) {
+          return false;
+        }
+
+        return model.every((item, index) => {
+          const defaultItem = parsedObjBy[index];
+          return (
+            item?.field === defaultItem?.field &&
+            (item?.sort || "asc") === (defaultItem?.sort || "asc")
+          );
+        });
+      },
+      [parsedObjBy],
+    );
+
+    const getCustomOrderByForRequest = useCallback(
+      (model = []) => {
+        if (!bsObjBy) {
+          return undefined;
+        }
+
+        return isDefaultSortModel(model) ? bsObjBy : undefined;
+      },
+      [bsObjBy, isDefaultSortModel],
+    );
+
     // Watch for changes in bsCustomFilters and apply them
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const bsCustomFiltersKey = JSON.stringify(bsCustomFilters);
     useEffect(() => {
-      if (!bsCustomFilters || bsCustomFilters.length === 0) {
+      if (!hasLoadedRef.current) {
         return;
       }
 
-      // For client-side filtering, reload data to apply filters
-      if (bsFilterMode === "client" && hasLoadedRef.current) {
+      // Reload data whenever custom filters change, including clearing them.
+      if (bsFilterMode === "client") {
         loadDataRef.current();
       }
       // For server-side filtering, reload data with custom filters
-      else if (bsFilterMode === "server" && hasLoadedRef.current) {
+      else if (bsFilterMode === "server") {
         loadDataRef.current();
       }
-    }, [bsCustomFilters, bsFilterMode]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bsCustomFiltersKey, bsFilterMode]);
+
+    const isDateOnlyFilterValue = useCallback((filterValue) => {
+      return (
+        typeof filterValue === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(filterValue)
+      );
+    }, []);
+
+    const normalizeDateForComparison = useCallback(
+      (input, endOfDay = false) => {
+        const date = new Date(input);
+        if (Number.isNaN(date.getTime())) {
+          return null;
+        }
+
+        if (endOfDay) {
+          date.setHours(23, 59, 59, 999);
+        } else {
+          date.setHours(0, 0, 0, 0);
+        }
+
+        return date;
+      },
+      [],
+    );
 
     // Helper function to apply custom filters to rows (client-side)
-    const applyCustomFilters = useCallback((data, customFilters) => {
-      if (!customFilters || customFilters.length === 0) {
-        return data;
-      }
+    const applyCustomFilters = useCallback(
+      (data, customFilters) => {
+        if (!customFilters || customFilters.length === 0) {
+          return data;
+        }
 
-      return data.filter((row) => {
-        // All filters must match (AND logic)
-        return customFilters.every((filter) => {
-          const { field, operator, value, value2 } = filter;
-          const rowValue = row[field];
+        return data.filter((row) => {
+          // All filters must match (AND logic)
+          return customFilters.every((filter) => {
+            const { field, operator, value, value2 } = filter;
+            const rowValue = row[field];
 
-          // Skip if no value provided
-          if (value === null || value === undefined || value === "") {
-            return true;
-          }
-
-          // Apply operator
-          switch (operator) {
-            case "equals":
-            case "is":
-              return (
-                String(rowValue).toLowerCase() === String(value).toLowerCase()
-              );
-
-            case "contains":
-              return String(rowValue)
-                .toLowerCase()
-                .includes(String(value).toLowerCase());
-
-            case "startsWith":
-              return String(rowValue)
-                .toLowerCase()
-                .startsWith(String(value).toLowerCase());
-
-            case "endsWith":
-              return String(rowValue)
-                .toLowerCase()
-                .endsWith(String(value).toLowerCase());
-
-            case "isEmpty":
-              return !rowValue || rowValue === "";
-
-            case "isNotEmpty":
-              return rowValue && rowValue !== "";
-
-            case "isAnyOf":
-              // value should be an array
-              const values = Array.isArray(value) ? value : [value];
-              return values.some(
-                (v) =>
-                  String(rowValue).toLowerCase() === String(v).toLowerCase(),
-              );
-
-            case ">":
-            case "after":
-              if (rowValue instanceof Date || typeof rowValue === "string") {
-                const rowDate = new Date(rowValue);
-                const filterDate = new Date(value);
-                return rowDate > filterDate;
-              }
-              return Number(rowValue) > Number(value);
-
-            case ">=":
-            case "onOrAfter":
-              if (rowValue instanceof Date || typeof rowValue === "string") {
-                const rowDate = new Date(rowValue);
-                const filterDate = new Date(value);
-                return rowDate >= filterDate;
-              }
-              return Number(rowValue) >= Number(value);
-
-            case "<":
-            case "before":
-              if (rowValue instanceof Date || typeof rowValue === "string") {
-                const rowDate = new Date(rowValue);
-                const filterDate = new Date(value);
-                return rowDate < filterDate;
-              }
-              return Number(rowValue) < Number(value);
-
-            case "<=":
-            case "onOrBefore":
-              if (rowValue instanceof Date || typeof rowValue === "string") {
-                const rowDate = new Date(rowValue);
-                const filterDate = new Date(value);
-                return rowDate <= filterDate;
-              }
-              return Number(rowValue) <= Number(value);
-
-            case "isBetween":
-              if (!value2) return true;
-
-              if (rowValue instanceof Date || typeof rowValue === "string") {
-                const rowDate = new Date(rowValue);
-                const filterDate1 = new Date(value);
-                const filterDate2 = new Date(value2);
-                return rowDate >= filterDate1 && rowDate <= filterDate2;
-              }
-              return (
-                Number(rowValue) >= Number(value) &&
-                Number(rowValue) <= Number(value2)
-              );
-
-            case "not":
-            case "!=":
-              return (
-                String(rowValue).toLowerCase() !== String(value).toLowerCase()
-              );
-
-            default:
-              Logger.warn(`Unknown operator: ${operator}`);
+            // Skip if no value provided
+            if (value === null || value === undefined || value === "") {
               return true;
-          }
+            }
+
+            // Apply operator
+            switch (operator) {
+              case "equals":
+              case "is":
+                if (
+                  (rowValue instanceof Date || typeof rowValue === "string") &&
+                  isDateOnlyFilterValue(value)
+                ) {
+                  const rowDate = normalizeDateForComparison(rowValue);
+                  const filterDate = normalizeDateForComparison(value);
+
+                  if (!rowDate || !filterDate) return false;
+                  return rowDate.getTime() === filterDate.getTime();
+                }
+
+                return (
+                  String(rowValue).toLowerCase() === String(value).toLowerCase()
+                );
+
+              case "contains":
+                return String(rowValue)
+                  .toLowerCase()
+                  .includes(String(value).toLowerCase());
+
+              case "startsWith":
+                return String(rowValue)
+                  .toLowerCase()
+                  .startsWith(String(value).toLowerCase());
+
+              case "endsWith":
+                return String(rowValue)
+                  .toLowerCase()
+                  .endsWith(String(value).toLowerCase());
+
+              case "isEmpty":
+                return !rowValue || rowValue === "";
+
+              case "isNotEmpty":
+                return rowValue && rowValue !== "";
+
+              case "isAnyOf":
+                // value should be an array
+                const values = Array.isArray(value) ? value : [value];
+                return values.some(
+                  (v) =>
+                    String(rowValue).toLowerCase() === String(v).toLowerCase(),
+                );
+
+              case ">":
+              case "after":
+                if (rowValue instanceof Date || typeof rowValue === "string") {
+                  const rowDate = new Date(rowValue);
+                  const filterDate = new Date(value);
+                  return rowDate > filterDate;
+                }
+                return Number(rowValue) > Number(value);
+
+              case ">=":
+              case "onOrAfter":
+                if (
+                  rowValue instanceof Date ||
+                  (typeof rowValue === "string" && isNaN(Number(rowValue)))
+                ) {
+                  const rowDate = isDateOnlyFilterValue(value)
+                    ? normalizeDateForComparison(rowValue)
+                    : new Date(rowValue);
+                  const filterDate = isDateOnlyFilterValue(value)
+                    ? normalizeDateForComparison(value)
+                    : new Date(value);
+                  return rowDate >= filterDate;
+                }
+                return Number(rowValue) >= Number(value);
+
+              case "<":
+              case "before":
+                if (rowValue instanceof Date || typeof rowValue === "string") {
+                  const rowDate = new Date(rowValue);
+                  const filterDate = new Date(value);
+                  return rowDate < filterDate;
+                }
+                return Number(rowValue) < Number(value);
+
+              case "<=":
+              case "onOrBefore":
+                if (
+                  rowValue instanceof Date ||
+                  (typeof rowValue === "string" && isNaN(Number(rowValue)))
+                ) {
+                  const rowDate = isDateOnlyFilterValue(value)
+                    ? normalizeDateForComparison(rowValue)
+                    : new Date(rowValue);
+                  const filterDate = isDateOnlyFilterValue(value)
+                    ? normalizeDateForComparison(value, true)
+                    : new Date(value);
+                  return rowDate <= filterDate;
+                }
+                return Number(rowValue) <= Number(value);
+
+              case "isBetween":
+                if (!value2) return true;
+
+                if (rowValue instanceof Date || typeof rowValue === "string") {
+                  const useDateOnly =
+                    isDateOnlyFilterValue(value) &&
+                    isDateOnlyFilterValue(value2);
+                  const rowDate = useDateOnly
+                    ? normalizeDateForComparison(rowValue)
+                    : new Date(rowValue);
+                  const filterDate1 = useDateOnly
+                    ? normalizeDateForComparison(value)
+                    : new Date(value);
+                  const filterDate2 = useDateOnly
+                    ? normalizeDateForComparison(value2, true)
+                    : new Date(value2);
+
+                  if (!rowDate || !filterDate1 || !filterDate2) return false;
+                  return rowDate >= filterDate1 && rowDate <= filterDate2;
+                }
+                return (
+                  Number(rowValue) >= Number(value) &&
+                  Number(rowValue) <= Number(value2)
+                );
+
+              case "not":
+              case "!=":
+                return (
+                  String(rowValue).toLowerCase() !== String(value).toLowerCase()
+                );
+
+              default:
+                Logger.warn(`Unknown operator: ${operator}`);
+                return true;
+            }
+          });
         });
-      });
-    }, []);
+      },
+      [isDateOnlyFilterValue, normalizeDateForComparison],
+    );
 
     // Load data from API
     const loadData = useCallback(
@@ -3293,11 +4500,26 @@ const BSDataGrid = forwardRef(
             // Build filter model for backend
             filterItems = currentFilterModel.items
               .filter((item) => item.value !== undefined && item.value !== "")
-              .map((item) => ({
-                field: item.field,
-                operator: item.operator || "contains",
-                value: item.value,
-              }));
+              .map((item) => {
+                let value = item.value;
+
+                // Strip time/timezone from ISO datetime strings (e.g. "2026-05-12T00:00:00.000Z" → "2026-05-12")
+                // This handles date-type header filters on datetime columns so the backend
+                // receives only the date part and can do CAST(col AS DATE) = '2026-05-12'
+                if (
+                  value &&
+                  typeof value === "string" &&
+                  /^\d{4}-\d{2}-\d{2}T/.test(value)
+                ) {
+                  value = value.split("T")[0];
+                }
+
+                return {
+                  field: item.field,
+                  operator: item.operator || "contains",
+                  value,
+                };
+              });
 
             // Handle Quick Filter (search box)
             if (
@@ -3349,7 +4571,7 @@ const BSDataGrid = forwardRef(
             preObj: bsPreObj,
             columns: columnsForQuery ? columnsForQuery.join(",") : undefined,
             customWhere: bsObjWh,
-            customOrderBy: bsObjBy,
+            customOrderBy: getCustomOrderByForRequest(currentSortModel),
             // Add custom filters for server-side processing
             customFilters:
               bsFilterMode === "server" &&
@@ -3399,8 +4621,8 @@ const BSDataGrid = forwardRef(
 
               // Ensure each row has a valid ID - use consistent ID generation
               if (!rowData.id && !rowData.Id && !rowData.ID) {
-                // Try to find primary key from metadata
-                const primaryKey = metadata?.primaryKeys?.[0];
+                // Try to find primary key from bsKeyId or metadata
+                const primaryKey = bsKeyId || metadata?.primaryKeys?.[0];
                 if (primaryKey && rowData[primaryKey] != null) {
                   rowData.id = rowData[primaryKey];
                 } else {
@@ -3469,17 +4691,18 @@ const BSDataGrid = forwardRef(
       [
         effectiveTableName,
         metadata,
-        getTableData,
         bsFilterMode,
-        bsPreObj,
-        bsObjBy,
-        bsObjWh,
         parsedCols,
         comboBoxConfig,
-        onDataBind,
-        applyCustomFilters,
+        bsPreObj,
+        bsObjWh,
+        getCustomOrderByForRequest,
         bsCustomFilters,
         bsUserLookup,
+        getTableData,
+        onDataBind,
+        bsKeyId,
+        applyCustomFilters,
       ],
     );
 
@@ -3791,8 +5014,11 @@ const BSDataGrid = forwardRef(
       async (forceRefresh = false) => {
         // Reset bulk edit mode state when refreshing
         setBulkEditMode(false);
+        inlineAddSessionActiveRef.current = false;
+        setInlineAddSessionActive(false);
         unsavedChangesRef.current = {};
         setHasUnsavedChanges(false);
+        clearInvalidRows();
 
         if (bsStoredProcedure) {
           await loadStoredProcedureData(
@@ -3812,17 +5038,8 @@ const BSDataGrid = forwardRef(
         paginationModel,
         sortModel,
         filterModel,
+        clearInvalidRows,
       ],
-    );
-
-    // Expose refresh methods via ref
-    useImperativeHandle(
-      ref,
-      () => ({
-        refreshData,
-        forceRefresh: () => refreshData(true),
-      }),
-      [refreshData],
     );
 
     // Track if initial load has been done
@@ -3901,13 +5118,44 @@ const BSDataGrid = forwardRef(
     }, [rows, notifyFilteredDataChange]);
 
     // Handler for sort model changes
-    const handleSortModelChange = useCallback((newSortModel) => {
-      setSortModel(newSortModel);
-    }, []);
+    const handlePaginationModelChange = useCallback(
+      (newPaginationModel) => {
+        if (bulkReloadLocked) {
+          Logger.warn(
+            "Blocked pagination change while bulk mode has unsaved changes",
+          );
+          return;
+        }
+        setPaginationModel(newPaginationModel);
+      },
+      [bulkReloadLocked],
+    );
+
+    const handleSortModelChange = useCallback(
+      (newSortModel) => {
+        if (bulkReloadLocked) {
+          Logger.warn(
+            "Blocked sort change while bulk mode has unsaved changes",
+          );
+          return;
+        }
+        setSortModel(newSortModel);
+        setPaginationModel((prev) =>
+          prev.page === 0 ? prev : { ...prev, page: 0 },
+        );
+      },
+      [bulkReloadLocked],
+    );
 
     // Handler for filter model changes
     const handleFilterModelChange = useCallback(
       (newFilterModel) => {
+        if (bulkReloadLocked) {
+          Logger.warn(
+            "Blocked filter change while bulk mode has unsaved changes",
+          );
+          return;
+        }
         setFilterModel(newFilterModel);
 
         // Notify parent about filtered data after a short delay
@@ -3915,7 +5163,7 @@ const BSDataGrid = forwardRef(
           notifyFilteredDataChange();
         }, 150);
       },
-      [notifyFilteredDataChange],
+      [bulkReloadLocked, notifyFilteredDataChange],
     );
 
     // Helper: Format column name for display with multi-language support
@@ -3965,6 +5213,123 @@ const BSDataGrid = forwardRef(
       [resourceData, getResource],
     );
 
+    const getCurrentLocaleText = useCallback(
+      () => getLocaleText(getEffectiveLocale()),
+      [getEffectiveLocale],
+    );
+
+    const getRequiredFieldMessage = useCallback(
+      (displayName) => {
+        const currentLocaleText = getCurrentLocaleText();
+        const requiredMessage =
+          currentLocaleText.bsFieldRequired || "This field is required";
+        return `${displayName}: ${requiredMessage}`;
+      },
+      [getCurrentLocaleText],
+    );
+
+    const escapeAlertHtml = useCallback((value) => {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }, []);
+
+    const buildValidationAlertHtml = useCallback(
+      (validationItems) => {
+        const currentLocaleText = getCurrentLocaleText();
+        const textSecondary = theme.palette.text.secondary;
+        const errorBg =
+          theme.palette.mode === "dark"
+            ? "rgba(211, 47, 47, 0.15)"
+            : `${theme.palette.error.light}22`;
+        const errorBorder = theme.palette.error.main;
+        const errorText =
+          theme.palette.mode === "dark"
+            ? theme.palette.error.light
+            : theme.palette.error.dark;
+        const rowLabel = currentLocaleText.bsRow || "Row";
+
+        const items = validationItems.map((item) => {
+          const errorItems = item.errors
+            .map(
+              (err) =>
+                `<li style="margin: 2px 0; color: ${textSecondary};">${escapeAlertHtml(err)}</li>`,
+            )
+            .join("");
+          const rowTitle =
+            item.rowNumber != null
+              ? `<strong style="color: ${errorText};">📋 ${escapeAlertHtml(rowLabel)} ${escapeAlertHtml(item.rowNumber)}</strong>`
+              : "";
+
+          return `
+            <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${errorBg}; border-radius: 6px; border-left: 3px solid ${errorBorder};">
+              ${rowTitle}
+              <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
+            </div>`;
+        });
+
+        return {
+          title:
+            currentLocaleText.bsValidationErrors ||
+            currentLocaleText.bsValidationError ||
+            "Validation Errors",
+          html: `<div style="max-height: 300px; overflow-y: auto;">${items.join("")}</div>`,
+          width: 450,
+        };
+      },
+      [escapeAlertHtml, getCurrentLocaleText, theme],
+    );
+
+    const showValidationAlert = useCallback(
+      (validationItems) => {
+        const alert = buildValidationAlertHtml(validationItems);
+        BSAlertSwal2.show("error", "", alert);
+      },
+      [buildValidationAlertHtml],
+    );
+
+    const formatDialogLabel = useCallback(
+      (label) => {
+        if (!label) return "";
+
+        const rawLabel = String(label);
+        const resourceName = rawLabel.startsWith("resource:")
+          ? rawLabel.substring(9)
+          : rawLabel;
+
+        if (resourceData) {
+          const resourceText = getResource(resourceData, resourceName);
+          if (resourceText && resourceText !== resourceName) {
+            return resourceText;
+          }
+        }
+
+        return resourceName;
+      },
+      [resourceData, getResource],
+    );
+
+    const formatColumnDescription = useCallback(
+      (columnName) => {
+        if (!columnName || !resourceData) return "";
+
+        const resourceDescription = getResourceDescription(
+          resourceData,
+          columnName,
+        );
+
+        if (resourceDescription && resourceDescription !== columnName) {
+          return resourceDescription;
+        }
+
+        return "";
+      },
+      [resourceData, getResourceDescription],
+    );
+
     // Helper: Get column width based on data type
     // NOTE: Currently not used - columns are auto-sized by DataGrid
     // Kept for reference in case manual width control is needed
@@ -4006,7 +5371,10 @@ const BSDataGrid = forwardRef(
 
     // Helper: Get DataGrid column type
     const getGridColumnType = useCallback((dataType) => {
-      switch (dataType?.toLowerCase()) {
+      if (isDateTimeDataType(dataType)) return "dateTime";
+      if (isDateOnlyDataType(dataType)) return "date";
+
+      switch (normalizeColumnDataType(dataType)) {
         case "int":
         case "smallint":
         case "tinyint":
@@ -4018,11 +5386,6 @@ const BSDataGrid = forwardRef(
           return "number";
         case "bit":
           return "boolean";
-        case "datetime":
-        case "datetime2":
-          return "dateTime";
-        case "date":
-          return "date";
         case "time":
           return "time";
         default:
@@ -4037,6 +5400,7 @@ const BSDataGrid = forwardRef(
 
         const effectiveLocale = getEffectiveLocale();
         const formatOptions = getLocaleFormatOptions(effectiveLocale);
+        const normalizedDataType = normalizeColumnDataType(dataType);
 
         // bsLog("🌐 Format cell value with locale:", {
         //   value,
@@ -4049,22 +5413,20 @@ const BSDataGrid = forwardRef(
         // });
 
         try {
-          switch (dataType?.toLowerCase()) {
+          if (isDateTimeDataType(normalizedDataType)) {
+            const date = new Date(value);
+            return formatDateCustom(date, true, effectiveLocale);
+          }
+          if (isDateOnlyDataType(normalizedDataType)) {
+            const date = new Date(value);
+            return formatDateCustom(date, false, effectiveLocale);
+          }
+
+          switch (normalizedDataType) {
             case "int":
               return Number(value).toLocaleString(formatOptions.localeString);
             case "bit":
               return value ? "Yes" : "No";
-            case "datetime":
-            case "datetime2": {
-              // Use custom formatter for consistent dd/MM/yyyy HH:mm format (no comma)
-              const date = new Date(value);
-              return formatDateCustom(date, true, effectiveLocale);
-            }
-            case "date": {
-              // Use custom formatter for consistent dd/MM/yyyy format
-              const date = new Date(value);
-              return formatDateCustom(date, false, effectiveLocale);
-            }
             case "time":
               return new Date(`1970-01-01T${value}`).toLocaleTimeString(
                 formatOptions.localeString,
@@ -4098,7 +5460,24 @@ const BSDataGrid = forwardRef(
 
     // Helper: Check if field should be shown in form
     const isFieldInForm = useCallback(
-      (columnName, dataType, isIdentity, hasDefault, defaultValue) => {
+      (
+        columnName,
+        dataType,
+        isIdentity,
+        hasDefault,
+        defaultValue,
+        formMode = dialogMode,
+      ) => {
+        // Skip hidden columns (hidden from both grid and form)
+        if (
+          bsHiddenColumns &&
+          bsHiddenColumns.some(
+            (col) => col.toLowerCase() === columnName.toLowerCase(),
+          )
+        ) {
+          return false;
+        }
+
         // Skip identity columns (auto increment)
         if (isIdentity) {
           return false;
@@ -4111,20 +5490,25 @@ const BSDataGrid = forwardRef(
 
         // Skip fields that have default values (will be auto-generated) - check both hasDefault and defaultValue
         // Exception: is_* fields (except is_active) should always show even with default values
+        // Exception: columnDefs entries with showInAdd:true override the skip
         const isIsField =
           columnName.toLowerCase().startsWith("is_") &&
           columnName.toLowerCase() !== "is_active";
+        const forcedShow =
+          columnDefsConfig && columnDefsConfig[columnName]?.showInAdd === true;
         if (
           (hasDefault || !!defaultValue) &&
-          dialogMode === "add" &&
-          !isIsField
+          formMode === "add" &&
+          !bulkEditMode &&
+          !isIsField &&
+          !forcedShow
         ) {
           return false;
         }
 
         // Additional check: Skip primary key fields that use sequences (like SQL Server NEXT VALUE FOR)
         // This is a fallback for when metadata doesn't properly indicate hasDefault or isIdentity
-        if (dialogMode === "add") {
+        if (formMode === "add") {
           // Check if this field is in the primaryKeys array from metadata (case-insensitive)
           const isPrimaryKey = metadata?.primaryKeys?.some(
             (pk) => pk.toLowerCase() === columnName.toLowerCase(),
@@ -4158,7 +5542,7 @@ const BSDataGrid = forwardRef(
           //   );
           //   return false;
           // }
-        } else if (dialogMode === "edit") {
+        } else if (formMode === "edit") {
           // Check if this field is in the primaryKeys array from metadata (case-insensitive)
           const isPrimaryKey = metadata?.primaryKeys?.some(
             (pk) => pk.toLowerCase() === columnName.toLowerCase(),
@@ -4206,16 +5590,44 @@ const BSDataGrid = forwardRef(
 
         return true;
       },
-      [dialogMode, metadata?.primaryKeys, bsKeyId],
+      [
+        dialogMode,
+        bulkEditMode,
+        metadata?.primaryKeys,
+        bsKeyId,
+        columnDefsConfig,
+        bsHiddenColumns,
+      ],
     );
 
     // Helper: Check if field is boolean type (is_active or any field starting with is_)
-    const isActiveField = useCallback((columnName) => {
-      if (!columnName) return false;
-      const lowerName = columnName.toLowerCase();
-      // Match is_active or any field starting with is_
-      return lowerName === "is_active" || lowerName.startsWith("is_");
-    }, []);
+    const isActiveField = useCallback(
+      (columnName) => {
+        if (!columnName) return false;
+        const lowerName = columnName.toLowerCase();
+
+        const customDef =
+          columnDefsConfig &&
+          Object.entries(columnDefsConfig).find(
+            ([key]) => key.toLowerCase() === lowerName,
+          )?.[1];
+        if (
+          customDef?.type === "switch" ||
+          customDef?.type === "boolean" ||
+          customDef?.type === "boolean_switch"
+        ) {
+          return true;
+        }
+
+        // Match is_active, primary_uom, or any field starting with is_
+        return (
+          lowerName === "is_active" ||
+          lowerName === "primary_uom" ||
+          lowerName.startsWith("is_")
+        );
+      },
+      [columnDefsConfig],
+    );
 
     // Helper: Check if field is audit field (should be read-only in inline editing)
     const isAuditField = useCallback((columnName) => {
@@ -4640,6 +6052,10 @@ ${errorInfo.originalError}
         // Regular metadata-based initialization
         if (!metadata?.columns) return {};
         const init = {};
+        const formMode = resolveFormMode({
+          isExistingRecord: existing !== null,
+          dialogMode,
+        });
 
         metadata?.columns
           .filter((c) =>
@@ -4649,35 +6065,69 @@ ${errorInfo.originalError}
               c.isIdentity,
               c.hasDefault,
               c.defaultValue,
+              formMode,
             ),
           )
           .forEach((c) => {
-            if (existing && existing[c.columnName] !== undefined) {
-              init[c.columnName] = existing[c.columnName];
-            } else {
-              // Special handling for is_active field - default to "YES" for new records
-              if (isActiveField(c.columnName)) {
-                init[c.columnName] = "YES"; // Default to active for new records
-                return;
-              }
+            const hasExistingValue =
+              existing !== null && existing[c.columnName] !== undefined;
+            const shouldDefaultTrue =
+              String(c.columnName || "").toLowerCase() === "is_active";
+            const initialValue = initializeFieldValue({
+              existingValue: existing?.[c.columnName],
+              hasExistingValue,
+              isActiveField: shouldDefaultTrue,
+            });
 
+            if (initialValue !== undefined) {
+              init[c.columnName] = initialValue;
+            } else {
+              // Special handling for is_active field - default to true for new records
               // For ComboBox fields, check if there's only 1 option - auto-select it
               // Otherwise default to empty string (will show "-- เลือก --" placeholder)
               const comboConfig = comboBoxConfig[c.columnName];
               if (comboConfig) {
-                // Check if there's only 1 option in the combobox
-                const options = comboBoxValueOptions[c.columnName] || [];
-                if (options.length === 1) {
-                  // Auto-select the only option
-                  init[c.columnName] = options[0].value;
-                  bsLog(
-                    `🎯 Auto-selected single option for ${c.columnName}:`,
-                    options[0].value,
-                  );
+                // Check if there's a custom default value in columnDefsConfig first
+                const customDefVal =
+                  columnDefsConfig[c.columnName]?.defaultValue;
+                if (customDefVal !== undefined && customDefVal !== null) {
+                  init[c.columnName] = customDefVal;
                 } else {
-                  init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                  // Check if there's only 1 option in the combobox
+                  const options = comboBoxValueOptions[c.columnName] || [];
+                  if (options.length === 1) {
+                    // Auto-select the only option
+                    init[c.columnName] = options[0].value;
+                    bsLog(
+                      `🎯 Auto-selected single option for ${c.columnName}:`,
+                      options[0].value,
+                    );
+                  } else {
+                    init[c.columnName] = ""; // Empty string matches the empty option in dropdown
+                  }
+                }
+
+                // If this combobox has a display target, populate it
+                const displayTarget = getComboBoxDisplayTarget(comboConfig);
+                if (
+                  init[c.columnName] &&
+                  displayTarget &&
+                  displayTarget !== c.columnName
+                ) {
+                  const lookupMap =
+                    comboBoxLookupDataRef.current[c.columnName] || {};
+                  const val = init[c.columnName];
+                  init[displayTarget] =
+                    lookupMap[val] ?? lookupMap[String(val)] ?? "";
                 }
                 return; // Skip default value assignment
+              }
+
+              // Use columnDefs defaultValue if provided (overrides type-based defaults)
+              const customDefVal = columnDefsConfig[c.columnName]?.defaultValue;
+              if (customDefVal !== undefined && customDefVal !== null) {
+                init[c.columnName] = customDefVal;
+                return;
               }
 
               // Handle other field types based on dataType
@@ -4751,15 +6201,17 @@ ${errorInfo.originalError}
         return init;
       },
       [
-        metadata,
-        isFieldInForm,
-        isActiveField,
-        comboBoxConfig,
-        comboBoxValueOptions,
         bsStoredProcedure,
-        detectPrimaryKeyFromData,
+        metadata?.columns,
+        metadata?.primaryKeys,
         bsDefaultFormValues,
         bsColumnDefs,
+        detectPrimaryKeyFromData,
+        isFieldInForm,
+        comboBoxConfig,
+        columnDefsConfig,
+        comboBoxValueOptions,
+        dialogMode,
       ],
     );
 
@@ -4806,26 +6258,56 @@ ${errorInfo.originalError}
       );
       if (effectiveBulkAddInline) {
         const id = `new-${newRowIdCounter.current++}`;
+        const metadataColumns = metadata?.columns || [];
+        const editableColumns = metadataColumns.filter((col) => {
+          const field = getColumnFieldName(col);
+          return (
+            field &&
+            field !== "id" &&
+            field !== "__row_number__" &&
+            field !== "actions" &&
+            !col.is_identity &&
+            !col.isIdentity &&
+            !col.is_computed &&
+            !col.isComputed
+          );
+        });
+        const firstEditableField = getFocusFieldFromColumns(editableColumns);
         const newRow = {
           id,
           ...initializeFormData(),
           isNew: true,
         };
 
-        setRows((oldRows) => [...oldRows, newRow]);
+        // Prepend so the new row sits at the top of the current page and is
+        // immediately visible/focusable (appending pushes it onto the last page,
+        // which scrollToIndexes can't reach without a page change).
+        setRows((oldRows) => [newRow, ...oldRows]);
         setRowModesModel((oldModel) => ({
           ...oldModel,
           [id]: {
             mode: GridRowModes.Edit,
-            fieldToFocus: Object.keys(newRow)[1],
-          }, // Focus first editable field
+            fieldToFocus: firstEditableField,
+          },
         }));
+
+        // In client pagination the new top row lives on page 0, so jump there.
+        // In server mode changing the page reloads data (dropping the new row),
+        // so leave the page alone — the row already shows on the current page.
+        if (bsFilterMode === "client") {
+          setPaginationModel((prev) =>
+            prev.page === 0 ? prev : { ...prev, page: 0 },
+          );
+        }
 
         // Enable bulk edit mode and mark as having unsaved changes
         // This enables the Save All / Discard All buttons on the toolbar
         bsLog("🔧 Setting bulkEditMode=true and hasUnsavedChanges=true");
+        inlineAddSessionActiveRef.current = true;
+        setInlineAddSessionActive(true);
         setBulkEditMode(true);
         setHasUnsavedChanges(true);
+        focusEditableRow(id, firstEditableField);
 
         bsLog("➕ New row added in inline mode:", { id, newRow });
         return;
@@ -4835,6 +6317,7 @@ ${errorInfo.originalError}
       setDialogMode("add");
       setSelectedRow(null);
       setFormData(initializeFormData());
+      setShowValidationErrors(false);
       setDialogOpen(true);
     }, [
       onAdd,
@@ -4847,6 +6330,10 @@ ${errorInfo.originalError}
       bsColumnDefs,
       bsCols,
       setRowModesModel,
+      focusEditableRow,
+      getFocusFieldFromColumns,
+      bsFilterMode,
+      setPaginationModel,
     ]);
 
     // Dialog Add - force open dialog mode (bypass effectiveBulkAddInline)
@@ -4917,15 +6404,20 @@ ${errorInfo.originalError}
 
       // Find first editable column from metadata (skip id, actions, row number columns)
       const metadataColumns = metadata?.columns || [];
-      const editableColumns = metadataColumns.filter(
-        (col) =>
-          col.column_name !== "id" &&
-          col.column_name !== "__row_number__" &&
-          col.column_name !== "actions" &&
+      const editableColumns = metadataColumns.filter((col) => {
+        const field = getColumnFieldName(col);
+        return (
+          field &&
+          field !== "id" &&
+          field !== "__row_number__" &&
+          field !== "actions" &&
           !col.is_identity &&
-          !col.is_computed,
-      );
-      const firstEditableField = editableColumns[0]?.column_name;
+          !col.isIdentity &&
+          !col.is_computed &&
+          !col.isComputed
+        );
+      });
+      const firstEditableField = getFocusFieldFromColumns(editableColumns);
 
       // Add new row at the beginning of the grid
       setRows((oldRows) => [newRow, ...oldRows]);
@@ -4939,7 +6431,17 @@ ${errorInfo.originalError}
         },
       }));
 
+      // In client pagination the new top row lives on page 0, so jump there.
+      // In server mode changing the page reloads data (dropping the new row).
+      if (bsFilterMode === "client") {
+        setPaginationModel((prev) =>
+          prev.page === 0 ? prev : { ...prev, page: 0 },
+        );
+      }
+
       // Enable bulk edit mode if not already enabled
+      inlineAddSessionActiveRef.current = true;
+      setInlineAddSessionActive(true);
       if (!bulkEditMode) {
         setBulkEditMode(true);
         unsavedChangesRef.current = {};
@@ -4953,40 +6455,17 @@ ${errorInfo.originalError}
         hasUnsavedChanges: true,
       });
 
-      // Use requestAnimationFrame + setTimeout to ensure the row is rendered and then focus
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (apiRef.current) {
-            try {
-              // Scroll to the new row first
-              apiRef.current.scrollToIndexes({ rowIndex: 0 });
-
-              // Ensure row is in edit mode
-              const rowMode = apiRef.current.getRowMode(id);
-              if (rowMode !== GridRowModes.Edit) {
-                apiRef.current.startRowEditMode({
-                  id,
-                  fieldToFocus: firstEditableField,
-                });
-              }
-
-              // Focus the first editable cell
-              if (firstEditableField) {
-                apiRef.current.setCellFocus(id, firstEditableField);
-              }
-            } catch (err) {
-              Logger.warn("⚠️ Could not focus cell:", err);
-            }
-          }
-        }, 50);
-      });
+      focusEditableRow(id, firstEditableField);
     }, [
       initializeFormData,
       metadata,
       bsStoredProcedure,
       bulkEditMode,
-      apiRef,
       setRowModesModel,
+      focusEditableRow,
+      getFocusFieldFromColumns,
+      bsFilterMode,
+      setPaginationModel,
     ]);
 
     // Open Edit dialog or delegate
@@ -5002,6 +6481,7 @@ ${errorInfo.originalError}
         const initialFormData = initializeFormData(row);
 
         setFormData(initialFormData);
+        setShowValidationErrors(false);
 
         // For hierarchical data: set parent as saved and extract PK values for child grids
         if (bsChildGrids && bsChildGrids.length > 0) {
@@ -5258,7 +6738,7 @@ ${errorInfo.originalError}
               });
 
               const existingCount =
-                response?.rowCount || response?.data?.length || 0;
+                response?.rowCount || response?.rows?.length || 0;
 
               if (existingCount > 0) {
                 // Filter out hidden columns from display
@@ -5281,6 +6761,16 @@ ${errorInfo.originalError}
                 "❌ Error checking composite unique key:",
                 fields,
                 err,
+              );
+              // Fail-safe: treat API error as validation failure to prevent duplicate inserts
+              const visibleFields = fields.filter(
+                (f) => !bsHiddenColumns?.includes(f),
+              );
+              const displayNames = visibleFields
+                .map((f) => formatColumnName(f))
+                .join(" + ");
+              errors.push(
+                `Unable to verify uniqueness for ${displayNames}. Please try again.`,
               );
             }
           } else {
@@ -5413,6 +6903,11 @@ ${errorInfo.originalError}
             } catch (err) {
               Logger.error("❌ Error checking unique field:", fieldName, err);
               // Continue with other validations if one fails
+              // Fail-safe: treat API error as validation failure to prevent duplicate inserts
+              const displayName = formatColumnName(fieldName);
+              errors.push(
+                `Unable to verify uniqueness for ${displayName}. Please try again.`,
+              );
             }
           }
         }
@@ -5439,16 +6934,51 @@ ${errorInfo.originalError}
     const validateFormData = useCallback(
       (data) => {
         const errors = [];
+        const isBulkMode =
+          bulkEditMode || effectiveBulkAddInline || bulkAddDialogOpen;
+        const isNewRow =
+          data?.isNew ||
+          (typeof data?.id === "string" && data?.id.startsWith("new-")) ||
+          (dialogMode === "add" && !bulkEditMode);
 
         // 1. Validate using bsColumnDefs (required: true)
         if (columnDefsConfig && Object.keys(columnDefsConfig).length > 0) {
           Object.entries(columnDefsConfig).forEach(([columnName, colDef]) => {
+            // Skip hidden columns (user cannot see or edit them)
+            if (
+              bsHiddenColumns &&
+              bsHiddenColumns.some(
+                (col) => col.toLowerCase() === columnName.toLowerCase(),
+              )
+            ) {
+              return;
+            }
+
+            // ponytail: do NOT skip readOnly on new rows. readOnly only locks
+            // the input in edit mode (see ~line 7469), so on add the field is
+            // editable and must still be validated. PK auto-gen is skipped separately below.
+
+            // In bulk modes / grid editing, we should only skip validation if the field is hidden in grid.
+            // In normal dialog, we skip if hidden in form.
+            if (bulkEditMode || effectiveBulkAddInline) {
+              if (colDef?.hide === true) {
+                return;
+              }
+            } else {
+              if (
+                colDef?.hideInForm === true ||
+                (colDef?.hide === true && colDef?.showInForm !== true)
+              ) {
+                return;
+              }
+            }
+
             if (colDef.required === true) {
               const value = data[columnName];
               if (value == null || value === "" || value === undefined) {
                 const displayName =
                   colDef.headerName || formatColumnName(columnName);
-                errors.push(`${displayName}: This field is required`);
+                errors.push(getRequiredFieldMessage(displayName));
               }
             }
           });
@@ -5459,27 +6989,49 @@ ${errorInfo.originalError}
           metadata.columns.forEach((column) => {
             const { columnName, maxLength, dataType, isNullable } = column;
             const value = data[columnName];
+            const customDef = columnDefsConfig[columnName];
+
+            // Skip hidden columns (user cannot see or edit them)
+            if (
+              bsHiddenColumns &&
+              bsHiddenColumns.some(
+                (col) => col.toLowerCase() === columnName.toLowerCase(),
+              )
+            ) {
+              return;
+            }
+
+            // ponytail: readOnly is edit-only (see ~line 7469); on add the field
+            // is editable, so validate not-null here too. PK skip is below.
+
+            // Skip primary key fields on new rows (auto-generated by database)
+            const isPrimaryKey = metadata?.primaryKeys?.some(
+              (pk) => pk.toLowerCase() === columnName.toLowerCase(),
+            );
+            if (isPrimaryKey && isNewRow) {
+              return;
+            }
+
+            if (bulkEditMode || effectiveBulkAddInline) {
+              if (customDef?.hide === true) {
+                return;
+              }
+            } else {
+              if (
+                customDef?.hideInForm === true ||
+                (customDef?.hide === true && customDef?.showInForm !== true)
+              ) {
+                return;
+              }
+            }
 
             // Skip if already validated via bsColumnDefs
             if (columnDefsConfig && columnDefsConfig[columnName]?.required) {
               return;
             }
 
-            // Skip validation for fields not in form
-            if (
-              !isFieldInForm(
-                columnName,
-                dataType,
-                column.isIdentity,
-                column.hasDefault,
-                column.defaultValue,
-              )
-            ) {
-              return;
-            }
-
-            // Check maxLength for text fields
-            if (maxLength > 0 && value != null) {
+            // Check maxLength for text fields (always validate if value is present, before skipping fields not in form)
+            if (maxLength > 0 && value != null && value !== "") {
               const stringValue = String(value);
               if (stringValue.length > maxLength) {
                 errors.push(
@@ -5492,17 +7044,62 @@ ${errorInfo.originalError}
               }
             }
 
+            // Skip validation for fields not in form/grid
+            const isGridEditing = bulkEditMode || effectiveBulkAddInline;
+            if (!isGridEditing) {
+              if (
+                !isFieldInForm(
+                  columnName,
+                  dataType,
+                  column.isIdentity,
+                  column.hasDefault,
+                  column.defaultValue,
+                )
+              ) {
+                return;
+              }
+            } else {
+              // In grid editing, skip identity and audit fields
+              if (column.isIdentity) return;
+              const auditFields = [
+                "create_by",
+                "created_by",
+                "createby",
+                "create_date",
+                "created_date",
+                "createdate",
+                "created_at",
+                "update_by",
+                "updated_by",
+                "updateby",
+                "modified_by",
+                "update_date",
+                "updated_date",
+                "updatedate",
+                "updated_at",
+                "modified_date",
+                "rowversion",
+              ];
+              if (auditFields.includes(columnName.toLowerCase())) return;
+            }
+
             // Check required fields
-            // Skip required validation for fields with default values (database will use default)
+            // Skip required validation for fields with default values ONLY during normal add (not edit or bulk save)
+            // On UPDATE/Edit (or bulk edit), database defaults are NOT applied, so we must require the field.
+            const isAddMode =
+              (dialogMode === "add" ||
+                bulkAddDialogOpen ||
+                effectiveBulkAddInline) &&
+              !bulkEditMode;
             const hasDefaultValue = column.hasDefault || !!column.defaultValue;
+            const skipRequiredForDefault = isAddMode && hasDefaultValue;
+
             if (
               !isNullable &&
-              !hasDefaultValue &&
+              !skipRequiredForDefault &&
               (value == null || value === "")
             ) {
-              errors.push(
-                `${formatColumnName(columnName)}: This field is required`,
-              );
+              errors.push(getRequiredFieldMessage(formatColumnName(columnName)));
             }
           });
         }
@@ -5512,21 +7109,31 @@ ${errorInfo.originalError}
           errors,
         };
       },
-      [metadata, columnDefsConfig, isFieldInForm, formatColumnName],
+      [
+        metadata,
+        columnDefsConfig,
+        isFieldInForm,
+        formatColumnName,
+        getRequiredFieldMessage,
+        bulkEditMode,
+        effectiveBulkAddInline,
+        bulkAddDialogOpen,
+        dialogMode,
+        bsHiddenColumns,
+      ],
     );
 
     // Save (create/update) from dialog
     const handleSave = useCallback(async () => {
+      let savedRecord = null;
       try {
         setFormLoading(true);
 
         // Validate form data before saving
         const validation = validateFormData(formData);
         if (!validation.isValid) {
-          BSAlertSwal2.show("error", "", {
-            title: "Validation Errors",
-            html: validation.errors.join("<br>"),
-          });
+          setShowValidationErrors(true);
+          showValidationAlert([{ errors: validation.errors }]);
           return;
         }
 
@@ -5541,19 +7148,74 @@ ${errorInfo.originalError}
           currentPrimaryKeyValue,
         );
         if (!uniqueValidation.isValid) {
+          setShowValidationErrors(true);
           BSAlertSwal2.show("error", "", {
-            title: "Duplicate Value Error",
+            title:
+              getCurrentLocaleText().bsDuplicateValueError ||
+              "Duplicate Value Error",
             html: uniqueValidation.errors.join("<br>"),
           });
           setFormLoading(false);
           return;
         }
 
+        // Allow consumer to intercept and optionally cancel the save
+        if (bsOnBeforeSave) {
+          try {
+            const canProceed = await bsOnBeforeSave({
+              formData,
+              mode: dialogMode,
+              selectedRow,
+            });
+            if (canProceed === false) {
+              setFormLoading(false);
+              return;
+            }
+          } catch (_) {}
+        }
+
         if (dialogMode === "add") {
           // For add mode, prepare form data with auto-generated values
           // Sanitize date values for SQL Server compatibility
+          const formDataWithDefaults = { ...formData };
+          if (columnDefsConfig) {
+            Object.entries(columnDefsConfig).forEach(([fieldName, colDef]) => {
+              if (
+                colDef.defaultValue !== undefined &&
+                colDef.defaultValue !== null
+              ) {
+                const val = formDataWithDefaults[fieldName];
+                if (val === undefined || val === null || val === "") {
+                  formDataWithDefaults[fieldName] = colDef.defaultValue;
+
+                  // Sync display column if it's a combobox
+                  if (comboBoxConfig) {
+                    const combo = comboBoxConfig[fieldName];
+                    const displayTarget = getComboBoxDisplayTarget(combo);
+                    if (combo && displayTarget && displayTarget !== fieldName) {
+                      const dispVal = formDataWithDefaults[displayTarget];
+                      if (
+                        dispVal === undefined ||
+                        dispVal === null ||
+                        dispVal === ""
+                      ) {
+                        const lookupMap =
+                          comboBoxLookupDataRef.current[fieldName] || {};
+                        const defValue = colDef.defaultValue;
+                        formDataWithDefaults[displayTarget] =
+                          lookupMap[defValue] ??
+                          lookupMap[String(defValue)] ??
+                          "";
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          }
+
           const saveData = sanitizeDataForApi(
-            { ...formData },
+            applyOutboundTransform(formDataWithDefaults, { mode: "add" }),
             metadata?.columns || [],
           );
 
@@ -5628,6 +7290,7 @@ ${errorInfo.originalError}
           } else {
             // createRecord returns the created record with its PK (for identity columns)
             const createdRecord = await createRecord(saveData, bsPreObj);
+            savedRecord = createdRecord;
 
             // Store created record for hierarchical data PK extraction
             if (bsChildGrids && bsChildGrids.length > 0) {
@@ -5687,7 +7350,7 @@ ${errorInfo.originalError}
 
           // Sanitize date values for SQL Server compatibility
           const sanitizedFormData = sanitizeDataForApi(
-            formData,
+            applyOutboundTransform(formData, { mode: "edit" }),
             metadata?.columns || [],
           );
 
@@ -5778,7 +7441,15 @@ ${errorInfo.originalError}
               result.message,
             );
           } else {
-            await updateRecord(id, sanitizedFormData, bsPreObj);
+            // Pass explicit whereConditions using the effective primary key
+            // This prevents useDynamicCrud from falling back to { Id: id } when metadata is null
+            const whereConditions = { [primaryKey]: id };
+            await updateRecord(
+              id,
+              sanitizedFormData,
+              bsPreObj,
+              whereConditions,
+            );
           }
         }
 
@@ -5879,6 +7550,19 @@ ${errorInfo.originalError}
         setFormData({});
         setSelectedRow(null);
 
+        if (bsOnAfterSave) {
+          try {
+            await Promise.resolve(
+              bsOnAfterSave({
+                mode: dialogMode,
+                formData: { ...formData },
+                selectedRow,
+                savedRecord,
+              }),
+            );
+          } catch (_) {}
+        }
+
         if (bsStoredProcedure) {
           await loadStoredProcedureData();
         } else {
@@ -5893,40 +7577,57 @@ ${errorInfo.originalError}
         setFormLoading(false);
       }
     }, [
-      dialogMode,
-      formData,
-      selectedRow,
-      metadata,
-      createRecord,
-      updateRecord,
-      loadData,
-      bsPreObj,
       validateFormData,
+      showValidationAlert,
+      getCurrentLocaleText,
+      formData,
+      bsKeyId,
+      metadata?.primaryKeys,
+      metadata?.columns,
+      dialogMode,
+      selectedRow,
       validateUniqueFields,
+      bsChildGrids,
+      bsOnBeforeSave,
+      bsOnAfterSave,
       bsStoredProcedure,
+      applyOutboundTransform,
       bsStoredProcedureSchema,
       bsStoredProcedureParams,
-      executeEnhancedStoredProcedure,
-      loadStoredProcedureData,
-      getEffectivePrimaryKey,
       getUserId,
-      bsChildGrids,
-      bsPrimaryKeys,
-      bsKeyId,
+      executeEnhancedStoredProcedure,
       formatSqlErrorMessage,
       showErrorWithDetails,
+      createRecord,
+      bsPreObj,
+      bsPrimaryKeys,
+      getEffectivePrimaryKey,
+      updateRecord,
+      loadStoredProcedureData,
+      loadData,
     ]);
 
     const handleDialogClose = useCallback(() => {
       setDialogOpen(false);
+      setDialogMinimized(false);
       setFormData({});
       setSelectedRow(null);
       setActiveDialogTab(0); // Reset to first tab when closing
+      setShowValidationErrors(false);
       // Reset hierarchical data states
       setIsParentSaved(false);
       setActiveChildTab(0);
       setParentAccordionExpanded(true);
       setSavedParentKeyValues({});
+    }, []);
+
+    // Minimize/Restore dialog handlers
+    const handleDialogMinimize = useCallback(() => {
+      setDialogMinimized(true);
+    }, []);
+
+    const handleDialogRestore = useCallback(() => {
+      setDialogMinimized(false);
     }, []);
 
     // Helper: Render combobox for columns with ComboBox configuration
@@ -5951,7 +7652,7 @@ ${errorInfo.originalError}
         //   });
         // }
 
-        // If value is empty/null, show default or empty
+        // If value is empty/null, show empty cell (Default text is only for form dropdowns)
         if (value === null || value === undefined || value === "") {
           return (
             <Box
@@ -5962,7 +7663,7 @@ ${errorInfo.originalError}
                 color: "text.secondary",
               }}
             >
-              {comboConfig.Default || ""}
+              {""}
             </Box>
           );
         }
@@ -5987,11 +7688,29 @@ ${errorInfo.originalError}
 
         // Fallback to static valueOptions if provided in config
         if (!displayText && comboConfig.valueOptions) {
-          const option = comboConfig.valueOptions.find(
+          const option = normalizeComboBoxOptions(comboConfig.valueOptions, {
+            Value: "value",
+            Display: "label",
+          }).find(
             (opt) => opt.value === value || String(opt.value) === String(value),
           );
           if (option) {
             displayText = option.label;
+          }
+        }
+
+        if (
+          !displayText &&
+          comboConfig.Display &&
+          comboConfig.Display !== field
+        ) {
+          const rowDisplay = params?.row?.[comboConfig.Display];
+          if (
+            rowDisplay !== undefined &&
+            rowDisplay !== null &&
+            rowDisplay !== ""
+          ) {
+            displayText = rowDisplay;
           }
         }
 
@@ -6022,10 +7741,16 @@ ${errorInfo.originalError}
           return [emptyOption, ...options];
         }
         // Fallback to static valueOptions if provided in config
-        const staticOptions = comboConfig.valueOptions || [];
-        return staticOptions.length > 0
-          ? [emptyOption, ...staticOptions]
-          : [emptyOption];
+        const staticOptions = normalizeComboBoxOptions(
+          comboConfig.valueOptions || [],
+          { Value: "value", Display: "label" },
+        );
+        return normalizeComboBoxOptions(
+          staticOptions.length > 0
+            ? [emptyOption, ...staticOptions]
+            : [emptyOption],
+          { Value: "value", Display: "label" },
+        );
       },
       [comboBoxValueOptions],
     );
@@ -6039,24 +7764,92 @@ ${errorInfo.originalError}
         // Get options from ref at edit time (always current)
         const options = comboBoxValueOptionsRef.current[field] || [];
         const emptyOption = { value: "", label: "-- เลือก --" };
-        const valueOptions = [emptyOption, ...options];
+        const valueOptions = normalizeComboBoxOptions(
+          [emptyOption, ...options],
+          { Value: "value", Display: "label" },
+        );
 
-        bsLog(`✏️ renderComboBoxEditCell for ${field}:`, {
-          currentValue: value,
-          optionsCount: options.length,
-          sampleOptions: options.slice(0, 3),
-        });
+        // Ensure current value is in options to prevent MUI out-of-range warnings when async options haven't loaded
+        if (value !== undefined && value !== null && value !== "") {
+          if (!valueOptions.some((opt) => opt.value === value)) {
+            valueOptions.push({ value, label: value });
+          }
+        }
+
+        // bsLog(`✏️ renderComboBoxEditCell for ${field}:`, {
+        //   currentValue: value,
+        //   optionsCount: options.length,
+        //   sampleOptions: options.slice(0, 3),
+        // });
 
         const handleChange = (event) => {
           const newValue = event.target.value;
           api.setEditCellValue({ id, field, value: newValue });
+          // Enable "Save All" immediately on selection (no Enter needed).
+          markBulkEditRowDirty(id, field, newValue);
+
+          // Also set the display target if mapped in bsComboBox
+          const displayTarget = getComboBoxDisplayTarget(comboConfig);
+          if (displayTarget && displayTarget !== field) {
+            let displayText = "";
+            if (
+              newValue !== undefined &&
+              newValue !== null &&
+              newValue !== ""
+            ) {
+              const selectedOpt = valueOptions.find(
+                (opt) => String(opt.value) === String(newValue),
+              );
+              displayText =
+                selectedOpt && selectedOpt.value !== ""
+                  ? selectedOpt.label
+                  : "";
+            }
+            api.setEditCellValue({
+              id,
+              field: displayTarget,
+              value: displayText,
+            });
+          }
+
+          // Clear child ComboBox columns and their display values in cascading combos
+          if (Array.isArray(bsComboBox)) {
+            const childColumns = [];
+            const findChildren = (parentCol) => {
+              bsComboBox.forEach((combo) => {
+                if (combo.ParentColumn === parentCol) {
+                  childColumns.push(combo.Column);
+                  findChildren(combo.Column);
+                }
+              });
+            };
+            findChildren(field);
+
+            childColumns.forEach((childCol) => {
+              api.setEditCellValue({ id, field: childCol, value: "" });
+              const childCombo = bsComboBox.find((c) => c.Column === childCol);
+              const childDisplayTarget =
+                getComboBoxDisplayTarget(childCombo);
+              if (
+                childCombo &&
+                childDisplayTarget &&
+                childDisplayTarget !== childCol
+              ) {
+                api.setEditCellValue({
+                  id,
+                  field: childDisplayTarget,
+                  value: "",
+                });
+              }
+            });
+          }
         };
 
         return (
           <Select
             value={value ?? ""}
             onChange={handleChange}
-            autoFocus
+            autoFocus={params.hasFocus}
             fullWidth
             size="small"
             sx={{
@@ -6066,8 +7859,11 @@ ${errorInfo.originalError}
               },
             }}
           >
-            {valueOptions.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
+            {valueOptions.map((option, index) => (
+              <MenuItem
+                key={`${field}-${String(option.value)}-${index}`}
+                value={option.value}
+              >
                 {option.label}
               </MenuItem>
             ))}
@@ -6080,11 +7876,145 @@ ${errorInfo.originalError}
     // Helper: Get is_active dropdown options
     const getIsActiveOptions = useCallback(() => {
       return [
-        { value: "", label: "-- เลือก --" },
-        { value: "YES", label: "YES" },
-        { value: "NO", label: "NO" },
+        // { value: "", label: "-- เลือก --" },
+        { value: true, label: "YES" },
+        { value: false, label: "NO" },
       ];
     }, []);
+
+    // Bulk edit: a <Select>/dropdown commits its value into the row's edit buffer
+    // but — unlike pressing Enter on a text cell — never fires processRowUpdate,
+    // so "Save All" stayed disabled until the user pressed Enter. Register the row
+    // as dirty on select-change so the button enables immediately. The actual value
+    // is re-read from the live editRows state at save time (handleBulkSaveChanges),
+    // so storing a snapshot here is enough. No bulkEditMode guard needed: select
+    // editors only render when a cell is editable, which only happens in bulk modes.
+    const markBulkEditRowDirty = useCallback(
+      (id, field, value) => {
+        const rowId = String(id);
+        if (rowId.startsWith("new-")) return; // new rows are collected separately
+        const currentRow = apiRef.current?.getRow?.(rowId);
+        if (!currentRow) return;
+        const existing = unsavedChangesRef.current[rowId];
+        const baseNew = existing?.newData || { ...currentRow };
+        unsavedChangesRef.current[rowId] = {
+          newData: { ...baseNew, [field]: value },
+          originalData: existing?.originalData || { ...currentRow },
+        };
+        setHasUnsavedChanges(true);
+      },
+      [apiRef],
+    );
+
+    const renderLazyComboBoxEditCell = useCallback(
+      (params, comboConfig) => {
+        const { id, field, value, api } = params;
+        const parentColumnName = comboConfig.ParentColumn;
+        const parentValue = parentColumnName
+          ? (params.row?.[parentColumnName] ?? null)
+          : null;
+        const hasParent = !!parentColumnName;
+        const isParentSelected =
+          !hasParent ||
+          (parentValue != null && parentValue !== "" && parentValue !== 0);
+        const resolvedWhere = hasParent
+          ? resolveComboBoxWhereClause(comboConfig.ObjWh, parentValue)
+          : comboConfig.ObjWh || "";
+
+        const handleChange = (selected) => {
+          const newValue = getAutoCompleteSelectedValue(selected, comboConfig);
+          const displayText = getAutoCompleteSelectedDisplay(
+            selected,
+            comboConfig,
+          );
+
+          api.setEditCellValue({ id, field, value: newValue });
+          markBulkEditRowDirty(id, field, newValue);
+
+          const displayTarget = getComboBoxDisplayTarget(comboConfig);
+          if (displayTarget && displayTarget !== field) {
+            api.setEditCellValue({
+              id,
+              field: displayTarget,
+              value: newValue ? displayText : "",
+            });
+          }
+
+          if (Array.isArray(bsComboBox)) {
+            const childColumns = [];
+            const findChildren = (parentCol) => {
+              bsComboBox.forEach((combo) => {
+                if (combo.ParentColumn === parentCol) {
+                  childColumns.push(combo.Column);
+                  findChildren(combo.Column);
+                }
+              });
+            };
+            findChildren(field);
+
+            childColumns.forEach((childCol) => {
+              api.setEditCellValue({ id, field: childCol, value: "" });
+              const childCombo = bsComboBox.find((c) => c.Column === childCol);
+              const childDisplayTarget =
+                getComboBoxDisplayTarget(childCombo);
+              if (
+                childCombo &&
+                childDisplayTarget &&
+                childDisplayTarget !== childCol
+              ) {
+                api.setEditCellValue({
+                  id,
+                  field: childDisplayTarget,
+                  value: "",
+                });
+              }
+            });
+          }
+        };
+
+        return (
+          <Box sx={{ width: "100%", height: "100%" }}>
+            <BSAutoComplete
+              bsMode="single"
+              bsPreObj={
+                comboConfig.PreObj ? getSchemaFromPreObj(comboConfig.PreObj) : "tmt"
+              }
+              bsObj={comboConfig.Obj}
+              bsColumes={buildAutoCompleteColumns(comboConfig)}
+              bsObjWh={resolvedWhere || ""}
+              bsObjBy={comboConfig.ObjBy || ""}
+              bsValue={value ?? ""}
+              bsOnChange={handleChange}
+              bsLoadOnOpen
+              disabled={!isParentSelected}
+              autoFocus={params.hasFocus}
+              sx={{
+                "& .MuiInputBase-root:not(.MuiInputBase-multiline), & .MuiOutlinedInput-root:not(.MuiInputBase-multiline)":
+                  {
+                    minHeight: "100%",
+                    height: "100%",
+                  },
+              }}
+            />
+          </Box>
+        );
+      },
+      [bsComboBox, markBulkEditRowDirty],
+    );
+
+    // Edit cell for singleSelect columns: MUI's default editor + a hook that flips
+    // the unsaved-changes flag the moment an option is picked.
+    const renderSelectEditCell = useCallback(
+      (params) => (
+        <GridEditSingleSelectCell
+          {...params}
+          onValueChange={(event, newValue) =>
+            markBulkEditRowDirty(params.id, params.field, newValue)
+          }
+        />
+      ),
+      [markBulkEditRowDirty],
+    );
 
     // Helper: Check if field is required (not null)
     // const isFieldRequired = useCallback((columnName, metadata) => {
@@ -6240,7 +8170,10 @@ ${errorInfo.originalError}
 
             // Check if field is hidden via bsColumnDefs (hide: true)
             const customDef = columnDefsConfig[key];
-            if (customDef?.hide === true) {
+            if (
+              customDef?.hideInForm === true ||
+              (customDef?.hide === true && customDef?.showInForm !== true)
+            ) {
               bsLog(`🙈 Excluding hidden field from form: ${key}`);
               return false;
             }
@@ -6285,22 +8218,15 @@ ${errorInfo.originalError}
 
             return (
               <Grid item size={dialogGridSize} key={fieldName}>
-                <TextField
-                  fullWidth
-                  size="small"
+                <BSTextField
                   label={formatColumnName(fieldName)}
                   value={value}
-                  onChange={(e) =>
+                  onChange={(newValue) =>
                     setFormData((prev) => ({
                       ...prev,
-                      [fieldName]: e.target.value,
+                      [fieldName]: newValue,
                     }))
                   }
-                  variant="outlined"
-                  // helperText={
-                  //   customDef?.description ||
-                  //   `Enhanced SP field (${typeof value})`
-                  // }
                   disabled={isReadOnly}
                   required={isRequired}
                 />
@@ -6323,7 +8249,8 @@ ${errorInfo.originalError}
         // Filter out is_active field in add mode (only is_active, not other is_* fields)
         if (
           dialogMode === "add" &&
-          c.columnName.toLowerCase() === "is_active"
+          c.columnName.toLowerCase() === "is_active" &&
+          columnDefsConfig[c.columnName]?.showInAdd !== true
         ) {
           return false;
         }
@@ -6334,7 +8261,10 @@ ${errorInfo.originalError}
         }
         // Filter out columns hidden via bsColumnDefs (hide: true)
         const customDef = columnDefsConfig[c.columnName];
-        if (customDef?.hide === true) {
+        if (
+          customDef?.hideInForm === true ||
+          (customDef?.hide === true && customDef?.showInForm !== true)
+        ) {
           bsLog(`🙈 Hiding column from form via bsColumnDefs: ${c.columnName}`);
           return false;
         }
@@ -6381,13 +8311,30 @@ ${errorInfo.originalError}
       }
 
       const formFields = formColumns.map((c) => {
-        const { columnName, dataType, isNullable, description, maxLength } = c;
-        const rawVal = formData[columnName];
+        const { columnName, dataType, isNullable, maxLength } = c;
+        // In edit mode, fall back to selectedRow for fields that initializeFormData may have
+        // skipped (e.g. columns with SQL DEFAULT values whose hasDefault flag caused them to be
+        // excluded when dialogMode state hadn't updated yet at the time initializeFormData ran).
+        const rawVal =
+          formData[columnName] !== undefined
+            ? formData[columnName]
+            : dialogMode === "edit" && selectedRow
+              ? selectedRow[columnName]
+              : undefined;
         let inputType = "text";
         let multiline = false;
 
         // Get custom column definition if exists
         const customDef = columnDefsConfig[columnName];
+        const resourceDescription = formatColumnDescription(columnName);
+
+        // Check conditional visibility: visible(formData) => boolean
+        if (
+          typeof customDef?.visible === "function" &&
+          !customDef.visible(formData)
+        ) {
+          return null;
+        }
 
         // Determine if field is read-only (only apply customDef.readOnly in edit mode, not add mode)
         // disabled: true works for both add and edit mode
@@ -6438,13 +8385,21 @@ ${errorInfo.originalError}
             return children;
           };
 
+          const isInvalid =
+            (maxLength > 0 && String(rawVal ?? "").length > maxLength) ||
+            (showValidationErrors &&
+              isRequired &&
+              (rawVal === null ||
+                rawVal === undefined ||
+                String(rawVal).trim() === ""));
+
           return (
             <Grid item size={dialogGridSize} key={columnName}>
               <ComboBoxField
                 columnName={columnName}
                 config={comboConfig}
                 value={rawVal ?? ""}
-                onChange={(value) => {
+                onChange={(value, displayValue) => {
                   // Auto-clear all child ComboBox values when this parent changes
                   const childColumns = getChildColumns(columnName);
                   setFormData((p) => {
@@ -6462,18 +8417,36 @@ ${errorInfo.originalError}
                         },
                       );
                     }
+                    // Also populate the display target so denormalized columns stay in sync
+                    const displayTarget =
+                      getComboBoxDisplayTarget(comboConfig);
+                    if (
+                      displayTarget &&
+                      displayTarget !== columnName
+                    ) {
+                      const lookupMap =
+                        comboBoxLookupDataRef.current[columnName] || {};
+                      const displayText =
+                        displayValue ??
+                        lookupMap[value] ?? lookupMap[String(value)] ?? "";
+                      updated[displayTarget] = displayText;
+                    }
                     return updated;
                   });
                 }}
                 required={isRequired}
                 dataType={dataType}
                 isNullable={isNullable}
+                label={customDef?.headerName || formatColumnName(columnName)}
                 description={
-                  customDef?.tooltip || customDef?.description || description
+                  customDef?.tooltip ||
+                  customDef?.description ||
+                  resourceDescription
                 }
                 disabled={isReadOnly}
                 localeText={getLocaleText(getEffectiveLocale())}
                 parentValue={parentVal}
+                error={isInvalid}
               />
             </Grid>
           );
@@ -6481,22 +8454,30 @@ ${errorInfo.originalError}
 
         // Special handling for is_active and is_* fields - use iOS-style Switch
         if (isActiveField(columnName)) {
+          const switchFallbackValue =
+            String(columnName || "").toLowerCase() === "is_active";
           return (
             <Grid item size={dialogGridSize} key={columnName}>
               <BSSwitchField
                 columnName={columnName}
-                label={formatColumnName(columnName)}
-                value={rawVal || "YES"}
+                label={customDef?.headerName || formatColumnName(columnName)}
+                value={
+                  rawVal !== undefined && rawVal !== null
+                    ? rawVal
+                    : switchFallbackValue
+                }
                 onChange={(newValue) =>
                   setFormData((p) => ({ ...p, [columnName]: newValue }))
                 }
                 disabled={isReadOnly}
                 required={isRequired}
                 description={
-                  customDef?.tooltip || customDef?.description || description
+                  customDef?.tooltip ||
+                  customDef?.description ||
+                  resourceDescription
                 }
-                yesValue="YES"
-                noValue="NO"
+                yesValue={true}
+                noValue={false}
                 localeText={getLocaleText(getEffectiveLocale())}
               />
             </Grid>
@@ -6538,6 +8519,14 @@ ${errorInfo.originalError}
           inputType = "date";
         } else if (customDef?.type === "dateTime") {
           inputType = "datetime-local";
+        } else if (
+          customDef?.type === "number" ||
+          customDef?.type === "decimal" ||
+          customDef?.type === "currency"
+        ) {
+          inputType = "number";
+        } else if (customDef?.type === "password") {
+          inputType = "password";
         }
 
         // Determine the display value based on input type
@@ -6584,7 +8573,73 @@ ${errorInfo.originalError}
                     disabled={isReadOnly}
                   />
                 }
-                label={formatColumnName(columnName)}
+                label={customDef?.headerName || formatColumnName(columnName)}
+                disabled={isReadOnly}
+              />
+            </Grid>
+          );
+        }
+
+        if (customDef?.type === "singleSelect" && customDef?.valueOptions) {
+          // Map valueOptions to BSAutoComplete's { code, value } shape (static, no fetch)
+          const autoOptions = customDef.valueOptions.map((option) =>
+            option && typeof option === "object"
+              ? { code: option.value, value: option.label ?? option.value }
+              : { code: option, value: option },
+          );
+
+          const isInvalid =
+            (maxLength > 0 && String(displayVal ?? "").length > maxLength) ||
+            (showValidationErrors &&
+              isRequired &&
+              (displayVal === null ||
+                displayVal === undefined ||
+                String(displayVal).trim() === ""));
+
+          return (
+            <Grid
+              item
+              size={dialogGridSize}
+              key={columnName}
+              sx={{ minWidth: 0 }}
+            >
+              {customDef?.labelAbove && (
+                <Typography
+                  component="label"
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    mb: 0.65,
+                    color: isInvalid ? "error.main" : "text.secondary",
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {customDef?.headerName || formatColumnName(columnName)}
+                  {isRequired && (
+                    <Box component="span" sx={{ color: "error.main", ml: 0.35 }}>
+                      *
+                    </Box>
+                  )}
+                </Typography>
+              )}
+              <BSAutoComplete
+                bsMode="select"
+                bsTitle={
+                  customDef?.labelAbove
+                    ? ""
+                    : customDef?.headerName || formatColumnName(columnName)
+                }
+                bsData={autoOptions}
+                bsValue={displayVal ?? ""}
+                bsOnChange={(selected) =>
+                  setFormData((p) => ({
+                    ...p,
+                    [columnName]: selected?.code ?? "",
+                  }))
+                }
+                required={!customDef?.labelAbove && isRequired}
+                error={isInvalid}
                 disabled={isReadOnly}
               />
             </Grid>
@@ -6595,9 +8650,12 @@ ${errorInfo.originalError}
         const gridSizeValue = multiline ? 12 : dialogGridSize;
 
         // Build tooltip text with length information
-        // Use customDef.tooltip first, then customDef.description, then metadata description
+        // Use customDef tooltip first, then localized resource description.
         let tooltipText =
-          customDef?.tooltip || customDef?.description || description || "";
+          customDef?.tooltip ||
+          customDef?.description ||
+          resourceDescription ||
+          "";
         if (
           bsShowCharacterCount &&
           maxLength > 0 &&
@@ -6613,27 +8671,19 @@ ${errorInfo.originalError}
         // For datetime-local and date, use MUI DateTimePicker/DatePicker for consistent format across locales
         if (inputType === "datetime-local") {
           const dateTimePickerContent = (
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DateTimePicker
-                label={formatColumnName(columnName)}
-                value={rawVal ? dayjs(rawVal) : null}
-                onChange={(newValue) => {
-                  // Convert dayjs to ISO string for storage
-                  const isoValue = newValue ? newValue.toISOString() : null;
-                  setFormData((p) => ({ ...p, [columnName]: isoValue }));
-                }}
-                disabled={isReadOnly}
-                format={DATETIME_FORMAT}
-                ampm={!USE_24_HOUR}
-                slotProps={{
-                  textField: {
-                    size: "small",
-                    fullWidth: true,
-                    required: isRequired,
-                  },
-                }}
-              />
-            </LocalizationProvider>
+            <BSDatepicker
+              label={customDef?.headerName || formatColumnName(columnName)}
+              value={rawVal ? dayjs(rawVal) : null}
+              onChange={(newValue) => {
+                // Convert dayjs to ISO string for storage
+                const isoValue = newValue ? newValue.toISOString() : null;
+                setFormData((p) => ({ ...p, [columnName]: isoValue }));
+              }}
+              disabled={isReadOnly}
+              required={isRequired}
+              format={DATETIME_FORMAT}
+              ampm={!USE_24_HOUR}
+            />
           );
 
           return (
@@ -6657,28 +8707,21 @@ ${errorInfo.originalError}
         // For date only, use MUI DatePicker
         if (inputType === "date") {
           const datePickerContent = (
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                label={formatColumnName(columnName)}
-                value={rawVal ? dayjs(rawVal) : null}
-                onChange={(newValue) => {
-                  // Convert dayjs to YYYY-MM-DD format for storage
-                  const dateValue = newValue
-                    ? newValue.format("YYYY-MM-DD")
-                    : null;
-                  setFormData((p) => ({ ...p, [columnName]: dateValue }));
-                }}
-                disabled={isReadOnly}
-                format={DATE_FORMAT}
-                slotProps={{
-                  textField: {
-                    size: "small",
-                    fullWidth: true,
-                    required: isRequired,
-                  },
-                }}
-              />
-            </LocalizationProvider>
+            <BSDatepicker
+              isDateOnly
+              label={customDef?.headerName || formatColumnName(columnName)}
+              value={rawVal ? dayjs(rawVal) : null}
+              onChange={(newValue) => {
+                // Convert dayjs to YYYY-MM-DD format for storage
+                const dateValue = newValue
+                  ? newValue.format("YYYY-MM-DD")
+                  : null;
+                setFormData((p) => ({ ...p, [columnName]: dateValue }));
+              }}
+              disabled={isReadOnly}
+              required={isRequired}
+              format={DATE_FORMAT}
+            />
           );
 
           return (
@@ -6699,76 +8742,102 @@ ${errorInfo.originalError}
           );
         }
 
-        // Get min/max/allowNegative from customDef for number fields
+        // Get min/max from customDef for number fields (clamped in BSTextField onChange)
         const numMin = customDef?.min;
         const numMax = customDef?.max;
-        const allowNegative = customDef?.allowNegative !== false; // default true
 
-        // Build inputProps for number fields
-        const buildNumberInputProps = () => {
-          if (inputType !== "number") return {};
-          const props = {};
-          // If allowNegative is false, set min to 0 (unless min is explicitly set)
-          if (!allowNegative && numMin === undefined) {
-            props.min = 0;
-          }
-          if (numMin !== undefined) props.min = numMin;
-          if (numMax !== undefined) props.max = numMax;
-          // Add step for decimal types
-          if (customDef?.type === "decimal" || customDef?.decimals) {
-            props.step = "any";
-          }
-          return props;
-        };
+        const isInvalid =
+          (maxLength > 0 && String(displayVal ?? "").length > maxLength) ||
+          (showValidationErrors &&
+            isRequired &&
+            (displayVal === null ||
+              displayVal === undefined ||
+              String(displayVal).trim() === ""));
 
-        const textFieldContent = (
-          <TextField
-            fullWidth
-            size="small"
-            label={formatColumnName(columnName)}
-            type={inputType}
-            value={displayVal}
-            onChange={(e) => {
-              let newValue = e.target.value;
-              // For number inputs, enforce min/max constraints
-              if (inputType === "number" && newValue !== "") {
-                const numValue = Number(newValue);
-                // Check allowNegative
-                if (!allowNegative && numValue < 0) {
-                  newValue = "0";
-                }
-                // Check min constraint
-                if (numMin !== undefined && numValue < numMin) {
-                  newValue = String(numMin);
-                }
-                // Check max constraint
-                if (numMax !== undefined && numValue > numMax) {
-                  newValue = String(numMax);
-                }
+        // ponytail: native TextField kept only for password (BSTextField can't
+        // mask). BSTextField has no negative-number support — fine, no field
+        // sets allowNegative.
+        const dt = dataType?.toLowerCase();
+        const numericType =
+          customDef?.type === "decimal" ||
+          customDef?.type === "currency" ||
+          ["decimal", "float", "real", "money"].includes(dt)
+            ? "decimal"
+            : ["int", "smallint", "tinyint", "bigint"].includes(dt)
+              ? "int"
+              : "number";
+
+        const textFieldContent =
+          inputType === "password" ? (
+            <TextField
+              fullWidth
+              size="small"
+              label={customDef?.headerName || formatColumnName(columnName)}
+              type="password"
+              value={displayVal}
+              onChange={(e) =>
+                setFormData((p) => ({ ...p, [columnName]: e.target.value }))
               }
-              setFormData((p) => ({ ...p, [columnName]: newValue }));
-            }}
-            required={isRequired}
-            disabled={isReadOnly}
-            multiline={multiline}
-            rows={multiline ? 3 : 1}
-            // For datetime-local, date, and number inputs, always shrink label to avoid overlap with browser placeholder
-            InputLabelProps={{
-              shrink:
-                inputType === "datetime-local" || inputType === "date" //|| inputType === "number"
-                  ? true
-                  : undefined,
-            }}
-            inputProps={{
-              ...(maxLength > 0 &&
-                (inputType === "text" || multiline) && {
-                  maxLength: maxLength,
-                }),
-              ...buildNumberInputProps(),
-            }}
-            error={maxLength > 0 && String(displayVal).length > maxLength}
-          />
-        );
+              required={isRequired}
+              disabled={isReadOnly}
+              error={isInvalid}
+            />
+          ) : (
+            <BSTextField
+              label={customDef?.headerName || formatColumnName(columnName)}
+              labelAbove={customDef?.labelAbove === true}
+              value={displayVal}
+              type={inputType === "number" ? numericType : "string"}
+              {...(customDef?.unit && {
+                slotProps: {
+                  input: {
+                    endAdornment: (
+                      <InputAdornment
+                        position="end"
+                        sx={{
+                          alignSelf: "stretch",
+                          height: "auto",
+                          minWidth: 42,
+                          maxHeight: "none",
+                          ml: 1,
+                          mr: "-14px",
+                          px: 1.25,
+                          borderRadius: "0 7px 7px 0",
+                          bgcolor: "grey.100",
+                          color: "text.disabled",
+                          fontSize: "0.75rem",
+                          fontWeight: 500,
+                          justifyContent: "center",
+                          userSelect: "none",
+                        }}
+                      >
+                        {customDef.unit}
+                      </InputAdornment>
+                    ),
+                  },
+                },
+              })}
+              {...(customDef?.decimals != null && {
+                scale: customDef.decimals,
+              })}
+              onChange={(newValue) => {
+                let v = newValue;
+                // Clamp min/max for number fields
+                if (inputType === "number" && v !== "") {
+                  const n = Number(v);
+                  if (numMin !== undefined && n < numMin) v = String(numMin);
+                  if (numMax !== undefined && n > numMax) v = String(numMax);
+                }
+                setFormData((p) => ({ ...p, [columnName]: v }));
+              }}
+              required={isRequired}
+              disabled={isReadOnly}
+              multiline={multiline}
+              minRows={multiline ? 3 : 1}
+              maxLength={maxLength > 0 ? maxLength : undefined}
+              error={isInvalid}
+            />
+          );
 
         return (
           <Grid item size={gridSizeValue} key={columnName} sx={{ minWidth: 0 }}>
@@ -6783,16 +8852,15 @@ ${errorInfo.originalError}
         );
       });
 
+      const fieldMap = {};
+      formFields.forEach((field) => {
+        if (field && field.key) {
+          fieldMap[field.key] = field;
+        }
+      });
+
       // If tabs are configured, organize fields by tabs
       if (parsedDialogTabs && parsedDialogTabs.length > 0) {
-        // Create a map of column names to form field elements
-        const fieldMap = {};
-        formFields.forEach((field) => {
-          if (field && field.key) {
-            fieldMap[field.key] = field;
-          }
-        });
-
         // Get columns assigned to any tab
         const assignedColumns = new Set();
         parsedDialogTabs.forEach((tab) => {
@@ -6815,9 +8883,11 @@ ${errorInfo.originalError}
                 aria-label="form tabs"
               >
                 {parsedDialogTabs.map((tab, index) => (
-                  <Tab key={index} label={tab.name} />
+                  <Tab key={index} label={formatDialogLabel(tab.name)} />
                 ))}
-                {unassignedFields.length > 0 && <Tab label="Other" />}
+                {unassignedFields.length > 0 && (
+                  <Tab label={formatDialogLabel("Other")} />
+                )}
               </Tabs>
             </Box>
 
@@ -6858,6 +8928,62 @@ ${errorInfo.originalError}
         );
       }
 
+      // If sections are configured, organize fields by stacked sections
+      if (parsedDialogSections && parsedDialogSections.length > 0) {
+        const assignedColumns = new Set();
+        parsedDialogSections.forEach((section) => {
+          section.columns.forEach((col) => assignedColumns.add(col));
+        });
+
+        const unassignedFields = formFields.filter(
+          (field) => field && field.key && !assignedColumns.has(field.key),
+        );
+
+        return (
+          <Box sx={{ width: "100%", pt: 0.5 }}>
+            {parsedDialogSections.map((section, index) => {
+              const sectionFields = section.columns
+                .map((colName) => fieldMap[colName])
+                .filter(Boolean);
+
+              if (sectionFields.length === 0) return null;
+
+              return (
+                <Box
+                  key={`${section.name}-${index}`}
+                  sx={{
+                    mt: section.showHeader ? 0 : index === 0 ? 0 : 2.5,
+                  }}
+                >
+                  {section.showHeader && (
+                    <DialogSectionHead
+                      icon={section.icon}
+                      sx={{ mt: index === 0 ? 0.5 : 2.5 }}
+                    >
+                      {formatDialogLabel(section.name)}
+                    </DialogSectionHead>
+                  )}
+                  <Grid container spacing={2}>
+                    {sectionFields}
+                  </Grid>
+                </Box>
+              );
+            })}
+
+            {unassignedFields.length > 0 && (
+              <Box>
+                <DialogSectionHead sx={{ mt: 2.5 }}>
+                  {formatDialogLabel("Other")}
+                </DialogSectionHead>
+                <Grid container spacing={2}>
+                  {unassignedFields}
+                </Grid>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+
       return (
         <Grid container spacing={2} sx={{ mt: 1 }}>
           {formFields}
@@ -6868,6 +8994,7 @@ ${errorInfo.originalError}
       formData,
       isFieldInForm,
       formatColumnName,
+      formatColumnDescription,
       dialogMode,
       isActiveField,
       comboBoxConfig,
@@ -6880,7 +9007,9 @@ ${errorInfo.originalError}
       bsKeyId,
       rows,
       getEffectiveLocale,
+      formatDialogLabel,
       parsedDialogTabs,
+      parsedDialogSections,
       activeDialogTab,
       handleDialogTabChange,
       dialogGridSize,
@@ -6941,7 +9070,16 @@ ${errorInfo.originalError}
           if (params.reason === GridRowEditStopReasons.escapeKeyDown) {
             // When Escape is pressed on a new row, remove it
             bsLog(`🚫 Escape pressed on new row: ${rowId} - removing row`);
-            setRows((oldRows) => oldRows.filter((row) => row.id !== rowId));
+            setRows((oldRows) => {
+              const remainingRows = oldRows.filter((row) => row.id !== rowId);
+              if (
+                !remainingRows.some((row) => isInlineBulkAddRow(row, row?.id))
+              ) {
+                inlineAddSessionActiveRef.current = false;
+                setInlineAddSessionActive(false);
+              }
+              return remainingRows;
+            });
             setRowModesModel((oldModel) => {
               const newModel = { ...oldModel };
               delete newModel[rowId];
@@ -6971,12 +9109,20 @@ ${errorInfo.originalError}
     // Bulk Edit Mode row-level handlers (Save/Cancel per row)
     const handleBulkRowEditClick = useCallback(
       (id) => {
+        if (!bulkEditMode) {
+          captureGridHorizontalScroll(true);
+          setBulkEditMode(true);
+          unsavedChangesRef.current = {};
+          setHasUnsavedChanges(false);
+          bsLog("ðŸ“ Bulk Edit mode enabled via row double-click");
+        }
+
         setRowModesModel((oldModel) => ({
           ...oldModel,
           [id]: { mode: GridRowModes.Edit },
         }));
       },
-      [setRowModesModel],
+      [bulkEditMode, captureGridHorizontalScroll, setRowModesModel],
     );
 
     const handleBulkRowSaveClick = useCallback(
@@ -7029,6 +9175,8 @@ ${errorInfo.originalError}
             if (!hasRemainingNewRows && !hasUnsavedEdits) {
               // Use setTimeout to avoid state update during render
               setTimeout(() => {
+                inlineAddSessionActiveRef.current = false;
+                setInlineAddSessionActive(false);
                 setBulkEditMode(false);
                 setHasUnsavedChanges(false);
                 setRowModesModel({});
@@ -7053,6 +9201,8 @@ ${errorInfo.originalError}
             if (!hasUnsavedEdits && !hasNewRows) {
               // Use setTimeout to avoid state update during render
               setTimeout(() => {
+                inlineAddSessionActiveRef.current = false;
+                setInlineAddSessionActive(false);
                 setBulkEditMode(false);
                 setHasUnsavedChanges(false);
                 setRowModesModel({});
@@ -7064,30 +9214,6 @@ ${errorInfo.originalError}
         }
       },
       [rows, getEffectivePrimaryKey, setRowModesModel],
-    );
-
-    const handleInlineEditClick = useCallback(
-      (id) => () => {
-        if (effectiveBulkAddInline || effectiveBulkEdit) {
-          setRowModesModel((oldModel) => ({
-            ...oldModel,
-            [id]: { mode: GridRowModes.Edit },
-          }));
-          // Enable bulk edit mode to show Save All / Discard All toolbar
-          if (!bulkEditMode) {
-            setBulkEditMode(true);
-            unsavedChangesRef.current = {};
-            setHasUnsavedChanges(false);
-            bsLog("📝 Bulk Edit mode enabled via edit button click");
-          }
-        }
-      },
-      [
-        effectiveBulkAddInline,
-        effectiveBulkEdit,
-        bulkEditMode,
-        setRowModesModel,
-      ],
     );
 
     const handleInlineSaveClick = useCallback(
@@ -7174,13 +9300,20 @@ ${errorInfo.originalError}
         if (isNewRow) {
           // For new rows that haven't been saved yet, just remove from UI
           // Use the same matching logic as above
-          setRows((oldRows) =>
-            oldRows.filter(
+          setRows((oldRows) => {
+            const remainingRows = oldRows.filter(
               (row) =>
                 String(row[primaryKey]) !== String(id) &&
                 String(row.id) !== String(id),
-            ),
-          );
+            );
+            if (
+              !remainingRows.some((row) => isInlineBulkAddRow(row, row?.id))
+            ) {
+              inlineAddSessionActiveRef.current = false;
+              setInlineAddSessionActive(false);
+            }
+            return remainingRows;
+          });
           setRowModesModel((oldModel) => {
             const newModel = { ...oldModel };
             delete newModel[id];
@@ -7316,6 +9449,8 @@ ${errorInfo.originalError}
               // If no more new rows and no unsaved changes, exit bulk edit mode
               if (!hasRemainingNewRows && !hasUnsavedEdits) {
                 setTimeout(() => {
+                  inlineAddSessionActiveRef.current = false;
+                  setInlineAddSessionActive(false);
                   setBulkEditMode(false);
                   setHasUnsavedChanges(false);
                   setRowModesModel({});
@@ -7375,12 +9510,28 @@ ${errorInfo.originalError}
           // Validate the row data
           const validation = validateFormData(newRow);
           if (!validation.isValid) {
-            BSAlertSwal2.show("error", "", {
-              title: "Validation Errors",
-              html: validation.errors.join("<br>"),
-            });
+            const invalidId = String(newRow.id || newRow.Id || newRow.ID || "");
+            if (invalidId) {
+              markInvalidRows([invalidId]);
+            }
+            showValidationAlert([{ rowNumber: 1, errors: validation.errors }]);
             return newRow; // Return unchanged to keep edit mode
           }
+          setInvalidRowIds((prev) => {
+            const rowId = String(newRow.id || newRow.Id || newRow.ID || "");
+            if (!rowId || !prev.has(rowId)) return prev;
+            const next = new Set(prev);
+            next.delete(rowId);
+            return next;
+          });
+          setRows((prevRows) =>
+            prevRows.map((row) =>
+              String(row.id || row.Id || row.ID || "") ===
+              String(newRow.id || newRow.Id || newRow.ID || "")
+                ? { ...row, __bsInvalid: false }
+                : row,
+            ),
+          );
 
           // If it's a new row, create it
           if (newRow.isNew) {
@@ -7395,11 +9546,79 @@ ${errorInfo.originalError}
               return { ...newRow, isNew: false };
             }
 
+            // Validate unique fields before creating
+            if (bsUniqueFields && bsUniqueFields.length > 0) {
+              const uniqueValidation = await validateUniqueFields(
+                newRow,
+                "add",
+                null,
+              );
+              if (!uniqueValidation.isValid) {
+                BSAlertSwal2.show("error", "", {
+                  title:
+                    getCurrentLocaleText().bsDuplicateValueError ||
+                    "Duplicate Value Error",
+                  html: uniqueValidation.errors.join("<br>"),
+                });
+                return newRow;
+              }
+            }
+
             const { isNew, id, ...dataToSave } = newRow;
+
+            // Apply fallback defaults for new rows only
+            const dataToSaveWithDefaults = { ...dataToSave };
+            if (columnDefsConfig) {
+              Object.entries(columnDefsConfig).forEach(
+                ([fieldName, colDef]) => {
+                  if (
+                    colDef.defaultValue !== undefined &&
+                    colDef.defaultValue !== null
+                  ) {
+                    const val = dataToSaveWithDefaults[fieldName];
+                    if (val === undefined || val === null || val === "") {
+                      dataToSaveWithDefaults[fieldName] = colDef.defaultValue;
+
+                      // Sync display column if it's a combobox
+                      if (comboBoxConfig) {
+                        const combo = comboBoxConfig[fieldName];
+                        const displayTarget =
+                          getComboBoxDisplayTarget(combo);
+                        if (
+                          combo &&
+                          displayTarget &&
+                          displayTarget !== fieldName
+                        ) {
+                          const dispVal =
+                            dataToSaveWithDefaults[displayTarget];
+                          if (
+                            dispVal === undefined ||
+                            dispVal === null ||
+                            dispVal === ""
+                          ) {
+                            const lookupMap =
+                              comboBoxLookupDataRef.current[fieldName] || {};
+                            const defValue = colDef.defaultValue;
+                            dataToSaveWithDefaults[displayTarget] =
+                              lookupMap[defValue] ??
+                              lookupMap[String(defValue)] ??
+                              "";
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+              );
+            }
 
             // Filter to only include fields that exist in metadata (actual table columns)
             // This removes display-only fields like create_by_display, update_by_display
-            const cleanData = { ...dataToSave };
+            const cleanData = {
+              ...applyOutboundTransform(dataToSaveWithDefaults, {
+                mode: "add",
+              }),
+            };
 
             // Remove audit fields - these should be managed by backend
             const auditFields = [
@@ -7467,6 +9686,7 @@ ${errorInfo.originalError}
             const updatedRow = {
               ...newRow, // Keep original row data (including display columns)
               ...savedRecord, // Override with new values from API
+              api_key: newRow.api_key,
               isNew: false,
             };
 
@@ -7492,7 +9712,7 @@ ${errorInfo.originalError}
                   row.id || row[getEffectivePrimaryKey()] || "",
                 );
                 return (
-                  (rowId.startsWith("new-") || row.isNew) &&
+                  isInlineBulkAddRow(row, rowId) &&
                   row.id !== newRow.id
                 );
               })
@@ -7566,6 +9786,8 @@ ${errorInfo.originalError}
             if (!hasUnsavedEdits && !hasRemainingNewRows) {
               // Use setTimeout to ensure state updates are processed
               setTimeout(() => {
+                inlineAddSessionActiveRef.current = false;
+                setInlineAddSessionActive(false);
                 setBulkEditMode(false);
                 setHasUnsavedChanges(false);
                 setRowModesModel({});
@@ -7632,7 +9854,9 @@ ${errorInfo.originalError}
           // Normal mode - save immediately
 
           // Remove invalid id fields from data before sending to backend
-          const cleanData = { ...newRow };
+          const cleanData = {
+            ...applyOutboundTransform(newRow, { mode: "edit" }),
+          };
           if (primaryKey !== "id") delete cleanData.id;
           if (primaryKey !== "Id") delete cleanData.Id;
           if (primaryKey !== "ID") delete cleanData.ID;
@@ -7700,7 +9924,15 @@ ${errorInfo.originalError}
             const result = await executeSpCrud("UPDATE", cleanData, id);
             savedRecord = result.data?.[0] || result;
           } else {
-            savedRecord = await updateRecord(id, cleanData, bsPreObj);
+            // Pass explicit whereConditions using the effective primary key
+            const pkField = getEffectivePrimaryKey(newRow);
+            const whereConditions = { [pkField]: id };
+            savedRecord = await updateRecord(
+              id,
+              cleanData,
+              bsPreObj,
+              whereConditions,
+            );
           }
 
           // Merge original row data with saved record to preserve all fields
@@ -7709,6 +9941,7 @@ ${errorInfo.originalError}
           const updatedRow = {
             ...newRow, // Keep all original row data
             ...savedRecord, // Override with updated values from API
+            api_key: newRow.api_key,
             id: newRow.id, // Preserve original id for DataGrid
           };
 
@@ -7740,23 +9973,29 @@ ${errorInfo.originalError}
       },
       [
         validateFormData,
+        showValidationAlert,
+        getCurrentLocaleText,
+        markInvalidRows,
         getEffectivePrimaryKey,
         bulkEditMode,
+        applyOutboundTransform,
         metadata?.columns,
-        updateRecord,
-        bsPreObj,
-        createRecord,
-        loadData,
-        rows,
-        formatSqlErrorMessage,
-        showErrorWithDetails,
         bsStoredProcedure,
         bsStoredProcedureCrud,
-        executeSpCrud,
         parsedCols,
-        bsKeyId,
-        setRowModesModel,
+        bsUniqueFields,
         apiRef,
+        rows,
+        validateUniqueFields,
+        bsKeyId,
+        executeSpCrud,
+        createRecord,
+        bsPreObj,
+        loadData,
+        setRowModesModel,
+        updateRecord,
+        formatSqlErrorMessage,
+        showErrorWithDetails,
       ],
     );
 
@@ -7775,6 +10014,7 @@ ${errorInfo.originalError}
       (column, fieldName) => {
         const customDef = columnDefsConfig[fieldName];
         if (!customDef) return column;
+        const isComboBoxColumn = Boolean(comboBoxConfig[fieldName]);
 
         bsLog(`🎨 Applying custom column def for: ${fieldName}`, {
           original: column,
@@ -7788,6 +10028,9 @@ ${errorInfo.originalError}
         if (customDef.headerName !== undefined)
           mergedColumn.headerName = customDef.headerName;
         if (customDef.width !== undefined) mergedColumn.width = customDef.width;
+        if (customDef.minWidth !== undefined)
+          mergedColumn.minWidth = customDef.minWidth;
+        if (customDef.flex !== undefined) mergedColumn.flex = customDef.flex;
         if (customDef.type !== undefined) mergedColumn.type = customDef.type;
         if (customDef.editable !== undefined)
           mergedColumn.editable = customDef.editable;
@@ -7828,7 +10071,7 @@ ${errorInfo.originalError}
           customDef.type === "number" ||
           customDef.type === "decimal"
         ) {
-          const decimals = customDef.decimals ?? 2;
+          const decimals = customDef.decimals ?? DEFAULT_DECIMAL_PLACES;
           const thousandSeparator = customDef.thousandSeparator !== false;
           const numMin = customDef.min;
           const numMax = customDef.max;
@@ -7880,7 +10123,7 @@ ${errorInfo.originalError}
                   onChange={handleChange}
                   variant="standard"
                   fullWidth
-                  autoFocus
+                  autoFocus={params.hasFocus}
                   inputProps={inputProps}
                   sx={{
                     "& .MuiInput-input": {
@@ -7936,7 +10179,11 @@ ${errorInfo.originalError}
                   .replace("mm", "MM");
           const dateFormat =
             customDef.dateFormat || customDef.dateTimeFormat || defaultFormat;
-          const includeTime = customDef.type === "dateTime";
+          // includeTime is true when type is "dateTime", OR when type is "date" but dateTimeFormat is provided
+          // This allows header filter to show date-only picker (type: "date") while cell displays datetime
+          const includeTime =
+            customDef.type === "dateTime" ||
+            (customDef.type === "date" && !!customDef.dateTimeFormat);
 
           // Remove existing renderCell to let valueFormatter work
           // This is needed because renderCell has higher priority than valueFormatter in MUI DataGrid
@@ -7962,14 +10209,27 @@ ${errorInfo.originalError}
                 .replace("MM", month)
                 .replace("dd", day);
 
-              if (includeTime && customDef.timeFormat) {
-                const timeStr = customDef.timeFormat
-                  .replace("HH", hours)
-                  .replace("mm", minutes)
-                  .replace("ss", seconds);
-                formatted += ` ${timeStr}`;
-              } else if (includeTime) {
-                formatted += ` ${hours}:${minutes}:${seconds}`;
+              if (includeTime) {
+                // If format string already contains time tokens (e.g. "dd/MM/yyyy HH:mm:ss"),
+                // replace them in-place instead of appending separately
+                if (
+                  formatted.includes("HH") ||
+                  formatted.includes("mm") ||
+                  formatted.includes("ss")
+                ) {
+                  formatted = formatted
+                    .replace("HH", hours)
+                    .replace("mm", minutes)
+                    .replace("ss", seconds);
+                } else if (customDef.timeFormat) {
+                  const timeStr = customDef.timeFormat
+                    .replace("HH", hours)
+                    .replace("mm", minutes)
+                    .replace("ss", seconds);
+                  formatted += ` ${timeStr}`;
+                } else {
+                  formatted += ` ${hours}:${minutes}:${seconds}`;
+                }
               }
 
               return formatted;
@@ -8191,9 +10451,17 @@ ${errorInfo.originalError}
         }
 
         // Select type
-        if (customDef.type === "singleSelect" && customDef.valueOptions) {
+        if (
+          customDef.type === "singleSelect" &&
+          customDef.valueOptions &&
+          !isComboBoxColumn
+        ) {
           mergedColumn.type = "singleSelect";
           mergedColumn.valueOptions = customDef.valueOptions;
+          // Enable "Save All" immediately on selection (no Enter needed) in bulk edit.
+          if (!customDef.renderEditCell) {
+            mergedColumn.renderEditCell = renderSelectEditCell;
+          }
         }
 
         // Custom renderers (highest priority)
@@ -8215,7 +10483,12 @@ ${errorInfo.originalError}
         return mergedColumn;
       },
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      [columnDefsConfig, getEffectivePrimaryKey],
+      [
+        columnDefsConfig,
+        comboBoxConfig,
+        getEffectivePrimaryKey,
+        renderSelectEditCell,
+      ],
     );
 
     // Get localization object for DataGrid
@@ -8228,12 +10501,20 @@ ${errorInfo.originalError}
     // IMPORTANT: Memoize to prevent infinite re-renders in columns useMemo
     const localeText = useMemo(() => {
       const base = getLocalization();
-      const addRecordText = getResource(resourceData, "AddRecord");
-      if (addRecordText) {
-        return { ...base, bsAddRecord: addRecordText };
+      // Priority: addRecordText prop > "AddRecord" resource > default
+      // NOTE: getResource returns the resource_name itself when not found,
+      // so ignore that fallback to avoid showing the literal "AddRecord".
+      const resourceAddRecord = getResource(resourceData, "AddRecord");
+      const customAddRecord =
+        addRecordText ||
+        (resourceAddRecord && resourceAddRecord !== "AddRecord"
+          ? resourceAddRecord
+          : null);
+      if (customAddRecord) {
+        return { ...base, bsAddRecord: customAddRecord };
       }
       return base;
-    }, [getLocalization, resourceData, getResource]);
+    }, [getLocalization, addRecordText, resourceData, getResource]);
 
     // IMPORTANT: Create a stable key for the column structure based on the keys of the first row
     // This prevents the columns useMemo from recalculating every time rows data changes
@@ -8253,6 +10534,15 @@ ${errorInfo.originalError}
       return rows[0];
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rowColumnStructureKey]);
+
+    const inlineBulkAddModeActive = useMemo(
+      () =>
+        effectiveBulkAddInline &&
+        bulkEditMode &&
+        (inlineAddSessionActive ||
+          rows.some((row) => isInlineBulkAddRow(row, row?.id))),
+      [effectiveBulkAddInline, bulkEditMode, inlineAddSessionActive, rows],
+    );
 
     // CRITICAL FIX: Use ref to cache columns and prevent infinite re-renders
     // DataGrid's useGridColumns hook causes state updates when columns prop changes
@@ -8304,7 +10594,7 @@ ${errorInfo.originalError}
     const columnsKey = useMemo(() => {
       const storedProcKey = bsStoredProcedure || "";
       const firstRowKey = rowColumnStructureKey;
-      const configKey = `${readOnly}-${bulkEditMode}-${effectiveBulkAddInline}-${bsShowRowNumber}`;
+      const configKey = `${readOnly}-${bulkEditMode}-${effectiveBulkAddInline}-${inlineBulkAddModeActive}-${bsShowRowNumber}`;
       const visibilityKey = `${effectiveVisibleView}-${effectiveVisibleEdit}-${effectiveVisibleDelete}`;
       const colsKey = parsedCols ? parsedCols.join(",") : "";
       const hiddenKey = bsHiddenColumns ? JSON.stringify(bsHiddenColumns) : "";
@@ -8329,7 +10619,12 @@ ${errorInfo.originalError}
           ? resourceData.length +
             "-" +
             resourceData
-              .map((r) => `${r.resource_name || ""}:${r.resource_value || ""}`)
+              .map(
+                (r) =>
+                  `${r.resource_name || ""}:${r.resource_value || ""}:${
+                    r.resource_description || ""
+                  }`,
+              )
               .join("|")
           : "";
 
@@ -8341,6 +10636,7 @@ ${errorInfo.originalError}
       readOnly,
       bulkEditMode,
       effectiveBulkAddInline,
+      inlineBulkAddModeActive,
       bsShowRowNumber,
       effectiveVisibleView,
       effectiveVisibleEdit,
@@ -8353,6 +10649,28 @@ ${errorInfo.originalError}
       effectiveLang,
       resourceData,
     ]);
+
+    useEffect(() => {
+      const api = apiRef.current;
+
+      if (!api?.subscribeEvent) return undefined;
+
+      return api.subscribeEvent("scrollPositionChange", (params) => {
+        if (restoringHorizontalScrollRef.current) return;
+
+        const left = Number(params?.left || 0);
+
+        if (left >= 0) {
+          lastHorizontalScrollLeftRef.current = left;
+        }
+      });
+    }, [apiRef]);
+
+    useLayoutEffect(() => {
+      if (!bulkEditMode || !pendingHorizontalScrollRestoreRef.current) return;
+
+      restoreGridHorizontalScroll();
+    }, [bulkEditMode, rowModesModel, columnsKey, restoreGridHorizontalScroll]);
 
     // Build columns from metadata - ONLY regenerate when columnsKey changes
     const columns = useMemo(() => {
@@ -8558,6 +10876,11 @@ ${errorInfo.originalError}
                 }
               }
 
+              if (columnType === "string" && isDateLikeFieldName(key)) {
+                columnType = getDateFieldDataType(key, firstValue);
+                width = columnType === "datetime" ? 180 : 140;
+              }
+
               // Note: 'width' is calculated above but not used in columnConfig
               // to let DataGrid auto-calculate from content. Keep for future use.
               void width; // Suppress unused variable warning
@@ -8571,6 +10894,10 @@ ${errorInfo.originalError}
                 type: "string", // Use string type to avoid MUI X Date object requirements
                 editable: false, // Enhanced SP handles editing through operations
               };
+
+              if (typeof bsColumnWidth === "number") {
+                columnConfig.width = bsColumnWidth;
+              }
 
               // Add custom formatters based on detected data type
               if (columnType === "dateTime") {
@@ -8746,6 +11073,14 @@ ${errorInfo.originalError}
                   bsKeyId || detectPrimaryKeyFromData(rows) || "id";
                 const rowId = params.row[primaryKey] || params.row.id;
                 const hasChanges = !!unsavedChangesRef.current[rowId];
+                const isNewRow = isInlineBulkAddRow(params.row, params.id);
+                const suppressExistingRowActions =
+                  inlineBulkAddModeActive ||
+                  (effectiveBulkAddInline && inlineAddSessionActiveRef.current);
+
+                if (suppressExistingRowActions && !isNewRow) {
+                  return [];
+                }
 
                 if (isInEditMode) {
                   // Row is in edit mode - show Save and Cancel buttons
@@ -8814,7 +11149,14 @@ ${errorInfo.originalError}
                           />
                         }
                         label={localeText.bsEdit}
-                        onClick={() => handleBulkRowEditClick(params.id)}
+                        onClick={() => {
+                          logGridActivity(
+                            "GRID_EDIT_CLICK",
+                            params.row,
+                            "Edit action clicked in BSDataGrid",
+                          );
+                          handleEditClick(params.row);
+                        }}
                         sx={{
                           "&:hover": {
                             backgroundColor:
@@ -8860,6 +11202,15 @@ ${errorInfo.originalError}
                 // Get row-specific config
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
                 const showEdit = rowConfig.showEdit !== false;
+
+                if (
+                  (inlineBulkAddModeActive ||
+                    (effectiveBulkAddInline &&
+                      inlineAddSessionActiveRef.current)) &&
+                  !isInlineBulkAddRow(params.row, params.id)
+                ) {
+                  return null;
+                }
 
                 if (!showEdit) return null;
 
@@ -8907,6 +11258,15 @@ ${errorInfo.originalError}
                 const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
                 const showDelete = rowConfig.showDelete !== false;
 
+                if (
+                  (inlineBulkAddModeActive ||
+                    (effectiveBulkAddInline &&
+                      inlineAddSessionActiveRef.current)) &&
+                  !isInlineBulkAddRow(params.row, params.id)
+                ) {
+                  return null;
+                }
+
                 if (!showDelete) return null;
 
                 return (
@@ -8947,13 +11307,14 @@ ${errorInfo.originalError}
             // Only insert actions column if there are actual actions
             if (actions.length > 0) {
               // Calculate actions column width based on mode
-              const actionsWidth = bulkEditMode ? 100 : 80;
+              const actionsWidth = bulkEditMode ? 88 : 84;
 
               dataColumns.unshift({
                 field: "actions",
                 type: "actions",
                 headerName: "", // Hide column header
                 width: actionsWidth,
+                minWidth: actionsWidth, // Prevent column from shrinking
                 maxWidth: actionsWidth, // Prevent column from expanding
                 sortable: false,
                 filterable: false,
@@ -9101,15 +11462,26 @@ ${errorInfo.originalError}
               //headerClassName: isRequired ? "required-field" : undefined,
             };
 
+            if (typeof bsColumnWidth === "number") {
+              baseColumn.width = bsColumnWidth;
+            }
+
             // is_active field configuration
             if (isActiveField(columnName)) {
               baseColumn.valueOptions = getIsActiveOptions();
               // CRITICAL: MUI DataGrid needs getOptionValue and getOptionLabel
-              baseColumn.getOptionValue = (option) => option?.value ?? "";
+              baseColumn.getOptionValue = (option) => option?.value ?? false;
               baseColumn.getOptionLabel = (option) => option?.label ?? "";
+              // Enable "Save All" the moment YES/NO is picked (no Enter needed).
+              baseColumn.renderEditCell = renderSelectEditCell;
               baseColumn.renderCell = (params) => {
                 const { value } = params;
-                const displayText = value || "YES"; // Default to YES if empty
+                const isActive =
+                  value === true ||
+                  value === 1 ||
+                  value === "1" ||
+                  value === "YES";
+                const displayText = isActive ? "YES" : "NO";
 
                 return (
                   <Box
@@ -9124,7 +11496,7 @@ ${errorInfo.originalError}
                     <Chip
                       label={displayText}
                       size="small"
-                      color={displayText === "YES" ? "success" : "error"}
+                      color={isActive ? "success" : "error"}
                       variant="outlined"
                     />
                   </Box>
@@ -9133,6 +11505,11 @@ ${errorInfo.originalError}
             }
             // ComboBox configuration
             else if (comboConfig) {
+              const isLazyDropdown = isLazyComboBoxConfig(comboConfig);
+              if (isLazyDropdown) {
+                baseColumn.type = "string";
+              }
+
               // Read from state first (available during this render), fallback to ref
               // Note: Check for array with length > 0, not just truthy, since [] is truthy
               const stateOptions = comboBoxValueOptions[columnName];
@@ -9151,17 +11528,18 @@ ${errorInfo.originalError}
                 sampleOptions: options.slice(0, 2),
               });
 
-              const emptyOption = { value: "", label: "-- เลือก --" };
+              // Do NOT include empty placeholder ("-- เลือก --") in column valueOptions
+              // because MUI header filter renders all valueOptions as filter choices.
+              // The custom renderEditCell already provides its own empty option for editing.
               let valueOptions;
               if (options && options.length > 0) {
-                valueOptions = [emptyOption, ...options];
+                valueOptions = [...options];
               } else {
                 // Fallback to static valueOptions if provided in config
-                const staticOptions = comboConfig.valueOptions || [];
-                valueOptions =
-                  staticOptions.length > 0
-                    ? [emptyOption, ...staticOptions]
-                    : [emptyOption];
+                valueOptions = normalizeComboBoxOptions(
+                  comboConfig.valueOptions || [],
+                  { Value: "value", Display: "label" },
+                );
               }
               baseColumn.valueOptions = valueOptions;
               // CRITICAL: MUI DataGrid needs getOptionValue and getOptionLabel
@@ -9173,7 +11551,21 @@ ${errorInfo.originalError}
               // CRITICAL FIX: Use custom renderEditCell to bypass MUI's column caching
               // This reads options from ref at edit time, always getting current data
               baseColumn.renderEditCell = (params) =>
-                renderComboBoxEditCell(params, comboConfig);
+                isLazyDropdown
+                  ? renderLazyComboBoxEditCell(params, comboConfig)
+                  : renderComboBoxEditCell(params, comboConfig);
+
+              // Assign custom autocomplete filter for combobox column
+              if (!isLazyDropdown) {
+                baseColumn.renderHeaderFilter = (params) => (
+                  <GridHeaderFilterAutocomplete
+                    {...params}
+                    apiRef={apiRef}
+                    options={valueOptions}
+                  />
+                );
+              }
+
               bsLog(`🔽 ComboBox column configured: ${columnName}`, {
                 type: baseColumn.type,
                 editable: baseColumn.editable,
@@ -9185,7 +11577,12 @@ ${errorInfo.originalError}
               // Standard cell rendering
               baseColumn.renderCell = (params) => {
                 const value = params.value;
-                const formattedValue = formatCellValue(value, col.dataType);
+                const displayDataType = resolveDateDisplayDataType(
+                  columnName,
+                  value,
+                  col.dataType,
+                );
+                const formattedValue = formatCellValue(value, displayDataType);
 
                 // Special rendering for different data types
                 if (col.dataType?.toLowerCase() === "bit") {
@@ -9240,6 +11637,13 @@ ${errorInfo.originalError}
                     });
                   };
 
+                  const isRequired = !col.isNullable;
+                  const isInvalid =
+                    isRequired &&
+                    (params.value === null ||
+                      params.value === undefined ||
+                      params.value === "");
+
                   return (
                     <TextField
                       type="number"
@@ -9247,13 +11651,89 @@ ${errorInfo.originalError}
                       onChange={handleChange}
                       variant="standard"
                       fullWidth
-                      autoFocus
+                      autoFocus={params.hasFocus}
                       inputProps={{ min: 0, step: "any" }}
+                      error={isInvalid}
                       sx={{
                         "& .MuiInput-input": {
                           textAlign: "right",
                           padding: "0 8px",
                         },
+                        // Required + empty: full red border (not just the
+                        // bottom underline) to flag a required field.
+                        ...(isInvalid && {
+                          "& .MuiInputBase-root": {
+                            boxShadow: `0 0 0 1.5px ${theme.palette.error.main}`,
+                            borderRadius: "4px",
+                          },
+                          "& .MuiInput-underline:before, & .MuiInput-underline:after":
+                            {
+                              borderBottom: "none",
+                            },
+                        }),
+                      }}
+                    />
+                  );
+                };
+              }
+
+              const stringTypes = [
+                "varchar",
+                "nvarchar",
+                "char",
+                "nchar",
+                "text",
+                "ntext",
+                "string",
+              ];
+              if (
+                stringTypes.includes(col.dataType?.toLowerCase()) &&
+                col.maxLength > 0
+              ) {
+                baseColumn.renderEditCell = (params) => {
+                  const handleChange = (event) => {
+                    const value = event.target.value;
+                    params.api.setEditCellValue({
+                      id: params.id,
+                      field: params.field,
+                      value: value,
+                    });
+                  };
+
+                  const isRequired = !col.isNullable;
+                  const isInvalid =
+                    (col.maxLength > 0 &&
+                      String(params.value ?? "").length > col.maxLength) ||
+                    (isRequired &&
+                      (params.value === null ||
+                        params.value === undefined ||
+                        String(params.value).trim() === ""));
+
+                  return (
+                    <TextField
+                      value={params.value ?? ""}
+                      onChange={handleChange}
+                      variant="standard"
+                      fullWidth
+                      autoFocus={params.hasFocus}
+                      inputProps={{ maxLength: col.maxLength }}
+                      error={isInvalid}
+                      sx={{
+                        "& .MuiInput-input": {
+                          padding: "0 8px",
+                        },
+                        // Required + empty: full red border (not just the
+                        // bottom underline) to flag a required field.
+                        ...(isInvalid && {
+                          "& .MuiInputBase-root": {
+                            boxShadow: `0 0 0 1.5px ${theme.palette.error.main}`,
+                            borderRadius: "4px",
+                          },
+                          "& .MuiInput-underline:before, & .MuiInput-underline:after":
+                            {
+                              borderBottom: "none",
+                            },
+                        }),
                       }}
                     />
                   );
@@ -9262,6 +11742,13 @@ ${errorInfo.originalError}
             }
 
             baseColumn.valueGetter = (value, row) => {
+              // Normalize boolean/bit fields (is_active, is_*) to true/false so
+              // the singleSelect editor's value matches its true/false options
+              // and MUI doesn't warn about an out-of-range value (e.g. 1/0).
+              if (isActiveField(columnName)) {
+                return normalizeBooleanValue(value);
+              }
+
               // Handle user lookup display fields for create_by and update_by
               // Always check for _display fields (backend now always provides them)
               // Fallback to user_id if _display is null/empty
@@ -9274,9 +11761,9 @@ ${errorInfo.originalError}
 
               // Handle datetime fields
               if (
-                col.dataType?.toLowerCase() === "datetime" ||
-                col.dataType?.toLowerCase() === "datetime2" ||
-                col.dataType?.toLowerCase() === "date"
+                isDateTimeDataType(col.dataType) ||
+                isDateOnlyDataType(col.dataType) ||
+                (isDateLikeFieldName(columnName) && isDateLikeValue(value))
               ) {
                 return value ? new Date(value) : null;
               }
@@ -9373,9 +11860,7 @@ ${errorInfo.originalError}
                 params.row[primaryKey] || params.row.id || params.row.Id;
 
               // Check if this is a new row (Add mode) or existing row (Edit mode)
-              const isNewRow =
-                params.row?.isNew ||
-                (typeof params.id === "string" && params.id.startsWith("new-"));
+              const isNewRow = isInlineBulkAddRow(params.row, params.id);
 
               // CRITICAL FIX: For new rows that just got added, rowModesModel may not
               // have updated yet due to React state batching. Treat new rows with isNew=true
@@ -9397,6 +11882,14 @@ ${errorInfo.originalError}
                 effectiveBulkAddInline,
                 bulkEditMode,
               });
+
+              const suppressExistingRowActions =
+                inlineBulkAddModeActive ||
+                (effectiveBulkAddInline && inlineAddSessionActiveRef.current);
+
+              if (suppressExistingRowActions && !isNewRow) {
+                return [];
+              }
 
               if (isInEditMode) {
                 // Row is in edit mode
@@ -9445,18 +11938,38 @@ ${errorInfo.originalError}
               } else {
                 // Row is in view mode
                 const viewModeActions = [];
-                // Edit button - only show if bulk edit is allowed
+                // Edit button - show as inline edit if bulk/inline edit is allowed, otherwise show as dialog form edit if normal edit is allowed
                 if (effectiveBulkEdit) {
                   viewModeActions.push(
                     <GridActionsCellItem
                       key="edit"
                       icon={<Edit />}
                       label={localeText.bsEdit}
-                      onClick={
-                        effectiveBulkAddInline
-                          ? handleInlineEditClick(params.id)
-                          : () => handleBulkRowEditClick(params.id)
-                      }
+                      onClick={() => {
+                        logGridActivity(
+                          "GRID_EDIT_CLICK",
+                          params.row,
+                          "Edit action clicked in BSDataGrid",
+                        );
+                        handleEditClick(params.row);
+                      }}
+                      color="inherit"
+                    />,
+                  );
+                } else if (effectiveVisibleEdit) {
+                  viewModeActions.push(
+                    <GridActionsCellItem
+                      key="edit"
+                      icon={<Edit />}
+                      label={localeText.bsEdit || "Edit"}
+                      onClick={() => {
+                        logGridActivity(
+                          "GRID_EDIT_CLICK",
+                          params.row,
+                          "Edit action clicked in BSDataGrid (from inline-add detail mode)",
+                        );
+                        handleEditClick(params.row);
+                      }}
                       color="inherit"
                     />,
                   );
@@ -9583,17 +12096,17 @@ ${errorInfo.originalError}
               if (effectiveVisibleDelete) actionButtonCount++;
             }
 
-            // Calculate width: base 10px + (42px per button) + buffer
-            // Minimum width: 50px (for 1 button)
-            // 1 button: 50px, 2 buttons: 90px, 3 buttons: 130px
-            const actionsWidth = Math.max(50, 10 + actionButtonCount * 42);
+            // Calculate width: base 4px + (40px per button)
+            // 1 button: 44px, 2 buttons: 84px, 3 buttons: 124px
+            const actionsWidth = Math.max(44, 4 + actionButtonCount * 40);
 
             dataColumns.unshift({
               field: "actions",
               type: "actions",
               headerName: "", // Hide column header
               width: actionsWidth,
-              minWidth: actionsWidth, // Ensure minimum width
+              minWidth: actionsWidth, // Prevent column from shrinking
+              maxWidth: actionsWidth, // Prevent column from expanding
               sortable: false,
               filterable: false,
               hideable: false,
@@ -9606,6 +12119,32 @@ ${errorInfo.originalError}
                   .flat()
                   .filter(Boolean),
             });
+          }
+        }
+
+        if (customColumnDefs.length > 0) {
+          const customColumns = customColumnDefs.map((colDef) => ({
+            field: colDef.field,
+            headerName: colDef.headerName || formatColumnName(colDef.field),
+            type: colDef.type || "string",
+            width: colDef.width || 120,
+            sortable: colDef.sortable === true,
+            filterable: colDef.filterable === true,
+            hideable: colDef.hideable !== false,
+            disableColumnMenu: colDef.disableColumnMenu !== false,
+            align: colDef.align || "center",
+            headerAlign: colDef.headerAlign || "center",
+            editable: false,
+            ...colDef,
+          }));
+
+          const actionsIndex = dataColumns.findIndex(
+            (col) => col.field === "actions",
+          );
+          if (actionsIndex >= 0) {
+            dataColumns.splice(actionsIndex + 1, 0, ...customColumns);
+          } else {
+            dataColumns.unshift(...customColumns);
           }
         }
 
@@ -9664,7 +12203,16 @@ ${errorInfo.originalError}
             (col) => col.field === "actions",
           );
           if (actionsIndex >= 0) {
-            dataColumns.splice(actionsIndex + 1, 0, rowNumberCol);
+            const customColumnCountAfterActions = dataColumns
+              .slice(actionsIndex + 1)
+              .filter(
+                (col) => columnDefsConfig[col.field]?.customColumn === true,
+              ).length;
+            dataColumns.splice(
+              actionsIndex + 1 + customColumnCountAfterActions,
+              0,
+              rowNumberCol,
+            );
           } else {
             dataColumns.unshift(rowNumberCol);
           }
@@ -9685,8 +12233,14 @@ ${errorInfo.originalError}
           const rowNumberCol = dataColumns.find(
             (c) => c.field === "__rowNumber",
           );
+          const customCols = dataColumns.filter(
+            (c) => columnDefsConfig[c.field]?.customColumn === true,
+          );
           const otherColumns = dataColumns.filter(
-            (c) => c.field !== "actions" && c.field !== "__rowNumber",
+            (c) =>
+              c.field !== "actions" &&
+              c.field !== "__rowNumber" &&
+              columnDefsConfig[c.field]?.customColumn !== true,
           );
 
           // Filter to only show specified columns, maintaining order
@@ -9696,6 +12250,11 @@ ${errorInfo.originalError}
           if (actionsCol) {
             filteredDataColumns.push(actionsCol);
           }
+
+          // Add custom columns after actions if they are configured
+          customCols.forEach((col) => {
+            filteredDataColumns.push(col);
+          });
 
           // Add row number column if it exists (should always show regardless of bsCols)
           if (rowNumberCol) {
@@ -9790,7 +12349,7 @@ ${errorInfo.originalError}
 
                 // Wrap with tooltip
                 return (
-                  <OverflowTooltipCell value={params.value}>
+                  <OverflowTooltipCell value={content}>
                     {content}
                   </OverflowTooltipCell>
                 );
@@ -9800,18 +12359,102 @@ ${errorInfo.originalError}
         }
 
         // Create a deep clone to avoid any reference issues
-        finalColumns = finalColumns.map((col) => ({
-          field: col.field,
-          // description: col.description || col.headerName,
-          headerName: col.headerName,
-          type: col.type || "string",
-          // Removed default width - let DataGrid auto-calculate
-          editable: Boolean(col.editable),
-          sortable: col.sortable !== false,
-          filterable: col.filterable !== false,
-          hideable: col.hideable !== false,
-          ...col, // Include any other properties
-        }));
+        finalColumns = finalColumns.map((col) => {
+          const isSpecialField =
+            col.field === "actions" ||
+            col.field === "__rowNumber" ||
+            col.field === "__check__";
+          const customDef = columnDefsConfig[col.field];
+          const resolvedHeaderName = isSpecialField
+            ? col.headerName
+            : customDef?.headerName ||
+              formatColumnName(col.field) ||
+              col.headerName;
+
+          const merged = {
+            ...col, // Include existing column behavior first, then override normalized properties below.
+            field: col.field,
+            // description: col.description || col.headerName,
+            headerName: resolvedHeaderName,
+            type: col.type || "string",
+            // Removed default width - let DataGrid auto-calculate
+            editable: Boolean(col.editable),
+            sortable: col.sortable !== false,
+            filterable: col.filterable !== false,
+            hideable: col.hideable !== false,
+            ...(excludesGlobalFilter(col.field)
+              ? { getApplyQuickFilterFn: () => null }
+              : {}),
+          };
+
+          // Re-apply bsColumnDefs sizing: some build paths (comboBox/singleSelect
+          // and columns that get a valueGetter) bypass applyColumnDefs, so their
+          // minWidth/width is dropped before reaching the grid.
+          if (customDef?.minWidth !== undefined)
+            merged.minWidth = customDef.minWidth;
+          if (customDef?.width !== undefined) merged.width = customDef.width;
+          if (customDef?.maxWidth !== undefined)
+            merged.maxWidth = customDef.maxWidth;
+          if (customDef?.flex !== undefined) merged.flex = customDef.flex;
+
+          // Auto mode: guarantee a header-fit minWidth floor so a column never
+          // collapses when MUI autosize can't measure it (e.g. scrolled off-screen).
+          if (
+            bsColumnWidth === "auto" &&
+            !isSpecialField &&
+            merged.minWidth === undefined &&
+            merged.width === undefined &&
+            merged.flex === undefined
+          ) {
+            merged.minWidth = headerMinWidthFloor(merged.headerName);
+          }
+
+          if (
+            !isSpecialField &&
+            !customDef?.renderCell &&
+            isDateLikeFieldName(merged.field)
+          ) {
+            const originalRenderCell = merged.renderCell;
+            const originalDateDataType =
+              merged.dataType || col.dataType || merged.type;
+            merged.type = "string";
+            merged.renderCell = (params) => {
+              const rawValue =
+                params.value ??
+                params.row?.[merged.field] ??
+                params.formattedValue ??
+                "";
+
+              if (isDateLikeValue(rawValue)) {
+                return formatCellValue(
+                  rawValue,
+                  resolveDateDisplayDataType(
+                    merged.field,
+                    rawValue,
+                    originalDateDataType,
+                  ),
+                );
+              }
+
+              return originalRenderCell
+                ? originalRenderCell(params)
+                : (params.formattedValue ?? rawValue ?? "");
+            };
+            merged.valueFormatter = (value) =>
+              isDateLikeValue(value)
+                ? formatCellValue(
+                    value,
+                    resolveDateDisplayDataType(
+                      merged.field,
+                      value,
+                      originalDateDataType,
+                    ),
+                  )
+                : (value ?? "");
+          }
+
+          return merged;
+        });
 
         // console.log("🔍 Final columns check:", {
         //   isArray: Array.isArray(finalColumns),
@@ -9915,11 +12558,23 @@ ${errorInfo.originalError}
     const validatedColumns = useMemo(() => {
       const safeColumns = Array.isArray(columns) ? columns : [];
 
-      // Create a stable key from column fields AND headerNames
+      // Create a stable key from column fields, headerNames AND valueOptions counts
       // CRITICAL: Include headerName in key so columns rebuild when language changes
-      const columnsFieldKey = safeColumns
-        .map((c) => `${c?.field || ""}:${c?.headerName || ""}`)
-        .join(",");
+      // CRITICAL: Include valueOptions count so columns rebuild when combobox data loads
+      const comboDataKey = Object.entries(comboBoxValueOptions)
+        .map(([k, v]) => `${k}:${v?.length || 0}`)
+        .join("|");
+      const columnsFieldKey =
+        safeColumns
+          .map(
+            (c) =>
+              `${c?.field || ""}:${c?.headerName || ""}:${c?.type || ""}:${
+                c?.renderCell ? "r" : ""
+              }${c?.valueGetter ? "g" : ""}${c?.valueFormatter ? "f" : ""}`,
+          )
+          .join(",") +
+        "|" +
+        comboDataKey;
 
       // Only recompute if the columns have actually changed
       if (
@@ -9943,7 +12598,7 @@ ${errorInfo.originalError}
       validatedColumnsRef.current = validated;
 
       return validated;
-    }, [columns]);
+    }, [columns, comboBoxValueOptions]);
 
     // Memoize filtered rows to prevent new array reference on every render
     const filteredRows = useMemo(() => {
@@ -9957,16 +12612,32 @@ ${errorInfo.originalError}
       const columnsToAutosize = validatedColumns
         .filter((col) => {
           const customDef = columnDefsConfig[col.field];
-          return !customDef?.width;
+          return bsColumnWidth === "auto" && !customDef?.width;
         })
         .map((col) => col.field);
       return {
         columns: columnsToAutosize,
         includeHeaders: true,
-        includeOutliers: false,
-        expand: true,
+        includeOutliers: true,
+        //expand: true,
       };
-    }, [validatedColumns, columnDefsConfig]);
+    }, [validatedColumns, columnDefsConfig, bsColumnWidth]);
+
+    // Size "auto" columns to fit their content once rows are loaded (and again
+    // whenever the rows change, e.g. paging). Deterministic measurement instead
+    // of MUI autosize so off-screen columns are sized correctly too.
+    useEffect(() => {
+      if (bsColumnWidth !== "auto") return;
+      if (loading || !filteredRows.length) return;
+      const api = apiRef.current;
+      if (!api?.setColumnWidth) return;
+      // Defer a tick so the rows are in the grid state, then size each auto
+      // column to fit its header + loaded-row content (see autoFitColumnsToContent).
+      const t = setTimeout(() => {
+        autoFitColumnsToContent(api, autosizeOptions.columns);
+      }, 50);
+      return () => clearTimeout(t);
+    }, [apiRef, autosizeOptions, filteredRows, loading, bsColumnWidth]);
 
     // Memoize getRowId callback to prevent infinite re-renders
     const getRowId = useCallback(
@@ -10014,6 +12685,14 @@ ${errorInfo.originalError}
           classes.push("unsaved-changes");
         }
 
+        if (
+          params.row.__bsInvalid ||
+          invalidRowIds.has(String(rowId)) ||
+          invalidRowIds.has(String(params.id))
+        ) {
+          classes.push("invalid-row");
+        }
+
         // Add custom row class from bsRowConfig
         if (bsRowConfig) {
           const rowConfig = bsRowConfig(params.row);
@@ -10028,7 +12707,7 @@ ${errorInfo.originalError}
 
         return classes.join(" ");
       },
-      [metadata?.primaryKeys, bsRowConfig],
+      [metadata?.primaryKeys, bsRowConfig, invalidRowIds],
     );
 
     // Memoize isRowSelectable callback to prevent re-renders
@@ -10049,14 +12728,18 @@ ${errorInfo.originalError}
     // Handle row selection changes for checkbox selection
     const handleRowSelectionChange = useCallback(
       (newRowSelectionModel) => {
+        const normalizedSelection = effectiveSingleSelection
+          ? newRowSelectionModel.slice(-1)
+          : newRowSelectionModel;
+
         bsLog("🔍 ROW SELECTION DEBUG - Start:", {
-          newRowSelectionModel,
+          newRowSelectionModel: normalizedSelection,
           rowsCount: rows.length,
           firstRowSample: rows.length > 0 ? Object.keys(rows[0]) : "NO ROWS",
           firstRowData: rows.length > 0 ? rows[0] : "NO ROWS",
         });
 
-        setRowSelectionModel(newRowSelectionModel);
+        setRowSelectionModel(normalizedSelection);
 
         if (onCheckBoxSelected) {
           // Debug metadata information
@@ -10110,13 +12793,13 @@ ${errorInfo.originalError}
               rowId = foundId;
             }
 
-            const isSelected = newRowSelectionModel.includes(rowId);
+            const isSelected = normalizedSelection.includes(rowId);
 
             bsLog("🔍 Checking row:", {
               rowPrimaryKey: primaryKeyValue,
               rowIdString: rowId,
               isInSelection: isSelected,
-              selectionModel: newRowSelectionModel,
+              selectionModel: normalizedSelection,
               allRowIdentifiers: {
                 id: row.id,
                 Id: row.Id,
@@ -10146,8 +12829,23 @@ ${errorInfo.originalError}
         metadata,
         enhancedMetadata,
         bsStoredProcedure,
+        effectiveSingleSelection,
       ],
     );
+
+    const gridSlots = useMemo(() => {
+      const nextSlots = {};
+
+      if (showToolbar) {
+        nextSlots.toolbar = DynamicGridToolbar;
+      }
+
+      if (effectiveSingleSelection) {
+        nextSlots.baseCheckbox = RadioSelectionCheckbox;
+      }
+
+      return Object.keys(nextSlots).length > 0 ? nextSlots : undefined;
+    }, [showToolbar, effectiveSingleSelection]);
 
     // Bulk operations handlers
     const handleBulkAdd = useCallback(() => {
@@ -10168,6 +12866,7 @@ ${errorInfo.originalError}
       }));
 
       setBulkAddRows(emptyRows);
+      setShowBulkValidationErrors(false);
       setBulkAddDialogOpen(true);
       bsLog("📝 Bulk Add dialog opened with", bulkRowCount, "empty rows");
     }, [effectiveBulkAdd, metadata, bulkRowCount, initializeFormData]);
@@ -10272,97 +12971,356 @@ ${errorInfo.originalError}
       executeSpCrud,
     ]);
 
-    // Custom Excel Export Handler
-    const handleExportExcel = useCallback(() => {
+    const getExportFileName = useCallback(() => {
+      return bsExportFileName || effectiveTableName || "export";
+    }, [bsExportFileName, effectiveTableName]);
+
+    const getExportVisibleColumns = useCallback(() => {
+      return validatedColumns.filter(
+        (col) =>
+          col.field !== "actions" &&
+          col.field !== "__check__" &&
+          columnVisibilityModel[col.field] !== false,
+      );
+    }, [columnVisibilityModel, validatedColumns]);
+
+    const normalizeExportRows = useCallback(
+      (sourceRows = []) => {
+        return sourceRows
+          .map((row, index) => {
+            let rowData = row;
+            if (row?.data && typeof row.data === "object") {
+              rowData = row.data;
+            }
+
+            if (
+              !rowData ||
+              typeof rowData !== "object" ||
+              Object.keys(rowData).length === 0
+            ) {
+              return null;
+            }
+
+            if (!rowData.id && !rowData.Id && !rowData.ID) {
+              const primaryKey = getEffectivePrimaryKey(rowData);
+              if (primaryKey && rowData[primaryKey] != null) {
+                return { ...rowData, id: rowData[primaryKey] };
+              }
+
+              return { ...rowData, id: `export-row-${index}` };
+            }
+
+            return rowData;
+          })
+          .filter(Boolean);
+      },
+      [getEffectivePrimaryKey],
+    );
+
+    const getGridRowsForExport = useCallback(() => {
       try {
-        // Get visible column definitions (excluding actions and checkbox columns)
-        const visibleColumns = columns.filter(
-          (col) => col.field !== "actions" && col.field !== "__check__",
-        );
-
-        // Get filtered and sorted row IDs from grid using apiRef
         const filteredRowIds = gridFilteredSortedRowIdsSelector(apiRef);
-
-        bsLog("📊 Export - filteredRowIds:", {
-          count: filteredRowIds.length,
-          sample: filteredRowIds.slice(0, 5),
-        });
-
-        // Get rows data using apiRef.current.getRow() for accurate filtered data
-        const filteredRows = filteredRowIds
+        const dataRows = filteredRowIds
           .map((id) => {
-            // Use apiRef.current.getRow() to get the actual row from DataGrid state
             if (apiRef.current) {
               return apiRef.current.getRow(id);
             }
-            // Fallback to finding in rows array
-            const primaryKey = getEffectivePrimaryKey(rows[0]);
-            return rows.find((r) => r[primaryKey] === id);
+            return rows.find((row) => String(getRowId(row)) === String(id));
           })
           .filter(Boolean);
 
-        bsLog("📊 Export - filteredRows:", {
-          count: filteredRows.length,
-          totalRows: rows.length,
-        });
+        return dataRows.length > 0 ? dataRows : rows;
+      } catch (err) {
+        Logger.warn("Failed to read filtered grid rows for export:", err);
+        return rows;
+      }
+    }, [apiRef, getRowId, rows]);
 
-        // Use filtered rows (if any filters are applied, filteredRowIds will be subset of all rows)
-        const dataToExport = filteredRows.length > 0 ? filteredRows : rows;
+    const fetchAllStoredProcedureRowsForExport = useCallback(async () => {
+      const currentSortModel = sortModelRef.current || sortModel;
+      const currentFilterModel = filterModelRef.current || filterModel;
 
-        // Transform data to include only visible columns with proper headers
-        // Include row number column with calculated values
-        const exportData = dataToExport.map((row, index) => {
-          const exportRow = {};
-          visibleColumns.forEach((col) => {
-            const header = col.headerName || col.field;
-
-            // Handle row number column specially - calculate the value
-            // Note: field is "__rowNumber" (not "__rowNumber__")
-            if (col.field === "__rowNumber") {
-              // For export, always start from 1 (not based on current page)
-              exportRow[header] = index + 1;
-            } else {
-              exportRow[header] = row[col.field] ?? "";
+      const request = {
+        procedureName: bsStoredProcedure,
+        schemaName: bsStoredProcedureSchema,
+        operation: "SELECT",
+        page: 1,
+        pageSize: Math.max(rowCount || 0, rows.length || 0, 999999),
+        sortModel: currentSortModel.map((sort) => ({
+          field: sort.field,
+          sort: sort.sort,
+        })),
+        filterModel: {
+          items: currentFilterModel.items || [],
+          logicOperator: currentFilterModel.logicOperator || "and",
+          quickFilterValues:
+            currentFilterModel.quickFilterValues &&
+            Array.isArray(currentFilterModel.quickFilterValues)
+              ? currentFilterModel.quickFilterValues.join(" ")
+              : currentFilterModel.quickFilterValues || "",
+        },
+        parameters: {
+          ...bsStoredProcedureParams,
+        },
+        customFilters:
+          bsCustomFilters && bsCustomFilters.length > 0
+            ? bsCustomFilters
+            : undefined,
+        userLookup: bsUserLookup
+          ? {
+              table: bsUserLookup.table || "sec.t_com_user",
+              idField: bsUserLookup.idField || "user_id",
+              displayFields: bsUserLookup.displayFields || [
+                "first_name",
+                "last_name",
+              ],
+              separator: bsUserLookup.separator || " ",
             }
-          });
-          return exportRow;
+          : undefined,
+        userId: getUserId(),
+      };
+
+      const result = await executeEnhancedStoredProcedure(request);
+      if (result.success && result.data) {
+        return normalizeExportRows(result.data);
+      }
+
+      Logger.warn("Stored procedure export fetch failed, using grid rows");
+      return getGridRowsForExport();
+    }, [
+      bsCustomFilters,
+      bsStoredProcedure,
+      bsStoredProcedureParams,
+      bsStoredProcedureSchema,
+      bsUserLookup,
+      executeEnhancedStoredProcedure,
+      filterModel,
+      getGridRowsForExport,
+      getUserId,
+      normalizeExportRows,
+      rowCount,
+      rows,
+      sortModel,
+    ]);
+
+    const fetchAllTableRowsForExport = useCallback(async () => {
+      const currentSortModel = sortModelRef.current || sortModel;
+      const currentFilterModel = filterModelRef.current || filterModel;
+
+      const filterItems = (currentFilterModel.items || [])
+        .filter((item) => item.value !== undefined && item.value !== "")
+        .map((item) => ({
+          field: item.field,
+          operator: item.operator || "contains",
+          value: item.value,
+        }));
+
+      const quickFilterValue =
+        currentFilterModel.quickFilterValues &&
+        currentFilterModel.quickFilterValues.length > 0
+          ? currentFilterModel.quickFilterValues.join(" ")
+          : null;
+
+      let columnsForQuery = parsedCols ? [...parsedCols] : undefined;
+      if (columnsForQuery && comboBoxConfig) {
+        Object.keys(comboBoxConfig).forEach((field) => {
+          if (!columnsForQuery.includes(field)) {
+            columnsForQuery.push(field);
+          }
         });
+      }
 
-        // Create worksheet and workbook
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
+      if (columnsForQuery && metadata?.primaryKeys) {
+        metadata.primaryKeys.forEach((pk) => {
+          if (!columnsForQuery.includes(pk)) {
+            columnsForQuery.push(pk);
+          }
+        });
+      }
 
-        // Auto-fit column widths
-        const columnWidths = visibleColumns.map((col) => {
+      const sortModelForApi = currentSortModel.map((sort) => ({
+        field: sort.field,
+        sort: sort.sort,
+      }));
+
+      const result = await getTableData({
+        tableName: effectiveTableName,
+        page: 1,
+        pageSize: Math.max(rowCount || 0, rows.length || 0, 999999),
+        sortModel: sortModelForApi,
+        filterModel: {
+          items: filterItems,
+          logicOperator: currentFilterModel.logicOperator || "and",
+          quickFilter: quickFilterValue,
+        },
+        preObj: bsPreObj,
+        columns: columnsForQuery ? columnsForQuery.join(",") : undefined,
+        customWhere: bsObjWh,
+        customOrderBy: getCustomOrderByForRequest(currentSortModel),
+        customFilters:
+          bsCustomFilters && bsCustomFilters.length > 0
+            ? bsCustomFilters
+            : undefined,
+        userLookup: bsUserLookup
+          ? {
+              table: bsUserLookup.table || "sec.t_com_user",
+              idField: bsUserLookup.idField || "user_id",
+              displayFields: bsUserLookup.displayFields || [
+                "first_name",
+                "last_name",
+              ],
+              separator: bsUserLookup.separator || " ",
+            }
+          : undefined,
+      });
+
+      return normalizeExportRows(result.rows || result.data || []);
+    }, [
+      bsCustomFilters,
+      bsObjWh,
+      bsPreObj,
+      bsUserLookup,
+      comboBoxConfig,
+      effectiveTableName,
+      filterModel,
+      getCustomOrderByForRequest,
+      getTableData,
+      metadata?.primaryKeys,
+      normalizeExportRows,
+      parsedCols,
+      rowCount,
+      rows,
+      sortModel,
+    ]);
+
+    const getRowsForExport = useCallback(async () => {
+      if (bsFilterMode === "server") {
+        try {
+          if (bsStoredProcedure && executeEnhancedStoredProcedure) {
+            return await fetchAllStoredProcedureRowsForExport();
+          }
+
+          return await fetchAllTableRowsForExport();
+        } catch (err) {
+          Logger.warn("Export fetch failed, using current grid rows:", err);
+          return getGridRowsForExport();
+        }
+      }
+
+      return getGridRowsForExport();
+    }, [
+      bsFilterMode,
+      bsStoredProcedure,
+      executeEnhancedStoredProcedure,
+      fetchAllStoredProcedureRowsForExport,
+      fetchAllTableRowsForExport,
+      getGridRowsForExport,
+    ]);
+
+    const getAllData = useCallback(async () => {
+      if (bsFilterMode === "server") {
+        try {
+          if (bsStoredProcedure && executeEnhancedStoredProcedure) {
+            return await fetchAllStoredProcedureRowsForExport();
+          }
+
+          return await fetchAllTableRowsForExport();
+        } catch (err) {
+          Logger.warn("Failed to fetch all grid rows, using loaded rows:", err);
+          return normalizeExportRows(rows);
+        }
+      }
+
+      return normalizeExportRows(rows);
+    }, [
+      bsFilterMode,
+      bsStoredProcedure,
+      executeEnhancedStoredProcedure,
+      fetchAllStoredProcedureRowsForExport,
+      fetchAllTableRowsForExport,
+      normalizeExportRows,
+      rows,
+    ]);
+
+    // Expose refresh/data-access methods via ref
+    useImperativeHandle(
+      ref,
+      () => ({
+        refreshData,
+        forceRefresh: () => refreshData(true),
+        getData: () => normalizeExportRows(rows),
+        getAllData,
+      }),
+      [refreshData, getAllData, normalizeExportRows, rows],
+    );
+
+    const buildFormattedExportData = useCallback(
+      (dataRows, visibleColumns) =>
+        buildExportData(dataRows, visibleColumns, apiRef),
+      [apiRef],
+    );
+
+    const escapeCsvValue = useCallback((value) => {
+      if (value === null || value === undefined) {
+        return "";
+      }
+
+      let cellValue = value;
+      if (cellValue instanceof Date) {
+        cellValue = cellValue.toLocaleString();
+      }
+
+      const stringValue = String(cellValue);
+      if (/[;"\r\n]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+
+      return stringValue;
+    }, []);
+
+    const downloadTextFile = useCallback((content, filename, mimeType) => {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, []);
+
+    // Custom Excel Export Handler
+    const handleExportExcel = useCallback(async () => {
+      try {
+        const exportVisibleColumns = getExportVisibleColumns();
+        const exportRows = await getRowsForExport();
+        const sheetRows = buildFormattedExportData(
+          exportRows,
+          exportVisibleColumns,
+        );
+        const worksheet = XLSX.utils.json_to_sheet(sheetRows);
+
+        worksheet["!cols"] = exportVisibleColumns.map((col) => {
           const header = col.headerName || col.field;
           const maxLength = Math.max(
             header.length,
-            ...exportData.map((row) => String(row[header] || "").length),
+            ...sheetRows.map((row) => String(row[header] || "").length),
           );
           return { wch: Math.min(maxLength + 2, 50) };
         });
-        worksheet["!cols"] = columnWidths;
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
 
-        // Generate filename - use bsExportFileName prop if provided, otherwise use table name
-        const exportFileName =
-          bsExportFileName || effectiveTableName || "export";
-        const filename = `${exportFileName}_${
+        const filename = `${getExportFileName()}_${
           new Date().toISOString().split("T")[0]
         }.xlsx`;
 
-        // Trigger download
         XLSX.writeFile(workbook, filename);
-
-        bsLog(
-          "✅ Excel export completed:",
-          filename,
-          "rows:",
-          exportData.length,
-        );
+        bsLog("Excel export completed:", filename, "rows:", sheetRows.length);
       } catch (err) {
-        Logger.error("❌ Excel export failed:", err);
+        Logger.error("Excel export failed:", err);
         BSAlertSwal2.show(
           "error",
           localeText.bsExportExcelError || "Failed to export Excel",
@@ -10372,51 +13330,188 @@ ${errorInfo.originalError}
         );
       }
     }, [
-      apiRef,
-      columns,
-      rows,
-      effectiveTableName,
-      bsExportFileName,
-      getEffectivePrimaryKey,
+      buildFormattedExportData,
+      getExportFileName,
+      getExportVisibleColumns,
+      getRowsForExport,
       localeText,
     ]);
 
-    // Custom CSV Export Handler (uses DataGrid's built-in CSV export)
-    const handleExportCsv = useCallback(() => {
+    // Custom CSV Export Handler
+    const handleExportCsv = useCallback(async () => {
       try {
-        if (apiRef.current) {
-          // Use bsExportFileName prop if provided, otherwise use table name
-          const exportFileName =
-            bsExportFileName || effectiveTableName || "export";
-          apiRef.current.exportDataAsCsv({
-            delimiter: ";",
-            utf8WithBom: true,
-            escapeFormulas: false,
-            fileName: `${exportFileName}_${
-              new Date().toISOString().split("T")[0]
-            }`,
-          });
-          bsLog("✅ CSV export triggered");
-        }
-      } catch (err) {
-        Logger.error("❌ CSV export failed:", err);
-      }
-    }, [apiRef, bsExportFileName, effectiveTableName]);
+        const exportVisibleColumns = getExportVisibleColumns();
+        const exportRows = await getRowsForExport();
+        const csvRows = buildFormattedExportData(
+          exportRows,
+          exportVisibleColumns,
+        );
+        const headers = exportVisibleColumns.map(
+          (col) => col.headerName || col.field,
+        );
+        const csvContent = [
+          headers.map(escapeCsvValue).join(";"),
+          ...csvRows.map((row) =>
+            headers.map((header) => escapeCsvValue(row[header])).join(";"),
+          ),
+        ].join("\r\n");
 
-    // Custom Print Handler (uses DataGrid's built-in print)
-    const handlePrint = useCallback(() => {
-      try {
-        if (apiRef.current) {
-          apiRef.current.exportDataAsPrint({
-            hideFooter: false,
-            hideToolbar: true,
-          });
-          bsLog("✅ Print triggered");
-        }
+        const filename = `${getExportFileName()}_${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
+
+        downloadTextFile(
+          `\uFEFF${csvContent}`,
+          filename,
+          "text/csv;charset=utf-8;",
+        );
+        bsLog("CSV export completed with", csvRows.length, "rows");
       } catch (err) {
-        Logger.error("❌ Print failed:", err);
+        Logger.error("CSV export failed:", err);
       }
-    }, [apiRef]);
+    }, [
+      buildFormattedExportData,
+      downloadTextFile,
+      escapeCsvValue,
+      getExportFileName,
+      getExportVisibleColumns,
+      getRowsForExport,
+    ]);
+
+    // Custom Print Handler - builds HTML table from grid data for reliable printing
+    const handlePrint = useCallback(async () => {
+      let printPopup = null;
+
+      try {
+        printPopup = window.open("", "_blank");
+        if (!printPopup) {
+          BSAlertSwal2.show(
+            "warning",
+            localeText.bsAllowPopup ||
+              "Please allow pop-ups to print this data",
+            {
+              title: localeText.bsWarning || "Warning",
+            },
+          );
+          return;
+        }
+
+        printPopup.document.write(`
+          <html>
+            <head><title>Preparing print</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+              Preparing print data...
+            </body>
+          </html>
+        `);
+        printPopup.document.close();
+
+        const exportVisibleColumns = getExportVisibleColumns();
+        const exportRows = await getRowsForExport();
+        const rawTitle = getExportFileName();
+        const printTitle =
+          bsPrintTitle ||
+          rawTitle
+            .replace(/^[vtspf]_/i, "")
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+        const printDate = new Date().toLocaleString();
+        const escapeHtml = (value) =>
+          String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+        let printHtml = `
+          <html>
+          <head>
+            <title>${escapeHtml(printTitle)}</title>
+            <style>
+              @media print {
+                @page { margin: 10mm; size: landscape; }
+              }
+              body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+              h2 { margin-bottom: 4px; }
+              .print-date { font-size: 11px; color: #666; margin-bottom: 12px; }
+              table { width: 100%; border-collapse: collapse; }
+              th { background-color: #f5f5f5; font-weight: 600; text-align: left;
+                   padding: 6px 8px; border: 1px solid #ddd; font-size: 11px; white-space: nowrap; }
+              td { padding: 5px 8px; border: 1px solid #ddd; font-size: 11px; }
+              tr:nth-child(even) { background-color: #fafafa; }
+              .num { text-align: right; }
+              .row-num { text-align: center; width: 40px; }
+            </style>
+          </head>
+          <body>
+            <h2>${escapeHtml(printTitle)}</h2>
+            <div class="print-date">${escapeHtml(printDate)} - Total: ${exportRows.length} rows</div>
+            <table>
+              <thead><tr>`;
+
+        exportVisibleColumns.forEach((col) => {
+          if (col.field === "__rowNumber") {
+            printHtml += `<th class="row-num">#</th>`;
+          } else {
+            printHtml += `<th>${escapeHtml(col.headerName || col.field)}</th>`;
+          }
+        });
+
+        printHtml += `</tr></thead><tbody>`;
+        exportRows.forEach((row, index) => {
+          printHtml += `<tr>`;
+          exportVisibleColumns.forEach((col) => {
+            if (col.field === "__rowNumber") {
+              printHtml += `<td class="row-num">${index + 1}</td>`;
+              return;
+            }
+
+            const cellValue = getExportCellValue(row, col, index, apiRef);
+
+            const isNumeric =
+              col.type === "number" || typeof cellValue === "number";
+            const cssClass = isNumeric ? ' class="num"' : "";
+            printHtml += `<td${cssClass}>${escapeHtml(cellValue)}</td>`;
+          });
+          printHtml += `</tr>`;
+        });
+
+        printHtml += `</tbody></table></body></html>`;
+
+        printPopup.document.open();
+        printPopup.document.write(printHtml);
+        printPopup.document.close();
+        printPopup.focus();
+        setTimeout(() => {
+          if (!printPopup.closed) {
+            printPopup.focus();
+            printPopup.print();
+          }
+        }, 250);
+
+        bsLog("Print triggered with", exportRows.length, "rows");
+      } catch (err) {
+        Logger.error("Print failed:", err);
+        if (printPopup && !printPopup.closed) {
+          printPopup.document.open();
+          printPopup.document.write(`
+            <html>
+              <body style="font-family: Arial, sans-serif; padding: 20px;">
+                Failed to prepare print data.
+              </body>
+            </html>
+          `);
+          printPopup.document.close();
+        }
+      }
+    }, [
+      apiRef,
+      bsPrintTitle,
+      getExportFileName,
+      getExportVisibleColumns,
+      getRowsForExport,
+      localeText,
+    ]);
 
     // Bulk Add specific functions
     const handleBulkSave = useCallback(async () => {
@@ -10451,43 +13546,8 @@ ${errorInfo.originalError}
         });
 
         if (validationErrors.length > 0) {
-          // Use theme colors for error messages
-          const textSecondary = theme.palette.text.secondary;
-          const errorBg =
-            theme.palette.mode === "dark"
-              ? "rgba(211, 47, 47, 0.15)"
-              : `${theme.palette.error.light}22`;
-          const errorBorder = theme.palette.error.main;
-          const errorText =
-            theme.palette.mode === "dark"
-              ? theme.palette.error.light
-              : theme.palette.error.dark;
-
-          // Build user-friendly HTML message
-          const errorHtml = validationErrors
-            .map((item) => {
-              const errorItems = item.errors
-                .map(
-                  (err) =>
-                    `<li style="margin: 2px 0; color: ${textSecondary};">${err}</li>`,
-                )
-                .join("");
-              return `
-                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${errorBg}; border-radius: 6px; border-left: 3px solid ${errorBorder};">
-                  <strong style="color: ${errorText};">📋 ${
-                    localeText.bsRow || "Row"
-                  } ${item.rowNumber}</strong>
-                  <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
-                </div>`;
-            })
-            .join("");
-
-          BSAlertSwal2.show("error", "", {
-            title:
-              localeText.bsValidationError || "Please complete required fields",
-            html: `<div style="max-height: 300px; overflow-y: auto;">${errorHtml}</div>`,
-            width: 450,
-          });
+          setShowBulkValidationErrors(true);
+          showValidationAlert(validationErrors);
           // CRITICAL: Reset loading state when returning early due to validation error
           setFormLoading(false);
           return;
@@ -10498,7 +13558,72 @@ ${errorInfo.originalError}
         // Save each row individually
         for (const row of validRows) {
           const { _id, ...data } = row;
-          await createRecord(data, bsPreObj);
+
+          // Apply fallback defaults for new rows if null/empty
+          const dataWithDefaults = { ...data };
+          if (columnDefsConfig) {
+            Object.entries(columnDefsConfig).forEach(([fieldName, colDef]) => {
+              if (
+                colDef.defaultValue !== undefined &&
+                colDef.defaultValue !== null
+              ) {
+                const val = dataWithDefaults[fieldName];
+                if (val === undefined || val === null || val === "") {
+                  dataWithDefaults[fieldName] = colDef.defaultValue;
+
+                  // Sync display column if it's a combobox
+                  if (comboBoxConfig) {
+                    const combo = comboBoxConfig[fieldName];
+                    const displayTarget = getComboBoxDisplayTarget(combo);
+                    if (combo && displayTarget && displayTarget !== fieldName) {
+                      const dispVal = dataWithDefaults[displayTarget];
+                      if (
+                        dispVal === undefined ||
+                        dispVal === null ||
+                        dispVal === ""
+                      ) {
+                        const lookupMap =
+                          comboBoxLookupDataRef.current[fieldName] || {};
+                        const defValue = colDef.defaultValue;
+                        dataWithDefaults[displayTarget] =
+                          lookupMap[defValue] ??
+                          lookupMap[String(defValue)] ??
+                          "";
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          }
+
+          // Call bsOnBeforeSave if provided
+          if (bsOnBeforeSave) {
+            try {
+              const canProceed = await bsOnBeforeSave({
+                formData: dataWithDefaults,
+                mode: "add",
+                selectedRow: null,
+              });
+              if (canProceed === false) {
+                bsLog(
+                  "⏭️ Bulk save aborted by bsOnBeforeSave for row:",
+                  dataWithDefaults,
+                );
+                setFormLoading(false);
+                return;
+              }
+            } catch (err) {
+              Logger.error("❌ bsOnBeforeSave error in handleBulkSave:", err);
+              setFormLoading(false);
+              return;
+            }
+          }
+
+          await createRecord(
+            applyOutboundTransform(dataWithDefaults, { mode: "add" }),
+            bsPreObj,
+          );
         }
 
         setBulkAddDialogOpen(false);
@@ -10514,17 +13639,17 @@ ${errorInfo.originalError}
     }, [
       bulkAddRows,
       createRecord,
+      applyOutboundTransform,
       loadData,
       bsPreObj,
       validateFormData,
-      localeText.bsRow,
-      localeText.bsValidationError,
-      theme,
+      showValidationAlert,
     ]);
 
     const handleBulkDialogClose = useCallback(() => {
       setBulkAddDialogOpen(false);
       setBulkAddRows([]);
+      setShowBulkValidationErrors(false);
     }, []);
 
     const updateBulkRow = useCallback((rowIndex, field, value) => {
@@ -10552,7 +13677,7 @@ ${errorInfo.originalError}
       (newRow, oldRow) => {
         if (!bulkEditMode) {
           // Normal mode - save immediately and refresh data
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const primaryKey = getEffectivePrimaryKey(newRow);
           // Get the actual primary key value from row data
           // Do NOT use generated id (starts with "generated-") as it's not a real database value
           let rowId = newRow[primaryKey];
@@ -10675,7 +13800,7 @@ ${errorInfo.originalError}
         }
 
         // Bulk edit mode - handle new rows vs existing rows
-        const primaryKey = metadata?.primaryKeys?.[0] || bsKeyId || "id";
+        const primaryKey = getEffectivePrimaryKey(newRow);
         // Get the actual primary key value - prefer real PK over generated id
         let rowId = newRow[primaryKey];
         if (rowId == null) {
@@ -10793,6 +13918,22 @@ ${errorInfo.originalError}
           originalData: oldRow,
         };
         setHasUnsavedChanges(true);
+        setInvalidRowIds((prev) => {
+          if (!prev.has(String(rowId))) return prev;
+          const next = new Set(prev);
+          next.delete(String(rowId));
+          return next;
+        });
+        setRows((prevRows) =>
+          prevRows.map((row) => {
+            const currentRowId = String(
+              row[primaryKey] || row.id || row.Id || row.ID || "",
+            );
+            return currentRowId === String(rowId)
+              ? { ...row, __bsInvalid: false }
+              : row;
+          }),
+        );
 
         bsLog("📝 Bulk edit - row change stored (not saved):", {
           primaryKey,
@@ -10820,7 +13961,7 @@ ${errorInfo.originalError}
       [
         bulkEditMode,
         metadata,
-        bsKeyId,
+        getEffectivePrimaryKey,
         updateRecord,
         createRecord,
         loadData,
@@ -10927,7 +14068,7 @@ ${errorInfo.originalError}
         // Use latestRows (with merged edit values) to get most current data
         const newRowsInGrid = latestRows.filter((row) => {
           const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
-          return rowId.startsWith("new-") || row.isNew;
+          return isInlineBulkAddRow(row, rowId);
         });
 
         // Merge changes: prefer data from latestRows (with edit values), then from unsavedChangesRef
@@ -10987,6 +14128,7 @@ ${errorInfo.originalError}
         changes.forEach((row, index) => {
           const validation = validateFormData(row);
           if (!validation.isValid) {
+            const rowId = String(row.id || row[getEffectivePrimaryKey()] || "");
             // Build friendly error message for each row
             const rowNumber = index + 1;
             // Note: errorList built for logging/debugging but validationErrors uses structured format
@@ -10996,67 +14138,42 @@ ${errorInfo.originalError}
               .join("\n");
             validationErrors.push({
               rowNumber,
+              rowId,
               errors: validation.errors,
             });
           }
         });
 
         if (validationErrors.length > 0) {
-          // Use theme colors for error messages
-          const textSecondary = theme.palette.text.secondary;
-          const errorBg =
-            theme.palette.mode === "dark"
-              ? "rgba(211, 47, 47, 0.15)"
-              : `${theme.palette.error.light}22`;
-          const errorBorder = theme.palette.error.main;
-          const errorText =
-            theme.palette.mode === "dark"
-              ? theme.palette.error.light
-              : theme.palette.error.dark;
+          const invalidIds = validationErrors
+            .map((item) => item.rowId)
+            .filter(Boolean);
+          markInvalidRows(invalidIds);
 
-          // Build user-friendly HTML message
-          const errorHtml = validationErrors
-            .map((item) => {
-              const errorItems = item.errors
-                .map(
-                  (err) =>
-                    `<li style="margin: 2px 0; color: ${textSecondary};">${err}</li>`,
-                )
-                .join("");
-              return `
-                <div style="text-align: left; margin-bottom: 12px; padding: 10px; background: ${errorBg}; border-radius: 6px; border-left: 3px solid ${errorBorder};">
-                  <strong style="color: ${errorText};">📋 ${
-                    localeText.bsRow || "Row"
-                  } ${item.rowNumber}</strong>
-                  <ul style="margin: 5px 0 0 15px; padding: 0; list-style: disc;">${errorItems}</ul>
-                </div>`;
-            })
-            .join("");
+          if (invalidIds.length > 0) {
+            focusEditableRow(invalidIds[0], undefined);
+          }
 
-          BSAlertSwal2.show("error", "", {
-            title:
-              localeText.bsValidationError || "Please complete required fields",
-            html: `<div style="max-height: 300px; overflow-y: auto;">${errorHtml}</div>`,
-            width: 450,
-          });
+          showValidationAlert(validationErrors);
+
           // CRITICAL: Reset loading states when returning early due to validation error
           setFormLoading(false);
           setLoading(false);
           isBulkSavingRef.current = false;
           return;
         }
+        clearInvalidRows();
 
         // Validate unique fields if bsUniqueFields is configured
         if (bsUniqueFields && bsUniqueFields.length > 0) {
           const uniqueValidationErrors = [];
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const primaryKey = getEffectivePrimaryKey();
 
           for (let index = 0; index < changes.length; index++) {
             const row = changes[index];
             const rowNumber = index + 1;
-            const isNewRow =
-              row.isNew ||
-              (typeof row.id === "string" && row.id.startsWith("new-"));
+            const rowId = String(row.id || row[primaryKey] || "");
+            const isNewRow = isInlineBulkAddRow(row, rowId);
             const mode = isNewRow ? "add" : "edit";
             const currentPrimaryKeyValue = isNewRow ? null : row[primaryKey];
 
@@ -11071,12 +14188,22 @@ ${errorInfo.originalError}
             if (!uniqueResult.isValid) {
               uniqueValidationErrors.push({
                 rowNumber,
+                rowId,
                 errors: uniqueResult.errors,
               });
             }
           }
 
           if (uniqueValidationErrors.length > 0) {
+            const invalidIds = uniqueValidationErrors
+              .map((item) => item.rowId)
+              .filter(Boolean);
+            markInvalidRows(invalidIds);
+
+            if (invalidIds.length > 0) {
+              focusEditableRow(invalidIds[0], undefined);
+            }
+
             // Use theme colors for error messages
             const textSecondary = theme.palette.text.secondary;
             const errorBg =
@@ -11109,7 +14236,8 @@ ${errorInfo.originalError}
               .join("");
 
             BSAlertSwal2.show("error", "", {
-              title: localeText.bsDuplicateValue || "Duplicate value found",
+              title:
+                localeText.bsDuplicateValueError || "Duplicate value found",
               html: `<div style="max-height: 300px; overflow-y: auto;">${uniqueErrorHtml}</div>`,
               width: 450,
             });
@@ -11125,7 +14253,7 @@ ${errorInfo.originalError}
 
         // Save each changed row
         for (const row of changes) {
-          const primaryKey = metadata?.primaryKeys?.[0] || "Id" || "id";
+          const primaryKey = getEffectivePrimaryKey(row);
           // Get the actual primary key value from row data
           // Do NOT use generated id (starts with "generated-") as it's not a real database value
           let id = row[primaryKey];
@@ -11136,13 +14264,87 @@ ${errorInfo.originalError}
           }
 
           // Check if this is a new row (Add mode) - new rows have id starting with "new-" or isNew flag
-          const isNewRow =
-            row.isNew || (typeof id === "string" && id.startsWith("new-"));
+          const isNewRow = isInlineBulkAddRow(row, id);
 
           // Remove invalid id fields from data before sending to backend
           // Sanitize date values for SQL Server compatibility
+          const rowWithDefaults = { ...row };
+          if (isNewRow && columnDefsConfig) {
+            Object.entries(columnDefsConfig).forEach(([fieldName, colDef]) => {
+              if (
+                colDef.defaultValue !== undefined &&
+                colDef.defaultValue !== null
+              ) {
+                const val = rowWithDefaults[fieldName];
+                if (val === undefined || val === null || val === "") {
+                  rowWithDefaults[fieldName] = colDef.defaultValue;
+
+                  // Sync display column if it's a combobox
+                  if (comboBoxConfig) {
+                    const combo = comboBoxConfig[fieldName];
+                    const displayTarget = getComboBoxDisplayTarget(combo);
+                    if (combo && displayTarget && displayTarget !== fieldName) {
+                      const dispVal = rowWithDefaults[displayTarget];
+                      if (
+                        dispVal === undefined ||
+                        dispVal === null ||
+                        dispVal === ""
+                      ) {
+                        const lookupMap =
+                          comboBoxLookupDataRef.current[fieldName] || {};
+                        const defValue = colDef.defaultValue;
+                        rowWithDefaults[displayTarget] =
+                          lookupMap[defValue] ??
+                          lookupMap[String(defValue)] ??
+                          "";
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          }
+
+          // Call bsOnBeforeSave if provided
+          if (bsOnBeforeSave) {
+            try {
+              const originalRow = rows.find((r) => {
+                const rId = r[primaryKey] || r.id || r.Id || r.ID;
+                return String(rId) === String(id);
+              });
+
+              const canProceed = await bsOnBeforeSave({
+                formData: rowWithDefaults,
+                mode: isNewRow ? "add" : "edit",
+                selectedRow: originalRow || null,
+              });
+
+              if (canProceed === false) {
+                bsLog(
+                  "⏭️ Bulk inline save aborted by bsOnBeforeSave for row:",
+                  rowWithDefaults,
+                );
+                setFormLoading(false);
+                setLoading(false);
+                isBulkSavingRef.current = false;
+                return;
+              }
+            } catch (err) {
+              Logger.error(
+                "❌ bsOnBeforeSave error in handleBulkSaveChanges:",
+                err,
+              );
+              setFormLoading(false);
+              setLoading(false);
+              isBulkSavingRef.current = false;
+              return;
+            }
+          }
+
           const cleanData = sanitizeDataForApi(
-            { ...row },
+            applyOutboundTransform(rowWithDefaults, {
+              mode: isNewRow ? "add" : "edit",
+            }),
             metadata?.columns || [],
           );
 
@@ -11259,15 +14461,20 @@ ${errorInfo.originalError}
             if (bsStoredProcedure && bsStoredProcedureCrud) {
               await executeSpCrud("UPDATE", cleanData, id);
             } else {
-              await updateRecord(id, cleanData, bsPreObj);
+              // Pass explicit whereConditions using the effective primary key
+              const whereConditions = { [primaryKey]: id };
+              await updateRecord(id, cleanData, bsPreObj, whereConditions);
             }
           }
         }
 
         // Reset bulk edit state
         setBulkEditMode(false);
+        inlineAddSessionActiveRef.current = false;
+        setInlineAddSessionActive(false);
         unsavedChangesRef.current = {};
         setHasUnsavedChanges(false);
+        clearInvalidRows();
         setRowSelectionModel([]);
         setRowModesModel({}); // Clear row modes model to exit edit mode for all rows
 
@@ -11327,14 +14534,18 @@ ${errorInfo.originalError}
       paginationModel,
       sortModel,
       filterModel,
+      showValidationAlert,
       localeText.bsRow,
-      localeText.bsValidationError,
-      localeText.bsDuplicateValue,
+      localeText.bsDuplicateValueError,
       setRowModesModel,
       parsedCols,
       bsKeyId,
       bsUniqueFields,
       validateUniqueFields,
+      applyOutboundTransform,
+      focusEditableRow,
+      markInvalidRows,
+      clearInvalidRows,
       theme,
     ]);
 
@@ -11345,8 +14556,11 @@ ${errorInfo.originalError}
 
         setLoading(true); // Set loading state
         setBulkEditMode(false);
+        inlineAddSessionActiveRef.current = false;
+        setInlineAddSessionActive(false);
         unsavedChangesRef.current = {};
         setHasUnsavedChanges(false);
+        clearInvalidRows();
         setRowSelectionModel([]);
 
         // IMPORTANT: Reset rowModesModel to clear any editing state
@@ -11404,15 +14618,22 @@ ${errorInfo.originalError}
       sortModel,
       filterModel,
       setRowModesModel,
+      clearInvalidRows,
     ]);
 
     const handleToggleHeaderFilters = useCallback(() => {
+      if (bulkReloadLocked) {
+        Logger.warn(
+          "Blocked header filter toggle while bulk mode has unsaved changes",
+        );
+        return;
+      }
       setHeaderFiltersEnabled((prev) => {
         const newValue = !prev;
         bsLog(`🔧 Header filters ${newValue ? "enabled" : "disabled"}`);
         return newValue;
       });
-    }, []);
+    }, [bulkReloadLocked]);
 
     // Handle row editing events
     const handleRowEditStart = useCallback(
@@ -11446,13 +14667,19 @@ ${errorInfo.originalError}
         // Enable bulk edit mode if we have permission to edit this row
         // This shows the Save All / Discard All toolbar
         if (!bulkEditMode) {
+          captureGridHorizontalScroll(true);
           setBulkEditMode(true);
           unsavedChangesRef.current = {};
           setHasUnsavedChanges(false);
           bsLog("📝 Bulk Edit mode enabled via row double-click");
         }
       },
-      [bulkEditMode, effectiveBulkEdit, effectiveBulkAddInline],
+      [
+        bulkEditMode,
+        captureGridHorizontalScroll,
+        effectiveBulkEdit,
+        effectiveBulkAddInline,
+      ],
     );
 
     const handleRowEditStop = useCallback(
@@ -11462,6 +14689,8 @@ ${errorInfo.originalError}
         // If user cancels editing (Escape key) and there are no unsaved changes,
         // automatically exit bulk edit mode
         if (params.reason === "escapeKeyDown" && !hasUnsavedChanges) {
+          inlineAddSessionActiveRef.current = false;
+          setInlineAddSessionActive(false);
           setBulkEditMode(false);
           bsLog("📝 Bulk Edit mode disabled - user cancelled with no changes");
         }
@@ -11469,6 +14698,31 @@ ${errorInfo.originalError}
         // Let user manually save/discard changes via toolbar
       },
       [hasUnsavedChanges],
+    );
+
+    const handleRowDoubleClick = useCallback(
+      (params, event) => {
+        if (!effectiveBulkEdit || !params?.id) {
+          return;
+        }
+
+        const rowConfig = bsRowConfig ? bsRowConfig(params.row) : {};
+        if (rowConfig.disabled) {
+          return;
+        }
+
+        if (event) {
+          event.defaultMuiPrevented = true;
+        }
+
+        logGridActivity(
+          "GRID_ROW_DOUBLE_CLICK",
+          params.row,
+          "Row double-click entered bulk edit row in BSDataGrid",
+        );
+        handleBulkRowEditClick(params.id);
+      },
+      [bsRowConfig, effectiveBulkEdit, handleBulkRowEditClick, logGridActivity],
     );
 
     // Loading state
@@ -11485,8 +14739,10 @@ ${errorInfo.originalError}
           }}
         >
           <Box sx={{ textAlign: "center" }}>
-            <CircularProgress sx={{ mb: 2 }} />
-            <Typography variant="body1">{localeText.bsLoadingData}</Typography>
+            <LoadingSkeletonBlock
+              message={localeText.bsLoadingData}
+              lines={4}
+            />
             {/* <Typography variant="body2" color="text.secondary">
               {effectiveTableName}
             </Typography> */}
@@ -11497,13 +14753,33 @@ ${errorInfo.originalError}
 
     // Error state
     if (metadataError) {
+      const errStr = (
+        metadataError?.message ||
+        metadataError?.toString?.() ||
+        String(metadataError)
+      ).toLowerCase();
+
+      // Token corrupted/expired -> header build fails client-side (no 401).
+      // Bail to login instead of showing a confusing technical error.
+      const isAuthIssue =
+        errStr.includes("non iso-8859-1 code point") ||
+        errStr.includes("setrequestheader") ||
+        errStr.includes("invalid character in header") ||
+        errStr.includes("malformed utf-8");
+      if (isAuthIssue) {
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = "/login";
+        }
+        return null;
+      }
+
       // Detect 404 error (invalid table/view) from AxiosError object
       let isNotFound = false;
       if (metadataError?.response?.status === 404) {
         isNotFound = true;
       } else if (metadataError?.toString().includes("404")) {
         isNotFound = true;
-      } else if (metadataError?.message?.toLowerCase().includes("not found")) {
+      } else if (errStr.includes("not found")) {
         isNotFound = true;
       }
       return (
@@ -11521,7 +14797,6 @@ ${errorInfo.originalError}
                 ? localeText.bsTableNotFound
                 : localeText.bsFailedToLoadMetadata}
             </Typography>
-            <Typography variant="body2">Table: {effectiveTableName}</Typography>
             <Typography variant="body2">
               {isNotFound
                 ? localeText.bsTableNotFoundMessage
@@ -11548,7 +14823,6 @@ ${errorInfo.originalError}
             <Typography variant="h6">
               {localeText.bsBackendNotAvailable}
             </Typography>
-            <Typography variant="body2">Table: {effectiveTableName}</Typography>
             <Typography variant="body2">
               {localeText.bsCheckBackendConnection}
             </Typography>
@@ -11771,14 +15045,14 @@ ${errorInfo.originalError}
                   >
                     <Box sx={{ textAlign: "center" }}>
                       {isStillLoading ? (
-                        <>
-                          <CircularProgress sx={{ mb: 2 }} />
-                          <Typography variant="body1">
-                            {metadataLoading
+                        <LoadingSkeletonBlock
+                          message={
+                            metadataLoading
                               ? localeText.bsLoadingColumns
-                              : localeText.bsLoadingData}
-                          </Typography>
-                        </>
+                              : localeText.bsLoadingData
+                          }
+                          lines={3}
+                        />
                       ) : (
                         <>
                           <Typography
@@ -11812,6 +15086,7 @@ ${errorInfo.originalError}
                     filteredRows.length >= paginationModel.pageSize
                       ? `calc(100vh - ${theme.spacing(20)})`
                       : "auto",
+
                   //  -- flex: height === "auto" ? 1 : "none",
                   //   display: "flex",
                   //   flexDirection: "column",
@@ -11906,24 +15181,26 @@ ${errorInfo.originalError}
                     bsFilterMode === "client" ? "client" : "server"
                   }
                   paginationModel={paginationModel}
-                  onPaginationModelChange={setPaginationModel}
+                  onPaginationModelChange={handlePaginationModelChange}
                   pageSizeOptions={effectivePageSizeOptions}
                   // Sorting
                   sortingMode={bsFilterMode === "client" ? "client" : "server"}
                   sortModel={sortModel}
                   onSortModelChange={handleSortModelChange}
+                  disableColumnSorting={bulkReloadLocked}
                   // Filtering
                   filterMode={bsFilterMode}
                   filterModel={filterModel}
                   onFilterModelChange={handleFilterModelChange}
+                  disableColumnFilter={bulkReloadLocked}
                   // Quick Filter Settings
                   filterDebounceMs={500}
                   // Header Filters (Pro feature)
                   headerFilters={headerFiltersEnabled}
                   headerFilterHeight={48}
-                  // Auto-sizing columns (exclude columns with custom width in bsColumnDefs)
-                  autosizeOnMount
-                  autosizeOptions={autosizeOptions}
+                  // Auto column sizing is handled deterministically via
+                  // autoFitColumnsToContent (MUI's autosize can't measure
+                  // off-screen columns), so MUI's autosize is intentionally off.
                   // Row Heights
                   rowHeight={40} //{() => "auto"}
                   // showToolbar={showToolbar && !bulkEditMode}
@@ -11932,12 +15209,16 @@ ${errorInfo.originalError}
                   // Only show checkbox when explicitly enabled or onCheckBoxSelected is provided
                   // NOT automatically when bulkMode is active (user can still bulk edit via double-click)
                   checkboxSelection={
-                    effectiveShowCheckbox || !!onCheckBoxSelected
+                    effectiveSingleSelection ||
+                    effectiveShowCheckbox ||
+                    !!onCheckBoxSelected
                   }
+                  disableMultipleRowSelection={effectiveSingleSelection}
                   rowSelectionModel={rowSelectionModel}
                   onRowSelectionModelChange={handleRowSelectionChange}
                   // Enable multi-row selection by clicking on rows directly (no checkbox required)
                   disableRowSelectionOnClick={false}
+                  onRowDoubleClick={handleRowDoubleClick}
                   // disableRowSelectionOnClick={
                   //   !bsShowCheckbox &&
                   //   !bsBulkEdit &&
@@ -11960,9 +15241,7 @@ ${errorInfo.originalError}
                   isRowSelectable={isRowSelectable}
                   // Custom Toolbar (use slots + slotProps for better compatibility)
                   // Show toolbar when showToolbar is true (including bulk edit mode)
-                  slots={
-                    showToolbar ? { toolbar: DynamicGridToolbar } : undefined
-                  }
+                  slots={gridSlots}
                   slotProps={
                     showToolbar
                       ? {
@@ -11984,6 +15263,7 @@ ${errorInfo.originalError}
                               handleInlineAdd();
                             },
                             showAdd: effectiveShowAdd,
+                            bsCustomActions,
                             headerFiltersEnabled,
                             onToggleHeaderFilters: handleToggleHeaderFilters,
                             bsBulkEdit: effectiveBulkEdit,
@@ -12072,11 +15352,17 @@ ${errorInfo.originalError}
                             },
                             hasUnsavedChanges,
                             formLoading,
+                            disableReloadActions: bulkReloadLocked,
+                            disableDialogAdd: bulkReloadLocked,
                             changesCount: Object.keys(unsavedChangesRef.current)
                               .length,
                           },
                           headerFilterCell: {
                             showClearIcon: true,
+                          },
+                          loadingOverlay: {
+                            variant: "skeleton",
+                            noRowsVariant: "skeleton",
                           },
                           pagination: {
                             showFirstButton: true,
@@ -12088,12 +15374,20 @@ ${errorInfo.originalError}
                             headerFilterCell: {
                               showClearIcon: true,
                             },
+                            loadingOverlay: {
+                              variant: "skeleton",
+                              noRowsVariant: "skeleton",
+                            },
                             pagination: {
                               showFirstButton: true,
                               showLastButton: true,
                             },
                           }
                         : {
+                            loadingOverlay: {
+                              variant: "skeleton",
+                              noRowsVariant: "skeleton",
+                            },
                             pagination: {
                               showFirstButton: true,
                               showLastButton: true,
@@ -12166,6 +15460,37 @@ ${errorInfo.originalError}
                               ? "rgba(255, 217, 61, 0.25)"
                               : theme.palette.warning[200] ||
                                 theme.palette.warning.light,
+                        },
+                      },
+                      "&.invalid-row": {
+                        backgroundColor: `${alpha(
+                          theme.palette.error.main,
+                          theme.palette.mode === "dark" ? 0.22 : 0.14,
+                        )} !important`,
+                        boxShadow: `inset 3px 0 0 ${theme.palette.error.main}, 0 0 0 1px ${alpha(
+                          theme.palette.error.main,
+                          0.35,
+                        )}`,
+                        // In bulk mode the whole row is in edit mode and the
+                        // editing cells paint over the row background, so tint the
+                        // cells too to keep the whole-row highlight visible.
+                        "& .MuiDataGrid-cell": {
+                          backgroundColor: `${alpha(
+                            theme.palette.error.main,
+                            theme.palette.mode === "dark" ? 0.22 : 0.14,
+                          )} !important`,
+                        },
+                        "&:hover": {
+                          backgroundColor: `${alpha(
+                            theme.palette.error.main,
+                            theme.palette.mode === "dark" ? 0.3 : 0.2,
+                          )} !important`,
+                          "& .MuiDataGrid-cell": {
+                            backgroundColor: `${alpha(
+                              theme.palette.error.main,
+                              theme.palette.mode === "dark" ? 0.3 : 0.2,
+                            )} !important`,
+                          },
                         },
                       },
                       // Selected row styling - primary glow
@@ -12305,6 +15630,11 @@ ${errorInfo.originalError}
                         },
                       },
                     },
+                    // Actions cell - remove excess padding and left-align buttons
+                    [`& .${gridClasses.actionsCell}`]: {
+                      padding: "0 4px",
+                      justifyContent: "flex-start",
+                    },
                   })}
                   {...props}
                 />
@@ -12326,230 +15656,253 @@ ${errorInfo.originalError}
         })()}
 
         {/* Built-in CRUD Dialog */}
-        <Dialog
+        <BSDialog
           open={dialogOpen}
-          onClose={(event, reason) => {
-            // Prevent closing dialog by clicking backdrop
-            if (reason === "backdropClick") return;
-            handleDialogClose();
-          }}
+          minimized={dialogMinimized}
+          title={
+            dialogMode === "add"
+              ? localeText.bsAddNewRecord
+              : localeText.bsEditRecord
+          }
+          onClose={handleDialogClose}
+          onMinimize={handleDialogMinimize}
+          onRestore={handleDialogRestore}
+          closeDisabled={formLoading}
+          localeText={localeText}
+          draggable={bsDialogDraggable}
           maxWidth={
             bsChildGrids && bsChildGrids.length > 0 ? "lg" : dialogMaxWidth
           }
-          fullWidth
           fullScreen={isDialogFullScreen}
-          PaperProps={{
-            sx: {
-              borderRadius: isDialogFullScreen ? 0 : 1,
-            },
-          }}
+          contentDividers={
+            parsedDialogTabs || (bsChildGrids && bsChildGrids.length > 0)
+              ? true
+              : false
+          }
+          actions={
+            <>
+              <BSCloseOutlinedButton
+                onClick={handleDialogClose}
+                disabled={formLoading}
+              >
+                {isParentSaved && bsChildGrids && bsChildGrids.length > 0
+                  ? localeText.bsClose || "Close"
+                  : localeText.bsCancel}
+              </BSCloseOutlinedButton>
+              {/* Show Save button always - user can save/update parent record anytime */}
+              <BSSaveOutlinedButton onClick={handleSave} disabled={formLoading}>
+                {formLoading
+                  ? localeText.bsSaving
+                  : bsChildGrids &&
+                      bsChildGrids.length > 0 &&
+                      dialogMode === "add" &&
+                      !isParentSaved
+                    ? localeText.bsSaveAndContinue || "Save & Continue"
+                    : localeText.bsSave}
+              </BSSaveOutlinedButton>
+            </>
+          }
         >
-          <DialogTitle>
-            {dialogMode === "add"
-              ? localeText.bsAddNewRecord
-              : localeText.bsEditRecord}
-          </DialogTitle>
-          <DialogContent
-            dividers={
-              parsedDialogTabs || (bsChildGrids && bsChildGrids.length > 0)
-                ? true
-                : false
-            }
-          >
-            {/* Hierarchical Data Mode - with child grids */}
-            {bsChildGrids && bsChildGrids.length > 0 ? (
-              <Box sx={{ width: "100%" }}>
-                {/* Parent Form in Accordion */}
-                <Accordion
-                  expanded={parentAccordionExpanded}
-                  onChange={(e, expanded) =>
-                    setParentAccordionExpanded(expanded)
-                  }
-                  sx={{ mb: 2 }}
-                >
-                  <AccordionSummary
-                    expandIcon={<ExpandMoreIcon />}
-                    aria-controls="parent-form-content"
-                    id="parent-form-header"
-                    sx={(theme) => ({
+          {/* Hierarchical Data Mode - with child grids */}
+          {bsChildGrids && bsChildGrids.length > 0 ? (
+            <Box sx={{ width: "100%" }}>
+              {/* Parent Form in Accordion */}
+              <Accordion
+                expanded={parentAccordionExpanded}
+                onChange={(e, expanded) => setParentAccordionExpanded(expanded)}
+                sx={{ mb: 2 }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls="parent-form-content"
+                  id="parent-form-header"
+                  sx={(theme) => ({
+                    backgroundColor:
+                      theme.palette.mode === "dark"
+                        ? theme.palette.grey[300]
+                        : theme.palette.grey[200],
+                    "&:hover": {
                       backgroundColor:
                         theme.palette.mode === "dark"
-                          ? theme.palette.grey[300]
-                          : theme.palette.grey[200],
-                      "&:hover": {
-                        backgroundColor:
-                          theme.palette.mode === "dark"
-                            ? theme.palette.grey[400]
-                            : theme.palette.grey[300],
-                      },
-                      borderTopLeftRadius: "8px",
-                      borderTopRightRadius: "8px",
-                    })}
-                  >
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {(() => {
-                        // Priority: bsParentRecordLabel (with resource support) > localeText > default
-                        if (bsParentRecordLabel) {
-                          // Check if it's a resource key (format: "resource:keyName")
-                          if (bsParentRecordLabel.startsWith("resource:")) {
-                            const resourceKey =
-                              bsParentRecordLabel.substring(9);
-                            const resourceValue = getResource(
-                              resourceData,
-                              resourceKey,
-                            );
-
-                            bsLog("🏷️ bsParentRecordLabel resource lookup:", {
-                              bsParentRecordLabel,
-                              resourceKey,
-                              resourceValue,
-                              resourceDataCount: resourceData?.length || 0,
-                              resourceDataSample: resourceData?.slice(0, 5),
-                              resourceGroup:
-                                bsStoredProcedure || effectiveTableName,
-                            });
-
-                            return (
-                              resourceValue ||
-                              localeText.bsParentRecord ||
-                              "Parent Record"
-                            );
-                          }
-                          return bsParentRecordLabel;
+                          ? theme.palette.grey[400]
+                          : theme.palette.grey[300],
+                    },
+                    borderTopLeftRadius: "8px",
+                    borderTopRightRadius: "8px",
+                  })}
+                >
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    {(() => {
+                      // Priority: bsParentRecordLabel (with resource support) > localeText > default
+                      if (bsParentRecordLabel) {
+                        if (bsParentRecordLabel.startsWith("field:")) {
+                          return getParentRecordLabel();
                         }
-                        return localeText.bsParentRecord || "Parent Record";
-                      })()}
-                      {isParentSaved && (
-                        <Chip
-                          label={localeText.bsSaved || "Saved"}
-                          size="small"
-                          color="success"
-                          sx={{ ml: 2 }}
+                        // Check if it's a resource key (format: "resource:keyName")
+                        if (bsParentRecordLabel.startsWith("resource:")) {
+                          const resourceKey = bsParentRecordLabel.substring(9);
+                          const resourceValue = getResource(
+                            resourceData,
+                            resourceKey,
+                          );
+
+                          // bsLog("🏷️ bsParentRecordLabel resource lookup:", {
+                          //   bsParentRecordLabel,
+                          //   resourceKey,
+                          //   resourceValue,
+                          // });
+
+                          return resourceValue || resourceKey;
+                        }
+                        return bsParentRecordLabel;
+                      }
+                      return localeText.bsParentRecord || "Parent Record";
+                    })()}
+                    {isParentSaved && (
+                      <Chip
+                        label={localeText.bsSaved || "Saved"}
+                        size="small"
+                        color="success"
+                        sx={{ ml: 2 }}
+                      />
+                    )}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {metadata?.columns || bsStoredProcedure ? (
+                    renderFormFields()
+                  ) : (
+                    <Box sx={{ textAlign: "center", py: 4 }}>
+                      <LoadingSkeletonBlock
+                        message={localeText.bsLoadingMetadata}
+                        lines={3}
+                      />
+                    </Box>
+                  )}
+                  {typeof bsDialogExtraContent === "function" &&
+                    bsDialogExtraContent({
+                      mode: dialogMode,
+                      formData,
+                      selectedRow,
+                      setFormData,
+                    })}
+                </AccordionDetails>
+              </Accordion>
+
+              {/* Child Grids in Tabs */}
+              {bsChildGrids.length > 0 && (
+                <Box sx={{ width: "100%", mt: 2 }}>
+                  <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+                    <Tabs
+                      value={activeChildTab}
+                      onChange={(e, newValue) => setActiveChildTab(newValue)}
+                      variant="scrollable"
+                      scrollButtons="auto"
+                      aria-label="child grid tabs"
+                    >
+                      {bsChildGrids.map((childConfig, index) => (
+                        <Tab
+                          key={index}
+                          label={formatDialogLabel(
+                            childConfig.name || `Child ${index + 1}`,
+                          )}
+                          disabled={!isParentSaved}
+                        />
+                      ))}
+                    </Tabs>
+                  </Box>
+
+                  {/* Child Grid Tab Panels */}
+                  {bsChildGrids.map((childConfig, index) => (
+                    <Box
+                      key={index}
+                      role="tabpanel"
+                      hidden={activeChildTab !== index}
+                      sx={{ pt: 2, minHeight: 400 }}
+                    >
+                      {activeChildTab === index && (
+                        <BSChildDataGrid
+                          ref={(el) => {
+                            childGridRefs.current[index] = el;
+                          }}
+                          name={childConfig.name}
+                          foreignKeys={childConfig.foreignKeys || []}
+                          parentKeyValues={savedParentKeyValues}
+                          isParentSaved={isParentSaved}
+                          bsLocale={bsLocale}
+                          localeText={localeText}
+                          // Pass all other BSDataGrid props
+                          bsPreObj={childConfig.bsPreObj || bsPreObj}
+                          bsObj={childConfig.bsObj}
+                          bsCols={childConfig.bsCols}
+                          bsObjBy={childConfig.bsObjBy}
+                          bsObjWh={childConfig.bsObjWh}
+                          bsComboBox={childConfig.bsComboBox}
+                          bsColumnDefs={childConfig.bsColumnDefs}
+                          bsDialogSize={childConfig.bsDialogSize}
+                          bsDialogColumns={childConfig.bsDialogColumns}
+                          bsDialogTab={childConfig.bsDialogTab}
+                          bsDialogSection={childConfig.bsDialogSection}
+                          bsDialogDraggable={childConfig.bsDialogDraggable}
+                          bsVisibleEdit={childConfig.bsVisibleEdit !== false}
+                          bsVisibleDelete={
+                            childConfig.bsVisibleDelete !== false
+                          }
+                          bsVisibleView={childConfig.bsVisibleView === true}
+                          showAdd={childConfig.showAdd !== false}
+                          showToolbar={childConfig.showToolbar !== false}
+                          bsAutoPermission={
+                            childConfig.bsAutoPermission !== undefined
+                              ? childConfig.bsAutoPermission
+                              : bsAutoPermission
+                          }
+                          bsShowRowNumber={
+                            childConfig.bsShowRowNumber !== false
+                          }
+                          bsRowPerPage={childConfig.bsRowPerPage || 10}
+                          bsPageSizeOptions={
+                            childConfig.bsPageSizeOptions || [10, 20, 50]
+                          }
+                          height={childConfig.height}
+                          bsHiddenColumns={childConfig.bsHiddenColumns || []}
+                          bsUniqueFields={childConfig.bsUniqueFields}
+                          // Bulk mode props
+                          bsBulkMode={childConfig.bsBulkMode}
+                          bsBulkAddInline={childConfig.bsBulkAddInline}
+                          // Callback props
+                          bsOnBeforeSave={childConfig.bsOnBeforeSave}
+                          bsOnAfterSave={childConfig.bsOnAfterSave}
+                          onDataBind={childConfig.onDataBind}
+                          bsKeyId={childConfig.bsKeyId}
+                          bsAllowDelete={childConfig.bsAllowDelete}
                         />
                       )}
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    {metadata?.columns || bsStoredProcedure ? (
-                      renderFormFields()
-                    ) : (
-                      <Box sx={{ textAlign: "center", py: 4 }}>
-                        <CircularProgress />
-                        <Typography variant="body2" sx={{ mt: 2 }}>
-                          {localeText.bsLoadingMetadata}
-                        </Typography>
-                      </Box>
-                    )}
-                  </AccordionDetails>
-                </Accordion>
-
-                {/* Child Grids in Tabs */}
-                {bsChildGrids.length > 0 && (
-                  <Box sx={{ width: "100%", mt: 2 }}>
-                    <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-                      <Tabs
-                        value={activeChildTab}
-                        onChange={(e, newValue) => setActiveChildTab(newValue)}
-                        variant="scrollable"
-                        scrollButtons="auto"
-                        aria-label="child grid tabs"
-                      >
-                        {bsChildGrids.map((childConfig, index) => (
-                          <Tab
-                            key={index}
-                            label={childConfig.name || `Child ${index + 1}`}
-                            disabled={!isParentSaved}
-                          />
-                        ))}
-                      </Tabs>
                     </Box>
-
-                    {/* Child Grid Tab Panels */}
-                    {bsChildGrids.map((childConfig, index) => (
-                      <Box
-                        key={index}
-                        role="tabpanel"
-                        hidden={activeChildTab !== index}
-                        sx={{ pt: 2, minHeight: 400 }}
-                      >
-                        {activeChildTab === index && (
-                          <BSChildDataGrid
-                            ref={(el) => {
-                              childGridRefs.current[index] = el;
-                            }}
-                            name={childConfig.name}
-                            foreignKeys={childConfig.foreignKeys || []}
-                            parentKeyValues={savedParentKeyValues}
-                            isParentSaved={isParentSaved}
-                            bsLocale={bsLocale}
-                            localeText={localeText}
-                            // Pass all other BSDataGrid props
-                            bsPreObj={childConfig.bsPreObj || bsPreObj}
-                            bsObj={childConfig.bsObj}
-                            bsCols={childConfig.bsCols}
-                            bsObjBy={childConfig.bsObjBy}
-                            bsObjWh={childConfig.bsObjWh}
-                            bsComboBox={childConfig.bsComboBox}
-                            bsColumnDefs={childConfig.bsColumnDefs}
-                            bsDialogSize={childConfig.bsDialogSize}
-                            bsDialogColumns={childConfig.bsDialogColumns}
-                            bsVisibleEdit={childConfig.bsVisibleEdit !== false}
-                            bsVisibleDelete={
-                              childConfig.bsVisibleDelete !== false
-                            }
-                            bsShowRowNumber={
-                              childConfig.bsShowRowNumber !== false
-                            }
-                            bsRowPerPage={childConfig.bsRowPerPage || 10}
-                            bsPageSizeOptions={
-                              childConfig.bsPageSizeOptions || [10, 20, 50]
-                            }
-                            height={childConfig.height}
-                            bsUniqueFields={childConfig.bsUniqueFields}
-                            // Bulk mode props
-                            bsBulkMode={childConfig.bsBulkMode}
-                            bsBulkAddInline={childConfig.bsBulkAddInline}
-                          />
-                        )}
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            ) : // Standard Mode - no child grids
-            metadata?.columns || bsStoredProcedure ? (
-              renderFormFields()
-            ) : (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <CircularProgress />
-                <Typography variant="body2" sx={{ mt: 2 }}>
-                  {localeText.bsLoadingMetadata}
-                </Typography>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <BSCloseOutlinedButton
-              onClick={handleDialogClose}
-              disabled={formLoading}
-            >
-              {isParentSaved && bsChildGrids && bsChildGrids.length > 0
-                ? localeText.bsClose || "Close"
-                : localeText.bsCancel}
-            </BSCloseOutlinedButton>
-            {/* Show Save button always - user can save/update parent record anytime */}
-            <BSSaveOutlinedButton onClick={handleSave} disabled={formLoading}>
-              {formLoading
-                ? localeText.bsSaving
-                : bsChildGrids &&
-                    bsChildGrids.length > 0 &&
-                    dialogMode === "add" &&
-                    !isParentSaved
-                  ? localeText.bsSaveAndContinue || "Save & Continue"
-                  : localeText.bsSave}
-            </BSSaveOutlinedButton>
-          </DialogActions>
-        </Dialog>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          ) : // Standard Mode - no child grids
+          metadata?.columns || bsStoredProcedure ? (
+            <>
+              {renderFormFields()}
+              {typeof bsDialogExtraContent === "function" &&
+                bsDialogExtraContent({
+                  mode: dialogMode,
+                  formData,
+                  selectedRow,
+                  setFormData,
+                })}
+            </>
+          ) : (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <LoadingSkeletonBlock
+                message={localeText.bsLoadingMetadata}
+                lines={3}
+              />
+            </Box>
+          )}
+        </BSDialog>
 
         {/* Bulk Add Dialog */}
         <Dialog
@@ -12647,6 +16000,13 @@ ${errorInfo.originalError}
 
                             // Special handling for is_active field
                             if (isActiveField(columnName)) {
+                              const isInvalid =
+                                showBulkValidationErrors &&
+                                !isNullable &&
+                                (val === null ||
+                                  val === undefined ||
+                                  val === "");
+
                               return (
                                 <Grid
                                   item
@@ -12659,6 +16019,7 @@ ${errorInfo.originalError}
                                     fullWidth
                                     size="small"
                                     required={!isNullable}
+                                    error={isInvalid}
                                   >
                                     <InputLabel>
                                       {formatColumnName(columnName)}
@@ -12674,7 +16035,16 @@ ${errorInfo.originalError}
                                       )}
                                     </InputLabel>
                                     <Select
-                                      value={val || "YES"}
+                                      value={(() => {
+                                        const normalized =
+                                          normalizeBooleanValue(val);
+                                        // Default new/empty selections to true,
+                                        // matching the is_active default.
+                                        return normalized === true ||
+                                          normalized === false
+                                          ? normalized
+                                          : true;
+                                      })()}
                                       label={
                                         <>
                                           {formatColumnName(columnName)}
@@ -12715,7 +16085,7 @@ ${errorInfo.originalError}
                                               label={option.label}
                                               size="small"
                                               color={
-                                                option.value === "YES"
+                                                option.value === true
                                                   ? "success"
                                                   : "error"
                                               }
@@ -12758,6 +16128,13 @@ ${errorInfo.originalError}
                                 return children;
                               };
 
+                              const isInvalid =
+                                showBulkValidationErrors &&
+                                !isNullable &&
+                                (val === null ||
+                                  val === undefined ||
+                                  val === "");
+
                               return (
                                 <Grid
                                   item
@@ -12770,22 +16147,51 @@ ${errorInfo.originalError}
                                     columnName={columnName}
                                     config={comboConfig}
                                     value={val}
-                                    onChange={(value) => {
+                                    onChange={(value, displayVal) => {
                                       // Update this field
                                       updateBulkRow(
                                         rowIndex,
                                         columnName,
                                         value,
                                       );
+                                      const displayTarget =
+                                        getComboBoxDisplayTarget(comboConfig);
+                                      if (
+                                        displayTarget &&
+                                        displayTarget !== columnName
+                                      ) {
+                                        updateBulkRow(
+                                          rowIndex,
+                                          displayTarget,
+                                          displayVal,
+                                        );
+                                      }
                                       // Auto-clear child ComboBox values
                                       const childColumns =
                                         getChildColumnsForBulk(columnName);
                                       childColumns.forEach((childCol) => {
                                         updateBulkRow(rowIndex, childCol, "");
+                                        const childCombo = bsComboBox.find(
+                                          (c) => c.Column === childCol,
+                                        );
+                                        const childDisplayTarget =
+                                          getComboBoxDisplayTarget(childCombo);
+                                        if (
+                                          childCombo &&
+                                          childDisplayTarget &&
+                                          childDisplayTarget !== childCol
+                                        ) {
+                                          updateBulkRow(
+                                            rowIndex,
+                                            childDisplayTarget,
+                                            "",
+                                          );
+                                        }
                                       });
                                     }}
                                     required={!isNullable}
                                     parentValue={bulkParentVal}
+                                    error={isInvalid}
                                   />
                                 </Grid>
                               );
@@ -12986,6 +16392,15 @@ ${errorInfo.originalError}
                               tooltipText = `${currentLength}/${maxLength} characters`;
                             }
 
+                            const isInvalid =
+                              (maxLength > 0 &&
+                                String(val).length > maxLength) ||
+                              (showBulkValidationErrors &&
+                                !isNullable &&
+                                (val === null ||
+                                  val === undefined ||
+                                  String(val).trim() === ""));
+
                             const bulkTextField = (
                               <TextField
                                 fullWidth
@@ -13019,10 +16434,7 @@ ${errorInfo.originalError}
                                       maxLength: maxLength,
                                     }),
                                 }}
-                                error={
-                                  maxLength > 0 &&
-                                  String(val).length > maxLength
-                                }
+                                error={isInvalid}
                               />
                             );
 
@@ -13049,10 +16461,10 @@ ${errorInfo.originalError}
               </Box>
             ) : (
               <Box sx={{ textAlign: "center", py: 4 }}>
-                <CircularProgress />
-                <Typography variant="body2" sx={{ mt: 2 }}>
-                  {localeText.bsLoadingMetadata}
-                </Typography>
+                <LoadingSkeletonBlock
+                  message={localeText.bsLoadingMetadata}
+                  lines={3}
+                />
               </Box>
             )}
           </DialogContent>

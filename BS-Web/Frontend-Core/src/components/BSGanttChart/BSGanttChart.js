@@ -648,7 +648,7 @@ const BSGanttChart = forwardRef(
               schemaName: holidayPreObj || "dbo",
               pageSize: 1000, // Get all holidays
               page: 1,
-              customWhere: "is_active = 'YES'",
+              customWhere: "is_active = 1",
               customOrderBy: "holiday_date ASC",
             });
             // console.warn("BSGanttChart: Holiday API response received", response?.status);

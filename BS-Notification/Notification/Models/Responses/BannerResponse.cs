@@ -14,7 +14,7 @@
         public string description { get; set; } = string.Empty; 
         public List<BannerLink> list { get; set; } = new List<BannerLink>();
         public string link { get; set; } = string.Empty;
-        public DateTime create_at { get; set; }
+        public DateTime create_date { get; set; }
     }
     public class BannerLink
     {

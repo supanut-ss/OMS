@@ -1,10 +1,11 @@
-﻿using Microsoft.Data.SqlClient;
-using System.Data;
+﻿using System.Data;
+using System.Data.Common;
 using System.Security.Cryptography;
 using Authentication.Interfaces;
 using Authentication.Models.Data;
 using Authentication.Models.Responses.Auth;
 using Authentication.Prototype;
+using TokenManagement.Database;
 using TokenManagement.Handler;
 using TokenManagement.Interfaces;
 using Azure.Core;
@@ -12,11 +13,14 @@ using System.Collections.Generic;
 using Sprache;
 using Authentication.Models.Requests;
 using System.Text.Json;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Data.SqlClient;
 namespace Authentication.Services.Auth
 {
     public class AuthService : IAuth
     {
         private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB_SECURITY") ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly IDbConnectionFactory _connectionFactory;
         private readonly ITokenValidatorService _tokenValidatorService;
 
         private readonly JwtHelper _jwtHelper;
@@ -24,25 +28,30 @@ namespace Authentication.Services.Auth
         private readonly string schema = Environment.GetEnvironmentVariable("DB_SCHEMA") ?? "sec";
         private readonly int accessFailureLimit = int.Parse(Environment.GetEnvironmentVariable("ACCESS_FAILURE_LIMIT") ?? "5");
         private readonly IApplication _application;
-        public AuthService(ITokenValidatorService tokenValidator,IClientInfo clientInfo, JwtHelper jwtHelper,IApplication application)
+        public AuthService(IDbConnectionFactory connectionFactory, ITokenValidatorService tokenValidator, IClientInfo clientInfo, JwtHelper jwtHelper, IApplication application)
         {
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             _tokenValidatorService = tokenValidator ?? throw new ArgumentNullException(nameof(tokenValidator));
             _jwtHelper = jwtHelper;
             _clientInfo = clientInfo ?? throw new ArgumentNullException(nameof(clientInfo));
             _application = application ?? throw new ArgumentNullException(nameof(application));
         }
 
-        public async Task<AuthResponse> GetTokenAsync(string license, string username, string password,string fcm_token)
+        public async Task<AuthResponse> GetTokenAsync(string license, string username, string password, string fcm_token, string platform)
         {
             if (string.IsNullOrEmpty(license))
                 return CreateErrorResponse("1", "License key cannot be null or empty.");
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 return CreateErrorResponse("1", "Username and password cannot be null or empty.");
+            var normalizedPlatform = NormalizePlatform(platform);
+            if (normalizedPlatform == null)
+                return CreateErrorResponse("1", "Platform must be 'web' or 'mobile'.");
+
             // ตรวจสอบ license key
             var vComApplication = await _application.GetApplicationByLicense(license);
             if (vComApplication.application_id == 0)
             {
-                return CreateErrorResponse("1", "Invalid license key."+ _connectionString);
+                return CreateErrorResponse("1", $"Invalid license key. [{vComApplication.application_description}]");
             }
             var licenseCheck = _application.CheckApplicationExpire(vComApplication);
             if (licenseCheck.message_code != "0")
@@ -50,8 +59,10 @@ namespace Authentication.Services.Auth
                 return CreateErrorResponse(licenseCheck.message_code, licenseCheck.message_text);
             }
 
-            // เริ่มกระบวนการตรวจสอบผู้ใช้
-            TComUser userinfo = await GetUserFromDatabase(username);
+            TComUser? userinfo;
+            try { userinfo = await GetUserFromDatabase(username); }
+            catch (Exception ex) { return CreateErrorResponse("1", $"[GetUserFromDatabase] {ex.GetType().Name}: {ex.Message}"); }
+
             if (userinfo == null)
             {
                 return CreateErrorResponse("1", "Invalid username !!");
@@ -60,7 +71,10 @@ namespace Authentication.Services.Auth
             {
                 if (string.IsNullOrEmpty(userinfo.Domain))
                 {
-                    if (!AuthenticateWithDatabase(userinfo.Password, password))
+                    bool authOk;
+                    try { authOk = AuthenticateWithDatabase(userinfo.Password, password); }
+                    catch (Exception ex) { return CreateErrorResponse("1", $"[AuthenticateWithDatabase] {ex.GetType().Name}: {ex.Message}"); }
+                    if (!authOk)
                     {
                         return await HandleAccessFailure(vComApplication, username);
                     }
@@ -71,55 +85,84 @@ namespace Authentication.Services.Auth
                     {
                         return await HandleAccessFailure(vComApplication, username);
                     }
-
                 }
-                //check limit user login online ตาม license key
-                bool isLimitReached = await IsLicenseLimitReached(vComApplication.license_key, userinfo.UserId, vComApplication.application_of_use);
+
+                bool isLimitReached;
+                try { isLimitReached = await IsLicenseLimitReached(vComApplication.license_key, userinfo.UserId, vComApplication.application_of_use); }
+                catch (Exception ex) { return CreateErrorResponse("1", $"[IsLicenseLimitReached] {ex.GetType().Name}: {ex.Message}"); }
                 if (isLimitReached)
                 {
                     return CreateErrorResponse("1", "License limit reached. Cannot login more users.");
                 }
-                // สร้าง JWT token และ refresh token
-                //string role = userinfo.UserId == Encryption.Decrypt(Environment.GetEnvironmentVariable("USERNAME_ADMIN") ?? "") ? "SuperAdmin" : userinfo.UserGroupId.ToString() ?? "User";
-                string role = userinfo.UserGroupId.ToString() ?? "unkonw";
-                var token = _jwtHelper.GenerateToken(userinfo.UserId, role, userinfo.FirstName, userinfo.FirstName, userinfo.LastName, userinfo.Email, userinfo.LocaleId);
-                var refresh = await _tokenValidatorService.GenerateRefreshToken(userinfo.UserId, token);
 
-                // อัพเดต refresh token ในฐานข้อมูล
-                AuthResponse updateResult = await UpdateRefreshToken(userinfo.UserId, token, refresh, "", 0);
-                if (updateResult.message_code != "0")
-                    return CreateErrorResponse(updateResult.message_code, updateResult.message_text);
-
-                // ตรวจสอบว่าผู้ใช้ถูกล็อคหรือไม่
-                if (userinfo.IsActive == false)
+                string role = userinfo.UserGroupId.ToString() ?? "unknown";
+                string token;
+                var (hasActiveSession, activeAccessToken, activeRefreshToken) = await HasActiveSession(userinfo.UserId, normalizedPlatform);
+                if (!hasActiveSession && !string.IsNullOrEmpty(activeAccessToken) && !string.IsNullOrEmpty(activeRefreshToken))
                 {
-                    return CreateErrorResponse("1", "User account is locked. Please contact support.");
+                    return CreateErrorResponse("1", "An active session already exists for this user on the same platform. Please logout from other sessions before logging in again.");
                 }
-                if (userinfo.AccessFailedCount > 0)
+                else if (hasActiveSession && !string.IsNullOrEmpty(activeAccessToken) && !string.IsNullOrEmpty(activeRefreshToken))
                 {
-                    // อัพเดตจำนวนครั้งที่เข้าสู่ระบบล้มเหลวเป็น 0
-                    var lockResponse = await LockUser(username, 0);
-                    if (lockResponse.message_code != "0")
-                        return lockResponse;
-                }
-                if (!string.IsNullOrEmpty(fcm_token))
-                {
-                    await UpdateFcmToken(userinfo.UserId, fcm_token);
+                    return new AuthResponse
+                    {
+                        message_code = "0",
+                        message_text = "Login successful. Active session found.",
+                        data = new AuthDataResponse
+                        {
+                            access_token = activeAccessToken,
+                            refresh_token = activeRefreshToken,
+                        }
+                    };
                 }
                 else
                 {
-                    await UpdateFcmToken(userinfo.UserId, "");
-                }
-                return new AuthResponse
-                {
-                    message_code = "0",
-                    message_text = "Login successful.",
-                    data = new AuthDataResponse
+
+                    var (accessTokenMinutes, refreshTokenMinutes) = ResolveTokenLifetime(normalizedPlatform);
+
+                    try { token = _jwtHelper.GenerateToken(userinfo.UserId, role, userinfo.FirstName, userinfo.FirstName, userinfo.LastName, userinfo.Email, userinfo.LocaleId, accessTokenMinutes, normalizedPlatform); }
+                    catch (Exception ex) { return CreateErrorResponse("1", $"[GenerateToken] {ex.GetType().Name}: {ex.Message}"); }
+
+                    string refresh;
+                    try { refresh = await _tokenValidatorService.GenerateRefreshToken(userinfo.UserId, token); }
+                    catch (Exception ex) { return CreateErrorResponse("1", $"[GenerateRefreshToken] {ex.GetType().Name}: {ex.Message}"); }
+
+                    // Persist the newly issued access and refresh tokens.
+                    AuthResponse updateResult = await UpdateRefreshToken(userinfo.UserId, token, refresh, "", 0, accessTokenMinutes, refreshTokenMinutes);
+                    if (updateResult.message_code != "0")
+                        return CreateErrorResponse(updateResult.message_code, updateResult.message_text);
+
+                    // Reject login if the account is already locked.
+                    if (userinfo.IsActive == false)
                     {
-                        access_token = token,
-                        refresh_token = refresh,
+                        return CreateErrorResponse("1", "User account is locked. Please contact support.");
                     }
-                };
+                    if (userinfo.AccessFailedCount > 0)
+                    {
+                        // Reset the failed access counter after a successful login.
+                        var lockResponse = await LockUser(username, 0);
+                        if (lockResponse.message_code != "0")
+                            return lockResponse;
+                    }
+                    if (!string.IsNullOrEmpty(fcm_token))
+                    {
+                        await UpdateFcmToken(userinfo.UserId, fcm_token);
+                    }
+                    else
+                    {
+                        await UpdateFcmToken(userinfo.UserId, "");
+                    }
+                    return new AuthResponse
+                    {
+                        message_code = "0",
+                        message_text = "Login successful.",
+                        data = new AuthDataResponse
+                        {
+                            access_token = token,
+                            refresh_token = refresh,
+                        }
+                    };
+                }
             }
         }
 
@@ -127,12 +170,12 @@ namespace Authentication.Services.Auth
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
+                using var conn = _connectionFactory.CreateConnection();
                 await conn.OpenAsync();
-                var sql = $"UPDATE [{schema}].t_com_user SET fcm_token = @fcm_token WHERE user_id = @userId";
-                using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@userId", userId);
-                cmd.Parameters.AddWithValue("@fcm_token", fcm_token);
+                var sql = $"UPDATE {schema}.t_com_user SET fcm_token = @fcm_token WHERE user_id = @userId";
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@fcm_token", fcm_token));
                 await cmd.ExecuteNonQueryAsync();
                 conn.Close();
                 return "success";
@@ -144,28 +187,28 @@ namespace Authentication.Services.Auth
         }
         private async Task<bool> IsLicenseLimitReached(string licenseKey, string userId, int application_of_use)
         {
-            using var conn = new SqlConnection(_connectionString);
+            using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
 
             var sql = @$"  
                SELECT COUNT(r.token_id) AS ActiveUsers  
-               FROM [{schema}].t_com_refresh_token r  
-               INNER JOIN [{schema}].t_com_user u ON u.user_id = r.user_id
-               INNER JOIN [{schema}].t_com_user_group g ON g.user_group_id = u.user_group_id  
-               INNER JOIN [{schema}].t_com_application a ON a.app_id = g.app_id  
-               WHERE r.user_id = @userId AND r.is_revoked = 'YES' AND a.license_key = @licenseKey";
+               FROM {schema}.t_com_refresh_token r  
+               INNER JOIN {schema}.t_com_user u ON u.user_id = r.user_id
+               INNER JOIN {schema}.t_com_user_group g ON g.user_group_id = u.user_group_id  
+               INNER JOIN {schema}.t_com_application a ON a.app_id = g.app_id  
+               WHERE r.user_id = @userId AND r.is_revoked = 1 AND a.license_key = @licenseKey";
 
-            using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@userId", userId);
-            cmd.Parameters.AddWithValue("@licenseKey", licenseKey);
+            using var cmd = _connectionFactory.CreateCommand(sql, conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@licenseKey", licenseKey));
 
             object? v = await cmd.ExecuteScalarAsync();
-            var activeUsers = v != null ? (int)v : 0;
+            var activeUsers = v != null ? Convert.ToInt32(v) : 0;
 
             return activeUsers >= application_of_use;
         }
 
-        private async Task<bool> AuthenticateWithAD(string domain,int port, string username, string password)
+        private async Task<bool> AuthenticateWithAD(string domain, int port, string username, string password)
         {
             var ldapAuthService = new LdapAuthService();
             bool isAuth = await ldapAuthService.AuthenAD(domain,
@@ -177,24 +220,33 @@ namespace Authentication.Services.Auth
             return true;
         }
 
-        private  bool AuthenticateWithDatabase(string encrypt_password, string password)
+        private bool AuthenticateWithDatabase(string encrypt_password, string password)
         {
-            return Encryption.Decrypt(encrypt_password) == password;
+            try
+            {
+                return Encryption.Decrypt(encrypt_password) == password;
+            }
+            catch
+            {
+                // password in DB is not encrypted — compare directly
+                return encrypt_password == password;
+            }
         }
 
-        private async Task<TComUser> GetUserFromDatabase(string username)
+        private async Task<TComUser?> GetUserFromDatabase(string username)
         {
-            using var conn = new SqlConnection(_connectionString);
+            using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
 
-            var sql = $"SELECT u.user_id , u.first_name , u.last_name , u.email_address , u.locale_id ,u.is_active,u.access_failed_count,u.user_group_id, u.domain , u.password FROM [{schema}].t_com_user u WHERE u.user_id = @userId AND u.is_active='YES'";
-                
+            var sql = $"SELECT u.user_id , u.first_name , u.last_name , u.email_address , u.locale_id ,u.is_active,u.access_failed_count,u.user_group_id, u.domain , u.password FROM {schema}.t_com_user u WHERE u.user_id = @userId AND u.is_active = @isActive";
 
-            using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@userId", username);
+
+            using var cmd = _connectionFactory.CreateCommand(sql, conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", username));
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@isActive", true));
 
             using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync()) return new TComUser();
+            if (!await reader.ReadAsync()) return null;
 
             return new TComUser
             {
@@ -203,7 +255,7 @@ namespace Authentication.Services.Auth
                 LastName = reader["last_name"].ToString() ?? "",
                 Email = reader["email_address"].ToString() ?? "",
                 LocaleId = reader["locale_id"].ToString() ?? "",
-                IsActive = reader["is_active"].ToString() == "YES",
+                IsActive = reader["is_active"] != DBNull.Value && Convert.ToBoolean(reader["is_active"]),
                 Domain = reader["domain"].ToString() ?? "",
                 Password = reader["password"].ToString() ?? "",
                 AccessFailedCount = reader["access_failed_count"] != DBNull.Value ? int.Parse(reader["access_failed_count"].ToString() ?? "0") : 0,
@@ -216,35 +268,28 @@ namespace Authentication.Services.Auth
             return new AuthResponse { message_code = code, message_text = message };
         }
 
-        public async Task<AuthResponse> UpdateRefreshToken(string userId, string accessToken, string refreshToken, string newRefreshToken, int revoked)
+        public async Task<AuthResponse> UpdateRefreshToken(string userId, string accessToken, string refreshToken, string newRefreshToken, int revoked, int accessTokenMinutes, int refreshTokenMinutes)
         {
-            using (var conn = new SqlConnection(_connectionString))
-            using (var cmd = new SqlCommand($"[{schema}].usp_refresh_token", conn))
+            using (var conn = _connectionFactory.CreateConnection())
+            using (var cmd = _connectionFactory.CreateProcedureCommand($"{schema}.usp_refresh_token", conn))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
-                // กำหนดพารามิเตอร์สำหรับ stored procedure
-                // คำนวณเวลาหมดอายุ
-                DateTime accessTokenExpiry = DateTime.Now.AddMinutes(int.Parse(Environment.GetEnvironmentVariable("EXPIRES") ?? "15"));
-                DateTime refreshTokenExpiry = DateTime.Now.AddMinutes(int.Parse(Environment.GetEnvironmentVariable("REFRESH") ?? "60"));
+                // The stored procedure handles token persistence and rotation metadata.
+                DateTime accessTokenExpiry = DateTime.Now.AddMinutes(accessTokenMinutes);
+                DateTime refreshTokenExpiry = DateTime.Now.AddMinutes(refreshTokenMinutes);
 
-                cmd.Parameters.AddWithValue("@in_vchUserID", userId);
-                cmd.Parameters.AddWithValue("@in_vchAccessToken", accessToken);
-                cmd.Parameters.AddWithValue("@in_vchRefreshToken", refreshToken);
-                cmd.Parameters.AddWithValue("@in_vchNewRefreshToken", newRefreshToken);
-                cmd.Parameters.AddWithValue("@in_dtAccessTokenExpiry", accessTokenExpiry);
-                cmd.Parameters.AddWithValue("@in_dtRefreshTokenExpiry", refreshTokenExpiry);
-                cmd.Parameters.AddWithValue("@in_bitRevokeOldToken", 0);
-                cmd.Parameters.AddWithValue("@in_vchDeviceInfo", _clientInfo.GetClientDeviceInfo()); // Optional, can be set to empty string if not used
-                cmd.Parameters.AddWithValue("@in_vchIpAddress", _clientInfo.GetClientIpAddress());
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_user_id", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_access_token", accessToken));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_refresh_token", refreshToken));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_new_refresh_token", newRefreshToken));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_dt_access_token_expiry", accessTokenExpiry));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_dt_refresh_token_expiry", refreshTokenExpiry));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_bit_revoke_old_token", false));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_device_info", _clientInfo.GetClientDeviceInfo()));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_ip_address", _clientInfo.GetClientIpAddress()));
 
-                var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
+                var errorCodeParam = _connectionFactory.CreateOutputParameter("@out_vch_error_code", DbType.String, 50);
+                var errorMsgParam = _connectionFactory.CreateOutputParameter("@out_vch_error_message", DbType.String, 500);
 
                 cmd.Parameters.Add(errorCodeParam);
                 cmd.Parameters.Add(errorMsgParam);
@@ -259,49 +304,202 @@ namespace Authentication.Services.Auth
             }
 
         }
-
         public async Task<AuthResponse> RenewAccessTokenAsync(string refreshToken)
         {
             if (string.IsNullOrWhiteSpace(refreshToken))
                 return CreateErrorResponse("1", "refresh token cannot be null or empty.");
-            using var conn = new SqlConnection(_connectionString);
 
+            using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
-            var sql = $"SELECT * FROM [{schema}].t_com_refresh_token r " +
-                $"INNER JOIN [{schema}].t_com_user u ON u.user_id = r.user_id " +
-                "WHERE refresh_token = @refreshToken AND is_revoked = 'YES'";
 
-            using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@refreshToken", refreshToken);
+            using var transaction = conn.BeginTransaction();
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync()) return CreateErrorResponse("1", "refresh data cannot be null or empty.");
-
-            var userinfo = new TComUser
+            try
             {
-                UserId = reader["user_id"].ToString() ?? "",
-                FirstName = reader["first_name"].ToString() ?? "",
-                LastName = reader["last_name"].ToString() ?? "",
-                Email = reader["email_address"].ToString() ?? "",
-                LocaleId = reader["locale_id"].ToString() ?? "",
-                IsActive = reader["is_active"].ToString() == "YES"
-            };
-            string role = userinfo.UserGroupId.ToString() ?? "unkonw";
-            var token = _jwtHelper.GenerateToken(userinfo.UserId,role, userinfo.FirstName, userinfo.FirstName, userinfo.LastName, userinfo.Email, userinfo.LocaleId);
-            var newRefreshToken = await _tokenValidatorService.GenerateRefreshToken(userinfo.UserId, token);
-            var updateResult = await UpdateRefreshToken(userinfo.UserId, token, refreshToken, newRefreshToken, 1);
-            if (updateResult.message_code != "0")
-            {
-                return CreateErrorResponse(updateResult.message_code, updateResult.message_text);
+                var sql = $@"
+            SELECT TOP 1
+                r.*,
+                u.*
+            FROM {schema}.t_com_refresh_token r WITH (UPDLOCK, ROWLOCK)
+            INNER JOIN {schema}.t_com_user u
+                ON u.user_id = r.user_id
+            WHERE r.refresh_token = @refreshToken
+                AND r.is_revoked = 1
+                AND r.refresh_token_expiry > GETDATE()";
+
+                using var cmd = _connectionFactory.CreateCommand(sql, conn);
+                cmd.Transaction = transaction;
+                cmd.Parameters.Add(
+                    _connectionFactory.CreateParameter(
+                        "@refreshToken",
+                        refreshToken
+                    )
+                );
+                var userinfo = new UserInfoResponse();
+                string currentAccessToken = "";
+                DateTime accessTokenExpiry = DateTime.MinValue;
+
+                bool hasRefreshData;
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    hasRefreshData = await reader.ReadAsync();
+                    if (hasRefreshData)
+                    {
+                        userinfo = new UserInfoResponse
+                        {
+                            UserId = reader["user_id"]?.ToString() ?? "",
+                            FirstName = reader["first_name"]?.ToString() ?? "",
+                            LastName = reader["last_name"]?.ToString() ?? "",
+                            Email = reader["email_address"]?.ToString() ?? "",
+                            LocaleId = reader["locale_id"]?.ToString() ?? "",
+                            UserGroupId = reader["user_group_id"]?.ToString() ?? "",
+                            IsActive =
+                                reader["is_active"] != DBNull.Value &&
+                                Convert.ToBoolean(reader["is_active"])
+                        };
+
+                        currentAccessToken =
+                            reader["access_token"]?.ToString() ?? "";
+
+                        accessTokenExpiry =
+                            reader["access_token_expiry"] != DBNull.Value
+                                ? Convert.ToDateTime(
+                                    reader["access_token_expiry"]
+                                )
+                                : DateTime.MinValue;
+                    }
+                }
+
+                if (!hasRefreshData)
+                {
+                    transaction.Rollback();
+                    return CreateErrorResponse(
+                        "1",
+                        "refresh data cannot be null or empty."
+                    );
+                }
+
+                // -------------------------------------------------
+                // ถ้า Access Token ยังเหลืออายุ > 1 นาที
+                // คืน Token เดิมเลย
+                // Tab B,C,D จะได้ Token เดียวกับ Tab A
+                // -------------------------------------------------
+
+                if (accessTokenExpiry > DateTime.Now.AddMinutes(1))
+                {
+                    transaction.Commit();
+
+                    return new AuthResponse
+                    {
+                        message_code = "0",
+                        message_text = "Token already refreshed.",
+                        data = new AuthDataResponse
+                        {
+                            access_token = currentAccessToken,
+                            refresh_token = refreshToken
+                        }
+                    };
+                }
+
+                // -------------------------------------------------
+                // Access Token หมดอายุจริง
+                // สร้างใหม่
+                // -------------------------------------------------
+
+                var platform =
+                    GetPlatformFromToken(currentAccessToken);
+
+                var (
+                    accessTokenMinutes,
+                    refreshTokenMinutes
+                ) = ResolveTokenLifetime(platform);
+
+                string role =
+                    string.IsNullOrWhiteSpace(userinfo.UserGroupId)
+                        ? "unknown"
+                        : userinfo.UserGroupId;
+
+                var newAccessToken =
+                    _jwtHelper.GenerateToken(
+                        userinfo.UserId,
+                        role,
+                        userinfo.FirstName,
+                        userinfo.FirstName,
+                        userinfo.LastName,
+                        userinfo.Email,
+                        userinfo.LocaleId,
+                        accessTokenMinutes,
+                        platform
+                    );
+
+                var updateSql = $@"
+            UPDATE {schema}.t_com_refresh_token
+            SET
+                access_token = @access_token,
+                access_token_expiry = DATEADD(MINUTE,@access_minutes,GETDATE()),
+                last_alive_time = GETDATE()
+            WHERE refresh_token = @refresh_token";
+
+                using var updateCmd =
+                    _connectionFactory.CreateCommand(
+                        updateSql,
+                        conn
+                    );
+
+                updateCmd.Transaction = transaction;
+
+                updateCmd.Parameters.Add(
+                    _connectionFactory.CreateParameter(
+                        "@access_token",
+                        newAccessToken
+                    )
+                );
+
+                updateCmd.Parameters.Add(
+                    _connectionFactory.CreateParameter(
+                        "@access_minutes",
+                        accessTokenMinutes
+                    )
+                );
+
+                updateCmd.Parameters.Add(
+                    _connectionFactory.CreateParameter(
+                        "@refresh_token",
+                        refreshToken
+                    )
+                );
+
+                await updateCmd.ExecuteNonQueryAsync();
+
+                transaction.Commit();
+
+                return new AuthResponse
+                {
+                    message_code = "0",
+                    message_text = "Token renewed successfully.",
+                    data = new AuthDataResponse
+                    {
+                        access_token = newAccessToken,
+                        refresh_token = refreshToken
+                    }
+                };
             }
-            return new AuthResponse()
+            catch (Exception ex)
             {
-                message_text = "Token renewed successfully.",
-                message_code = "0",
-                data = new AuthDataResponse { access_token = token, refresh_token = newRefreshToken }
-            };
-        }
+                try
+                {
+                    transaction.Rollback();
+                }
+                catch
+                {
+                }
 
+                return CreateErrorResponse(
+                    "1",
+                    ex.Message
+                );
+            }
+        }
         public async Task<AuthResponse> EndRevoke(string refresh_token, string user_id)
         {
             if (string.IsNullOrWhiteSpace(refresh_token))
@@ -310,19 +508,19 @@ namespace Authentication.Services.Auth
             if (string.IsNullOrWhiteSpace(user_id))
                 return CreateErrorResponse("1", "User ID cannot be null or empty.");
 
-            await using var conn = new SqlConnection(_connectionString);
+            await using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
 
             var sql = @$"
-                UPDATE [{schema}].t_com_refresh_token
-                SET is_revoked = 'NO', revoked_date = @revokeDate , is_alive = 'NO'
+                UPDATE {schema}.t_com_refresh_token
+                SET is_revoked = 0, revoked_date = @revokeDate , is_alive = 0
                 WHERE user_id = @user_id AND refresh_token = @refreshToken
-                  AND is_revoked = 'YES'";
+                  AND is_revoked =1";
 
-            await using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@user_id", user_id);
-            cmd.Parameters.AddWithValue("@refreshToken", refresh_token);
-            cmd.Parameters.AddWithValue("@revokeDate", DateTime.Now);
+            await using var cmd = _connectionFactory.CreateCommand(sql, conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@user_id", user_id));
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@refreshToken", refresh_token));
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@revokeDate", DateTime.Now));
 
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
 
@@ -338,32 +536,23 @@ namespace Authentication.Services.Auth
 
         public async Task<AuthResponse> LockUser(string userId, int count)
         {
-            return await UpdateLocked(userId,count);
+            return await UpdateLocked(userId, count);
         }
-       
+
 
         public async Task<(AuthResponse response, int access_failed)> AddAccessFailed(string userId, bool u)
         {
-            using (var conn = new SqlConnection(_connectionString))
-            using (var cmd = new SqlCommand("[{schema}].usp_update_access_failed", conn))
+            using (var conn = _connectionFactory.CreateConnection())
+            using (var cmd = _connectionFactory.CreateProcedureCommand($"{schema}.usp_update_access_failed", conn))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
-                // กำหนดพารามิเตอร์สำหรับ stored procedure
+                // The stored procedure increments and returns the failed access count.
 
-                cmd.Parameters.AddWithValue("@in_vchUserID", userId);
-                cmd.Parameters.AddWithValue("@in_blUpdate", u);
-                var accessFailed = new SqlParameter("@out_intAccessFailed", SqlDbType.Int)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var errorCodeParam = new SqlParameter("@out_vchErrorCode", SqlDbType.NVarChar, 50)
-                {
-                    Direction = ParameterDirection.Output
-                };
-                var errorMsgParam = new SqlParameter("@out_vchErrorMessage", SqlDbType.NVarChar, 500)
-                {
-                    Direction = ParameterDirection.Output
-                };
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vch_user_id", userId));
+                cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_bl_update", u));
+                var accessFailed = _connectionFactory.CreateOutputParameter("@out_int_access_failed", DbType.Int32);
+                var errorCodeParam = _connectionFactory.CreateOutputParameter("@out_vch_error_code", DbType.String, 50);
+                var errorMsgParam = _connectionFactory.CreateOutputParameter("@out_vch_error_message", DbType.String, 500);
                 cmd.Parameters.Add(accessFailed);
                 cmd.Parameters.Add(errorCodeParam);
                 cmd.Parameters.Add(errorMsgParam);
@@ -379,12 +568,12 @@ namespace Authentication.Services.Auth
         }
         private async Task<AuthResponse> UpdateLocked(string userId, int count)
         {
-            using var conn = new SqlConnection(_connectionString);
+            using var conn = _connectionFactory.CreateConnection();
             await conn.OpenAsync();
-            var sql = $"UPDATE [{schema}].t_com_user SET access_failed_count = @count WHERE user_id = @userId";
-            using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@userId", userId);
-            cmd.Parameters.AddWithValue("@count", count);
+            var sql = $"UPDATE {schema}.t_com_user SET access_failed_count = @count WHERE user_id = @userId";
+            using var cmd = _connectionFactory.CreateCommand(sql, conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@count", count));
             var rowsAffected = await cmd.ExecuteNonQueryAsync();
             if (rowsAffected == 0)
                 return CreateErrorResponse("1", "User not found or already in the desired state.");
@@ -403,10 +592,10 @@ namespace Authentication.Services.Auth
                 if (response.message_code != "0")
                     return response;
 
-                // Check if the failure count exceeds the limit  
+                // Check whether the failure count reaches the configured limit.
                 if (accessFailedCount >= accessFailureLimit)
                 {
-                    // Lock the user account if the limit is exceeded  
+                    // Lock the user account when the limit is exceeded.
                     var lockResponse = await LockUser(username, accessFailureLimit);
                     if (lockResponse.message_code != "0")
                         return lockResponse;
@@ -415,54 +604,52 @@ namespace Authentication.Services.Auth
             return CreateErrorResponse("1", "Invalid password !!");
         }
 
-        // The ResetPassword method is incomplete and missing its implementation.  
-        // Below is the completed implementation of the ResetPassword method,  
-        // including the missing HasRepeatedCharacters method.  
+        // Validate password complexity before allowing password updates.
 
         public AuthResponse ValidatePassword(string userId, string newPassword)
         {
             string wording = "Password policy must be at least 8 characters long, contain both uppercase and lowercase letters, include at least one number, and have a special character.";
-            // Validate userId is not null or empty  
+            // Validate userId is not null or empty.
             if (string.IsNullOrWhiteSpace(userId))
-              return CreateErrorResponse("1", wording);
+                return CreateErrorResponse("1", wording);
             //  return CreateErrorResponse("1", "User ID cannot be null or empty.");
 
-            // Validate newPassword meets minimum length requirement  
+            // Validate newPassword meets minimum length requirement.
             if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
                 return CreateErrorResponse("1", wording);
             // return CreateErrorResponse("1", "New password must be at least 8 characters long.");
 
-            // Validate newPassword contains both letters and numbers  
+            // Validate newPassword contains both letters and numbers.
             if (newPassword.All(char.IsLetter) || newPassword.All(char.IsDigit))
                 return CreateErrorResponse("1", wording);
             //  return CreateErrorResponse("1", "New password must contain both letters and numbers.");
 
-            // Validate newPassword does not contain whitespace  
+            // Validate newPassword does not contain whitespace.
             if (newPassword.Any(char.IsWhiteSpace))
                 return CreateErrorResponse("1", wording);
             // return CreateErrorResponse("1", "New password cannot contain whitespace characters.");
 
-            // Validate newPassword does not contain the userId  
+            // Validate newPassword does not contain the userId.
             if (newPassword.Contains(userId, StringComparison.OrdinalIgnoreCase))
                 return CreateErrorResponse("1", wording);
             //return CreateErrorResponse("1", "New password cannot contain the username.");
 
-            // Validate newPassword does not contain the word 'password'  
+            // Validate newPassword does not contain the word 'password'.
             if (newPassword.Contains("password", StringComparison.OrdinalIgnoreCase))
                 return CreateErrorResponse("1", wording);
             // return CreateErrorResponse("1", "New password cannot contain the word 'password'.");
 
-            // Validate newPassword contains at least 4 unique characters  
+            // Validate newPassword contains at least 4 unique characters.
             if (newPassword.Distinct().Count() < 4)
                 return CreateErrorResponse("1", wording);
             // return CreateErrorResponse("1", "New password must contain at least 4 unique characters.");
 
-            // Validate newPassword does not contain sequences of 3 or more consecutive characters  
+            // Validate newPassword does not contain sequences of 3 or more consecutive characters.
             if (HasSequentialCharacters(newPassword, 3))
                 return CreateErrorResponse("1", wording);
             //return CreateErrorResponse("1", "New password cannot contain sequences of 3 or more consecutive characters.");
 
-            // Validate newPassword does not contain the same character repeated 3 or more times in a row  
+            // Validate newPassword does not contain the same character repeated 3 or more times in a row.
             if (HasRepeatedCharacters(newPassword, 3))
                 return CreateErrorResponse("1", wording);
             //return CreateErrorResponse("1", "New password cannot contain the same character repeated 3 or more times in a row.");
@@ -470,7 +657,7 @@ namespace Authentication.Services.Auth
             return new AuthResponse { message_code = "0", message_text = "Password is valid." };
         }
 
-        // Helper method to check for repeated characters in a string  
+        // Helper method to check for repeated characters in a string.
         private bool HasRepeatedCharacters(string input, int repeatCount)
         {
             if (string.IsNullOrEmpty(input) || repeatCount < 2)
@@ -520,6 +707,80 @@ namespace Authentication.Services.Auth
             return false;
         }
 
-       
+        private static (int accessTokenMinutes, int refreshTokenMinutes) ResolveTokenLifetime(string platform)
+        {
+            return platform == "mobile"
+                ? (30, 60)
+                : (60, 120);
+        }
+        private static string? NormalizePlatform(string platform)
+        {
+            if (string.IsNullOrWhiteSpace(platform))
+                return "web";
+
+            var normalized = platform.Trim().ToLowerInvariant();
+            if (normalized is "web" or "mobile")
+                return normalized;
+
+            return null;
+        }
+
+        private string GetPlatformFromToken(string accessToken)
+        {
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return "web";
+
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+                var platform = jwtToken.Claims.FirstOrDefault(c => c.Type == "Platform")?.Value;
+                var normalizedPlatform = NormalizePlatform(platform ?? "web");
+                return normalizedPlatform ?? "web";
+            }
+            catch
+            {
+                return "web";
+            }
+        }
+        private async Task<(bool, string, string)> HasActiveSession(string userId, string platform)
+        {
+            var normalizedPlatform = NormalizePlatform(platform) ?? "web";
+
+            using var conn = _connectionFactory.CreateConnection();
+            await conn.OpenAsync();
+
+            var sql = @$"
+                SELECT 
+                access_token
+                ,refresh_token
+                FROM {schema}.t_com_refresh_token
+                WHERE user_id = @userId
+                  AND is_revoked = 1
+                  AND refresh_token_expiry > @now";
+
+            using var cmd = _connectionFactory.CreateCommand(sql, conn);
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@userId", userId));
+            cmd.Parameters.Add(_connectionFactory.CreateParameter("@now", DateTime.Now));
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var activeAccessToken = reader["access_token"]?.ToString() ?? string.Empty;
+                var activeRefreshToken = reader["refresh_token"]?.ToString() ?? string.Empty;
+                if (GetPlatformFromToken(activeAccessToken) == normalizedPlatform && !string.IsNullOrEmpty(activeAccessToken) && !string.IsNullOrEmpty(activeRefreshToken))
+                {
+                    return (true, activeAccessToken, activeRefreshToken);
+                }
+                else if (GetPlatformFromToken(activeAccessToken) == normalizedPlatform)
+                {
+                    // If there's an active session with missing tokens, treat it as no active session to allow new login.
+                    return (false, string.Empty, string.Empty);
+                }
+            }
+
+            return (false, string.Empty, string.Empty);
+        }
+
     }
 }

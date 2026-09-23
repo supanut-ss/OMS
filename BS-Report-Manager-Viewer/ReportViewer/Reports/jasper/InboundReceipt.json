@@ -1,0 +1,50 @@
+{
+  "report_title": "Receipt Detail Report",
+  "header": {
+    "inbound_order_number": "13112556-001",
+    "order_type": "PO",
+    "order_status": "CLOSE",
+    "warehouse": "PDC"
+  },
+  "details": [
+    {
+      "line_number": 1,
+      "item_number": "0BB2000000-06",
+      "item_description": "Aura 500ml 1x24",
+      "quantity_order": 100,
+      "quantity_received": 10,
+      "quantity_balance": 90,
+      "uom": "EA",
+      "lot_number": "string",
+      "expiry_date": null,
+      "serial_number": "string",
+      "receive_by": "string",
+      "receive_date": "2026-05-14"
+    },
+	{
+      "line_number": 2,
+      "item_number": "0BB2000000-50",
+      "item_description": "Aura 500ml 1x12",
+      "quantity_order": 0,
+      "quantity_received": 0,
+      "quantity_balance": 0,
+      "uom": "EA",
+      "lot_number": "string",
+      "expiry_date": "2026-05-14",
+      "serial_number": "string",
+      "receive_by": "string",
+      "receive_date": "2026-05-14"
+    }
+  ],
+  "footer": {
+    "role_1": "",
+    "name_1": "string",
+    "date_1": "2026-05-14",
+	  "role_2": "",
+    "name_2": "string",
+    "date_2": "2026-05-14",
+	  "role_3": "",
+    "name_3": "string",
+    "date_3": "2026-05-14"
+  }
+}

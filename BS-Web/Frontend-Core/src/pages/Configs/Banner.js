@@ -233,7 +233,7 @@ const Banner = (props) => {
                   end_date,
                   priority,
                   is_active,
-                  create_at"
+                  create_date"
         bsStoredProcedureParams={[]}
         bsShowRowNumber={true}
         showAdd={permission?.is_add}

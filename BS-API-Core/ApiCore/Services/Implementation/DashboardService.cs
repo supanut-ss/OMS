@@ -1,28 +1,29 @@
 ﻿using ApiCore.Models.Responses;
 using ApiCore.Services.Interfaces;
-using DotNetEnv;
-using Microsoft.Data.SqlClient;
-using System.Collections.Generic;
 using System.Data;
-using System.Threading.Tasks;
 
 namespace ApiCore.Services.Implementation
 {
     public class DashboardService : IDashboard
     {
-        private readonly string _connectionString = Environment.GetEnvironmentVariable("SERVERDB")
-                 ?? throw new ArgumentNullException(nameof(_connectionString));
+        private readonly ISqlConnectionFactory _connectionFactory;
+
+        public DashboardService(ISqlConnectionFactory connectionFactory)
+        {
+            _connectionFactory = connectionFactory;
+        }
+
         public async Task<DashboardResponse> GetDashboard(string userId)
         {
             DashboardResponse result = new DashboardResponse();
 
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
-                using (var cmd = new SqlCommand("tmt.usp_project_summary_by_user", conn))
+                using (var conn = _connectionFactory.CreateConnection())
+                using (var cmd = _connectionFactory.CreateCommand("tmt.usp_project_summary_by_user", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@in_vchUserId", userId);
+                    cmd.Parameters.Add(_connectionFactory.CreateParameter("@in_vchUserId", userId));
 
                     await conn.OpenAsync();
 

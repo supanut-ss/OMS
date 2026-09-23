@@ -1,23 +1,30 @@
 import { useCallback } from "react";
 import secureStorage from "../utils/SecureStorage";
 
+const normalizeResourceKey = (value) =>
+  value === null || value === undefined ? "" : String(value).trim();
+
 export const useResource = () => {
   const getResource = useCallback((resourceData, resource_name) => {
     let response = null;
+    const targetName = normalizeResourceKey(resource_name);
     if (resourceData) {
       response =
-        resourceData?.find((r) => r.resource_name === resource_name)
-          ?.resource_value ?? resource_name;
+        resourceData?.find(
+          (r) => normalizeResourceKey(r.resource_name) === targetName,
+        )?.resource_value ?? resource_name;
     }
     return response;
   }, []);
 
   const getResourceDescription = useCallback((resourceData, resource_name) => {
     let response = null;
+    const targetName = normalizeResourceKey(resource_name);
     if (resourceData) {
       response =
-        resourceData?.find((r) => r.resource_name === resource_name)
-          ?.resource_description ?? resource_name;
+        resourceData?.find(
+          (r) => normalizeResourceKey(r.resource_name) === targetName,
+        )?.resource_description ?? resource_name;
     }
     return response;
   }, []);
@@ -27,18 +34,16 @@ export const useResource = () => {
     const resourceData = secureStorage.get("resource") || null;
     // Use provided locale parameter if available, otherwise fall back to storage
     const lang = locale || secureStorage.get("lang");
-    console.log(
-      `🌐 getResources called: group="${resource_group}", locale param="${locale}", resolved lang="${lang}"`
-    );
+    const targetGroup = normalizeResourceKey(resource_group);
+
     if (resourceData) {
       let data = [];
-      data = resourceData.filter((r) => r.resource_group === resource_group);
-      console.log(
-        `🌐 getResources: Found ${data.length} resources for group "${resource_group}"`
+      data = resourceData.filter(
+        (r) => normalizeResourceKey(r.resource_group) === targetGroup,
       );
-      data.map((item) =>
+      data.forEach((item) =>
         response.push({
-          resource_name: item.resource_name,
+          resource_name: normalizeResourceKey(item.resource_name),
           resource_value:
             lang === "en"
               ? item.resource_en
@@ -53,12 +58,6 @@ export const useResource = () => {
               : item.description_other,
         })
       );
-      if (response.length > 0) {
-        console.log(
-          `🌐 getResources: Sample translations for ${resource_group}:`,
-          response.slice(0, 3)
-        );
-      }
     }
     return response;
   }, []);
@@ -74,17 +73,19 @@ export const useResource = () => {
     (resource_group, resource_name, lang = null) => {
       const resourceData = secureStorage.get("resource") || [];
       const resolvedLang = lang || secureStorage.get("lang");
+      const targetGroup = normalizeResourceKey(resource_group);
+      const targetName = normalizeResourceKey(resource_name);
 
       const resource = resourceData.find(
         (r) =>
-          r.resource_group === resource_group &&
-          r.resource_name === resource_name
+          normalizeResourceKey(r.resource_group) === targetGroup &&
+          normalizeResourceKey(r.resource_name) === targetName
       );
 
       if (!resource) {
         return {
-          resource_value: resource_name,
-          resource_description: resource_name,
+          resource_value: null,
+          resource_description: null,
         };
       }
 

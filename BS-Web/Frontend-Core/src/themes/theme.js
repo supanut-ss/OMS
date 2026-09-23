@@ -1,38 +1,6 @@
 import { createTheme, alpha } from "@mui/material/styles";
 
 const LIGHT_THEME_PRESETS = {
-  "theme-1": {
-    labelTh: "อินดิโก้",
-    labelEn: "Indigo",
-    shades: {
-      50: "#e8eaf6",
-      100: "#c5cae9",
-      200: "#9fa8da",
-      300: "#7986cb",
-      400: "#5c6bc0",
-      500: "#3f51b5",
-      600: "#3949ab",
-      700: "#303f9f",
-      800: "#283593",
-      900: "#1a237e",
-    },
-  },
-  "theme-2": {
-    labelTh: "บลู",
-    labelEn: "Blue",
-    shades: {
-      50: "#e7e9fd",
-      100: "#d0d9ff",
-      200: "#afbfff",
-      300: "#91a7ff",
-      400: "#738ffe",
-      500: "#5677fc",
-      600: "#4e6cef",
-      700: "#455ede",
-      800: "#3b50ce",
-      900: "#2a36b1",
-    },
-  },
   "theme-purple": {
     labelTh: "ม่วง",
     labelEn: "Purple",
@@ -101,10 +69,46 @@ const LIGHT_THEME_PRESETS = {
       900: "#F5E3CB",
     },
   },
+  "theme-dark-navy": {
+    labelTh: "กรมท่าเข้ม",
+    labelEn: "Dark Navy",
+    main: "#1E2A78",
+    secondary: "#E53935",
+    shades: {
+      50: "#E8EBF8",
+      100: "#C5CCEA",
+      200: "#9EAADA",
+      300: "#7688CA",
+      400: "#576EBE",
+      500: "#1E2A78",
+      600: "#1B256B",
+      700: "#17205E",
+      800: "#131A51",
+      900: "#0F1544",
+    },
+  },
+  "theme-red-accent": {
+    labelTh: "แดงแอคเซนต์",
+    labelEn: "Red Accent",
+    main: "#E53935",
+    secondary: "#1E2A78",
+    shades: {
+      50: "#FDEBEC",
+      100: "#FACDCE",
+      200: "#F6AAAB",
+      300: "#F18687",
+      400: "#ED6C6A",
+      500: "#E53935",
+      600: "#D63330",
+      700: "#C52C2A",
+      800: "#B42624",
+      900: "#9A1D1B",
+    },
+  },
 };
 
 const getLightPalette = (themeName) => {
-  const preset = LIGHT_THEME_PRESETS[themeName] || LIGHT_THEME_PRESETS["theme-1"];
+  const preset = LIGHT_THEME_PRESETS[themeName] || LIGHT_THEME_PRESETS["theme-dark-navy"];
   const shades = preset.shades;
   const primaryMain = preset.main || shades[500];
   const primaryLight = preset.light || shades[200];
@@ -190,7 +194,7 @@ const getLightPalette = (themeName) => {
   };
 };
 
-export const getTheme = (mode, themeName = "theme-1") =>
+export const getTheme = (mode, themeName = "theme-dark-navy") =>
   createTheme({
     palette: {
       mode,
@@ -325,34 +329,34 @@ export const getTheme = (mode, themeName = "theme-1") =>
 
       h1: {
         fontSize: "clamp(2rem, 4vw, 2.75rem)",
-        fontWeight: 700,
+        fontWeight: 500,
         lineHeight: 1.2,
         letterSpacing: "-0.02em",
       },
       h2: {
         fontSize: "clamp(1.75rem, 3.2vw, 2.25rem)",
-        fontWeight: 700,
+        fontWeight: 500,
         lineHeight: 1.3,
         letterSpacing: "-0.01em",
       },
       h3: {
         fontSize: "clamp(1.5rem, 2.8vw, 2rem)",
-        fontWeight: 600,
+        fontWeight: 400,
         lineHeight: 1.3,
       },
       h4: {
         fontSize: "clamp(1.25rem, 2.2vw, 1.75rem)",
-        fontWeight: 600,
+        fontWeight: 400,
         lineHeight: 1.4,
       },
       h5: {
         fontSize: "clamp(1.1rem, 1.8vw, 1.5rem)",
-        fontWeight: 600,
+        fontWeight: 400,
         lineHeight: 1.4,
       },
       h6: {
         fontSize: "clamp(1rem, 1.5vw, 1.25rem)",
-        fontWeight: 600,
+        fontWeight: 400,
         lineHeight: 1.4,
       },
 
@@ -367,7 +371,7 @@ export const getTheme = (mode, themeName = "theme-1") =>
 
       button: {
         fontSize: "clamp(0.75rem, 0.9vw, 0.8125rem)",
-        fontWeight: 600,
+        fontWeight: 500,
         textTransform: "none",
         letterSpacing: "0.01em",
       },
@@ -474,7 +478,7 @@ export const getTheme = (mode, themeName = "theme-1") =>
           root: {
             borderRadius: 8,
             textTransform: "none",
-            fontWeight: 600,
+            fontWeight: 500,
             padding: "10px 20px",
           },
           contained: {
