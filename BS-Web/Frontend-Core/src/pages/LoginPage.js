@@ -57,21 +57,25 @@ export default function LoginPage({ setLang }) {
   const res = useMemo(
     () => ({
       subtitle:
-        getResourceByGroupAndName("Login", "Please login to your account.")?.resource_value ||
-        "Please login to your account.",
+        getResourceByGroupAndName("Login", "Please login to your account.")
+          ?.resource_value || "Please login to your account.",
       username:
-        getResourceByGroupAndName("Login", "Username")?.resource_value || "Username",
+        getResourceByGroupAndName("Login", "Username")?.resource_value ||
+        "Username",
       password:
-        getResourceByGroupAndName("Login", "Password")?.resource_value || "Password",
+        getResourceByGroupAndName("Login", "Password")?.resource_value ||
+        "Password",
       login:
         getResourceByGroupAndName("Login", "Login")?.resource_value || "Login",
       loggingIn:
-        getResourceByGroupAndName("Login", "Login in")?.resource_value || "Login in",
+        getResourceByGroupAndName("Login", "Login in")?.resource_value ||
+        "Login in",
       version:
-        getResourceByGroupAndName("Login", "Version")?.resource_value || "Version",
+        getResourceByGroupAndName("Login", "Version")?.resource_value ||
+        "Version",
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [],
   );
 
   let checkVersion = false;
@@ -169,7 +173,9 @@ export default function LoginPage({ setLang }) {
   }, []);
   const checkTokenAndNavigate = useCallback(() => {
     const token = secureStorage.get("token") ?? localStorage.getItem("token");
-    const refreshToken = secureStorage.get("refresh_token") ?? localStorage.getItem("refresh_token");
+    const refreshToken =
+      secureStorage.get("refresh_token") ??
+      localStorage.getItem("refresh_token");
     if (token && refreshToken) {
       resource();
       const from = location.state?.from?.pathname || "/";
@@ -468,12 +474,12 @@ export default function LoginPage({ setLang }) {
                     borderRadius: 2,
                   },
                   "& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active":
-                  {
-                    WebkitBoxShadow: `0 0 0 1000px ${theme.palette.background.paper} inset !important`,
-                    WebkitTextFillColor: `${theme.palette.text.primary} !important`,
-                    caretColor: `${theme.palette.text.primary}`,
-                    borderColor: "transparent",
-                  },
+                    {
+                      WebkitBoxShadow: `0 0 0 1000px ${theme.palette.background.paper} inset !important`,
+                      WebkitTextFillColor: `${theme.palette.text.primary} !important`,
+                      caretColor: `${theme.palette.text.primary}`,
+                      borderColor: "transparent",
+                    },
                 }}
               />
 
@@ -512,12 +518,12 @@ export default function LoginPage({ setLang }) {
                     borderRadius: 2,
                   },
                   "& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active":
-                  {
-                    WebkitBoxShadow: `0 0 0 1000px ${theme.palette.background.paper} inset !important`,
-                    WebkitTextFillColor: `${theme.palette.text.primary} !important`,
-                    caretColor: `${theme.palette.text.primary}`,
-                    borderColor: "transparent",
-                  },
+                    {
+                      WebkitBoxShadow: `0 0 0 1000px ${theme.palette.background.paper} inset !important`,
+                      WebkitTextFillColor: `${theme.palette.text.primary} !important`,
+                      caretColor: `${theme.palette.text.primary}`,
+                      borderColor: "transparent",
+                    },
                 }}
               />
 
@@ -598,8 +604,7 @@ export default function LoginPage({ setLang }) {
                 color="text.secondary"
                 sx={{ fontWeight: 500 }}
               >
-                {res.version}{" "}
-                : {secureStorage.get("version")}
+                {res.version} : {secureStorage.get("version")}
               </Typography>
             </Box>
           </CardContent>
