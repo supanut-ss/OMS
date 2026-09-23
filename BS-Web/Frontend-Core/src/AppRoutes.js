@@ -19,6 +19,7 @@ import Combobox from "./pages/Configs/Combobox";
 import PermissionRoute from "./components/Router/PermissionRoute";
 import Banner from "./pages/Configs/Banner";
 import RouteTracker from "./RouteTracker";
+import Dashboard from "./pages/Dashboard/Dashboard";
 import ForecastDashboard from "./pages/Dashboard/ForecastDashboard";
 import Count from "./pages/Transaction/Count";
 import CountReconcile from "./pages/Transaction/CountReconcile";
@@ -32,6 +33,7 @@ import TransactionLog2 from "./pages/Transaction/TransactionLog2";
 import TransactionMatching from "./pages/Transaction/TransactionMatching";
 import AIAdminConsole from "./pages/AI/AIAdminConsole";
 import DashboardAI from "./pages/Dashboard/DashboardAI";
+import OrderList from "./pages/orderlist/orderlist";
 import ReportViewer from "./components/ReportViewer";
 
 // ── Master Pages ────────────────────────────────────────────────
@@ -83,12 +85,24 @@ export default function AppRoutes() {
         <Route element={<PermissionRoute />}>
           <Route index element={<Home lang={lang} />} />
           <Route
+            path="dashboard"
+            element={<Dashboard lang={lang} />}
+          />
+          <Route
+            path="dashboard/dashboard"
+            element={<Dashboard lang={lang} />}
+          />
+          <Route
             path="dashboard/forecast"
             element={<ForecastDashboard lang={lang} />}
           />
           <Route
             path="dashboard/dashboardAi"
             element={<DashboardAI lang={lang} />}
+          />
+          <Route
+            path="orderlist/orderlist"
+            element={<OrderList lang={lang} />}
           />
         </Route>
 
