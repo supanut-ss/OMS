@@ -7,7 +7,7 @@ services:
       args:
         BUILD_CONFIGURATION: Release
     ports:
-      - "8080:8080"
+      - "8180:8080"
     environment:
       - TZ=Asia/Bangkok
       - SERVERDB_SECURITY=Server=10.10.60.60;Database=Timesheet;user id=sa;password=Local@dmin;Encrypt=False;TrustServerCertificate=True;Integrated Security=False;
@@ -99,7 +99,7 @@ services:
       args:
         BUILD_CONFIGURATION: Release
     ports:
-        - "8081:8080"
+        - "8181:8080"
     environment:
         - TZ=Asia/Bangkok
         - ASPNETCORE_ENVIRONMENT=Production
@@ -126,7 +126,7 @@ services:
       args:
         BUILD_CONFIGURATION: Release
     ports:
-      - "8082:8080"
+      - "8182:8080"
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
@@ -135,19 +135,19 @@ services:
       - SHOPEE_PARTNER_ID=your_partner_id
       - SHOPEE_PARTNER_KEY=your_partner_key
       - SHOPEE_API_URL=https://partner.shopeemobile.com
-      - SHOPEE_REDIRECT_URL=http://localhost:8082/api/auth/shopee/callback
+      - SHOPEE_REDIRECT_URL=http://localhost:8182/api/auth/shopee/callback
       # Lazada
       - LAZADA_APP_KEY=your_app_key
       - LAZADA_APP_SECRET=your_app_secret
       - LAZADA_API_URL=https://api.lazada.co.th/rest
       - LAZADA_AUTH_URL=https://auth.lazada.com/oauth/authorize
-      - LAZADA_REDIRECT_URL=http://localhost:8082/api/auth/lazada/callback
+      - LAZADA_REDIRECT_URL=http://localhost:8182/api/auth/lazada/callback
       # TikTok Shop
       - TIKTOK_APP_KEY=your_app_key
       - TIKTOK_APP_SECRET=your_app_secret
       - TIKTOK_API_URL=https://open-api.tiktokglobalshop.com
       - TIKTOK_AUTH_URL=https://services.tiktokshop.com/open/authorize
-      - TIKTOK_REDIRECT_URL=http://localhost:8082/api/auth/tiktok/callback
+      - TIKTOK_REDIRECT_URL=http://localhost:8182/api/auth/tiktok/callback
     networks:
       - internal
     restart: always
