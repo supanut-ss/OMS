@@ -1,24 +1,24 @@
 {
   "Routes": [
     {
-      "DownstreamPathTemplate": "/bs_auth/test-db",
+      "DownstreamPathTemplate": "/test-db",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/test",
       "UpstreamHttpMethod": ["get"]
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/auth/login",
+      "DownstreamPathTemplate": "/auth/login",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/login",
@@ -32,12 +32,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/auth/logout",
+      "DownstreamPathTemplate": "/auth/logout",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/logout",
@@ -48,12 +48,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/role",
+      "DownstreamPathTemplate": "/users/role",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/role",
@@ -64,12 +64,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/reset_password",
+      "DownstreamPathTemplate": "/users/reset_password",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/reset_password",
@@ -80,24 +80,24 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/auth/refresh",
+      "DownstreamPathTemplate": "/auth/refresh",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/refresh",
       "UpstreamHttpMethod": ["post"]
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/alive/user",
+      "DownstreamPathTemplate": "/alive/user",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/alive",
@@ -108,12 +108,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/alive/status",
+      "DownstreamPathTemplate": "/alive/status",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/alive/status",
@@ -124,12 +124,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/resource",
+      "DownstreamPathTemplate": "/resource",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/resource",
@@ -140,12 +140,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/resource/save",
+      "DownstreamPathTemplate": "/resource/save",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/resource/save",
@@ -156,12 +156,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/switch/lang",
+      "DownstreamPathTemplate": "/users/switch/lang",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/users/switch/lang",
@@ -172,12 +172,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/menu",
+      "DownstreamPathTemplate": "/menu",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/menu",
@@ -188,12 +188,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/menu/menuAssign",
+      "DownstreamPathTemplate": "/menu/menuAssign",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/menu/menuAssign",
@@ -204,12 +204,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/menu/saveAssign",
+      "DownstreamPathTemplate": "/menu/saveAssign",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/menu/saveAssign",
@@ -220,12 +220,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/autocomplete",
+      "DownstreamPathTemplate": "/autocomplete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/autocomplete",
@@ -236,12 +236,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/schema",
+      "DownstreamPathTemplate": "/api/dynamic/schema",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/schema",
@@ -258,12 +258,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/metadata/{tableName}",
+      "DownstreamPathTemplate": "/api/dynamic/metadata/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/metadata/{tableName}",
@@ -274,12 +274,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/datagrid",
+      "DownstreamPathTemplate": "/api/dynamic/datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/datagrid",
@@ -296,12 +296,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bs-datagrid",
+      "DownstreamPathTemplate": "/api/dynamic/bs-datagrid",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/bs-datagrid",
@@ -318,12 +318,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/record/{tableName}",
+      "DownstreamPathTemplate": "/api/dynamic/record/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/record/{tableName}",
@@ -334,12 +334,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/create",
+      "DownstreamPathTemplate": "/api/dynamic/create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/create",
@@ -356,12 +356,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/update",
+      "DownstreamPathTemplate": "/api/dynamic/update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/update",
@@ -378,12 +378,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/delete",
+      "DownstreamPathTemplate": "/api/dynamic/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/delete",
@@ -400,12 +400,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-create",
+      "DownstreamPathTemplate": "/api/dynamic/bulk-create",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/bulk-create",
@@ -422,12 +422,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/bulk-update",
+      "DownstreamPathTemplate": "/api/dynamic/bulk-update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/bulk-update",
@@ -448,8 +448,8 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/bulk-delete",
@@ -466,12 +466,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/combobox",
+      "DownstreamPathTemplate": "/api/dynamic/combobox",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/combobox",
@@ -488,12 +488,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/enhanced-procedure",
+      "DownstreamPathTemplate": "/api/dynamic/enhanced-procedure",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/enhanced-procedure",
@@ -510,12 +510,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure/{procedureName}",
+      "DownstreamPathTemplate": "/api/dynamic/procedure/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/procedure/{procedureName}",
@@ -532,12 +532,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/procedure-metadata/{procedureName}",
+      "DownstreamPathTemplate": "/api/dynamic/procedure-metadata/{procedureName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/procedure-metadata/{procedureName}",
@@ -548,12 +548,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/query",
+      "DownstreamPathTemplate": "/api/dynamic/query",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/query",
@@ -570,12 +570,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/dynamic/exists/{tableName}",
+      "DownstreamPathTemplate": "/api/dynamic/exists/{tableName}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/dynamic/exists/{tableName}",
@@ -586,12 +586,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/{outbound_master_id}",
+      "DownstreamPathTemplate": "/api/Outbound/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/{outbound_master_id}",
@@ -602,12 +602,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/update/{outbound_master_id}",
+      "DownstreamPathTemplate": "/api/Outbound/update/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/update/{outbound_master_id}",
@@ -618,12 +618,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound",
+      "DownstreamPathTemplate": "/api/Outbound",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound",
@@ -634,12 +634,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/{outbound_master_id}",
+      "DownstreamPathTemplate": "/api/Outbound/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/{outbound_master_id}",
@@ -650,12 +650,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/delete/{outbound_master_id}",
+      "DownstreamPathTemplate": "/api/Outbound/delete/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/delete/{outbound_master_id}",
@@ -666,12 +666,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/release-user",
+      "DownstreamPathTemplate": "/api/Outbound/release-user",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/release-user",
@@ -682,12 +682,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/release",
+      "DownstreamPathTemplate": "/api/Outbound/release",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/release",
@@ -698,12 +698,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/unrelease-user",
+      "DownstreamPathTemplate": "/api/Outbound/unrelease-user",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/unrelease-user",
@@ -714,12 +714,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/unrelease",
+      "DownstreamPathTemplate": "/api/Outbound/unrelease",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/unrelease",
@@ -730,12 +730,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/cancel-order",
+      "DownstreamPathTemplate": "/api/Outbound/cancel-order",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/cancel-order",
@@ -746,12 +746,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Outbound/confirm-ship/{outbound_master_id}",
+      "DownstreamPathTemplate": "/api/Outbound/confirm-ship/{outbound_master_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/outbound/confirm-ship/{outbound_master_id}",
@@ -762,12 +762,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/save",
+      "DownstreamPathTemplate": "/api/inbound/save",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/save",
@@ -778,12 +778,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/delete-order",
+      "DownstreamPathTemplate": "/api/inbound/delete-order",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/delete-order",
@@ -794,12 +794,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/close-order",
+      "DownstreamPathTemplate": "/api/inbound/close-order",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/close-order",
@@ -810,12 +810,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/close-receipt",
+      "DownstreamPathTemplate": "/api/inbound/close-receipt",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/close-receipt",
@@ -826,12 +826,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/save-receipt",
+      "DownstreamPathTemplate": "/api/inbound/save-receipt",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/save-receipt",
@@ -842,12 +842,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/receipt/{receiptHeaderId}",
+      "DownstreamPathTemplate": "/api/inbound/receipt/{receiptHeaderId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/receipt/{receiptHeaderId}",
@@ -858,12 +858,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inbound/details/{inboundMasterId}",
+      "DownstreamPathTemplate": "/api/inbound/details/{inboundMasterId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inbound/details/{inboundMasterId}",
@@ -874,12 +874,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/count/insert",
+      "DownstreamPathTemplate": "/api/count/insert",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/count/insert",
@@ -890,12 +890,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/count/delete",
+      "DownstreamPathTemplate": "/api/count/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/count/delete",
@@ -906,12 +906,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/count/cycleCountData",
+      "DownstreamPathTemplate": "/api/count/cycleCountData",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/count/cycleCountData",
@@ -922,12 +922,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/ChangeLocation",
+      "DownstreamPathTemplate": "/api/Inventory/ChangeLocation",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/Inventory/ChangeLocation",
@@ -944,12 +944,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/StatusChange",
+      "DownstreamPathTemplate": "/api/Inventory/StatusChange",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/Inventory/StatusChange",
@@ -966,12 +966,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/Adjustment",
+      "DownstreamPathTemplate": "/api/Inventory/Adjustment",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/Inventory/Adjustment",
@@ -988,12 +988,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/Inventory/AdjustIn",
+      "DownstreamPathTemplate": "/api/Inventory/AdjustIn",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/Inventory/AdjustIn",
@@ -1010,12 +1010,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/register",
+      "DownstreamPathTemplate": "/users/register",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/users/register",
@@ -1026,12 +1026,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/update",
+      "DownstreamPathTemplate": "/users/update",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/users/update",
@@ -1042,12 +1042,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/delete",
+      "DownstreamPathTemplate": "/users/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/users/delete",
@@ -1058,12 +1058,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/reset",
+      "DownstreamPathTemplate": "/users/reset",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/users/reset",
@@ -1074,12 +1074,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/users/clear_logon",
+      "DownstreamPathTemplate": "/users/clear_logon",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/users/clear_logon",
@@ -1090,24 +1090,24 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/version",
+      "DownstreamPathTemplate": "/version",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/version",
       "UpstreamHttpMethod": ["post"]
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/menu/favorite",
+      "DownstreamPathTemplate": "/menu/favorite",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/menu/favorite",
@@ -1118,12 +1118,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/all",
+      "DownstreamPathTemplate": "/api/Notify/all",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/all",
@@ -1134,12 +1134,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/user/{userId}",
+      "DownstreamPathTemplate": "/api/Notify/user/{userId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/user/{userId}",
@@ -1150,12 +1150,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/delete/{userId}",
+      "DownstreamPathTemplate": "/api/Notify/delete/{userId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/delete/{userId}",
@@ -1166,12 +1166,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/read/{notifyId}",
+      "DownstreamPathTemplate": "/api/Notify/read/{notifyId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/read/{notifyId}",
@@ -1182,12 +1182,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify",
+      "DownstreamPathTemplate": "/api/Notify",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify",
@@ -1198,12 +1198,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner",
+      "DownstreamPathTemplate": "/api/Notify/banner",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/banner",
@@ -1214,12 +1214,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/manage",
+      "DownstreamPathTemplate": "/api/Notify/banner/manage",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/banner/manage",
@@ -1230,12 +1230,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/{id}",
+      "DownstreamPathTemplate": "/api/Notify/banner/{id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/banner/{id}",
@@ -1246,12 +1246,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/delete",
+      "DownstreamPathTemplate": "/api/Notify/banner/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/banner/delete",
@@ -1262,12 +1262,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/detail/{banner_id}",
+      "DownstreamPathTemplate": "/api/Notify/banner/detail/{banner_id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_notification",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/notify/detail/{banner_id}",
@@ -1278,12 +1278,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_auth/api/activity-log",
+      "DownstreamPathTemplate": "/api/activity-log",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "auth_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/activity-log",
@@ -1294,24 +1294,24 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/logging/log",
+      "DownstreamPathTemplate": "/api/logging/log",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/logging/log",
       "UpstreamHttpMethod": ["post", "options"]
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/inventory-viewer/{everything}",
+      "DownstreamPathTemplate": "/api/inventory-viewer/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/inventory-viewer/{everything}",
@@ -1322,711 +1322,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/checkversion",
+      "DownstreamPathTemplate": "/api/PartAttachment/{partId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/checkversion",
-      "UpstreamHttpMethod": ["get"]
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/GetDecimal",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/GetDecimal",
-      "UpstreamHttpMethod": ["get"]
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/downloadApp",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/downloadApp",
-      "UpstreamHttpMethod": ["get"]
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetProductionHeader",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetProductionHeader",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/ScanItemInProductionDetail",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Production/ScanItemInProductionDetail",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetItemTranDetail",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetItemTranDetail",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/SaveIssueForProduction",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Production/SaveIssueForProduction",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/SaveReceiveForProduction",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Production/SaveReceiveForProduction",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetQuantityRemain",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetQuantityRemain",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Combobox/GetCombobox",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Combobox/GetCombobox",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetSaleHeader",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetSaleHeader",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetDeliveryDetails",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetDeliveryDetails",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetScanSaleDetailByDocNum",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetScanSaleDetailByDocNum",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetQuantityRemainSale",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetQuantityRemainSale",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveDeliveryOrder",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveDeliveryOrder",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveBlindDeliveryOrder",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveBlindDeliveryOrder",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetScanItemBlindDelivery",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetScanItemBlindDelivery",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetBlindDeliveryHeader",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetBlindDeliveryHeader",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/ConfigApp/GetBarcodeFormat",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/ConfigApp/GetBarcodeFormat",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveBlindDeliveryDetails",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveBlindDeliveryDetails",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/save",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/save",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/item/{itemNumber}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/item/{itemNumber}",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/{docNumber}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/{docNumber}",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/pending-success-status",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/pending-success-status",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/save",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/save",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/item/{itemNumber}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/item/{itemNumber}",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/pending-success-status",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/pending-success-status",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/{docNumber}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/{docNumber}",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/Uom/GetUom",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GetUom",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetComboboxPo",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetComboboxPo",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataReceiptPage",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataReceiptPage",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataForAddItem",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataForAddItem",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataForEdit",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataForEdit",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataConfirmPage",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataConfirmPage",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/SaveGoodsReceipt",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/SaveGoodsReceipt",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetComboboxTransfer",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetComboboxTransfer",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataTransferPage",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataTransferPage",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataForAddItem",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataForAddItem",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataForEdit",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataForEdit",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataConfirmPage",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataConfirmPage",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/SaveTransferItem",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
-        }
-      ],
-      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/SaveTransferItem",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/ValidateToyota",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
-      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/ValidateToyota",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/ValidateGtec",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
-      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/ValidateGtec",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/PartAttachment/{attachmentId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
-      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/PartAttachment/{attachmentId}",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/MyItemCount",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
-      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/MyItemCount",
-      "UpstreamHttpMethod": ["get"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/SaveDelivery",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "192.168.12.122", "Port": 80 }],
-      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/SaveDelivery",
-      "UpstreamHttpMethod": ["post"],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      }
-    },
-    {
-      "DownstreamPathTemplate": "/bs_api_core/api/PartAttachment/{partId}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/PartAttachment/{partId}",
@@ -2037,12 +1338,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/PartAttachment/{partId}/delete",
+      "DownstreamPathTemplate": "/api/PartAttachment/{partId}/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/PartAttachment/{partId}/delete",
@@ -2053,12 +1354,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/PartAttachment/part/{partId}/delete",
+      "DownstreamPathTemplate": "/api/PartAttachment/part/{partId}/delete",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/PartAttachment/part/{partId}/delete",
@@ -2069,12 +1370,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_api_core/api/GtecAttachment/Download",
+      "DownstreamPathTemplate": "/api/GtecAttachment/Download",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_core_api",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/GtecAttachment/Download",
@@ -2085,12 +1386,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/UploadExcelBulk",
+      "DownstreamPathTemplate": "/api/Import/UploadExcelBulk",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/UploadExcelBulk",
@@ -2107,12 +1408,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/UploadHistory",
+      "DownstreamPathTemplate": "/api/Import/UploadHistory",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/UploadHistory",
@@ -2129,12 +1430,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/CreateStagingTable",
+      "DownstreamPathTemplate": "/api/ImportMaster/CreateStagingTable",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/CreateStagingTable",
@@ -2151,12 +1452,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/DropStagingTable",
+      "DownstreamPathTemplate": "/api/ImportMaster/DropStagingTable",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/DropStagingTable",
@@ -2173,12 +1474,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/GridConfig",
+      "DownstreamPathTemplate": "/api/Import/GridConfig",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/GridConfig",
@@ -2195,12 +1496,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/DownloadTemplateByMapping",
+      "DownstreamPathTemplate": "/api/Import/DownloadTemplateByMapping",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/DownloadTemplateByMapping",
@@ -2217,12 +1518,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/GetImportMasters",
+      "DownstreamPathTemplate": "/api/ImportMaster/GetImportMasters",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/GetImportMasters",
@@ -2239,12 +1540,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/GetImportMaster",
+      "DownstreamPathTemplate": "/api/ImportMaster/GetImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/GetImportMaster",
@@ -2261,12 +1562,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/CreateImportMaster",
+      "DownstreamPathTemplate": "/api/ImportMaster/CreateImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/CreateImportMaster",
@@ -2283,12 +1584,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/UpdateImportMaster",
+      "DownstreamPathTemplate": "/api/ImportMaster/UpdateImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/UpdateImportMaster",
@@ -2305,12 +1606,12 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/DeleteImportMaster",
+      "DownstreamPathTemplate": "/api/ImportMaster/DeleteImportMaster",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "192.168.12.122",
-          "Port": 80
+          "Host": "bs_import_export_manager",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/v1/api/DeleteImportMaster",
