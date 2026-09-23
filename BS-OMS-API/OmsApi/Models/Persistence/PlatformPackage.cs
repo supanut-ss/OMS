@@ -12,6 +12,12 @@ public class PlatformPackage
     public string ShopId { get; set; } = string.Empty;
     public string PlatformOrderId { get; set; } = string.Empty;
     public string CustomerOrderNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional link to the matching oms.t_oms_order row. Null when the
+    /// package was created before the order was synced into t_oms_order.
+    /// </summary>
+    public long? OrderRecordId { get; set; }
     public Guid OutboundOrderMasterId { get; set; }
     public Guid OutboundSortMasterId { get; set; }
     public int BoxNumber { get; set; }
@@ -32,6 +38,7 @@ public class PlatformPackage
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     public ICollection<PlatformPackageItem> Items { get; set; } = new List<PlatformPackageItem>();
+    public PlatformOrder? PlatformOrder { get; set; }
 }
 
 /// <summary>

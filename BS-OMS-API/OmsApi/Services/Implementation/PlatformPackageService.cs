@@ -135,6 +135,7 @@ public class PlatformPackageService : IPlatformPackageService
                         x.OutboundOrderMasterId == manifest.OutboundOrderMasterId)
             .ToListAsync(cancellationToken);
         var recordsByPackage = existingRecords.ToDictionary(x => x.OutboundSortMasterId);
+        var orderRecordId = await ResolveOrderRecordIdAsync(platformName, shopId, platformOrderId, cancellationToken);
 
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -158,6 +159,11 @@ public class PlatformPackageService : IPlatformPackageService
 
                 record.PlatformOrderId = platformOrderId;
                 record.CustomerOrderNumber = customerOrderNumber;
+                // The order sync may run before or after packages are prepared,
+                // so only overwrite the link when we actually found a match —
+                // never erase a link a later order sync already resolved.
+                if (orderRecordId.HasValue)
+                    record.OrderRecordId = orderRecordId;
                 record.BoxNumber = package.BoxNumber;
                 // Preparing a retry must never erase a package id or tracking
                 // number that a previous platform call already returned.
@@ -266,6 +272,20 @@ public class PlatformPackageService : IPlatformPackageService
         return result;
     }
 
+    /// <summary>
+    /// Looks up the t_oms_order row matching a platform order, if it has been
+    /// synced there yet. Packages may be created before the order sync runs,
+    /// so callers must tolerate a null result.
+    /// </summary>
+    private async Task<long?> ResolveOrderRecordIdAsync(
+        string platformName, string shopId, string platformOrderId, CancellationToken cancellationToken)
+    {
+        return await _db.PlatformOrders
+            .Where(x => x.Platform == platformName && x.ShopId == shopId && x.PlatformOrderId == platformOrderId)
+            .Select(x => (long?)x.OrderRecordId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task MarkPackagesFailedAsync(
         ProcessPlatformPackagesRequest request,
         string error,
@@ -369,6 +389,7 @@ public class PlatformPackageService : IPlatformPackageService
             .ToList();
         var recordsByPackage = existingRecords.ToDictionary(x => x.OutboundSortMasterId);
         var wmsMastersByPackage = wmsMasters.ToDictionary(x => x.OutboundSortMasterId);
+        var orderRecordId = await ResolveOrderRecordIdAsync(platformName, request.ShopId, request.PlatformOrderId, cancellationToken);
 
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -405,6 +426,8 @@ public class PlatformPackageService : IPlatformPackageService
                 record.PlatformOrderId = request.PlatformOrderId;
                 record.CustomerOrderNumber = request.CustomerOrderNumber;
                 record.BoxNumber = packageRequest.BoxNumber ?? wmsMaster.BoxNumber;
+                if (orderRecordId.HasValue)
+                    record.OrderRecordId = orderRecordId;
                 // Treat omitted values as "not changed" so a retry that only
                 // supplies a newly available tracking number does not erase a
                 // previously persisted package id or carrier.

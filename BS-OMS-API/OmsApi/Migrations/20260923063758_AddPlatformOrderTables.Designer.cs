@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OmsApi.Extensions;
 
@@ -11,9 +12,11 @@ using OmsApi.Extensions;
 namespace OmsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260923063758_AddPlatformOrderTables")]
+    partial class AddPlatformOrderTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -600,10 +603,6 @@ namespace OmsApi.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("last_sync_date");
 
-                    b.Property<long?>("OrderRecordId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("order_record_id");
-
                     b.Property<Guid>("OutboundOrderMasterId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("outbound_order_master_id");
@@ -680,9 +679,6 @@ namespace OmsApi.Migrations
 
                     b.HasKey("PlatformPackageRecordId")
                         .HasName("PK_t_oms_platform_package");
-
-                    b.HasIndex("OrderRecordId")
-                        .HasDatabaseName("IX_t_oms_platform_package_order_record");
 
                     b.HasIndex("SyncStatus", "LastSyncDate")
                         .HasDatabaseName("IX_t_oms_platform_package_sync");
@@ -986,17 +982,6 @@ namespace OmsApi.Migrations
                     b.Navigation("PlatformOrder");
                 });
 
-            modelBuilder.Entity("OmsApi.Models.Persistence.PlatformPackage", b =>
-                {
-                    b.HasOne("OmsApi.Models.Persistence.PlatformOrder", "PlatformOrder")
-                        .WithMany("Packages")
-                        .HasForeignKey("OrderRecordId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("FK_t_oms_platform_package_order");
-
-                    b.Navigation("PlatformOrder");
-                });
-
             modelBuilder.Entity("OmsApi.Models.Persistence.PlatformPackageItem", b =>
                 {
                     b.HasOne("OmsApi.Models.Persistence.PlatformPackage", "PlatformPackage")
@@ -1012,8 +997,6 @@ namespace OmsApi.Migrations
             modelBuilder.Entity("OmsApi.Models.Persistence.PlatformOrder", b =>
                 {
                     b.Navigation("Items");
-
-                    b.Navigation("Packages");
                 });
 
             modelBuilder.Entity("OmsApi.Models.Persistence.PlatformPackage", b =>

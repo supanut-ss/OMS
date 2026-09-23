@@ -10,6 +10,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<PlatformPackage> PlatformPackages => Set<PlatformPackage>();
     public DbSet<PlatformPackageItem> PlatformPackageItems => Set<PlatformPackageItem>();
     public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
+    public DbSet<PlatformOrder> PlatformOrders => Set<PlatformOrder>();
+    public DbSet<PlatformOrderItem> PlatformOrderItems => Set<PlatformOrderItem>();
 
     // Existing WMS tables. OMS only reads the packing manifest and updates the
     // tracking number on the matching packing master row.
@@ -73,6 +75,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PackageStatus).HasColumnName("package_status").HasColumnType("varchar(32)").IsRequired().HasDefaultValue("PENDING");
             entity.Property(e => e.SyncStatus).HasColumnName("sync_status").HasColumnType("varchar(16)").IsRequired().HasDefaultValue("PENDING");
             entity.Property(e => e.AttemptCount).HasColumnName("attempt_count").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.OrderRecordId).HasColumnName("order_record_id");
             entity.Property(e => e.RequestId).HasColumnName("request_id").HasColumnType("varchar(128)");
             entity.Property(e => e.LastSyncDate).HasColumnName("last_sync_date").HasColumnType("datetime");
             entity.Property(e => e.LastError).HasColumnName("last_error").HasMaxLength(2000);
@@ -81,6 +84,14 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+
+            entity.HasIndex(e => e.OrderRecordId).HasDatabaseName("IX_t_oms_platform_package_order_record");
+
+            entity.HasOne(e => e.PlatformOrder)
+                .WithMany(e => e.Packages)
+                .HasForeignKey(e => e.OrderRecordId)
+                .HasConstraintName("FK_t_oms_platform_package_order")
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasMany(e => e.Items)
                 .WithOne(e => e.PlatformPackage)
@@ -139,6 +150,93 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.LastPrintDate).HasColumnName("last_print_date").HasColumnType("datetime");
             entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+        });
+
+        builder.Entity<PlatformOrder>(entity =>
+        {
+            entity.ToTable("t_oms_order", "oms");
+            entity.HasKey(e => e.OrderRecordId).HasName("PK_t_oms_order");
+            entity.HasIndex(e => new { e.Platform, e.ShopId, e.PlatformOrderId })
+                .IsUnique().HasDatabaseName("UQ_t_oms_order_platform_order");
+            entity.HasIndex(e => new { e.Status, e.OrderCreatedDate })
+                .HasDatabaseName("IX_t_oms_order_status");
+            entity.HasIndex(e => new { e.Platform, e.ShopId, e.OrderCreatedDate })
+                .HasDatabaseName("IX_t_oms_order_shop");
+
+            entity.Property(e => e.OrderRecordId).HasColumnName("order_record_id");
+            entity.Property(e => e.Platform).HasColumnName("platform").HasColumnType("varchar(32)").IsRequired();
+            entity.Property(e => e.ShopId).HasColumnName("shop_id").HasColumnType("varchar(128)").IsRequired();
+            entity.Property(e => e.PlatformOrderId).HasColumnName("platform_order_id").HasColumnType("varchar(128)").IsRequired();
+            entity.Property(e => e.ShopName).HasColumnName("shop_name").HasMaxLength(256);
+            entity.Property(e => e.Status).HasColumnName("status").HasColumnType("varchar(32)").IsRequired();
+            entity.Property(e => e.OriginalStatus).HasColumnName("original_status").HasColumnType("varchar(64)");
+            entity.Property(e => e.BuyerName).HasColumnName("buyer_name").HasMaxLength(256);
+            entity.Property(e => e.BuyerRemarks).HasColumnName("buyer_remarks").HasMaxLength(1000);
+            entity.Property(e => e.TaxInvoiceRequested).HasColumnName("tax_invoice_requested").IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.TaxInvoiceTaxId).HasColumnName("tax_invoice_tax_id").HasColumnType("varchar(32)");
+            entity.Property(e => e.TaxInvoiceCompanyName).HasColumnName("tax_invoice_company_name").HasMaxLength(256);
+            entity.Property(e => e.TaxInvoiceAddress).HasColumnName("tax_invoice_address").HasMaxLength(500);
+            entity.Property(e => e.TaxInvoiceBranchCode).HasColumnName("tax_invoice_branch_code").HasColumnType("varchar(20)");
+            entity.Property(e => e.CancellationDeadline).HasColumnName("cancellation_deadline").HasColumnType("datetime");
+            entity.Property(e => e.OrderCreatedDate).HasColumnName("order_created_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.OrderUpdatedDate).HasColumnName("order_updated_date").HasColumnType("datetime");
+            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.Currency).HasColumnName("currency").HasColumnType("varchar(3)").IsRequired().HasDefaultValue("THB");
+            entity.Property(e => e.ShippingCarrier).HasColumnName("shipping_carrier").HasMaxLength(128);
+            entity.Property(e => e.TrackingNumber).HasColumnName("tracking_number").HasColumnType("varchar(256)");
+            entity.Property(e => e.PackageNumber).HasColumnName("package_number").HasColumnType("varchar(128)");
+            entity.Property(e => e.ShippingMethod).HasColumnName("shipping_method").HasMaxLength(128);
+            entity.Property(e => e.ShippingFee).HasColumnName("shipping_fee").HasColumnType("decimal(18,2)");
+            entity.Property(e => e.EstimatedDeliveryDate).HasColumnName("estimated_delivery_date").HasColumnType("datetime");
+            entity.Property(e => e.RecipientName).HasColumnName("recipient_name").HasMaxLength(256);
+            entity.Property(e => e.RecipientPhone).HasColumnName("recipient_phone").HasColumnType("varchar(32)");
+            entity.Property(e => e.RecipientAddressLine1).HasColumnName("recipient_address_line1").HasMaxLength(500);
+            entity.Property(e => e.RecipientAddressLine2).HasColumnName("recipient_address_line2").HasMaxLength(500);
+            entity.Property(e => e.RecipientSubDistrict).HasColumnName("recipient_sub_district").HasMaxLength(128);
+            entity.Property(e => e.RecipientDistrict).HasColumnName("recipient_district").HasMaxLength(128);
+            entity.Property(e => e.RecipientProvince).HasColumnName("recipient_province").HasMaxLength(128);
+            entity.Property(e => e.RecipientPostalCode).HasColumnName("recipient_postal_code").HasColumnType("varchar(10)");
+            entity.Property(e => e.RecipientCountry).HasColumnName("recipient_country").HasColumnType("varchar(2)").HasDefaultValue("TH");
+            entity.Property(e => e.RecipientFullAddress).HasColumnName("recipient_full_address").HasMaxLength(1000);
+            entity.Property(e => e.SyncStatus).HasColumnName("sync_status").HasColumnType("varchar(16)").IsRequired().HasDefaultValue("SYNCED");
+            entity.Property(e => e.LastSyncDate).HasColumnName("last_sync_date").HasColumnType("datetime");
+            entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
+            entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
+            entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
+            entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+
+            entity.HasMany(e => e.Items)
+                .WithOne(e => e.PlatformOrder)
+                .HasForeignKey(e => e.OrderRecordId)
+                .HasConstraintName("FK_t_oms_order_item_order")
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PlatformOrderItem>(entity =>
+        {
+            entity.ToTable("t_oms_order_item", "oms");
+            entity.HasKey(e => e.OrderItemRecordId).HasName("PK_t_oms_order_item");
+            entity.HasIndex(e => e.OrderRecordId).HasDatabaseName("IX_t_oms_order_item_order");
+
+            entity.Property(e => e.OrderItemRecordId).HasColumnName("order_item_record_id");
+            entity.Property(e => e.OrderRecordId).HasColumnName("order_record_id").IsRequired();
+            entity.Property(e => e.PlatformItemId).HasColumnName("platform_item_id").HasColumnType("varchar(128)");
+            entity.Property(e => e.ModelId).HasColumnName("model_id");
+            entity.Property(e => e.PlatformOrderItemId).HasColumnName("platform_order_item_id");
+            entity.Property(e => e.PromotionGroupId).HasColumnName("promotion_group_id");
+            entity.Property(e => e.Sku).HasColumnName("sku").HasColumnType("varchar(128)");
+            entity.Property(e => e.ItemName).HasColumnName("item_name").HasMaxLength(500);
+            entity.Property(e => e.Quantity).HasColumnName("quantity").IsRequired();
+            entity.Property(e => e.UnitPrice).HasColumnName("unit_price").HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.TotalPrice).HasColumnName("total_price").HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.Discount).HasColumnName("discount").HasColumnType("decimal(18,2)").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url").HasMaxLength(1000);
+            entity.Property(e => e.Variation).HasColumnName("variation").HasMaxLength(256);
+            entity.Property(e => e.Weight).HasColumnName("weight").HasColumnType("decimal(18,3)");
+            entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
         });
 
