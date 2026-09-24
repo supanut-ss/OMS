@@ -47,7 +47,9 @@ import Category from "./pages/Master/Category";
 import BusinessPartner from "./pages/Master/BusinessPartner";
 import ZoneCategory from "./pages/Master/ZoneCategory";
 import ZoneLocation from "./pages/Master/ZoneLocation";
+import Connector from "./pages/Master/Connector";
 import InventoryViewer from "./pages/Transaction/InventoryViewer";
+import SyncLog from "./pages/Log/SyncLog";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
@@ -84,10 +86,7 @@ export default function AppRoutes() {
       >
         <Route element={<PermissionRoute />}>
           <Route index element={<Home lang={lang} />} />
-          <Route
-            path="dashboard"
-            element={<Dashboard lang={lang} />}
-          />
+          <Route path="dashboard" element={<Dashboard lang={lang} />} />
           <Route
             path="dashboard/dashboard"
             element={<Dashboard lang={lang} />}
@@ -104,6 +103,7 @@ export default function AppRoutes() {
             path="orderlist/orderlist"
             element={<OrderList lang={lang} />}
           />
+          <Route path="log/sync" element={<SyncLog lang={lang} />} />
         </Route>
 
         <Route path="import" element={<PermissionRoute />}>
@@ -132,6 +132,7 @@ export default function AppRoutes() {
         </Route>
 
         <Route path="master" element={<PermissionRoute />}>
+          <Route path="connector" element={<Connector />} />
           <Route path="warehouse" element={<Warehouse lang={lang} />} />
           <Route path="owner" element={<Owner lang={lang} />} />
           <Route path="part" element={<Part lang={lang} />} />
