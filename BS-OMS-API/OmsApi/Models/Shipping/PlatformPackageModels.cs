@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using OmsApi.Models.Common;
 
 namespace OmsApi.Models.Shipping;
@@ -76,6 +77,7 @@ public class ProcessPlatformPackagesResult
 public class SplitPlatformOrderRequest
 {
     public PlatformType Platform { get; set; }
+    [JsonIgnore]
     public string AccessToken { get; set; } = string.Empty;
     public string? ShopId { get; set; }
     public string OrderId { get; set; } = string.Empty;
@@ -209,9 +211,6 @@ public class SyncPlatformTrackingRequest
 {
     [Required]
     public PlatformType Platform { get; set; }
-
-    [StringLength(512)]
-    public string? AccessToken { get; set; }
 
     [StringLength(128)]
     public string? ShopId { get; set; }

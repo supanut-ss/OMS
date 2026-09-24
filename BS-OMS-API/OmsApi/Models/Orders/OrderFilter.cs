@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using OmsApi.Models.Common;
 
 namespace OmsApi.Models.Orders
@@ -11,7 +12,8 @@ namespace OmsApi.Models.Orders
         /// <summary>Platform to query (null = all platforms)</summary>
         public PlatformType? Platform { get; set; }
 
-        /// <summary>Access token for the platform</summary>
+        /// <summary>Resolved internally from the encrypted OMS credential store.</summary>
+        [JsonIgnore]
         [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 
@@ -33,7 +35,7 @@ namespace OmsApi.Models.Orders
         /// <summary>Page size</summary>
         public int PageSize { get; set; } = 50;
 
-        /// <summary>Platform credentials for multi-platform query</summary>
+        /// <summary>Optional platform/shop selectors for a multi-platform query.</summary>
         public List<PlatformCredentialInput>? PlatformCredentials { get; set; }
     }
 
@@ -44,7 +46,7 @@ namespace OmsApi.Models.Orders
     {
         public PlatformType Platform { get; set; }
 
-        [Required]
+        [JsonIgnore]
         [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 

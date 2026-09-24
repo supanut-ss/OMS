@@ -29,7 +29,6 @@ namespace OmsApi.Services.Interfaces
         /// <summary>ดึงรายการผู้ให้บริการขนส่ง</summary>
         Task<List<ShippingProvider>> GetShippingProvidersAsync(
             PlatformType platform,
-            string accessToken,
             string? shopId = null,
             bool throwOnApiError = false);
 
@@ -42,7 +41,6 @@ namespace OmsApi.Services.Interfaces
         Task<TrackingInfo?> GetTrackingInfoAsync(
             PlatformType platform,
             string orderId,
-            string? accessToken = null,
             string? shopId = null,
             IReadOnlyCollection<string>? packageNumbers = null);
     }

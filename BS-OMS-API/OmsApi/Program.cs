@@ -81,6 +81,7 @@ builder.Services.AddHttpClient("TikTok", client =>
 builder.Services.AddScoped<IPlatformClientFactory, PlatformClientFactory>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPlatformAuthService, PlatformAuthService>();
+builder.Services.AddScoped<IPlatformCredentialService, PlatformCredentialService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IShippingService, ShippingService>();
 builder.Services.AddScoped<IPlatformPackageService, PlatformPackageService>();

@@ -257,7 +257,7 @@ namespace OmsApi.Controllers
 
                 // Tracking always uses the encrypted credential stored by OMS.
                 // Access tokens must never be accepted in a query string because URLs may be logged.
-                var tracking = await _shippingService.GetTrackingInfoAsync(platform, orderId, null, shopId);
+                var tracking = await _shippingService.GetTrackingInfoAsync(platform, orderId, shopId);
                 if (tracking == null)
                     return NotFound(ApiResponse<string>.Fail("Tracking info not available"));
 
@@ -404,7 +404,6 @@ namespace OmsApi.Controllers
                 var tracking = await _shippingService.GetTrackingInfoAsync(
                     request.Platform,
                     request.PlatformOrderId,
-                    null,
                     request.ShopId,
                     knownPackageNumbers);
 
@@ -459,7 +458,6 @@ namespace OmsApi.Controllers
                     tracking = await _shippingService.GetTrackingInfoAsync(
                         request.Platform,
                         request.PlatformOrderId,
-                        null,
                         request.ShopId,
                         knownPackageNumbers);
                 }
@@ -520,7 +518,6 @@ namespace OmsApi.Controllers
                     tracking = await _shippingService.GetTrackingInfoAsync(
                         request.Platform,
                         request.PlatformOrderId,
-                        null,
                         request.ShopId,
                         knownPackageNumbers);
                 }
@@ -582,7 +579,6 @@ namespace OmsApi.Controllers
                     tracking = await _shippingService.GetTrackingInfoAsync(
                         request.Platform,
                         request.PlatformOrderId,
-                        null,
                         request.ShopId,
                         knownPackageNumbers);
                 }
@@ -681,7 +677,6 @@ namespace OmsApi.Controllers
                             tracking = await _shippingService.GetTrackingInfoAsync(
                                 request.Platform,
                                 request.PlatformOrderId,
-                                null,
                                 request.ShopId,
                                 knownPackageNumbers);
                             if (HasCompleteTracking(tracking, manifest.Packages.Count))
@@ -811,7 +806,6 @@ namespace OmsApi.Controllers
                         tracking = await _shippingService.GetTrackingInfoAsync(
                             request.Platform,
                             request.PlatformOrderId,
-                            null,
                             request.ShopId,
                             knownPackageNumbers);
                         if (HasCompleteTracking(tracking, manifest.Packages.Count)) break;
@@ -1642,7 +1636,6 @@ namespace OmsApi.Controllers
                 var tracking = await _shippingService.GetTrackingInfoAsync(
                     request.Platform,
                     request.PlatformOrderId,
-                    request.AccessToken,
                     request.ShopId);
                 if (tracking == null)
                     return NotFound(ApiResponse<string>.Fail("Tracking info was not returned by the platform."));
@@ -1795,9 +1788,9 @@ namespace OmsApi.Controllers
         [SwaggerResponse(200, "Returns shipping providers")]
         public async Task<IActionResult> GetShippingProviders(
             PlatformType platform,
-            [FromQuery] string accessToken, [FromQuery] string? shopId = null)
+            [FromQuery] string? shopId = null)
         {
-            var providers = await _shippingService.GetShippingProvidersAsync(platform, accessToken, shopId);
+            var providers = await _shippingService.GetShippingProvidersAsync(platform, shopId);
             return Ok(ApiResponse<List<ShippingProvider>>.Ok(providers,
                 $"Found {providers.Count} shipping providers for {platform}"));
         }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using OmsApi.Models.Common;
 
 namespace OmsApi.Models.Shipping
@@ -10,7 +11,7 @@ namespace OmsApi.Models.Shipping
     {
         public PlatformType Platform { get; set; }
 
-        [Required]
+        [JsonIgnore]
         [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 
@@ -66,7 +67,7 @@ namespace OmsApi.Models.Shipping
     {
         public PlatformType Platform { get; set; }
 
-        [Required]
+        [JsonIgnore]
         [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 

@@ -565,7 +565,6 @@ public class PackageProcessControllerTests
         }
         public Task<List<ShippingProvider>> GetShippingProvidersAsync(
             PlatformType platform,
-            string accessToken,
             string? shopId = null,
             bool throwOnApiError = false) => throw new NotSupportedException();
         public Task<PlatformConnectionTestResult> TestConnectionAsync(
@@ -574,7 +573,6 @@ public class PackageProcessControllerTests
         public Task<TrackingInfo?> GetTrackingInfoAsync(
             PlatformType platform,
             string orderId,
-            string? accessToken = null,
             string? shopId = null,
             IReadOnlyCollection<string>? packageNumbers = null)
             => Task.FromResult<TrackingInfo?>(_wasArranged && _trackingAfterArrange != null

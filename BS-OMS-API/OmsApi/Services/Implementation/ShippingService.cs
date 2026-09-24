@@ -1,11 +1,7 @@
 using OmsApi.Models.Common;
 using OmsApi.Models.Shipping;
-using OmsApi.Extensions;
 using OmsApi.Services.Interfaces;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
 using OmsApi.Models.Orders;
-using OmsApi.Models.Persistence;
 
 namespace OmsApi.Services.Implementation
 {
@@ -13,55 +9,47 @@ namespace OmsApi.Services.Implementation
     {
         private readonly IPlatformClientFactory _clientFactory;
         private readonly ILogger<ShippingService> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly IDataProtector _tokenProtector;
-        private readonly IPlatformAuthService _authService;
+        private readonly IPlatformCredentialService _credentialService;
 
-        public ShippingService(IPlatformClientFactory clientFactory, ILogger<ShippingService> logger,
-            ApplicationDbContext db, IDataProtectionProvider protectionProvider,
-            IPlatformAuthService authService)
+        public ShippingService(
+            IPlatformClientFactory clientFactory,
+            ILogger<ShippingService> logger,
+            IPlatformCredentialService credentialService)
         {
             _clientFactory = clientFactory;
             _logger = logger;
-            _db = db;
-            _tokenProtector = protectionProvider.CreateProtector("OmsApi.PlatformCredentials.v1");
-            _authService = authService;
+            _credentialService = credentialService;
         }
 
         public async Task<ShippingLabelResult?> GetShippingLabelAsync(ShippingLabelRequest request)
         {
-            PlatformCredential? credential = null;
-            if (string.IsNullOrWhiteSpace(request.AccessToken))
-            {
-                var resolved = await ResolveStoredCredentialAsync(request.Platform, request.ShopId);
-                if (resolved.AccessToken == null) return null;
-                request.AccessToken = resolved.AccessToken;
-                request.ShopId = resolved.ShopId;
-                credential = resolved.Credential;
-            }
-
             var client = _clientFactory.GetClient(request.Platform);
             try
             {
-                return await client.GetShippingLabelAsync(
-                    request.AccessToken, request.ShopId, request.OrderId,
-                    request.PackageId, request.TrackingNumber, request.DocumentType);
+                return await _credentialService.ExecuteAsync(
+                    request.Platform,
+                    request.ShopId,
+                    credential =>
+                    {
+                        request.AccessToken = credential.AccessToken;
+                        request.ShopId = credential.ShopId;
+                        return client.GetShippingLabelAsync(
+                            credential.AccessToken,
+                            credential.ShopId,
+                            request.OrderId,
+                            request.PackageId,
+                            request.TrackingNumber,
+                            request.DocumentType);
+                    });
             }
-            catch (PlatformApiException ex) when (
-                credential != null && IsInvalidAccessToken(ex) && CanRefresh(credential))
+            catch (PlatformCredentialException ex)
             {
                 _logger.LogWarning(
-                    "{Platform} rejected the stored access token while creating a waybill for order {OrderId}; refreshing once",
+                    "Unable to resolve {Platform} credential for waybill order {OrderId}: {Code}",
                     request.Platform,
-                    request.OrderId);
-                var refreshToken = _tokenProtector.Unprotect(credential.RefreshTokenEncrypted!);
-                var refreshed = await _authService.RefreshTokenAsync(
-                    request.Platform, refreshToken, credential.ShopId);
-                request.AccessToken = refreshed.AccessToken;
-                request.ShopId = credential.ShopId;
-                return await client.GetShippingLabelAsync(
-                    request.AccessToken, request.ShopId, request.OrderId,
-                    request.PackageId, request.TrackingNumber, request.DocumentType);
+                    request.OrderId,
+                    ex.Code);
+                return null;
             }
         }
 
@@ -89,33 +77,30 @@ namespace OmsApi.Services.Implementation
 
         public async Task<bool> ShipOrderAsync(ShipOrderRequest request)
         {
-            PlatformCredential? credential = null;
-            if (string.IsNullOrWhiteSpace(request.AccessToken))
-            {
-                var resolved = await ResolveStoredCredentialAsync(request.Platform, request.ShopId);
-                if (resolved.AccessToken == null) return false;
-                request.AccessToken = resolved.AccessToken;
-                request.ShopId = resolved.ShopId;
-                credential = resolved.Credential;
-            }
             var client = _clientFactory.GetClient(request.Platform);
             try
             {
-                return await client.ShipOrderAsync(request.AccessToken, request.ShopId, request);
+                return await _credentialService.ExecuteAsync(
+                    request.Platform,
+                    request.ShopId,
+                    credential =>
+                    {
+                        request.AccessToken = credential.AccessToken;
+                        request.ShopId = credential.ShopId;
+                        return client.ShipOrderAsync(
+                            credential.AccessToken,
+                            credential.ShopId,
+                            request);
+                    });
             }
-            catch (PlatformApiException ex) when (
-                credential != null && IsInvalidAccessToken(ex) && CanRefresh(credential))
+            catch (PlatformCredentialException ex)
             {
                 _logger.LogWarning(
-                    "{Platform} rejected the stored access token while arranging order {OrderId}; refreshing once",
+                    "Unable to resolve {Platform} credential while arranging order {OrderId}: {Code}",
                     request.Platform,
-                    request.OrderId);
-                var refreshToken = _tokenProtector.Unprotect(credential.RefreshTokenEncrypted!);
-                var refreshed = await _authService.RefreshTokenAsync(
-                    request.Platform, refreshToken, credential.ShopId);
-                request.AccessToken = refreshed.AccessToken;
-                request.ShopId = credential.ShopId;
-                return await client.ShipOrderAsync(request.AccessToken, request.ShopId, request);
+                    request.OrderId,
+                    ex.Code);
+                return false;
             }
         }
 
@@ -128,27 +113,14 @@ namespace OmsApi.Services.Implementation
             if (platform is not (PlatformType.Shopee or PlatformType.Lazada or PlatformType.TikTok))
                 return;
 
-            var resolved = await ResolveStoredCredentialAsync(platform, shopId);
-            var accessToken = resolved.AccessToken
-                ?? throw new InvalidOperationException(
-                    $"No active {platform} credential was found for shop '{shopId}'.");
-            shopId = resolved.ShopId;
             var client = _clientFactory.GetClient(platform);
-
-            UnifiedOrder? order;
-            try
-            {
-                order = await client.GetOrderDetailAsync(accessToken, shopId, orderId);
-            }
-            catch (PlatformApiException ex) when (
-                resolved.Credential != null && IsInvalidAccessToken(ex) && CanRefresh(resolved.Credential))
-            {
-                var refreshToken = _tokenProtector.Unprotect(resolved.Credential.RefreshTokenEncrypted!);
-                var refreshed = await _authService.RefreshTokenAsync(
-                    platform, refreshToken, resolved.Credential.ShopId);
-                order = await client.GetOrderDetailAsync(
-                    refreshed.AccessToken, resolved.Credential.ShopId, orderId);
-            }
+            var order = await _credentialService.ExecuteAsync(
+                platform,
+                shopId,
+                credential => client.GetOrderDetailAsync(
+                    credential.AccessToken,
+                    credential.ShopId,
+                    orderId));
 
             if (order == null)
                 throw new InvalidOperationException(
@@ -288,47 +260,34 @@ namespace OmsApi.Services.Implementation
 
         public async Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request)
         {
-            PlatformCredential? credential = null;
-            if (string.IsNullOrWhiteSpace(request.AccessToken))
-            {
-                var resolved = await ResolveStoredCredentialAsync(request.Platform, request.ShopId);
-                request.AccessToken = resolved.AccessToken
-                    ?? throw new InvalidOperationException(
-                        $"No active {request.Platform} credential was found for shop '{request.ShopId}'.");
-                request.ShopId = resolved.ShopId;
-                credential = resolved.Credential;
-            }
-
             var client = _clientFactory.GetClient(request.Platform);
-            try
-            {
-                return await client.SplitOrderAsync(request.AccessToken, request.ShopId, request);
-            }
-            catch (PlatformApiException ex) when (
-                credential != null && IsInvalidAccessToken(ex) && CanRefresh(credential))
-            {
-                _logger.LogWarning(
-                    "{Platform} rejected the stored access token while splitting order {OrderId}; refreshing once",
-                    request.Platform,
-                    request.OrderId);
-                var refreshToken = _tokenProtector.Unprotect(credential.RefreshTokenEncrypted!);
-                var refreshed = await _authService.RefreshTokenAsync(
-                    request.Platform, refreshToken, credential.ShopId);
-                request.AccessToken = refreshed.AccessToken;
-                request.ShopId = credential.ShopId;
-                return await client.SplitOrderAsync(request.AccessToken, request.ShopId, request);
-            }
+            return await _credentialService.ExecuteAsync(
+                request.Platform,
+                request.ShopId,
+                credential =>
+                {
+                    request.AccessToken = credential.AccessToken;
+                    request.ShopId = credential.ShopId;
+                    return client.SplitOrderAsync(
+                        credential.AccessToken,
+                        credential.ShopId,
+                        request);
+                });
         }
 
         public async Task<List<ShippingProvider>> GetShippingProvidersAsync(
             PlatformType platform,
-            string accessToken,
             string? shopId = null,
             bool throwOnApiError = false)
         {
-            shopId = PlatformShopIdResolver.Resolve(platform, shopId);
             var client = _clientFactory.GetClient(platform);
-            return await client.GetShippingProvidersAsync(accessToken, shopId, throwOnApiError);
+            return await _credentialService.ExecuteAsync(
+                platform,
+                shopId,
+                credential => client.GetShippingProvidersAsync(
+                    credential.AccessToken,
+                    credential.ShopId,
+                    throwOnApiError));
         }
 
         public async Task<PlatformConnectionTestResult> TestConnectionAsync(
@@ -342,48 +301,30 @@ namespace OmsApi.Services.Implementation
                 CheckedAtUtc = checkedAt
             };
 
-            var resolved = await ResolveStoredCredentialAsync(platform, shopId);
-            result.ShopId = resolved.ShopId ?? string.Empty;
-            result.CredentialFound = resolved.Credential != null;
-            if (string.IsNullOrWhiteSpace(resolved.AccessToken))
-            {
-                result.Message = resolved.Credential == null
-                    ? $"No active {platform} credential was found for shop '{result.ShopId}'."
-                    : $"The stored {platform} credential could not be decrypted or refreshed.";
-                result.ErrorCode = "CREDENTIAL_NOT_FOUND";
-                return result;
-            }
-
             var client = _clientFactory.GetClient(platform);
             try
             {
-                var connection = await client.TestConnectionAsync(
-                    resolved.AccessToken,
-                    resolved.ShopId);
+                var connection = await _credentialService.ExecuteAsync(
+                    platform,
+                    shopId,
+                    credential =>
+                    {
+                        result.CredentialFound = true;
+                        result.ShopId = credential.ShopId;
+                        return client.TestConnectionAsync(
+                            credential.AccessToken,
+                            credential.ShopId);
+                    });
                 result.Connected = connection.Connected;
                 result.ShippingProviderCount = connection.ShippingProviderCount;
                 result.Message = connection.Message;
                 return result;
             }
-            catch (PlatformApiException ex) when (
-                resolved.Credential != null &&
-                IsInvalidAccessToken(ex) &&
-                CanRefresh(resolved.Credential))
+            catch (PlatformCredentialException ex)
             {
-                var refreshToken = _tokenProtector.Unprotect(resolved.Credential.RefreshTokenEncrypted!);
-                var refreshed = await _authService.RefreshTokenAsync(
-                    platform,
-                    refreshToken,
-                    resolved.Credential.ShopId);
-                var connection = await client.TestConnectionAsync(
-                    refreshed.AccessToken,
-                    resolved.Credential.ShopId);
-                result.Connected = connection.Connected;
-                result.ShopId = resolved.Credential.ShopId;
-                result.ShippingProviderCount = connection.ShippingProviderCount;
-                result.Message = connection.Connected
-                    ? "Platform API connection succeeded after refreshing the access token."
-                    : connection.Message;
+                result.CredentialFound = ex.Code != "CREDENTIAL_NOT_FOUND";
+                result.Message = ex.Message;
+                result.ErrorCode = ex.Code;
                 return result;
             }
             catch (PlatformApiException ex)
@@ -405,112 +346,30 @@ namespace OmsApi.Services.Implementation
         public async Task<TrackingInfo?> GetTrackingInfoAsync(
             PlatformType platform,
             string orderId,
-            string? accessToken = null,
             string? shopId = null,
             IReadOnlyCollection<string>? packageNumbers = null)
         {
-            PlatformCredential? credential = null;
-            if (string.IsNullOrWhiteSpace(accessToken))
-            {
-                var resolved = await ResolveStoredCredentialAsync(platform, shopId);
-                accessToken = resolved.AccessToken;
-                shopId = resolved.ShopId;
-                credential = resolved.Credential;
-                if (accessToken == null) return null;
-            }
-
             var client = _clientFactory.GetClient(platform);
             try
             {
-                return await client.GetTrackingInfoAsync(accessToken, shopId, orderId, packageNumbers);
+                return await _credentialService.ExecuteAsync(
+                    platform,
+                    shopId,
+                    credential => client.GetTrackingInfoAsync(
+                        credential.AccessToken,
+                        credential.ShopId,
+                        orderId,
+                        packageNumbers));
             }
-            catch (PlatformApiException ex) when (
-                credential != null && IsInvalidAccessToken(ex) && CanRefresh(credential))
+            catch (PlatformCredentialException ex)
             {
                 _logger.LogWarning(
-                    "{Platform} rejected the stored access token for shop {ShopId}; refreshing once",
+                    "Unable to resolve {Platform} credential while tracking order {OrderId}: {Code}",
                     platform,
-                    credential.ShopId);
-                var refreshToken = _tokenProtector.Unprotect(credential.RefreshTokenEncrypted!);
-                var refreshed = await _authService.RefreshTokenAsync(platform, refreshToken, credential.ShopId);
-                return await client.GetTrackingInfoAsync(
-                    refreshed.AccessToken, credential.ShopId, orderId, packageNumbers);
+                    orderId,
+                    ex.Code);
+                return null;
             }
-        }
-
-        private async Task<(string? AccessToken, string? ShopId, PlatformCredential? Credential)> ResolveStoredCredentialAsync(
-            PlatformType platform,
-            string? shopId)
-        {
-            if (string.IsNullOrWhiteSpace(shopId))
-            {
-                var defaultShopVariable = $"{platform.ToString().ToUpperInvariant()}_DEFAULT_SHOP_ID";
-                shopId = Environment.GetEnvironmentVariable(defaultShopVariable)?.Trim();
-            }
-
-            var platformName = platform.ToString();
-            var credentialQuery = _db.PlatformCredentials.AsNoTracking()
-                .Where(x => x.Platform == platformName && x.IsActive == "YES" && x.RequiresReauthorization == "NO");
-            if (!string.IsNullOrWhiteSpace(shopId))
-                credentialQuery = credentialQuery.Where(x => x.ShopId == shopId);
-
-            var credentials = await credentialQuery.OrderByDescending(x => x.UpdateDate).Take(2).ToListAsync();
-            if (credentials.Count == 0)
-                return (null, shopId, null);
-            if (string.IsNullOrWhiteSpace(shopId) && credentials.Count > 1)
-                throw new InvalidOperationException(
-                    $"More than one active {platformName} shop credential exists. Specify shopId.");
-
-            var credential = credentials[0];
-            try
-            {
-                string accessToken;
-                if (credential.AccessTokenExpiresDate <= DateTime.UtcNow.AddMinutes(2))
-                {
-                    if (!CanRefresh(credential)) return (null, credential.ShopId, credential);
-                    var refreshToken = _tokenProtector.Unprotect(credential.RefreshTokenEncrypted!);
-                    var refreshed = await _authService.RefreshTokenAsync(platform, refreshToken, credential.ShopId);
-                    accessToken = refreshed.AccessToken;
-                }
-                else
-                {
-                    accessToken = _tokenProtector.Unprotect(credential.AccessTokenEncrypted);
-                }
-
-                var tracked = await _db.PlatformCredentials.FirstAsync(
-                    x => x.PlatformCredentialId == credential.PlatformCredentialId);
-                tracked.LastUseDate = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-                return (accessToken, credential.ShopId, credential);
-            }
-            catch (PlatformApiException) { throw; }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unable to resolve platform credential for {Platform}", platformName);
-                return (null, credential.ShopId, credential);
-            }
-        }
-
-        private static bool CanRefresh(PlatformCredential credential) =>
-            !string.IsNullOrWhiteSpace(credential.RefreshTokenEncrypted) &&
-            credential.RefreshTokenExpiresDate > DateTime.UtcNow;
-
-        private static bool IsInvalidAccessToken(PlatformApiException exception)
-        {
-            // Platforms do not use one common OAuth error shape:
-            // TikTok commonly returns numeric code 36009005, Lazada may return
-            // IllegalAccessToken, and Shopee usually describes access_token in
-            // either the code or message.
-            if (string.Equals(exception.Code, "36009005", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            var error = string.Concat(exception.Code, " ", exception.Message);
-            var normalized = new string(error
-                .Where(char.IsLetterOrDigit)
-                .Select(char.ToLowerInvariant)
-                .ToArray());
-            return normalized.Contains("accesstoken", StringComparison.Ordinal) ||
-                   normalized.Contains("acceesstoken", StringComparison.Ordinal);
         }
     }
 }

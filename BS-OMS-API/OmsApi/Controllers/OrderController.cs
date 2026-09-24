@@ -53,7 +53,7 @@ namespace OmsApi.Controllers
         }
 
         /// <summary>
-        /// ดึง Order จากทุก platform รวมกัน (ต้องส่ง credentials ของแต่ละ platform)
+        /// ดึง Order จากทุก platform รวมกัน โดยใช้ credential ที่ OMS บันทึกไว้
         /// </summary>
         [HttpPost("all")]
         [SwaggerOperation(Summary = "Get orders from ALL platforms combined")]
@@ -63,17 +63,13 @@ namespace OmsApi.Controllers
         {
             try
             {
-                if (filter.PlatformCredentials == null || !filter.PlatformCredentials.Any())
-                    return BadRequest(ApiResponse<string>.Fail("PlatformCredentials are required for multi-platform query."));
-
-                _logger.LogInformation("📦 Fetching orders from ALL platforms ({Count} platforms)",
-                    filter.PlatformCredentials.Count);
+                _logger.LogInformation("📦 Fetching orders from stored platform credentials");
 
                 var orders = await _orderService.GetOrdersFromAllPlatformsAsync(filter);
 
                 return Ok(ApiResponse<List<UnifiedOrder>>.Ok(
                     orders,
-                    $"Retrieved {orders.Count} orders from {filter.PlatformCredentials.Count} platforms",
+                    $"Retrieved {orders.Count} orders from stored platform credentials",
                     orders.Count));
             }
             catch (Exception ex)
@@ -92,7 +88,6 @@ namespace OmsApi.Controllers
         [SwaggerResponse(404, "Order not found")]
         public async Task<IActionResult> GetOrderDetail(
             string platform, string orderId,
-            [FromQuery] string accessToken,
             [FromQuery] string? shopId = null)
         {
             try
@@ -100,7 +95,7 @@ namespace OmsApi.Controllers
                 var platformType = ParsePlatform(platform);
                 _logger.LogInformation("📋 Fetching order detail: {Platform}/{OrderId}", platform, orderId);
 
-                var order = await _orderService.GetOrderDetailAsync(platformType, orderId, accessToken, shopId);
+                var order = await _orderService.GetOrderDetailAsync(platformType, orderId, shopId);
 
                 if (order == null)
                     return NotFound(ApiResponse<string>.Fail($"Order '{orderId}' not found on {platform}"));
@@ -126,13 +121,12 @@ namespace OmsApi.Controllers
         [SwaggerResponse(200, "Order status retrieved")]
         public async Task<IActionResult> GetOrderStatus(
             string platform, string orderId,
-            [FromQuery] string accessToken,
             [FromQuery] string? shopId = null)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var order = await _orderService.GetOrderDetailAsync(platformType, orderId, accessToken, shopId);
+                var order = await _orderService.GetOrderDetailAsync(platformType, orderId, shopId);
 
                 if (order == null)
                     return NotFound(ApiResponse<string>.Fail($"Order '{orderId}' not found"));

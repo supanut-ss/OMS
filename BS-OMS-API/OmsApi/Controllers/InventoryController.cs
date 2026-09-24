@@ -63,9 +63,9 @@ namespace OmsApi.Controllers
         [SwaggerResponse(200, "Returns product detail with stock")]
         public async Task<IActionResult> GetProductDetail(
             PlatformType platform, string itemId,
-            [FromQuery] string accessToken, [FromQuery] string? shopId = null)
+            [FromQuery] string? shopId = null)
         {
-            var product = await _inventoryService.GetProductDetailAsync(platform, itemId, accessToken, shopId);
+            var product = await _inventoryService.GetProductDetailAsync(platform, itemId, shopId);
             if (product == null)
                 return NotFound(ApiResponse<string>.Fail("Product not found"));
 

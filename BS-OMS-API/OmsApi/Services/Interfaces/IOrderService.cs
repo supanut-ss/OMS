@@ -12,7 +12,7 @@ namespace OmsApi.Services.Interfaces
         Task<PaginatedResult<UnifiedOrder>> GetOrdersAsync(OrderFilter filter);
 
         /// <summary>ดึงรายละเอียด order เฉพาะ</summary>
-        Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string accessToken, string? shopId = null);
+        Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string? shopId = null);
 
         /// <summary>ดึง orders จากทุก platform รวมกัน</summary>
         Task<List<UnifiedOrder>> GetOrdersFromAllPlatformsAsync(OrderFilter filter);

@@ -15,7 +15,7 @@ namespace OmsApi.Services.Interfaces
         Task<List<ProductItem>> GetProductsFromAllPlatformsAsync(ProductFilter filter);
 
         /// <summary>ดึงรายละเอียดสินค้า (พร้อมสต๊อก)</summary>
-        Task<ProductItem?> GetProductDetailAsync(PlatformType platform, string itemId, string accessToken, string? shopId = null);
+        Task<ProductItem?> GetProductDetailAsync(PlatformType platform, string itemId, string? shopId = null);
 
         /// <summary>ดึงสินค้าที่สต๊อกต่ำ</summary>
         Task<List<ProductItem>> GetLowStockProductsAsync(ProductFilter filter, int threshold = 5);

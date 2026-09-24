@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using OmsApi.Models.Common;
 using OmsApi.Models.Orders;
 
@@ -93,7 +94,8 @@ namespace OmsApi.Models.Inventory
         /// <summary>Platform ที่ต้องการ</summary>
         public PlatformType? Platform { get; set; }
 
-        /// <summary>Access Token</summary>
+        /// <summary>Resolved internally from the encrypted OMS credential store.</summary>
+        [JsonIgnore]
         [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 
@@ -115,7 +117,7 @@ namespace OmsApi.Models.Inventory
         /// <summary>จำนวนต่อหน้า</summary>
         public int PageSize { get; set; } = 50;
 
-        /// <summary>Credentials หลาย platform</summary>
+        /// <summary>ตัวเลือก platform/shop สำหรับค้นหาหลายร้าน</summary>
         public List<Orders.PlatformCredentialInput>? PlatformCredentials { get; set; }
     }
 
@@ -126,7 +128,7 @@ namespace OmsApi.Models.Inventory
     {
         public PlatformType Platform { get; set; }
 
-        [Required]
+        [JsonIgnore]
         [StringLength(512)]
         public string AccessToken { get; set; } = string.Empty;
 

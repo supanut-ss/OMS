@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OmsApi.Extensions;
+using OmsApi.Models.Auth;
 using OmsApi.Models.Common;
 using OmsApi.Models.Orders;
 using OmsApi.Models.Persistence;
@@ -14,12 +15,18 @@ namespace OmsApi.Services.Implementation
     {
         private const string SystemUser = "OMS_API";
         private readonly IPlatformClientFactory _clientFactory;
+        private readonly IPlatformCredentialService _credentialService;
         private readonly ApplicationDbContext _db;
         private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IPlatformClientFactory clientFactory, ApplicationDbContext db, ILogger<OrderService> logger)
+        public OrderService(
+            IPlatformClientFactory clientFactory,
+            IPlatformCredentialService credentialService,
+            ApplicationDbContext db,
+            ILogger<OrderService> logger)
         {
             _clientFactory = clientFactory;
+            _credentialService = credentialService;
             _db = db;
             _logger = logger;
         }
@@ -29,36 +36,63 @@ namespace OmsApi.Services.Implementation
             if (!filter.Platform.HasValue)
                 throw new ArgumentException("Platform is required for single-platform query");
 
-            var client = _clientFactory.GetClient(filter.Platform.Value);
-            var result = await client.GetOrdersAsync(filter.AccessToken, filter.ShopId, filter);
-            await SyncOrdersAsync(filter.Platform.Value, filter.ShopId, result.Items);
-            return result;
+            var platform = filter.Platform.Value;
+            var client = _clientFactory.GetClient(platform);
+            return await _credentialService.ExecuteAsync(
+                platform,
+                filter.ShopId,
+                async credential =>
+                {
+                    filter.AccessToken = credential.AccessToken;
+                    filter.ShopId = credential.ShopId;
+                    var result = await client.GetOrdersAsync(
+                        credential.AccessToken,
+                        credential.ShopId,
+                        filter);
+                    await SyncOrdersAsync(platform, credential.ShopId, result.Items);
+                    return result;
+                });
         }
 
-        public async Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string accessToken, string? shopId = null)
+        public async Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string? shopId = null)
         {
             var client = _clientFactory.GetClient(platform);
-            var order = await client.GetOrderDetailAsync(accessToken, shopId, orderId);
-            if (order != null)
-                await SyncOrdersAsync(platform, shopId, new[] { order });
-            return order;
+            return await _credentialService.ExecuteAsync(
+                platform,
+                shopId,
+                async credential =>
+                {
+                    var order = await client.GetOrderDetailAsync(
+                        credential.AccessToken,
+                        credential.ShopId,
+                        orderId);
+                    if (order != null)
+                        await SyncOrdersAsync(platform, credential.ShopId, new[] { order });
+                    return order;
+                });
         }
 
         public async Task<List<UnifiedOrder>> GetOrdersFromAllPlatformsAsync(OrderFilter filter)
         {
-            if (filter.PlatformCredentials == null || !filter.PlatformCredentials.Any())
-                throw new ArgumentException("PlatformCredentials are required for multi-platform query");
+            var selections = filter.PlatformCredentials?.Count > 0
+                ? filter.PlatformCredentials
+                    .Select(x => new PlatformCredentialSelection(x.Platform, x.ShopId ?? string.Empty))
+                    .ToList()
+                : (await _credentialService.GetActiveCredentialSelectionsAsync()).ToList();
+            if (selections.Count == 0)
+                throw new PlatformCredentialException(
+                    "CREDENTIAL_NOT_FOUND",
+                    "No active platform credentials were found.");
 
             var allOrders = new List<UnifiedOrder>();
             var tasks = new List<Task<(PlatformType Platform, string? ShopId, PaginatedResult<UnifiedOrder> Result)>>();
 
-            foreach (var cred in filter.PlatformCredentials)
+            foreach (var selection in selections)
             {
                 var platformFilter = new OrderFilter
                 {
-                    Platform = cred.Platform,
-                    AccessToken = cred.AccessToken,
-                    ShopId = cred.ShopId,
+                    Platform = selection.Platform,
+                    ShopId = string.IsNullOrWhiteSpace(selection.ShopId) ? null : selection.ShopId,
                     Status = filter.Status,
                     DateFrom = filter.DateFrom,
                     DateTo = filter.DateTo,
@@ -66,8 +100,8 @@ namespace OmsApi.Services.Implementation
                     PageSize = filter.PageSize
                 };
 
-                var client = _clientFactory.GetClient(cred.Platform);
-                tasks.Add(FetchAsync(cred.Platform, cred.ShopId, client, cred.AccessToken, platformFilter));
+                var client = _clientFactory.GetClient(selection.Platform);
+                tasks.Add(FetchAsync(selection, client, platformFilter));
             }
 
             try
@@ -87,11 +121,24 @@ namespace OmsApi.Services.Implementation
             // Sort by creation date descending
             return allOrders.OrderByDescending(o => o.CreatedAt).ToList();
 
-            static async Task<(PlatformType, string?, PaginatedResult<UnifiedOrder>)> FetchAsync(
-                PlatformType platform, string? shopId, IPlatformClient client, string accessToken, OrderFilter platformFilter)
+            async Task<(PlatformType, string?, PaginatedResult<UnifiedOrder>)> FetchAsync(
+                PlatformCredentialSelection selection,
+                IPlatformClient client,
+                OrderFilter platformFilter)
             {
-                var result = await client.GetOrdersAsync(accessToken, shopId, platformFilter);
-                return (platform, shopId, result);
+                return await _credentialService.ExecuteAsync(
+                    selection.Platform,
+                    string.IsNullOrWhiteSpace(selection.ShopId) ? null : selection.ShopId,
+                    async credential =>
+                    {
+                        platformFilter.AccessToken = credential.AccessToken;
+                        platformFilter.ShopId = credential.ShopId;
+                        var result = await client.GetOrdersAsync(
+                            credential.AccessToken,
+                            credential.ShopId,
+                            platformFilter);
+                        return (selection.Platform, (string?)credential.ShopId, result);
+                    });
             }
         }
 
