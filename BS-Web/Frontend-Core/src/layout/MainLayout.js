@@ -154,7 +154,7 @@ export default function MainLayout({ lang, onChangeLang }) {
   const [activeAiConfigs, setActiveAiConfigs] = useState([]);
   const [aiPopoverAnchor, setAiPopoverAnchor] = useState(null);
   const splitResizeRafRef = useRef(0);
-  const splitResizeCleanupRef = useRef(() => { });
+  const splitResizeCleanupRef = useRef(() => {});
   const hasFetchedBannerRef = useRef(false);
   const activeMenuRef = useRef(null);
 
@@ -215,7 +215,7 @@ export default function MainLayout({ lang, onChangeLang }) {
 
   const clearSplitResizeListeners = useCallback(() => {
     splitResizeCleanupRef.current?.();
-    splitResizeCleanupRef.current = () => { };
+    splitResizeCleanupRef.current = () => {};
     if (splitResizeRafRef.current) {
       cancelAnimationFrame(splitResizeRafRef.current);
       splitResizeRafRef.current = 0;
@@ -261,7 +261,7 @@ export default function MainLayout({ lang, onChangeLang }) {
 
     // Ensure SignalR connection is stopped on logout (non-blocking)
     if (connectionRef.current) {
-      connectionRef.current.stop().catch(() => { });
+      connectionRef.current.stop().catch(() => {});
       connectionRef.current = null;
     }
 
@@ -284,10 +284,11 @@ export default function MainLayout({ lang, onChangeLang }) {
                   }
                 </style>
                 <div style="font-size: 15px; color: inherit; text-align: center; font-weight: 500;">
-                  ${lang === "th"
-                ? "ระบบกำลังจะนำคุณไปยังหน้าเข้าสู่ระบบในอีก..."
-                : "Redirecting to login page in..."
-              }
+                  ${
+                    lang === "th"
+                      ? "ระบบกำลังจะนำคุณไปยังหน้าเข้าสู่ระบบในอีก..."
+                      : "Redirecting to login page in..."
+                  }
                 </div>
                 <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
                   <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg);">
@@ -385,7 +386,7 @@ export default function MainLayout({ lang, onChangeLang }) {
 
     // If an existing connection is present, stop and clear it before creating a new one
     if (connectionRef.current) {
-      connectionRef.current.stop().catch(() => { });
+      connectionRef.current.stop().catch(() => {});
       connectionRef.current = null;
     }
     try {
@@ -470,7 +471,7 @@ export default function MainLayout({ lang, onChangeLang }) {
       // Add connection keep-alive
       connection.keepAliveIntervalInMilliseconds = 15000;
       connection
-        .start(() => { })
+        .start(() => {})
         .catch((err) => {
           // Only log start errors in non-production environments
           if (process.env.NODE_ENV !== "production") {
@@ -665,7 +666,7 @@ export default function MainLayout({ lang, onChangeLang }) {
                       lineHeight: 1,
                     }}
                   >
-                    Matching Tag System
+                    OMS System
                   </Typography>
 
                   {/* <Typography

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { alpha, useTheme } from "@mui/material/styles";
 import {
+  ButtonBase,
   Box,
   Button,
   Card,
@@ -10,11 +11,19 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import BSDataGrid from "../../components/BSDataGrid";
+import {
+  formatAmount,
+  formatDate,
+  getPlatformBadgeSx,
+  getSyncStatusPalette,
+  getWm3StatusPalette,
+} from "./orderlistUtils";
 
 const ORDER_COLUMNS = [
   "order_record_id",
@@ -87,38 +96,34 @@ const COMBOBOX_COLUMNS = [
   { field: "display_member", display: true, key: false },
 ];
 
-const formatDate = (value, locale) => {
-  if (!value) return "—";
+const normalizeComboboxFilterValue = (option) => {
+  const candidates =
+    option && typeof option === "object"
+      ? [
+          option.code,
+          option.value_member,
+          option.value,
+          option.display_member,
+        ]
+      : [option];
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-};
-
-const formatAmount = (value, currency, locale) => {
-  if (value === null || value === undefined || value === "") return "—";
-
-  const amount = Number(value);
-  if (Number.isNaN(amount)) return String(value);
-
-  const currencyCode = String(currency || "THB").toUpperCase();
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currencyCode,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${amount.toLocaleString(locale, { maximumFractionDigits: 2 })} ${currencyCode}`;
+  if (
+    candidates.some(
+      (value) => String(value ?? "").trim().toUpperCase() === "ALL",
+    )
+  ) {
+    return "";
   }
+
+  const selectedValue = candidates.find(
+    (value) => value !== null && value !== undefined && String(value).trim(),
+  );
+  return selectedValue === undefined ? "" : String(selectedValue).trim();
 };
 
 const OrderList = ({ lang = "th" }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const isThai = lang === "th";
   const locale = isThai ? "th-TH" : "en-US";
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
@@ -146,6 +151,26 @@ const OrderList = ({ lang = "th" }) => {
       orderDate: "Order Date",
     }),
     [isThai],
+  );
+
+  const openOrderDetail = useCallback(
+    (order) => {
+      const orderRecordId = Number(order?.order_record_id);
+      if (!Number.isSafeInteger(orderRecordId) || orderRecordId <= 0) return;
+
+      navigate(`/orderlist/orderlist/${orderRecordId}`, {
+        state: { order },
+      });
+    },
+    [navigate],
+  );
+
+  const handleOrderRowClick = useCallback(
+    (params, event) => {
+      if (event.target?.closest?.("button, a, input, [role='checkbox']")) return;
+      openOrderDetail(params.row);
+    },
+    [openOrderDetail],
   );
 
   const gridFilters = useMemo(() => {
@@ -189,22 +214,7 @@ const OrderList = ({ lang = "th" }) => {
         minWidth: 125,
         flex: 0.8,
         renderCell: (params) => (
-          <Box
-            component="span"
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              borderRadius: 99,
-              px: 1.15,
-              py: 0.45,
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
-              color: "primary.main",
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-              fontSize: 12,
-              fontWeight: 700,
-              lineHeight: 1.2,
-            }}
-          >
+          <Box component="span" sx={getPlatformBadgeSx(params.value)}>
             {params.value || "—"}
           </Box>
         ),
@@ -223,12 +233,22 @@ const OrderList = ({ lang = "th" }) => {
               height: "100%",
             }}
           >
-            <Typography
-              variant="body2"
-              sx={{ color: "primary.main", fontWeight: 700 }}
+            <ButtonBase
+              onClick={(event) => {
+                event.stopPropagation();
+                openOrderDetail(params.row);
+              }}
+              sx={{
+                color: "primary.main",
+                fontSize: 14,
+                fontWeight: 700,
+                borderRadius: 0.5,
+                textAlign: "left",
+                "&:hover": { textDecoration: "underline" },
+              }}
             >
               {params.value || "—"}
-            </Typography>
+            </ButtonBase>
           </Box>
         ),
       },
@@ -238,16 +258,14 @@ const OrderList = ({ lang = "th" }) => {
         minWidth: 135,
         flex: 0.8,
         renderCell: (params) => {
-          const statusColor = theme.palette.info.main;
           return (
             <Box
               component="span"
               sx={{
+                ...getWm3StatusPalette(params.value),
                 px: 1.1,
                 py: 0.45,
                 borderRadius: 1.5,
-                bgcolor: alpha(statusColor, 0.1),
-                color: statusColor,
                 fontSize: 12,
                 fontWeight: 700,
                 lineHeight: 1.2,
@@ -264,16 +282,14 @@ const OrderList = ({ lang = "th" }) => {
         minWidth: 140,
         flex: 0.9,
         renderCell: (params) => {
-          const statusColor = theme.palette.secondary.main;
           return (
             <Box
               component="span"
               sx={{
+                ...getSyncStatusPalette(params.value),
                 px: 1.1,
                 py: 0.45,
                 borderRadius: 1.5,
-                bgcolor: alpha(statusColor, 0.1),
-                color: statusColor,
                 fontSize: 12,
                 fontWeight: 700,
                 lineHeight: 1.2,
@@ -340,7 +356,7 @@ const OrderList = ({ lang = "th" }) => {
         ),
       },
     ],
-    [labels, locale, theme],
+    [labels, locale, openOrderDetail, theme],
   );
 
   const handleApplyFilters = (event) => {
@@ -358,7 +374,10 @@ const OrderList = ({ lang = "th" }) => {
   };
 
   const handleComboboxChange = (field) => (option) => {
-    setDraftFilters((current) => ({ ...current, [field]: option?.code ?? "" }));
+    setDraftFilters((current) => ({
+      ...current,
+      [field]: normalizeComboboxFilterValue(option),
+    }));
   };
 
   const cardSx = {
@@ -519,7 +538,15 @@ const OrderList = ({ lang = "th" }) => {
           </CardContent>
         </Card>
 
-        <Card sx={{ ...cardSx, flex: 1, minHeight: 300, overflow: "hidden" }}>
+        <Card
+          sx={{
+            ...cardSx,
+            flex: 1,
+            minHeight: 300,
+            overflow: "hidden",
+            "& .MuiDataGrid-row": { cursor: "pointer" },
+          }}
+        >
           <BSDataGrid
             key={JSON.stringify(appliedFilters)}
             bsLocale={lang}
@@ -536,6 +563,7 @@ const OrderList = ({ lang = "th" }) => {
             bsShowRowNumber
             bsRowPerPage={20}
             bsPageSizeOptions={[20, 50, 100, 200, 500, 1000]}
+            onRowClick={handleOrderRowClick}
             showAdd={false}
             bsVisibleEdit={false}
             bsVisibleDelete={false}

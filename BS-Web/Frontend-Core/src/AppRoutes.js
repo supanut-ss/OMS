@@ -34,6 +34,7 @@ import TransactionMatching from "./pages/Transaction/TransactionMatching";
 import AIAdminConsole from "./pages/AI/AIAdminConsole";
 import DashboardAI from "./pages/Dashboard/DashboardAI";
 import OrderList from "./pages/orderlist/orderlist";
+import OrderDetail from "./pages/orderlist/orderdetail";
 import ReportViewer from "./components/ReportViewer";
 
 // ── Master Pages ────────────────────────────────────────────────
@@ -102,6 +103,10 @@ export default function AppRoutes() {
           <Route
             path="orderlist/orderlist"
             element={<OrderList lang={lang} />}
+          />
+          <Route
+            path="orderlist/orderlist/:orderRecordId"
+            element={<OrderDetail lang={lang} />}
           />
           <Route path="log/sync" element={<SyncLog lang={lang} />} />
         </Route>

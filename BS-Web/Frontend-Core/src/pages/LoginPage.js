@@ -620,7 +620,7 @@ export default function LoginPage({ setLang }) {
             zIndex: 1,
           }}
         >
-          G-TEKT EASTERN COMPANY LIMITED
+          OMS
         </Typography>
       </Box>
     </>
