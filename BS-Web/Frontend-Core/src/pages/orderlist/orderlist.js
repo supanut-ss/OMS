@@ -5,177 +5,544 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
-  Divider,
-  IconButton,
   InputAdornment,
-  LinearProgress,
-  MenuItem,
-  Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
-import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
-import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import { motion } from "framer-motion";
+import BSAutoComplete from "../../components/BSAutoComplete";
+import BSDataGrid from "../../components/BSDataGrid";
 
-const MotionCard = motion(Card);
-
-const MOCK_ORDERS = [
-  { no: "SO-2026-00128", customer: "Central Retail Co.", warehouse: "Bangkok DC", items: 12, total: "฿48,920", status: "Ready to ship", created: "23 Sep 2026, 10:42" },
-  { no: "SO-2026-00127", customer: "Siam Market Group", warehouse: "Chonburi DC", items: 8, total: "฿21,480", status: "Processing", created: "23 Sep 2026, 10:18" },
-  { no: "SO-2026-00126", customer: "North Star Trading", warehouse: "Chiang Mai DC", items: 5, total: "฿12,750", status: "Pending", created: "23 Sep 2026, 09:56" },
-  { no: "SO-2026-00125", customer: "Blue Basket Co.", warehouse: "Bangkok DC", items: 16, total: "฿72,600", status: "Completed", created: "23 Sep 2026, 09:21" },
-  { no: "SO-2026-00124", customer: "Everyday Supply", warehouse: "Chonburi DC", items: 9, total: "฿29,840", status: "Processing", created: "23 Sep 2026, 08:45" },
-  { no: "SO-2026-00123", customer: "Urban Home Store", warehouse: "Bangkok DC", items: 7, total: "฿18,390", status: "Completed", created: "22 Sep 2026, 17:32" },
+const ORDER_COLUMNS = [
+  "order_record_id",
+  "platform",
+  "shop_id",
+  "platform_order_id",
+  "shop_name",
+  "status",
+  "original_status",
+  "buyer_name",
+  "buyer_remarks",
+  "tax_invoice_requested",
+  "tax_invoice_tax_id",
+  "tax_invoice_company_name",
+  "tax_invoice_address",
+  "tax_invoice_branch_code",
+  "cancellation_deadline",
+  "order_created_date",
+  "order_updated_date",
+  "total_amount",
+  "currency",
+  "shipping_carrier",
+  "tracking_number",
+  "package_number",
+  "shipping_method",
+  "shipping_fee",
+  "estimated_delivery_date",
+  "recipient_name",
+  "recipient_phone",
+  "recipient_address_line1",
+  "recipient_address_line2",
+  "recipient_sub_district",
+  "recipient_district",
+  "recipient_province",
+  "recipient_postal_code",
+  "recipient_country",
+  "recipient_full_address",
+  "sync_status",
+  "last_sync_date",
+  "create_by",
+  "create_date",
+  "update_by",
+  "update_date",
+  "rowversion",
 ];
 
-const STATUS_META = {
-  Pending: { color: "warning", progress: 24 },
-  Processing: { color: "info", progress: 58 },
-  "Ready to ship": { color: "primary", progress: 82 },
-  Completed: { color: "success", progress: 100 },
+const HIDDEN_ORDER_COLUMNS = ORDER_COLUMNS.filter(
+  (field) =>
+    ![
+      "platform",
+      "platform_order_id",
+      "status",
+      "sync_status",
+      "buyer_name",
+      "shop_name",
+      "total_amount",
+      "order_created_date",
+    ].includes(field),
+);
+
+const EMPTY_FILTERS = {
+  platform: "",
+  status: "",
+  syncStatus: "",
+  orderNumber: "",
+};
+
+const COMBOBOX_COLUMNS = [
+  { field: "value_member", display: false, key: true },
+  { field: "display_member", display: true, key: false },
+];
+
+const formatDate = (value, locale) => {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+};
+
+const formatAmount = (value, currency, locale) => {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const amount = Number(value);
+  if (Number.isNaN(amount)) return String(value);
+
+  const currencyCode = String(currency || "THB").toUpperCase();
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toLocaleString(locale, { maximumFractionDigits: 2 })} ${currencyCode}`;
+  }
 };
 
 const OrderList = ({ lang = "th" }) => {
   const theme = useTheme();
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("All");
   const isThai = lang === "th";
-  const custom = theme.palette.custom || {};
+  const locale = isThai ? "th-TH" : "en-US";
+  const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
 
-  const labels = {
-    eyebrow: isThai ? "การขายและการจัดส่ง" : "SALES & FULFILLMENT",
-    title: isThai ? "รายการคำสั่งซื้อ" : "Order List",
-    subtitle: isThai ? "ติดตามสถานะคำสั่งซื้อและการจัดส่งในภาพรวม" : "Track order status and fulfillment progress.",
-    add: isThai ? "สร้างคำสั่งซื้อ" : "Create order",
-    search: isThai ? "ค้นหาเลขที่ออเดอร์หรือลูกค้า" : "Search order or customer",
-    all: isThai ? "ทุกสถานะ" : "All statuses",
-    order: isThai ? "เลขที่คำสั่งซื้อ" : "Order no.",
-    customer: isThai ? "ลูกค้า" : "Customer",
-    warehouse: isThai ? "คลังสินค้า" : "Warehouse",
-    items: isThai ? "รายการ" : "Items",
-    total: isThai ? "มูลค่ารวม" : "Total",
-    status: isThai ? "สถานะ" : "Status",
-    created: isThai ? "สร้างเมื่อ" : "Created",
+  const labels = useMemo(
+    () => ({
+      filterTitle: isThai ? "ตัวกรองคำสั่งซื้อ" : "Order filters",
+      filterDescription: isThai
+        ? "เลือกเงื่อนไขที่ต้องการ แล้วกดค้นหา"
+        : "Choose the criteria you want, then search.",
+      platform: "Platform",
+      orderStatus: isThai ? "สถานะออเดอร์ (WM3)" : "Order Status (WM3)",
+      syncStatus: "Sync Status",
+      orderNumber: isThai ? "เลข Order" : "Order Number",
+      all: isThai ? "ทั้งหมด" : "All",
+      search: isThai ? "ค้นหา" : "Search",
+      clear: isThai ? "ล้างตัวกรอง" : "Clear filters",
+      orderNumberPlaceholder: isThai ? "ค้นหาเลข Order" : "Search order number",
+      platformOrder: isThai ? "เลขที่คำสั่งซื้อ" : "Order Number",
+      wm3Status: "WM3 Status",
+      customer: isThai ? "ลูกค้า" : "Customer",
+      shop: isThai ? "ร้านค้า" : "Shop",
+      total: isThai ? "ยอดรวม" : "Total",
+      orderDate: "Order Date",
+    }),
+    [isThai],
+  );
+
+  const gridFilters = useMemo(() => {
+    const filters = [];
+    if (appliedFilters.platform) {
+      filters.push({
+        field: "platform",
+        operator: "equals",
+        value: appliedFilters.platform,
+      });
+    }
+    if (appliedFilters.status) {
+      filters.push({
+        field: "status",
+        operator: "equals",
+        value: appliedFilters.status,
+      });
+    }
+    if (appliedFilters.syncStatus) {
+      filters.push({
+        field: "sync_status",
+        operator: "equals",
+        value: appliedFilters.syncStatus,
+      });
+    }
+    if (appliedFilters.orderNumber.trim()) {
+      filters.push({
+        field: "platform_order_id",
+        operator: "contains",
+        value: appliedFilters.orderNumber.trim(),
+      });
+    }
+    return filters;
+  }, [appliedFilters]);
+
+  const columns = useMemo(
+    () => [
+      {
+        field: "platform",
+        headerName: labels.platform,
+        minWidth: 125,
+        flex: 0.8,
+        renderCell: (params) => (
+          <Box
+            component="span"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              borderRadius: 99,
+              px: 1.15,
+              py: 0.45,
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              color: "primary.main",
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+              fontSize: 12,
+              fontWeight: 700,
+              lineHeight: 1.2,
+            }}
+          >
+            {params.value || "—"}
+          </Box>
+        ),
+      },
+      {
+        field: "platform_order_id",
+        headerName: labels.platformOrder,
+        minWidth: 185,
+        flex: 1.2,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ color: "primary.main", fontWeight: 700 }}
+            >
+              {params.value || "—"}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "status",
+        headerName: labels.wm3Status,
+        minWidth: 135,
+        flex: 0.8,
+        renderCell: (params) => {
+          const statusColor = theme.palette.info.main;
+          return (
+            <Box
+              component="span"
+              sx={{
+                px: 1.1,
+                py: 0.45,
+                borderRadius: 1.5,
+                bgcolor: alpha(statusColor, 0.1),
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
+              {params.value || "—"}
+            </Box>
+          );
+        },
+      },
+      {
+        field: "sync_status",
+        headerName: labels.syncStatus,
+        minWidth: 140,
+        flex: 0.9,
+        renderCell: (params) => {
+          const statusColor = theme.palette.secondary.main;
+          return (
+            <Box
+              component="span"
+              sx={{
+                px: 1.1,
+                py: 0.45,
+                borderRadius: 1.5,
+                bgcolor: alpha(statusColor, 0.1),
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
+              {params.value || "—"}
+            </Box>
+          );
+        },
+      },
+      {
+        field: "buyer_name",
+        headerName: labels.customer,
+        minWidth: 180,
+        flex: 1,
+      },
+      {
+        field: "shop_name",
+        headerName: labels.shop,
+        minWidth: 160,
+        flex: 0.9,
+      },
+      {
+        field: "total_amount",
+        headerName: labels.total,
+        minWidth: 145,
+        flex: 0.8,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {formatAmount(params.value, params.row?.currency, locale)}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "order_created_date",
+        headerName: labels.orderDate,
+        minWidth: 185,
+        flex: 1,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              {formatDate(params.value, locale)}
+            </Typography>
+          </Box>
+        ),
+      },
+    ],
+    [labels, locale, theme],
+  );
+
+  const handleApplyFilters = (event) => {
+    event.preventDefault();
+    setAppliedFilters({ ...draftFilters });
   };
 
-  const filteredOrders = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return MOCK_ORDERS.filter((order) => {
-      const matchesStatus = status === "All" || order.status === status;
-      const matchesSearch = !keyword || `${order.no} ${order.customer} ${order.warehouse}`.toLowerCase().includes(keyword);
-      return matchesStatus && matchesSearch;
-    });
-  }, [search, status]);
+  const handleClearFilters = () => {
+    setDraftFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+  };
 
-  const summary = [
-    [isThai ? "รอดำเนินการ" : "Pending", "1", ScheduleRoundedIcon, theme.palette.warning.main],
-    [isThai ? "กำลังจัดเตรียม" : "Processing", "2", ShoppingCartOutlinedIcon, theme.palette.info.main],
-    [isThai ? "พร้อมจัดส่ง" : "Ready to ship", "1", LocalShippingOutlinedIcon, theme.palette.primary.main],
-    [isThai ? "เสร็จสิ้น" : "Completed", "2", CheckCircleRoundedIcon, theme.palette.success.main],
-  ];
+  const handleFilterChange = (field) => (event) => {
+    setDraftFilters((current) => ({ ...current, [field]: event.target.value }));
+  };
+
+  const handleComboboxChange = (field) => (option) => {
+    setDraftFilters((current) => ({ ...current, [field]: option?.code ?? "" }));
+  };
 
   const cardSx = {
     border: `1px solid ${theme.palette.divider}`,
-    bgcolor: theme.palette.background.paper,
-    boxShadow: custom.glass?.shadow || theme.shadows[2],
+    borderRadius: 2.5,
+    bgcolor: "background.paper",
+    boxShadow: theme.palette.custom?.glass?.shadow || theme.shadows[1],
   };
 
   return (
-    <Box sx={{ width: "100%", minHeight: "100%", px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, bgcolor: "background.default" }}>
-      <Stack spacing={2.5}>
-        <MotionCard initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} sx={{ ...cardSx, overflow: "hidden", background: `linear-gradient(115deg, ${alpha(theme.palette.primary.main, 0.15)}, ${alpha(theme.palette.secondary.main, 0.08)})` }}>
-          <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between">
-              <Stack spacing={0.55}>
-                <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 700, letterSpacing: 1.1 }}>{labels.eyebrow}</Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>{labels.title}</Typography>
-                <Typography variant="body2" color="text.secondary">{labels.subtitle}</Typography>
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        boxSizing: "border-box",
+        px: { xs: 1.5, md: 2.5 },
+        py: { xs: 1.5, md: 2 },
+        bgcolor: "background.default",
+      }}
+    >
+      <Stack spacing={1.75} sx={{ height: "100%", minHeight: 0 }}>
+        <Card
+          sx={{
+            ...cardSx,
+            flexShrink: 0,
+            overflow: "hidden",
+            background: `linear-gradient(115deg, ${alpha(theme.palette.primary.main, 0.045)}, ${theme.palette.background.paper} 48%)`,
+          }}
+        >
+          <CardContent
+            sx={{
+              p: { xs: 1.75, md: 2.25 },
+              "&:last-child": { pb: { xs: 1.75, md: 2.25 } },
+            }}
+          >
+            <Box component="form" onSubmit={handleApplyFilters}>
+              <Stack
+                direction="row"
+                spacing={1.25}
+                alignItems="center"
+                sx={{ mb: 1.75 }}
+              >
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 1.5,
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: "primary.main",
+                  }}
+                >
+                  <FilterAltOutlinedIcon fontSize="small" />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
+                    {labels.filterTitle}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {labels.filterDescription}
+                  </Typography>
+                </Box>
               </Stack>
-              <Stack direction="row" spacing={1}>
-                <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => { setSearch(""); setStatus("All"); }}>
-                  {isThai ? "รีเซ็ต" : "Reset"}
-                </Button>
-                <Button variant="contained" startIcon={<AddRoundedIcon />}>{labels.add}</Button>
-              </Stack>
-            </Stack>
-          </CardContent>
-        </MotionCard>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2 }}>
-          {summary.map(([label, value, Icon, color]) => (
-            <MotionCard key={label} whileHover={{ y: -3 }} transition={{ duration: 0.18 }} sx={cardSx}>
-              <CardContent sx={{ p: 2 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Stack spacing={0.5}><Typography variant="body2" color="text.secondary">{label}</Typography><Typography variant="h4" sx={{ fontWeight: 700 }}>{value}</Typography></Stack>
-                  <Box sx={{ width: 42, height: 42, borderRadius: 2, display: "grid", placeItems: "center", bgcolor: alpha(color, 0.12), color }}><Icon /></Box>
-                </Stack>
-              </CardContent>
-            </MotionCard>
-          ))}
-        </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "repeat(2, minmax(0, 1fr))",
+                    xl: "repeat(4, minmax(0, 1fr))",
+                  },
+                  gap: 1.5,
+                }}
+              >
+                <BSAutoComplete
+                  bsMode="single"
+                  bsPreObj="sec"
+                  bsTitle={labels.platform}
+                  bsObj="t_com_combobox_item"
+                  bsColumes={COMBOBOX_COLUMNS}
+                  bsObjWh="group_name = 'platform_shop' AND is_active = 1"
+                  bsObjBy="display_sequence asc"
+                  bsValue={draftFilters.platform}
+                  bsOnChange={handleComboboxChange("platform")}
+                  placeholder={labels.all}
+                />
 
-        <Card sx={cardSx}>
-          <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            <Stack spacing={2}>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between">
+                <BSAutoComplete
+                  bsMode="single"
+                  bsPreObj="sec"
+                  bsTitle={labels.orderStatus}
+                  bsObj="t_com_combobox_item"
+                  bsColumes={COMBOBOX_COLUMNS}
+                  bsObjWh="group_name = 'order_status' AND is_active = 1"
+                  bsObjBy="display_sequence asc"
+                  bsValue={draftFilters.status}
+                  bsOnChange={handleComboboxChange("status")}
+                  placeholder={labels.all}
+                />
+
+                <BSAutoComplete
+                  bsMode="single"
+                  bsPreObj="sec"
+                  bsTitle={labels.syncStatus}
+                  bsObj="t_com_combobox_item"
+                  bsColumes={COMBOBOX_COLUMNS}
+                  bsObjWh="group_name = 'sync_status' AND is_active = 1"
+                  bsObjBy="display_sequence asc"
+                  bsValue={draftFilters.syncStatus}
+                  bsOnChange={handleComboboxChange("syncStatus")}
+                  placeholder={labels.all}
+                />
+
                 <TextField
                   size="small"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={labels.search}
-                  sx={{ width: { xs: "100%", md: 360 } }}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
+                  fullWidth
+                  label={labels.orderNumber}
+                  placeholder={labels.orderNumberPlaceholder}
+                  value={draftFilters.orderNumber}
+                  onChange={handleFilterChange("orderNumber")}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRoundedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
-                <Select size="small" value={status} onChange={(event) => setStatus(event.target.value)} sx={{ minWidth: 170 }}>
-                  <MenuItem value="All">{labels.all}</MenuItem>
-                  {Object.keys(STATUS_META).map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
-                </Select>
+              </Box>
+
+              <Stack
+                direction="row"
+                spacing={1}
+                justifyContent="flex-end"
+                sx={{ mt: 1.75 }}
+              >
+                <Button
+                  type="button"
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<RestartAltRoundedIcon />}
+                  onClick={handleClearFilters}
+                >
+                  {labels.clear}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  startIcon={<SearchRoundedIcon />}
+                >
+                  {labels.search}
+                </Button>
               </Stack>
-              <Divider />
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      {[labels.order, labels.customer, labels.warehouse, labels.items, labels.total, labels.status, labels.created, ""].map((heading) => <TableCell key={heading} sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>{heading}</TableCell>)}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredOrders.map((order) => {
-                      const meta = STATUS_META[order.status];
-                      return (
-                        <TableRow key={order.no} hover>
-                          <TableCell><Typography variant="body2" sx={{ fontWeight: 700, color: "primary.main" }}>{order.no}</Typography></TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>{order.customer}</TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>{order.warehouse}</TableCell>
-                          <TableCell>{order.items}</TableCell>
-                          <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>{order.total}</TableCell>
-                          <TableCell sx={{ minWidth: 150 }}><Stack spacing={0.65}><Chip size="small" label={order.status} color={meta.color} variant="outlined" sx={{ width: "fit-content" }} /><LinearProgress variant="determinate" value={meta.progress} color={meta.color} sx={{ height: 5, borderRadius: 99 }} /></Stack></TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}><Typography variant="caption" color="text.secondary">{order.created}</Typography></TableCell>
-                          <TableCell><IconButton size="small" aria-label={`More actions for ${order.no}`}><MoreHorizRoundedIcon fontSize="small" /></IconButton></TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {!filteredOrders.length && <TableRow><TableCell colSpan={8} align="center"><Typography color="text.secondary" sx={{ py: 4 }}>{isThai ? "ไม่พบคำสั่งซื้อ" : "No orders found"}</Typography></TableCell></TableRow>}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Stack>
+            </Box>
           </CardContent>
+        </Card>
+
+        <Card sx={{ ...cardSx, flex: 1, minHeight: 300, overflow: "hidden" }}>
+          <BSDataGrid
+            key={JSON.stringify(appliedFilters)}
+            bsLocale={lang}
+            bsPreObj="oms"
+            bsObj="t_oms_order"
+            bsObjBy="order_created_date desc"
+            bsCols={ORDER_COLUMNS.join(",")}
+            bsKeyId="order_record_id"
+            bsHiddenColumns={HIDDEN_ORDER_COLUMNS}
+            bsColumnDefs={columns}
+            bsColumnWidth={160}
+            bsCustomFilters={gridFilters}
+            bsFilterMode="server"
+            bsShowRowNumber
+            bsRowPerPage={20}
+            bsPageSizeOptions={[20, 50, 100, 200, 500, 1000]}
+            showAdd={false}
+            bsVisibleEdit={false}
+            bsVisibleDelete={false}
+            bsVisibleView={false}
+            bsAllowDelete={false}
+            bsAutoPermission={false}
+          />
         </Card>
       </Stack>
     </Box>
