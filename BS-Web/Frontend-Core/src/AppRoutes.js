@@ -49,7 +49,7 @@ import ZoneCategory from "./pages/Master/ZoneCategory";
 import ZoneLocation from "./pages/Master/ZoneLocation";
 import Connector from "./pages/Master/Connector";
 import InventoryViewer from "./pages/Transaction/InventoryViewer";
-import SyncLog from "./pages/Log/SyncLog";
+import SyncLog from "./pages/LogSync/SyncLog";
 
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
