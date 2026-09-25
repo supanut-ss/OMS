@@ -1,0 +1,616 @@
+<title>BS-OMS-API Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#EEF2F8; --line:#D9E0EA; --line-strong:#C3CDDB;
+  --ink:#1B2A41; --ink-2:#44546B; --muted:#6A7890;
+  --accent:#0E6BA8; --accent-soft:#E1EEF8;
+  --get:#1F7A4D; --get-soft:#E3F3EA; --post:#2B59C3; --post-soft:#E5ECFB;
+  --warn:#9A6212; --warn-soft:#FCF1DF; --crit:#B3261E; --crit-soft:#FBE7E5;
+  --code-bg:#0F1B2D; --code-ink:#D8E2F0; --code-key:#7FB8F0; --code-str:#9FD8A8; --code-num:#F2C27B; --code-lit:#E59BD4; --code-mute:#7D8BA3;
+  --sans:"IBM Plex Sans Thai","Leelawadee UI","Tahoma",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","Consolas","Menlo",monospace;
+  --radius:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0E1520; --surface:#151F2D; --surface-2:#1B2738; --line:#26344A; --line-strong:#33445E;
+    --ink:#E6ECF5; --ink-2:#B4C0D2; --muted:#8392A9;
+    --accent:#5FA8E0; --accent-soft:#16304A;
+    --get:#5CC98E; --get-soft:#14301F; --post:#7FA2F5; --post-soft:#1A2748;
+    --warn:#E8B45E; --warn-soft:#33260F; --crit:#F08A80; --crit-soft:#3A1A18;
+    --code-bg:#0A111B;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0E1520; --surface:#151F2D; --surface-2:#1B2738; --line:#26344A; --line-strong:#33445E;
+  --ink:#E6ECF5; --ink-2:#B4C0D2; --muted:#8392A9;
+  --accent:#5FA8E0; --accent-soft:#16304A;
+  --get:#5CC98E; --get-soft:#14301F; --post:#7FA2F5; --post-soft:#1A2748;
+  --warn:#E8B45E; --warn-soft:#33260F; --crit:#F08A80; --crit-soft:#3A1A18;
+  --code-bg:#0A111B;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;margin:0}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.88em}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:320px minmax(0,1fr);height:100%}
+.side{border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+.brand{padding:18px 18px 14px;border-bottom:1px solid var(--line)}
+.brand h1{font-size:18px;line-height:1.2;margin:0;letter-spacing:.01em}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+.filters{padding:12px 18px;display:grid;gap:10px;border-bottom:1px solid var(--line)}
+.search{width:100%;padding:8px 11px;border:1px solid var(--line-strong);border-radius:6px;background:var(--ground);color:var(--ink);font:inherit;font-size:14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line-strong);background:transparent;color:var(--ink-2);border-radius:999px;padding:2px 11px;font:500 12px/1.8 var(--mono);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.nav{overflow:auto;padding:6px 0 24px;flex:1;min-height:0}
+.group-title{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:14px 18px 4px;display:flex;justify-content:space-between}
+.item{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:start;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);padding:6px 18px;cursor:pointer;font:inherit;border-left:3px solid transparent}
+.item:hover{background:var(--surface-2)}
+.item[aria-current="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
+.item .p{font-family:var(--mono);font-size:12px;line-height:1.45;word-break:break-all;color:var(--ink-2)}
+.item .s{display:block;font-family:var(--sans);font-size:12.5px;color:var(--ink);word-break:normal;margin-top:1px}
+.m{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.04em;padding:4px 0;border-radius:4px;text-align:center;width:44px}
+.m.GET{background:var(--get-soft);color:var(--get)}
+.m.POST{background:var(--post-soft);color:var(--post)}
+.m.REF{background:var(--surface-2);color:var(--muted)}
+.empty{padding:16px 18px;color:var(--muted);font-size:13px}
+
+.main{overflow:auto;min-height:0}
+.wrap{max-width:980px;margin:0 auto;padding-inline:32px;padding-block:28px 64px}
+.topbar{display:flex;gap:12px;flex-wrap:wrap;align-items:end;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:24px}
+.topbar label{display:grid;gap:3px;font-size:11.5px;color:var(--muted);font-weight:500;flex:1 1 220px}
+.topbar input{padding:6px 9px;border:1px solid var(--line-strong);border-radius:5px;background:var(--ground);color:var(--ink);font:13px var(--mono)}
+.topbar .hint{flex:1 1 100%;font-size:12px;color:var(--muted);margin:0}
+
+.crumb{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.ep-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 0 4px}
+.ep-head .m{width:auto;padding:6px 10px;font-size:13px}
+.ep-path{font:600 clamp(16px,2.2vw,21px)/1.35 var(--mono);word-break:break-all;margin:0}
+.ep-summary{font-size:19px;font-weight:600;margin:10px 0 6px;text-wrap:balance}
+.ep-desc{color:var(--ink-2);margin:0 0 14px;max-width:70ch}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.badge{font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface)}
+.badge.ok{border-color:transparent;background:var(--get-soft);color:var(--get)}
+.badge.warn{border-color:transparent;background:var(--warn-soft);color:var(--warn)}
+.badge.info{border-color:transparent;background:var(--accent-soft);color:var(--accent)}
+
+section.block{margin-top:26px}
+section.block>h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600;display:flex;align-items:center;gap:10px}
+section.block>h3::after{content:"";flex:1;height:1px;background:var(--line)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--mono);font-size:12.5px;white-space:nowrap;color:var(--ink)}
+td.t{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.req{font-size:11px;font-weight:600;border-radius:4px;padding:1px 7px;white-space:nowrap}
+.req.y{background:var(--crit-soft);color:var(--crit)}
+.req.n{background:var(--surface-2);color:var(--muted)}
+.req.c{background:var(--warn-soft);color:var(--warn)}
+.in{font:500 11px var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px}
+td code{color:var(--ink);background:var(--surface-2);padding:0 4px;border-radius:3px}
+.code-status{font:600 12.5px var(--mono);border-radius:4px;padding:1px 7px}
+.s2{background:var(--get-soft);color:var(--get)} .s3{background:var(--accent-soft);color:var(--accent)} .s4{background:var(--warn-soft);color:var(--warn)} .s5{background:var(--crit-soft);color:var(--crit)}
+
+.codebox{background:var(--code-bg);border-radius:var(--radius);position:relative;overflow:hidden}
+.codebox .bar{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 6px 14px;border-bottom:1px solid rgba(255,255,255,.07);font:500 11.5px var(--mono);color:var(--code-mute)}
+.copy{border:1px solid rgba(255,255,255,.16);background:transparent;color:var(--code-ink);border-radius:5px;font:500 11.5px var(--mono);padding:3px 10px;cursor:pointer}
+.copy:hover{background:rgba(255,255,255,.08)}
+pre{margin:0;padding:14px 16px;overflow-x:auto;color:var(--code-ink);font:13px/1.6 var(--mono);tab-size:2}
+.k{color:var(--code-key)} .st{color:var(--code-str)} .nu{color:var(--code-num)} .li{color:var(--code-lit)} .cm{color:var(--code-mute)}
+.tabs{display:flex;gap:2px}
+.tab{background:transparent;border:0;color:var(--code-mute);font:500 11.5px var(--mono);padding:3px 10px;border-radius:5px;cursor:pointer}
+.tab[aria-selected="true"]{background:rgba(255,255,255,.1);color:var(--code-ink)}
+
+.callout{border-radius:var(--radius);padding:10px 14px;font-size:13.5px;margin-top:10px;border:1px solid transparent}
+.callout.warn{background:var(--warn-soft);color:var(--ink);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.callout.info{background:var(--accent-soft);color:var(--ink);border-color:color-mix(in srgb,var(--accent) 25%,transparent)}
+.callout b{color:inherit}
+.note{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+.fields{margin:0;padding-left:18px;color:var(--ink-2);font-size:13.5px}
+.fields li{margin:2px 0}
+.pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;border-top:1px solid var(--line);padding-top:16px;flex-wrap:wrap}
+.pager button{background:transparent;border:1px solid var(--line-strong);border-radius:6px;padding:8px 12px;cursor:pointer;color:var(--ink);font:inherit;font-size:13px;text-align:left;max-width:48%}
+.pager button small{display:block;color:var(--muted);font-size:11px}
+.menu-btn{display:none}
+
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;height:auto}
+  html,body{height:auto}
+  .side{border-right:0;border-bottom:1px solid var(--line);max-height:none}
+  .nav{max-height:46vh}
+  .side.collapsed .nav,.side.collapsed .filters{display:none}
+  .menu-btn{display:inline-block;margin-top:10px;border:1px solid var(--line-strong);background:var(--ground);color:var(--ink);border-radius:6px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+  .wrap{padding-inline:16px;padding-block:20px 48px}
+  .pager button{max-width:100%;flex:1 1 100%}
+}
+@media (prefers-reduced-motion:no-preference){ .item,.chip,.copy{transition:background-color .12s ease,color .12s ease} }
+</style>
+
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand">
+      <h1>BS-OMS-API <span>Explorer</span></h1>
+      <p>API v1 · 35 endpoints · Shopee / Lazada / TikTok</p>
+      <button class="menu-btn" id="menuBtn" aria-expanded="true" aria-controls="nav">ซ่อนรายการ API</button>
+    </div>
+    <div class="filters">
+      <input class="search" id="q" type="search" placeholder="ค้นหา path หรือชื่อ API…" aria-label="ค้นหา endpoint">
+      <div class="chips" role="group" aria-label="กรองตาม method">
+        <button class="chip" id="f-all" data-m="ALL" aria-pressed="true">ALL</button>
+        <button class="chip" id="f-get" data-m="GET" aria-pressed="false">GET</button>
+        <button class="chip" id="f-post" data-m="POST" aria-pressed="false">POST</button>
+      </div>
+    </div>
+    <nav class="nav" id="nav" aria-label="รายการ endpoint"></nav>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="wrap">
+      <div class="topbar">
+        <label for="baseUrl">Base URL
+          <input id="baseUrl" value="https://localhost:53954" spellcheck="false">
+        </label>
+        <label for="apiKey">X-Api-Key
+          <input id="apiKey" value="<your-api-key>" spellcheck="false">
+        </label>
+        <p class="hint">ค่าที่ใส่ใช้สร้างคำสั่ง curl ในแต่ละ endpoint เท่านั้น หน้านี้ไม่ได้ส่ง request จริง ค่าใน JSON ทั้งหมดเป็นตัวอย่าง</p>
+      </div>
+      <article id="detail" aria-live="polite"></article>
+    </div>
+  </main>
+</div>
+
+<script>
+// ───────────────────────── Data ─────────────────────────
+const P = (name, inn, type, req, desc) => ({ name, in: inn, type, req, desc });
+const F = (name, type, req, desc) => ({ name, type, req, desc });
+const J = (o) => JSON.stringify(o, null, 2);
+const ok = (data, message = "Success", totalCount) => {
+  const r = { success: true, message, data };
+  if (totalCount !== undefined) r.totalCount = totalCount;
+  return J(r);
+};
+const PLAT = P("platform", "path", "string", "y", "<code>shopee</code>, <code>lazada</code>, <code>tiktok</code> (ไม่สนตัวพิมพ์)");
+const PLAT_ENUM = P("platform", "path", "PlatformType", "y", "<code>Shopee</code>, <code>Lazada</code>, <code>TikTok</code> หรือ 0–2");
+const TOKEN_Q = P("accessToken", "query", "string", "y", "Token ของ Marketplace");
+const SHOP_Q = P("shopId", "query", "string", "n", "Shop ID ของร้าน");
+const SHOP_QR = P("shopId", "query", "string", "y", "Shop ID ของร้าน");
+
+const sampleOrder = {
+  orderId: "240924ABCDEF", platform: 0, status: 2, originalStatus: "READY_TO_SHIP",
+  buyerName: "somchai_s", buyerRemarks: "", taxInvoiceRequested: false, taxInvoice: null,
+  cancellationDeadline: "2026-09-26T10:00:00Z", daysUntilCancellation: 2,
+  createdAt: "2026-09-24T03:15:00Z", updatedAt: "2026-09-24T04:02:00Z",
+  totalAmount: 1290.00, currency: "THB",
+  shipping: { carrier: "Shopee Xpress", trackingNumber: "", packageNumber: "OFG123", shippingMethod: "dropoff", shippingFee: 38.00, estimatedDeliveryDate: null,
+    recipientAddress: { name: "สมชาย ใจดี", phone: "0812345678", addressLine1: "99/1 ถ.สุขุมวิท", addressLine2: "", subDistrict: "คลองเตย", district: "คลองเตย", province: "กรุงเทพมหานคร", postalCode: "10110", country: "TH", fullAddress: "99/1 ถ.สุขุมวิท คลองเตย กรุงเทพมหานคร 10110" } },
+  packages: [],
+  items: [{ itemId: "100200300", modelId: 555, orderItemId: 0, promotionGroupId: 0, sku: "SKU-001", name: "เสื้อยืด Cotton", quantity: 2, unitPrice: 645.00, totalPrice: 1290.00, discount: 0, imageUrl: "", variation: "สีขาว, L", weight: 0.3 }],
+  shopName: "OGA Official Store"
+};
+const sampleProduct = {
+  itemId: "100200300", platform: 1, name: "เสื้อยืด Cotton", sku: "SKU-001", status: "active", imageUrl: "",
+  price: 645.00, currency: "THB", stock: { currentStock: 42, reservedStock: 2, availableStock: 40 },
+  variations: [{ variationId: "555", variationName: "สีขาว, L", sku: "SKU-001-WL", price: 645.00, currentStock: 42 }],
+  totalStock: 42, createdAt: "2026-05-01T00:00:00Z", updatedAt: "2026-09-20T08:00:00Z"
+};
+const sampleToken = { platform: 0, accessToken: "<access-token>", refreshToken: "<refresh-token>", expiresAt: "2026-09-24T08:00:00Z", refreshExpiresAt: "2026-10-24T04:00:00Z", shopId: "123456", shopName: "OGA Official Store" };
+const samplePkgRecord = { platformPackageRecordId: 101, wmsPackageRef: "3f1c9a2e-0b7d-4c1e-9f11-2a6b5c7d8e90", boxNumber: 1, platformPackageId: "OFG123", trackingNumber: "TH0123456789", shippingProviderId: "18025", shippingProviderName: "Shopee Xpress", packageStatus: "READY", syncStatus: "SYNCED", error: null };
+const sampleDoc = { platformDocumentId: 55, platform: 0, shopId: "123456", platformOrderId: "240924ABCDEF", platformPackageId: "OFG123", trackingNumber: "TH0123456789", documentType: "NORMAL_AIR_WAYBILL", documentStatus: "READY", fileName: "240924ABCDEF-OFG123.pdf", contentType: "application/pdf", fileSize: 48213, error: null };
+
+const E = [
+  // ─── Auth ───
+  { id: "auth-authorize", group: "Auth", method: "GET", path: "/api/auth/{platform}/authorize", summary: "Redirect ไปหน้า OAuth",
+    desc: "เปิดจาก browser เพื่อเริ่มเชื่อมร้าน ระบบ redirect (302) ไปหน้าอนุญาตสิทธิ์ของ Marketplace", auth: "none",
+    params: [PLAT], responseType: "redirect",
+    response: "HTTP/1.1 302 Found\nLocation: https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&redirect=...&sign=...",
+    statuses: [[302, "Redirect ไปหน้า OAuth"], [400, "platform ไม่รองรับ"]] },
+  { id: "auth-url", group: "Auth", method: "GET", path: "/api/auth/{platform}/auth-url", summary: "ขอ URL OAuth",
+    desc: "คืน URL ของหน้า OAuth โดยไม่ redirect เหมาะกับหน้าเว็บที่ต้องการเปิด URL เอง", auth: "none",
+    params: [PLAT], response: ok({ url: "https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&sign=..." }),
+    statuses: [[200, "สำเร็จ"], [400, "platform ไม่รองรับ"]] },
+  { id: "auth-callback", group: "Auth", method: "GET", path: "/api/auth/{platform}/callback", summary: "OAuth Callback",
+    desc: "Marketplace เรียกกลับมาหลังผู้ใช้อนุญาตสิทธิ์ OMS แลก code เป็น token แล้วบันทึกแบบเข้ารหัสในตาราง oms.t_oms_platform_credential", auth: "none",
+    params: [PLAT, P("code", "query", "string", "y", "Authorization code จาก Marketplace"), P("shop_id", "query", "string", "n", "Shop ID (Shopee ส่งมา)")],
+    response: ok(sampleToken, "Authorization successful"),
+    statuses: [[200, "บันทึก token สำเร็จ"], [400, "แลก code ไม่สำเร็จ (message = OAuth error: ...)"]] },
+  { id: "auth-refresh", group: "Auth", method: "POST", path: "/api/auth/{platform}/refresh", summary: "Refresh Token",
+    desc: "ขอ access token ใหม่ด้วย refresh token", params: [PLAT],
+    bodyFields: [F("refreshToken", "string", "y", "Refresh token (ไม่เกิน 512 ตัวอักษร)"), F("shopId", "string", "n", "Shop ID")],
+    body: J({ refreshToken: "<refresh-token>", shopId: "123456" }),
+    response: ok(sampleToken, "Token refreshed successfully"),
+    statuses: [[200, "สำเร็จ"], [400, "refresh ไม่สำเร็จ (message = Refresh error: ...)"]] },
+  { id: "auth-sandbox", group: "Auth", method: "POST", path: "/api/auth/sandbox-token", summary: "Import Sandbox Token",
+    desc: "บันทึก token ที่สร้างจากเครื่องมือ Sandbox ของ Marketplace แบบเข้ารหัส",
+    warn: "ใช้ได้เฉพาะ environment Development หรือ Staging หรือเมื่อตั้ง <code>OMS_ENABLE_SANDBOX_TOKEN_IMPORT=YES</code> มิฉะนั้นคืน 404",
+    bodyFields: [F("platform", "string", "y", "<code>shopee</code>, <code>lazada</code>, <code>tiktok</code>"), F("accessToken", "string", "y", "ไม่เกิน 2,048 ตัวอักษร"), F("refreshToken", "string", "n", "ไม่เกิน 2,048 ตัวอักษร"), F("shopId", "string", "y", "ไม่เกิน 128 ตัวอักษร"), F("shopName", "string", "n", "ไม่เกิน 256 ตัวอักษร"), F("expiresInSeconds", "int", "n", "60 – 2,592,000"), F("refreshExpiresInSeconds", "int", "n", "60 – 7,776,000")],
+    body: J({ platform: "shopee", accessToken: "<token>", refreshToken: "<token>", shopId: "123456", shopName: "Test Shop", expiresInSeconds: 14400, refreshExpiresInSeconds: 2592000 }),
+    response: ok({ platform: "Shopee", shopId: "123456", environment: "SANDBOX", expiresAt: "2026-09-24T08:00:00Z", refreshTokenSaved: true }, "Shopee Sandbox credential encrypted and saved"),
+    statuses: [[200, "บันทึกสำเร็จ"], [400, "ข้อมูลไม่ถูกต้อง"], [404, "ปิดใช้งานใน environment นี้"]] },
+
+  // ─── Order ───
+  { id: "order-list", group: "Order", method: "POST", path: "/api/order/list", summary: "ดึง Order จาก 1 Platform",
+    desc: "ดึง Order แบบแบ่งหน้าจาก platform ที่ระบุ คืน PaginatedResult<UnifiedOrder>", token: "request",
+    bodyFields: [F("platform", "int", "y", "PlatformType (0 Shopee, 1 Lazada, 2 TikTok)"), F("accessToken", "string", "y", "Token ของ Marketplace (ไม่เกิน 512 ตัวอักษร)"), F("shopId", "string", "c", "จำเป็นสำหรับ Shopee"), F("status", "int", "n", "OrderStatus ดูหัวข้อ Reference"), F("dateFrom", "datetime", "n", "วันที่สร้าง Order เริ่มต้น"), F("dateTo", "datetime", "n", "วันที่สร้าง Order สิ้นสุด"), F("page", "int", "n", "default 1"), F("pageSize", "int", "n", "default 50")],
+    body: J({ platform: 0, accessToken: "<marketplace-token>", shopId: "123456", status: 2, dateFrom: "2026-09-01T00:00:00Z", dateTo: "2026-09-24T00:00:00Z", page: 1, pageSize: 50 }),
+    response: ok({ items: [sampleOrder], totalCount: 120, page: 1, pageSize: 50, hasMore: true }, "Retrieved 50 orders from Shopee", 120),
+    statuses: [[200, "สำเร็จ"], [400, "ไม่ได้ระบุ platform"], [500, "Error ภายใน / Marketplace ตอบผิดพลาด"]] },
+  { id: "order-all", group: "Order", method: "POST", path: "/api/order/all", summary: "ดึง Order จากหลาย Platform",
+    desc: "ดึง Order จากทุก platform ที่ส่ง credential มาพร้อมกัน (parallel) แล้วรวมเรียงตามเวลาสร้างล่าสุด", token: "request",
+    bodyFields: [F("platformCredentials[]", "array", "y", "อย่างน้อย 1 รายการ: platform, accessToken, shopId"), F("status", "int", "n", "OrderStatus"), F("dateFrom / dateTo", "datetime", "n", "ช่วงวันที่สร้าง Order"), F("page / pageSize", "int", "n", "ใช้กับแต่ละ platform")],
+    body: J({ status: 2, platformCredentials: [{ platform: 0, accessToken: "<token>", shopId: "123456" }, { platform: 1, accessToken: "<token>" }] }),
+    response: ok([sampleOrder], "Retrieved 1 orders from 2 platforms", 1),
+    statuses: [[200, "สำเร็จ"], [400, "ไม่มี platformCredentials"], [500, "Error ภายใน"]] },
+  { id: "order-detail", group: "Order", method: "GET", path: "/api/order/{platform}/{orderId}", summary: "รายละเอียด Order",
+    desc: "ดูรายละเอียด Order รวม items, shipping, tax invoice และ buyer remarks", token: "request",
+    params: [PLAT, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), TOKEN_Q, SHOP_Q],
+    response: ok(sampleOrder, "Order detail retrieved successfully"),
+    statuses: [[200, "สำเร็จ"], [400, "platform ไม่รองรับ"], [404, "ไม่พบ Order"], [500, "Error ภายใน"]] },
+  { id: "order-status", group: "Order", method: "GET", path: "/api/order/{platform}/{orderId}/status", summary: "สถานะ Order",
+    desc: "เช็คสถานะ Order และเส้นตายการจัดส่ง isUrgent เป็น true เมื่อเหลือไม่เกิน 1 วัน", token: "request",
+    params: [PLAT, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), TOKEN_Q, SHOP_Q],
+    response: ok({ orderId: "240924ABCDEF", platform: 0, status: 2, statusName: "ReadyToShip", originalStatus: "READY_TO_SHIP", cancellationDeadline: "2026-09-26T10:00:00Z", daysUntilCancellation: 1, isUrgent: true }, "Order status retrieved"),
+    statuses: [[200, "สำเร็จ"], [404, "ไม่พบ Order"], [500, "Error ภายใน"]] },
+  { id: "order-deadline", group: "Order", method: "POST", path: "/api/order/cancellation-deadlines", summary: "Order ใกล้หมดเขตส่ง",
+    desc: "คืน Order ที่เหลือเวลาส่งไม่เกิน daysThreshold วัน ใช้ทำ alert ก่อนถูกยกเลิกอัตโนมัติ", token: "request",
+    params: [P("daysThreshold", "query", "int", "n", "จำนวนวัน (default 2)")],
+    bodyFields: [F("(OrderFilter)", "object", "y", "เหมือน /api/order/list หรือส่ง platformCredentials สำหรับหลาย platform")],
+    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", status: 2 }),
+    response: ok([sampleOrder], "Found 1 orders near cancellation deadline", 1),
+    statuses: [[200, "สำเร็จ"], [500, "Error ภายใน"]] },
+
+  // ─── Inventory ───
+  { id: "inv-products", group: "Inventory", method: "POST", path: "/api/inventory/products", summary: "รายการสินค้าจาก 1 Platform",
+    desc: "ดึงรายการสินค้าพร้อมสต็อก คืน PaginatedResult<ProductItem>", token: "request",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "c", "จำเป็นสำหรับ Shopee"), F("keyword", "string", "n", "คำค้นชื่อสินค้า"), F("itemStatus", "string", "n", "สถานะสินค้าของ platform"), F("page / pageSize", "int", "n", "default 1 / 50")],
+    body: J({ platform: 1, accessToken: "<token>", keyword: "shirt", itemStatus: "NORMAL", page: 1, pageSize: 50 }),
+    response: ok({ items: [sampleProduct], totalCount: 1, page: 1, pageSize: 50, hasMore: false }, "Retrieved 1 products from Lazada"),
+    statuses: [[200, "สำเร็จ"], [400, "ไม่ได้ระบุ platform"]] },
+  { id: "inv-products-all", group: "Inventory", method: "POST", path: "/api/inventory/products/all", summary: "สินค้าจากหลาย Platform",
+    desc: "ดึงสินค้าจากทุก platform ที่ส่ง credential มา คืน List<ProductItem>", token: "request",
+    bodyFields: [F("platformCredentials[]", "array", "y", "platform, accessToken, shopId"), F("keyword", "string", "n", "คำค้น"), F("itemStatus", "string", "n", "สถานะสินค้า")],
+    body: J({ keyword: "shirt", platformCredentials: [{ platform: 0, accessToken: "<token>", shopId: "123456" }, { platform: 2, accessToken: "<token>", shopId: "7000001" }] }),
+    response: ok([sampleProduct], "Retrieved 1 products from all platforms"),
+    statuses: [[200, "สำเร็จ"]] },
+  { id: "inv-detail", group: "Inventory", method: "GET", path: "/api/inventory/{platform}/{itemId}", summary: "รายละเอียดสินค้า",
+    desc: "ดูรายละเอียดสินค้าและสต็อกแยก variation", token: "request",
+    params: [PLAT_ENUM, P("itemId", "path", "string", "y", "รหัสสินค้า"), TOKEN_Q, SHOP_Q],
+    response: ok(sampleProduct),
+    statuses: [[200, "สำเร็จ"], [404, "ไม่พบสินค้า"]] },
+  { id: "inv-low", group: "Inventory", method: "POST", path: "/api/inventory/low-stock", summary: "สินค้าสต็อกต่ำ",
+    desc: "คืนสินค้าที่สต็อกรวมไม่เกิน threshold", token: "request",
+    params: [P("threshold", "query", "int", "n", "จำนวนขั้นต่ำ (default 5)")],
+    bodyFields: [F("(ProductFilter)", "object", "y", "เหมือน /api/inventory/products หรือส่ง platformCredentials")],
+    body: J({ platform: 0, accessToken: "<token>", shopId: "123456" }),
+    response: ok([{ ...sampleProduct, stock: { currentStock: 3, reservedStock: 0, availableStock: 3 }, variations: [], totalStock: 3 }], "Found 1 products with stock <= 5"),
+    statuses: [[200, "สำเร็จ"]] },
+  { id: "inv-update", group: "Inventory", method: "POST", path: "/api/inventory/update-stock", summary: "อัปเดตสต็อก",
+    desc: "ตั้งจำนวนสต็อกใหม่ของสินค้าหรือ variation บน Marketplace", token: "request",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "c", "จำเป็นสำหรับ Shopee"), F("itemId", "string", "y", "รหัสสินค้า (ไม่เกิน 100 ตัวอักษร)"), F("variationId", "string", "n", "รหัส variation"), F("newStock", "int", "y", "จำนวนใหม่ (≥ 0)")],
+    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", itemId: "100200300", variationId: "555", newStock: 20 }),
+    response: ok("", "Stock updated successfully"),
+    statuses: [[200, "สำเร็จ"], [400, "อัปเดตไม่สำเร็จ"]] },
+
+  // ─── Shipping: WMS package flow ───
+  { id: "ship-wms", group: "Shipping · Package", method: "GET", path: "/api/shipping/wms-packages/{customerOrderNumber}", summary: "อ่านกล่องจาก WMS",
+    desc: "อ่านกล่องและสินค้าในกล่องจากตาราง WMS outbound packing ตามเลข Customer Order", token: "none",
+    params: [P("customerOrderNumber", "path", "string", "y", "เลข Customer Order ใน WMS"), P("platform", "query", "PlatformType", "n", "กรองตาม platform")],
+    response: ok({ customerOrderNumber: "SO-2609-0001", outboundOrderNumber: "OB2609000123", outboundOrderMasterId: "8b1f...", platform: 0,
+      packages: [{ wmsPackageRef: "3f1c9a2e-0b7d-4c1e-9f11-2a6b5c7d8e90", boxNumber: 1, carrierId: null, trackingNumber: "", isCloseBox: "YES", totalWeight: 1.2, boxSize: "M",
+        items: [{ wmsItemMasterId: "a1b2...", itemMasterId: "c3d4...", itemNumber: "SKU-001", itemDescription: "เสื้อยืด Cotton", quantity: 2, uom: "PCS", lotNumber: "" }] }] }, "WMS package manifest retrieved"),
+    statuses: [[200, "สำเร็จ"], [404, "ไม่พบ หรือพบหลาย order ที่ตรงกัน"]] },
+  { id: "ship-process", group: "Shipping · Package", method: "POST", path: "/api/shipping/packages/process", summary: "ประมวลผลกล่อง WMS",
+    desc: "ประมวลผลแบบ end-to-end ในครั้งเดียว: ตรวจกล่อง WMS, validate กับ Order, split/arrange shipment, รอ Tracking No แล้วบันทึกกลับ OMS และ WMS", token: "stored",
+    flow: ["WMS เรียก endpoint นี้หลังปิดกล่องครบ", "OMS ตรวจกล่องและ validate กับ Order ของ Marketplace", "OMS split order (ถ้าหลายกล่อง) และ arrange shipment", "บันทึก package id และ tracking number กลับ OMS/WMS", "ได้ stage = COMPLETED หรือ PROCESSING", "ถ้า PROCESSING ให้เรียกซ้ำ หรืออ่าน packages/status จนได้ COMPLETED"],
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID (ไม่เกิน 128 ตัวอักษร)"), F("platformOrderId", "string", "y", "เลข Order ของ Marketplace"), F("customerOrderNumber", "string", "y", "เลข Customer Order ใน WMS")],
+    body: J({ platform: 0, shopId: "123456", platformOrderId: "240924ABCDEF", customerOrderNumber: "SO-2609-0001" }),
+    response: ok({ platform: 0, shopId: "123456", platformOrderId: "240924ABCDEF", customerOrderNumber: "SO-2609-0001", stage: "COMPLETED", totalBoxes: 1,
+      packages: [{ platformPackageRecordId: 101, wmsPackageRef: "3f1c9a2e-0b7d-4c1e-9f11-2a6b5c7d8e90", boxNumber: 1, itemCount: 1, totalQuantity: 2, platformPackageId: "OFG123", trackingNumber: "TH0123456789", waybillRequired: true, status: "READY", error: null }] }, "Processed 1/1 WMS boxes."),
+    warn: "คืน 400 เมื่อ: ไม่มีกล่อง, <code>wmsPackageRef</code> ว่าง/ซ้ำ, <code>boxNumber</code> ≤ 0 หรือซ้ำ, มีกล่องที่ <code>isCloseBox</code> ≠ <code>YES</code>, กล่องว่างหรือจำนวน ≤ 0, หรือ Marketplace ปฏิเสธ",
+    statuses: [[200, "สำเร็จ (ดู stage: COMPLETED / PROCESSING)"], [400, "กล่องไม่พร้อม หรือ Marketplace ปฏิเสธ"], [404, "ไม่พบ WMS outbound order"]] },
+  { id: "ship-status", group: "Shipping · Package", method: "GET", path: "/api/shipping/packages/status/{platform}/{orderId}", summary: "สถานะการประมวลผล",
+    desc: "อ่านสถานะจาก OMS โดยไม่เรียก Marketplace stage = COMPLETED เมื่อทุกกล่องมี package id, tracking ไม่ซ้ำ และ Waybill READY (เฉพาะกล่องที่ต้องมี)", token: "stored",
+    params: [PLAT_ENUM, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_Q],
+    response: ok({ platform: 0, shopId: "123456", platformOrderId: "240924ABCDEF", customerOrderNumber: "", stage: "PROCESSING", totalBoxes: 2,
+      packages: [{ platformPackageRecordId: 101, wmsPackageRef: "3f1c...", boxNumber: 1, itemCount: 0, totalQuantity: 0, platformPackageId: "OFG123", trackingNumber: "TH0123456789", waybillRequired: true, status: "READY", error: null },
+                 { platformPackageRecordId: 102, wmsPackageRef: "8a2d...", boxNumber: 2, itemCount: 0, totalQuantity: 0, platformPackageId: "OFG124", trackingNumber: "", waybillRequired: true, status: "PENDING", error: null }] }, "The package workflow is still processing."),
+    statuses: [[200, "สำเร็จ"], [404, "ยังไม่เคย process"], [503, "Document service ไม่พร้อม"]] },
+  { id: "ship-packages", group: "Shipping · Package", method: "GET", path: "/api/shipping/packages/{platform}/{orderId}", summary: "Package ที่บันทึกไว้",
+    desc: "อ่าน Package / Tracking ที่ OMS บันทึกไว้ต่อกล่อง WMS", token: "stored",
+    params: [PLAT_ENUM, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_QR],
+    response: ok([samplePkgRecord], "Found 1 saved packages"),
+    statuses: [[200, "สำเร็จ"], [400, "ไม่ได้ส่ง shopId"]] },
+  { id: "ship-sync", group: "Shipping · Package", method: "POST", path: "/api/shipping/packages/sync", summary: "บันทึกผล Package",
+    desc: "ให้ WMS หรือ integration job บันทึก package id / tracking ของแต่ละกล่องกลับเข้า OMS และ WMS เอง", token: "none",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID"), F("platformOrderId", "string", "y", "เลข Order ของ Marketplace"), F("customerOrderNumber", "string", "y", "เลข Customer Order ใน WMS"), F("persistTrackingToWms", "bool", "n", "default true"), F("packages[]", "array", "y", "อย่างน้อย 1: wmsPackageRef (y), boxNumber, platformPackageId, trackingNumber, shippingProviderId/Name, packageStatus, error, items[]"), F("packages[].items[]", "array", "n", "platformItemId, platformSkuId, wmsItemMasterId, itemNumber (y), quantity (y, > 0)")],
+    body: J({ platform: 2, shopId: "7000001", platformOrderId: "5770000000001", customerOrderNumber: "SO-2609-0002", persistTrackingToWms: true,
+      packages: [{ wmsPackageRef: "3f1c9a2e-0b7d-4c1e-9f11-2a6b5c7d8e90", boxNumber: 1, platformPackageId: "1150000001", trackingNumber: "TT0001", shippingProviderName: "J&T", packageStatus: "READY", items: [{ platformSkuId: "1729", itemNumber: "SKU-001", quantity: 2 }] }] }),
+    response: ok({ platform: 2, platformOrderId: "5770000000001", customerOrderNumber: "SO-2609-0002", totalPackages: 1, succeededPackages: 1, failedPackages: 0, packages: [{ ...samplePkgRecord, platformPackageId: "1150000001", trackingNumber: "TT0001", shippingProviderName: "J&T" }] }, "Synchronized 1/1 platform packages"),
+    statuses: [[200, "สำเร็จ"], [400, "mapping กล่อง WMS ไม่ถูกต้อง"], [500, "บันทึกไม่สำเร็จ"]] },
+  { id: "ship-sync-platform", group: "Shipping · Package", method: "POST", path: "/api/shipping/packages/sync-from-platform", summary: "ดึง Tracking จาก Platform",
+    desc: "ดึง Tracking ล่าสุดจาก Marketplace แล้วบันทึกลงกล่อง WMS อัตโนมัติ", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID"), F("platformOrderId", "string", "y", "เลข Order ของ Marketplace"), F("customerOrderNumber", "string", "y", "เลข Customer Order ใน WMS"), F("packageMappings[]", "array", "c", "จำเป็นเมื่อ split order: wmsPackageRef + platformPackageId ครบทุก package"), F("persistTrackingToWms", "bool", "n", "default true")],
+    body: J({ platform: 0, shopId: "123456", platformOrderId: "240924ABCDEF", customerOrderNumber: "SO-2609-0001", packageMappings: [{ wmsPackageRef: "3f1c...", platformPackageId: "OFG123" }, { wmsPackageRef: "8a2d...", platformPackageId: "OFG124" }], persistTrackingToWms: true }),
+    response: ok({ platform: 0, platformOrderId: "240924ABCDEF", customerOrderNumber: "SO-2609-0001", totalPackages: 2, succeededPackages: 2, failedPackages: 0, packages: [samplePkgRecord] }, "Synchronized 2/2 platform packages"),
+    statuses: [[200, "สำเร็จ"], [400, "mapping ไม่ถูกต้อง"], [404, "Marketplace ไม่คืน tracking"], [500, "บันทึกไม่สำเร็จ"]] },
+
+  // ─── Shipping: Waybill ───
+  { id: "wb-ensure", group: "Shipping · Waybill", method: "POST", path: "/api/shipping/waybills/ensure", summary: "สร้างหรือตรวจ Waybill",
+    desc: "สร้างหรือตรวจสถานะ Waybill ของ package ที่ OMS บันทึกไว้", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID"), F("platformOrderId", "string", "y", "เลข Order ของ Marketplace"), F("shippingDocumentType", "string", "n", "default NORMAL_AIR_WAYBILL")],
+    body: J({ platform: 1, shopId: "100001", platformOrderId: "880000001", shippingDocumentType: "NORMAL_AIR_WAYBILL" }),
+    response: ok([{ ...sampleDoc, platform: 1, shopId: "100001", platformOrderId: "880000001" }], "Waybill ready 1/1."),
+    info: "Package ของ Lazada ที่ใช้ seller own fleet หรือ seller own tracking ไม่ต้องมี Waybill ระบบจะคืน list ว่าง",
+    statuses: [[200, "สำเร็จ"], [400, "สร้างไม่สำเร็จ"], [404, "ไม่พบ package ที่บันทึกไว้"], [503, "Document service ไม่พร้อม"]] },
+  { id: "wb-list", group: "Shipping · Waybill", method: "GET", path: "/api/shipping/waybills/{platform}/{orderId}", summary: "สถานะ Waybill",
+    desc: "อ่านสถานะ Waybill ทุก package ของ Order ที่ OMS บันทึกไว้", token: "stored",
+    params: [PLAT_ENUM, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_QR],
+    response: ok([sampleDoc]),
+    statuses: [[200, "สำเร็จ"], [503, "Document service ไม่พร้อม"]] },
+  { id: "wb-file", group: "Shipping · Waybill", method: "GET", path: "/api/shipping/waybills/{platform}/{orderId}/file", summary: "ดาวน์โหลด Waybill",
+    desc: "คืนไฟล์ PDF โดยตรง ไม่ห่อด้วย ApiResponse", token: "stored", responseType: "file",
+    params: [PLAT_ENUM, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_QR, P("packageId", "query", "string", "n", "Package ID ของ Marketplace"), P("markPrinted", "query", "bool", "n", "true = นับว่าพิมพ์แล้ว (default false)")],
+    response: "HTTP/1.1 200 OK\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=240924ABCDEF-OFG123.pdf\n\n<binary PDF>",
+    statuses: [[200, "ไฟล์ PDF"], [404, "Waybill ยังไม่พร้อม หรือไม่พบไฟล์"], [503, "Document service ไม่พร้อม"]] },
+  { id: "wb-review", group: "Shipping · Waybill", method: "POST", path: "/api/shipping/waybills/review", summary: "รวม Waybill เป็น PDF เดียว",
+    desc: "รวม Waybill ของกล่อง WMS ที่เลือกเป็น PDF ไฟล์เดียว เรียงตามเลขกล่อง และบันทึกว่าพิมพ์แล้ว", token: "stored", responseType: "file",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID"), F("platformOrderId", "string", "y", "เลข Order ของ Marketplace"), F("wmsPackageRefs[]", "guid[]", "y", "กล่อง WMS ที่ต้องการพิมพ์ (อย่างน้อย 1)"), F("shippingDocumentType", "string", "n", "default NORMAL_AIR_WAYBILL")],
+    body: J({ platform: 0, shopId: "123456", platformOrderId: "240924ABCDEF", wmsPackageRefs: ["3f1c9a2e-0b7d-4c1e-9f11-2a6b5c7d8e90", "8a2d..."] }),
+    response: "HTTP/1.1 200 OK\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=240924ABCDEF-waybills.pdf\n\n<binary PDF>",
+    statuses: [[200, "ไฟล์ PDF รวม"], [400, "มีกล่องไม่ใช่ของ Order นี้ หรือ Waybill ยังไม่ READY ครบ"], [503, "Document service ไม่พร้อม"]] },
+
+  // ─── Shipping: Label & tracking ───
+  { id: "lb-print", group: "Shipping · Label & Tracking", method: "POST", path: "/api/shipping/print-label", summary: "ใบปะหน้าพัสดุ",
+    desc: "ขอใบปะหน้า (Shipping Label / AWB) ของ 1 Order จาก Marketplace", token: "request",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "n", "Shop ID"), F("orderId", "string", "y", "เลข Order"), F("packageId", "string", "n", "Package ID (TikTok)"), F("trackingNumber", "string", "n", "เลข Tracking"), F("documentType", "string", "n", "default NORMAL_AIR_WAYBILL")],
+    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEF", packageId: null, trackingNumber: null, documentType: "NORMAL_AIR_WAYBILL" }),
+    response: ok({ platform: 0, orderId: "240924ABCDEF", packageId: "OFG123", documentType: "NORMAL_AIR_WAYBILL", trackingNumber: "TH0123456789", documentUrl: null, documentBase64: "JVBERi0xLjQK...", contentType: "application/pdf", status: "READY", carrier: "Shopee Xpress" }, "Shipping label generated successfully"),
+    statuses: [[200, "สำเร็จ"], [404, "สร้างไม่ได้ ตรวจสถานะ Order"]] },
+  { id: "lb-batch", group: "Shipping · Label & Tracking", method: "POST", path: "/api/shipping/print-labels-batch", summary: "ใบปะหน้าหลาย Order",
+    desc: "ขอใบปะหน้าหลาย Order พร้อมกัน body เป็น array ของ ShippingLabelRequest", token: "request",
+    bodyFields: [F("[ ]", "array", "y", "ShippingLabelRequest แต่ละรายการเหมือน /print-label")],
+    body: J([{ platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEF" }, { platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEG" }]),
+    response: ok([{ platform: 0, orderId: "240924ABCDEF", trackingNumber: "TH0123456789", documentBase64: "JVBERi0xLjQK...", contentType: "application/pdf", status: "READY", carrier: "Shopee Xpress" }], "Generated 1/2 shipping labels"),
+    statuses: [[200, "สำเร็จ (ดูจำนวนใน message)"]] },
+  { id: "lb-arrange", group: "Shipping · Label & Tracking", method: "POST", path: "/api/shipping/arrange", summary: "Arrange Shipment",
+    desc: "Arrange shipment ทีละ Order กับ Marketplace", token: "request",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "n", "Shop ID"), F("orderId", "string", "y", "เลข Order"), F("packageId", "string", "n", "Package ID สำหรับ split order"), F("shippingMethod", "string", "n", "pickup, dropoff (default), non_integrated"), F("trackingNumber", "string", "n", "สำหรับ seller shipping"), F("shippingProviderId", "string", "n", "สำหรับ seller shipping")],
+    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEF", packageId: null, shippingMethod: "dropoff", trackingNumber: null, shippingProviderId: null }),
+    response: ok("", "Shipment arranged successfully"),
+    statuses: [[200, "สำเร็จ"], [400, "arrange ไม่สำเร็จ ตรวจสถานะ Order"]] },
+  { id: "tr-get", group: "Shipping · Label & Tracking", method: "GET", path: "/api/shipping/tracking/{platform}/{orderId}", summary: "ติดตามพัสดุ",
+    desc: "คืนสถานะพัสดุและเหตุการณ์ขนส่ง ใช้ credential ที่ OMS เก็บไว้เท่านั้น ไม่รับ token ใน URL", token: "stored",
+    params: [PLAT_ENUM, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_Q],
+    response: ok({ trackingNumber: "TH0123456789", carrier: "Shopee Xpress", platform: 0, orderId: "240924ABCDEF", status: "IN_TRANSIT",
+      events: [{ timestamp: "2026-09-24T09:10:00Z", description: "พัสดุถึงศูนย์คัดแยก", location: "บางนา" }],
+      packages: [{ wmsPackageRef: "", boxNumber: null, platformPackageRecordId: null, packageId: "OFG123", trackingNumber: "TH0123456789", carrier: "Shopee Xpress", status: "IN_TRANSIT", isShipmentArranged: true, shippingMethod: "dropoff", itemIds: ["100200300"], items: [], events: [] }] }),
+    statuses: [[200, "สำเร็จ"], [400, "ไม่มี credential หรือ Marketplace ปฏิเสธ"], [404, "ยังไม่มีข้อมูล tracking"]] },
+  { id: "tr-providers", group: "Shipping · Label & Tracking", method: "GET", path: "/api/shipping/providers/{platform}", summary: "ผู้ให้บริการขนส่ง",
+    desc: "รายการผู้ให้บริการขนส่งที่ร้านใช้ได้บน platform นั้น", token: "request",
+    params: [PLAT_ENUM, TOKEN_Q, SHOP_Q],
+    response: ok([{ providerId: "18025", name: "Shopee Xpress", platform: 0, enabled: true }, { providerId: "18028", name: "Kerry Express", platform: 0, enabled: true }], "Found 2 shipping providers for Shopee"),
+    statuses: [[200, "สำเร็จ"]] },
+  { id: "tr-test", group: "Shipping · Label & Tracking", method: "GET", path: "/api/shipping/test-connection/{platform}", summary: "ทดสอบการเชื่อมต่อ",
+    desc: "ทดสอบ credential ที่บันทึกไว้โดยไม่เปิดเผย token คืน 200 เสมอ ให้ดูผลที่ data.connected", token: "stored",
+    params: [PLAT_ENUM, SHOP_Q],
+    response: ok({ platform: 0, connected: true, credentialFound: true, shopId: "123456", shippingProviderCount: 4, message: "OK", errorCode: null, requestId: null, checkedAtUtc: "2026-09-24T09:30:00Z" }, "Shopee connection succeeded."),
+    statuses: [[200, "ผลการทดสอบ (สำเร็จหรือไม่ดูที่ data.connected)"]] },
+
+  // ─── Shop & Chat ───
+  { id: "shop", group: "Shop & Chat", method: "GET", path: "/api/shop", summary: "ร้านที่เชื่อม (placeholder)",
+    desc: "ยังเป็น placeholder คืนรายการ 3 platform ที่ connected = false เสมอ",
+    response: ok([{ platform: "shopee", shopId: "", shopName: "Not connected", connected: false }, { platform: "lazada", shopId: "", shopName: "Not connected", connected: false }, { platform: "tiktok", shopId: "", shopName: "Not connected", connected: false }], "Shop connections retrieved"),
+    statuses: [[200, "สำเร็จ"]] },
+  { id: "chat-list", group: "Shop & Chat", method: "GET", path: "/api/chat/conversations", summary: "รายการแชท (ยังไม่เปิดใช้)",
+    desc: "วางแผนรวมแชทจากทุก Marketplace ปัจจุบันคืน 501",
+    response: J({ success: false, message: "Chat integration is planned for a future release. This endpoint will aggregate conversations from Shopee, Lazada, and TikTok.", data: null }),
+    statuses: [[501, "Not Implemented"]] },
+  { id: "chat-messages", group: "Shop & Chat", method: "GET", path: "/api/chat/conversations/{conversationId}/messages", summary: "ข้อความในแชท (ยังไม่เปิดใช้)",
+    desc: "ปัจจุบันคืน 501", params: [P("conversationId", "path", "string", "y", "รหัสบทสนทนา")],
+    response: J({ success: false, message: "Chat message retrieval is planned for a future release.", data: null }),
+    statuses: [[501, "Not Implemented"]] },
+  { id: "chat-send", group: "Shop & Chat", method: "POST", path: "/api/chat/conversations/{conversationId}/send", summary: "ส่งข้อความ (ยังไม่เปิดใช้)",
+    desc: "ปัจจุบันคืน 501", params: [P("conversationId", "path", "string", "y", "รหัสบทสนทนา")],
+    response: J({ success: false, message: "Chat sending is planned for a future release.", data: null }),
+    statuses: [[501, "Not Implemented"]] },
+];
+
+// Reference pages
+const REF = [
+  { id: "ref-basics", group: "Reference", method: "REF", path: "หลักการใช้งาน", summary: "Authentication และรูปแบบ Response", ref: "basics" },
+  { id: "ref-enums", group: "Reference", method: "REF", path: "PlatformType · OrderStatus", summary: "ค่า Enum", ref: "enums" },
+  { id: "ref-models", group: "Reference", method: "REF", path: "UnifiedOrder · ProductItem", summary: "Data Models หลัก", ref: "models" },
+];
+const ALL = [...REF, ...E];
+
+// ───────────────────────── Rendering helpers ─────────────────────────
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function hl(src) {
+  const s = esc(src);
+  if (!/^\s*[\[{]/.test(src)) return s.replace(/^(HTTP\/1\.1 .*)$/m, '<span class="k">$1</span>').replace(/^([A-Za-z-]+):/gm, '<span class="cm">$1:</span>');
+  const re = /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|(-?\b\d+(?:\.\d+)?\b)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(src))) {
+    out += esc(src.slice(last, m.index));
+    if (m[1]) out += m[2] ? `<span class="k">${esc(m[1])}</span>${m[2]}` : `<span class="st">${esc(m[1])}</span>`;
+    else if (m[3]) out += `<span class="li">${m[3]}</span>`;
+    else out += `<span class="nu">${m[4]}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(src.slice(last));
+}
+const reqBadge = (r) => r === "y" ? '<span class="req y">จำเป็น</span>' : r === "c" ? '<span class="req c">บางกรณี</span>' : '<span class="req n">ไม่บังคับ</span>';
+const statusCls = (c) => "s" + String(c)[0];
+let copySeq = 0;
+function codeBox(label, src, tabs) {
+  const id = "cb" + (copySeq++);
+  return `<div class="codebox"><div class="bar"><span>${label}</span>${tabs || ""}<button class="copy" data-copy="${id}">คัดลอก</button></div><pre id="${id}">${hl(src)}</pre></div>`;
+}
+function table(head, rows) {
+  return `<div class="tbl-wrap"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+function curlFor(ep) {
+  const base = ($("#baseUrl").value || "").replace(/\/+$/, "");
+  const key = $("#apiKey").value || "<your-api-key>";
+  let path = ep.path;
+  const query = (ep.params || []).filter(p => p.in === "query").map(p => `${p.name}=${p.name === "platform" ? "Shopee" : "<" + p.name + ">"}`);
+  path = path.replace("{platform}", "shopee");
+  const url = base + path + (query.length ? "?" + query.join("&") : "");
+  const lines = [`curl -X ${ep.method} "${url}"`];
+  if (ep.auth !== "none") lines.push(`  -H "X-Api-Key: ${key}"`);
+  if (ep.body) { lines.push(`  -H "Content-Type: application/json"`); lines.push(`  -d '${JSON.stringify(JSON.parse(ep.body))}'`); }
+  if (ep.responseType === "file") lines.push(`  -o output.pdf`);
+  return lines.join(" \\\n");
+}
+
+// ───────────────────────── Views ─────────────────────────
+function renderEndpoint(ep) {
+  const badges = [];
+  badges.push(ep.auth === "none" ? '<span class="badge warn">ไม่ต้องใช้ X-Api-Key</span>' : '<span class="badge ok">ต้องใช้ X-Api-Key</span>');
+  if (ep.token === "stored") badges.push('<span class="badge info">ใช้ token ที่ OMS เก็บไว้</span>');
+  if (ep.token === "request") badges.push('<span class="badge">ต้องส่ง accessToken ของ Marketplace</span>');
+  if (ep.responseType === "file") badges.push('<span class="badge">คืนไฟล์ PDF</span>');
+
+  let html = `<div class="crumb">${esc(ep.group)}</div>
+    <div class="ep-head"><span class="m ${ep.method}">${ep.method}</span><h2 class="ep-path">${esc(ep.path)}</h2></div>
+    <div class="ep-summary">${esc(ep.summary)}</div>
+    <p class="ep-desc">${esc(ep.desc)}</p>
+    <div class="badges">${badges.join("")}</div>`;
+  if (ep.warn) html += `<div class="callout warn"><b>ข้อควรรู้:</b> ${ep.warn}</div>`;
+  if (ep.info) html += `<div class="callout info"><b>หมายเหตุ:</b> ${ep.info}</div>`;
+  if (ep.flow) html += `<section class="block"><h3>ลำดับการทำงาน</h3><ol class="fields">${ep.flow.map(s => `<li>${esc(s)}</li>`).join("")}</ol></section>`;
+
+  if (ep.params && ep.params.length) {
+    html += `<section class="block"><h3>Parameters</h3>${table(["ชื่อ", "In", "Type", "", "คำอธิบาย"],
+      ep.params.map(p => `<tr><td class="n">${p.name}</td><td><span class="in">${p.in}</span></td><td class="t">${p.type}</td><td>${reqBadge(p.req)}</td><td>${p.desc}</td></tr>`))}</section>`;
+  }
+  if (ep.bodyFields) {
+    html += `<section class="block"><h3>Request Body · application/json</h3>${table(["Field", "Type", "", "คำอธิบาย"],
+      ep.bodyFields.map(f => `<tr><td class="n">${f.name}</td><td class="t">${f.type}</td><td>${reqBadge(f.req)}</td><td>${f.desc}</td></tr>`))}
+      <div style="margin-top:12px">${codeBox("ตัวอย่าง Request", ep.body)}</div></section>`;
+  }
+  html += `<section class="block"><h3>Response</h3>${codeBox(ep.responseType === "file" ? "ตัวอย่าง Response (ไฟล์)" : ep.responseType === "redirect" ? "ตัวอย่าง Response (redirect)" : "ตัวอย่าง Response · 200", ep.response)}
+    ${ep.responseType ? "" : '<p class="note">รูปแบบ ApiResponse&lt;T&gt;: success, message, data, totalCount · enum ใน JSON เป็นตัวเลข</p>'}</section>`;
+  html += `<section class="block"><h3>Status Codes</h3>${table(["Code", "ความหมาย"],
+    [...ep.statuses, ...(ep.auth === "none" ? [] : [[401, "API Key ไม่ถูกหรือไม่มี"]])].map(([c, t]) => `<tr><td><span class="code-status ${statusCls(c)}">${c}</span></td><td>${esc(t)}</td></tr>`))}</section>`;
+  html += `<section class="block"><h3>ตัวอย่างคำสั่ง</h3>${codeBox("curl", curlFor(ep))}</section>`;
+  return html;
+}
+
+function renderRef(r) {
+  let h = `<div class="crumb">Reference</div><div class="ep-summary" style="font-size:24px;margin-top:6px">${esc(r.summary)}</div>`;
+  if (r.ref === "basics") {
+    h += `<p class="ep-desc">BS-OMS-API เป็น REST API กลางที่รวม Order, สต็อก และการจัดส่งของ Shopee, Lazada และ TikTok Shop ไว้ใน interface เดียว</p>
+    <section class="block"><h3>Authentication</h3>
+      <p class="ep-desc">ทุก request ต้องส่ง header <code>X-Api-Key</code> ที่ตรงกับ <code>OMS_API_KEY</code> ของเซิร์ฟเวอร์ ยกเว้น Swagger และ OAuth (<code>/authorize</code>, <code>/auth-url</code>, <code>/callback</code>)</p>
+      ${codeBox("Header", "X-Api-Key: <your-api-key>\nContent-Type: application/json")}
+      <div class="callout warn"><b>Dev mode:</b> ถ้าไม่ได้ตั้ง <code>OMS_API_KEY</code> ระบบจะไม่ตรวจ API Key เลย</div>
+      <div style="margin-top:12px">${codeBox("401 Unauthorized", J({ success: false, message: "Unauthorized: Invalid or missing API key. Include 'X-Api-Key' header." }))}</div>
+    </section>
+    <section class="block"><h3>Token ของ Marketplace</h3>${table(["กลุ่ม", "วิธีใช้ token"], [
+      `<tr><td>Shipping · Package, Waybill, tracking, test-connection</td><td>ใช้ token ที่ OMS เก็บไว้ ส่งแค่ <code>shopId</code></td></tr>`,
+      `<tr><td>Order, Inventory, print-label, arrange, providers</td><td>ต้องส่ง <code>accessToken</code> ของ Marketplace มาใน request</td></tr>`])}</section>
+    <section class="block"><h3>รูปแบบ Response</h3>${codeBox("ApiResponse<T>", J({ success: true, message: "Retrieved 50 orders from Shopee", data: {}, totalCount: 120 }))}
+      <div style="margin-top:12px">${codeBox("PaginatedResult<T> (อยู่ใน data)", J({ items: [], totalCount: 120, page: 1, pageSize: 50, hasMore: true }))}</div></section>
+    <section class="block"><h3>HTTP Status Codes</h3>${table(["Code", "เมื่อไหร่"], [[200, "สำเร็จ"], [302, "OAuth redirect"], [400, "Parameter ผิด, platform ไม่รองรับ, Marketplace ปฏิเสธ"], [401, "API Key ไม่ถูกหรือไม่มี"], [404, "ไม่พบข้อมูล"], [500, "Error ภายใน"], [501, "ยังไม่ implement (Chat)"], [503, "Document service ไม่พร้อม"]].map(([c, t]) => `<tr><td><span class="code-status ${statusCls(c)}">${c}</span></td><td>${t}</td></tr>`))}
+      <p class="note">Error จาก Marketplace: <code>{Platform} API error '{code}': {message} (request_id: ...)</code></p></section>`;
+  } else if (r.ref === "enums") {
+    h += `<p class="ep-desc">โปรเจกต์ไม่ได้ตั้ง JsonStringEnumConverter ดังนั้น enum ใน JSON body และ response เป็นตัวเลข ส่วนใน path/query ใช้ชื่อได้</p>
+    <section class="block"><h3>PlatformType</h3>${table(["ค่า", "ชื่อ", "ใน path"], [["0", "Shopee", "shopee"], ["1", "Lazada", "lazada"], ["2", "TikTok", "tiktok"]].map(r => `<tr><td class="n">${r[0]}</td><td>${r[1]}</td><td class="n">${r[2]}</td></tr>`))}</section>
+    <section class="block"><h3>OrderStatus</h3>${table(["ค่า", "ชื่อ", "Shopee", "Lazada", "TikTok"], [
+      ["0", "Unpaid", "UNPAID", "unpaid", "UNPAID"], ["1", "Pending", "INVOICE_PENDING", "pending", "ON_HOLD"], ["2", "ReadyToShip", "READY_TO_SHIP, PROCESSED", "ready_to_ship, packed", "AWAITING_SHIPMENT, AWAITING_COLLECTION"],
+      ["3", "Shipped", "SHIPPED", "shipped", "PARTIALLY_SHIPPING, IN_TRANSIT"], ["4", "Delivered", "—", "delivered", "DELIVERED"], ["5", "Completed", "COMPLETED", "—", "COMPLETED"],
+      ["6", "Cancelled", "CANCELLED", "canceled, failed", "CANCELLED"], ["7", "ReturnRefund", "IN_CANCEL", "returned", "REVERSE"], ["8", "Unknown", "อื่น ๆ", "อื่น ๆ", "อื่น ๆ"]].map(r => `<tr><td class="n">${r[0]}</td><td>${r[1]}</td><td class="t">${r[2]}</td><td class="t">${r[3]}</td><td class="t">${r[4]}</td></tr>`))}</section>
+    <section class="block"><h3>Package / Waybill status</h3>${table(["Field", "ค่าที่พบ"], [
+      `<tr><td class="n">stage</td><td><code>VALIDATED</code>, <code>PROCESSING</code>, <code>COMPLETED</code></td></tr>`,
+      `<tr><td class="n">packageStatus / syncStatus</td><td><code>PENDING</code>, <code>READY</code>, <code>SYNCED</code>, <code>FAILED</code></td></tr>`,
+      `<tr><td class="n">documentStatus</td><td><code>PENDING</code>, <code>READY</code></td></tr>`])}</section>`;
+  } else {
+    const fieldRows = (list) => list.map(([n, t, d]) => `<tr><td class="n">${n}</td><td class="t">${t}</td><td>${d}</td></tr>`);
+    h += `<section class="block"><h3>UnifiedOrder</h3>${table(["Field", "Type", "ความหมาย"], fieldRows([
+      ["orderId", "string", "เลข Order ของ Marketplace"], ["platform", "int", "PlatformType"], ["status", "int", "OrderStatus"], ["originalStatus", "string", "สถานะเดิมจาก Marketplace"],
+      ["buyerName, buyerRemarks", "string", "ผู้ซื้อและหมายเหตุ"], ["taxInvoiceRequested", "bool", "ขอใบกำกับภาษีหรือไม่"], ["taxInvoice", "object", "taxId, companyName, address, branchCode"],
+      ["cancellationDeadline", "datetime", "เส้นตายส่งก่อนถูกยกเลิก"], ["daysUntilCancellation", "int", "จำนวนวันที่เหลือ (UTC)"], ["createdAt, updatedAt", "datetime", "เวลาสร้าง / แก้ไข"],
+      ["totalAmount, currency", "decimal, string", "ยอดรวม (default THB)"], ["shipping", "object", "carrier, trackingNumber, packageNumber, shippingMethod, shippingFee, estimatedDeliveryDate, recipientAddress"],
+      ["packages", "array", "ShippingPackage เมื่อแยกหลายกล่อง"], ["items", "array", "OrderItem"], ["shopName", "string", "ชื่อร้าน"]]))}
+      <div style="margin-top:12px">${codeBox("ตัวอย่าง UnifiedOrder", J(sampleOrder))}</div></section>
+    <section class="block"><h3>OrderItem</h3>${table(["Field", "Type", "ความหมาย"], fieldRows([
+      ["itemId, modelId, orderItemId", "string, long", "รหัสสินค้า / model / รายการใน Order"], ["sku, name, variation", "string", "SKU ชื่อ ตัวเลือก"], ["quantity", "int", "จำนวน"],
+      ["unitPrice, totalPrice, discount", "decimal", "ราคาต่อหน่วย ราคารวม ส่วนลด"], ["weight", "decimal", "น้ำหนัก"]]))}</section>
+    <section class="block"><h3>ProductItem</h3>${table(["Field", "Type", "ความหมาย"], fieldRows([
+      ["itemId, platform", "string, int", "รหัสสินค้าและ platform"], ["name, sku, status, imageUrl", "string", "ข้อมูลสินค้า"], ["price, currency", "decimal, string", "ราคา"],
+      ["stock", "object", "currentStock, reservedStock, availableStock"], ["variations[]", "array", "variationId, variationName, sku, price, currentStock"], ["totalStock", "int", "สต็อกรวม"]]))}
+      <div style="margin-top:12px">${codeBox("ตัวอย่าง ProductItem", J(sampleProduct))}</div></section>`;
+  }
+  return h;
+}
+
+// ───────────────────────── Nav & state ─────────────────────────
+let current = null, methodFilter = "ALL";
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+function visible() {
+  const q = $("#q").value.trim().toLowerCase();
+  return ALL.filter(e => (methodFilter === "ALL" || e.method === methodFilter || (e.method === "REF" && methodFilter === "ALL")) &&
+    (!q || (e.path + " " + e.summary + " " + e.group).toLowerCase().includes(q)));
+}
+function renderNav() {
+  const list = visible();
+  const groups = [];
+  list.forEach(e => { let g = groups.find(x => x.name === e.group); if (!g) groups.push(g = { name: e.group, items: [] }); g.items.push(e); });
+  $("#nav").innerHTML = groups.length ? groups.map(g => `<div class="group-title"><span>${esc(g.name)}</span><span>${g.items.length}</span></div>` +
+    g.items.map(e => `<button class="item" data-id="${e.id}" aria-current="${e.id === current}"><span class="m ${e.method}">${e.method === "REF" ? "DOC" : e.method}</span><span class="p">${e.method === "REF" ? "" : esc(e.path)}<span class="s">${esc(e.summary)}</span></span></button>`).join("")).join("")
+    : '<div class="empty">ไม่พบ endpoint ที่ตรงกับคำค้น</div>';
+}
+function show(id, push = true) {
+  const ep = ALL.find(e => e.id === id) || ALL[0];
+  current = ep.id;
+  copySeq = 0;
+  $("#detail").innerHTML = (ep.method === "REF" ? renderRef(ep) : renderEndpoint(ep)) + pager(ep);
+  renderNav();
+  if (push) { try { history.replaceState(null, "", "#" + ep.id); } catch (e) {} }
+  $("#main").scrollTop = 0;
+  if (window.matchMedia("(max-width:860px)").matches && push) $("#main").scrollIntoView({ block: "start" });
+}
+function pager(ep) {
+  const i = ALL.indexOf(ep), prev = ALL[i - 1], next = ALL[i + 1];
+  const b = (e, dir) => e ? `<button data-id="${e.id}"><small>${dir}</small>${e.method === "REF" ? "" : e.method + " "}${esc(e.summary)}</button>` : "<span></span>";
+  return `<div class="pager">${b(prev, "← ก่อนหน้า")}${b(next, "ถัดไป →")}</div>`;
+}
+
+document.addEventListener("click", (ev) => {
+  const item = ev.target.closest("[data-id]");
+  if (item) { show(item.dataset.id); return; }
+  const chip = ev.target.closest(".chip");
+  if (chip) { methodFilter = chip.dataset.m; document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === chip)); renderNav(); return; }
+  const cp = ev.target.closest("[data-copy]");
+  if (cp) {
+    const pre = document.getElementById(cp.dataset.copy); const text = pre.textContent;
+    const done = () => { cp.textContent = "คัดลอกแล้ว"; setTimeout(() => cp.textContent = "คัดลอก", 1400); };
+    try { navigator.clipboard.writeText(text).then(done, () => selectText(pre)); } catch (e) { selectText(pre); }
+  }
+});
+function selectText(el) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+$("#q").addEventListener("input", renderNav);
+["baseUrl", "apiKey"].forEach(id => {
+  const el = document.getElementById(id); const saved = store.get("oms-" + id); if (saved) el.value = saved;
+  el.addEventListener("change", () => { store.set("oms-" + id, el.value); show(current, false); });
+});
+$("#menuBtn").addEventListener("click", () => { const s = $("#side"); const c = s.classList.toggle("collapsed"); $("#menuBtn").setAttribute("aria-expanded", !c); $("#menuBtn").textContent = c ? "แสดงรายการ API" : "ซ่อนรายการ API"; });
+window.addEventListener("hashchange", () => show(location.hash.slice(1), false));
+
+show((location.hash || "").slice(1) || "ship-process", false);
+</script>
