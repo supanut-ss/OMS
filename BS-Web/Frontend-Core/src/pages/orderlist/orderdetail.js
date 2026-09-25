@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Divider,
   Stack,
@@ -96,9 +97,18 @@ const OrderDetail = ({ lang = "th" }) => {
       : null;
   const isThai = lang === "th";
   const locale = isThai ? "th-TH" : "en-US";
+  const copy = (thai, english) => (isThai ? thai : english);
   const [order, setOrder] = useState(orderFromRoute);
   const [loading, setLoading] = useState(!orderFromRoute);
   const [error, setError] = useState("");
+  const [syncHistoryState, setSyncHistoryState] = useState({
+    orderRecordId: null,
+    events: [],
+    rowCount: 0,
+    loading: true,
+    error: "",
+  });
+  const [syncHistoryRetry, setSyncHistoryRetry] = useState(0);
   const [activeTab, setActiveTab] = useState("raw");
 
   const labels = useMemo(
@@ -124,19 +134,28 @@ const OrderDetail = ({ lang = "th" }) => {
       rawMockNotice: isThai
         ? "ข้อมูลตัวอย่างสำหรับแสดงหน้าจอเท่านั้น — ไม่มี Raw Payload ต้นฉบับในตาราง OMS"
         : "Illustrative mock only — the OMS tables do not store the original raw payload.",
-      historyMockNotice: isThai
-        ? "ประวัติด้านล่างเป็น mock สำหรับหน้าจอ เพราะยังไม่มีตารางประวัติการ Sync"
-        : "The timeline below is mock data because no Sync history table is available yet.",
+      historyDescription: isThai
+        ? "ประวัติการประมวลผลออเดอร์จาก Marketplace ที่บันทึกไว้ใน OMS"
+        : "Recorded Marketplace order processing events from OMS.",
+      historyLoading: isThai ? "กำลังโหลดประวัติ Sync..." : "Loading sync history...",
+      historyFailed: isThai
+        ? "โหลดประวัติ Sync ไม่สำเร็จ"
+        : "Could not load sync history.",
+      historyEmpty: isThai
+        ? "ยังไม่มีประวัติ Sync สำหรับออเดอร์นี้"
+        : "No sync history is available for this order.",
+      historyTruncated: isThai
+        ? "แสดงประวัติล่าสุด 100 รายการ"
+        : "Showing the latest 100 history entries.",
+      retry: isThai ? "ลองอีกครั้ง" : "Retry",
+      run: isThai ? "รอบ Sync" : "Sync run",
+      source: isThai ? "แหล่งที่เรียก" : "Source",
+      duration: isThai ? "ใช้เวลา" : "Duration",
+      statusChanged: isThai ? "เปลี่ยนสถานะ" : "Status change",
+      errorEntries: isThai ? "รายการ Error" : "Error entries",
       loading: isThai ? "กำลังโหลดข้อมูล Order..." : "Loading order...",
       notFound: isThai ? "ไม่พบข้อมูล Order นี้" : "Order was not found.",
       loadFailed: isThai ? "โหลดข้อมูล Order ไม่สำเร็จ" : "Could not load the order.",
-      receiveEvent: (platform) =>
-        isThai
-          ? `รับข้อมูล Order จาก ${platform || "Platform"} (ตัวอย่าง)`
-          : `Order received from ${platform || "platform"} (sample)`,
-      saveEvent: isThai
-        ? "บันทึก Order และรายการสินค้าใน OMS (ตัวอย่าง)"
-        : "Order and item details saved in OMS (sample)",
     }),
     [isThai],
   );
@@ -188,6 +207,104 @@ const OrderDetail = ({ lang = "th" }) => {
       isActive = false;
     };
   }, [hasValidOrderRecordId, labels.loadFailed, labels.notFound, numericOrderRecordId, orderFromRoute]);
+
+  useEffect(() => {
+    if (!hasValidOrderRecordId) {
+      setSyncHistoryState({
+        orderRecordId: numericOrderRecordId,
+        events: [],
+        rowCount: 0,
+        loading: false,
+        error: "",
+      });
+      return undefined;
+    }
+
+    let isActive = true;
+    setSyncHistoryState({
+      orderRecordId: numericOrderRecordId,
+      events: [],
+      rowCount: 0,
+      loading: true,
+      error: "",
+    });
+
+    AxiosMaster.post("/dynamic/datagrid", {
+      tableName: "vw_oms_order_sync_history",
+      schemaName: "oms",
+      start: 0,
+      end: 100,
+      selectColumns: [
+        "sync_log_detail_id",
+        "sync_log_id",
+        "order_record_id",
+        "platform",
+        "platform_order_id",
+        "sync_type",
+        "sync_source",
+        "run_status",
+        "action",
+        "old_status",
+        "new_status",
+        "detail_message",
+        "run_error_message",
+        "display_message",
+        "total_fetched",
+        "total_inserted",
+        "total_updated",
+        "total_failed",
+        "run_start_date",
+        "run_end_date",
+        "duration_ms",
+        "detail_create_date",
+      ],
+      sortModel: [
+        { field: "detail_create_date", sort: "desc" },
+        { field: "sync_log_detail_id", sort: "desc" },
+      ],
+      filterModel: {
+        items: [
+          {
+            field: "order_record_id",
+            operator: "equals",
+            value: numericOrderRecordId,
+          },
+        ],
+        logicOperator: "and",
+        quickFilterValues: "",
+      },
+      userLookup: { table: "", idField: "", displayFields: [] },
+    })
+      .then((response) => {
+        if (!isActive) return;
+        const data = response.data;
+        const rows = Array.isArray(data?.rows) ? data.rows : [];
+        const events = rows.map((row) => row?.data ?? row?.Data ?? row);
+        setSyncHistoryState({
+          orderRecordId: numericOrderRecordId,
+          events,
+          rowCount: Number.isFinite(Number(data?.rowCount))
+            ? Number(data.rowCount)
+            : events.length,
+          loading: false,
+          error: "",
+        });
+      })
+      .catch((requestError) => {
+        if (!isActive) return;
+        setSyncHistoryState({
+          orderRecordId: numericOrderRecordId,
+          events: [],
+          rowCount: 0,
+          loading: false,
+          error: requestError.response?.data?.message || labels.historyFailed,
+        });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [hasValidOrderRecordId, labels.historyFailed, numericOrderRecordId, syncHistoryRetry]);
 
   const itemColumns = useMemo(
     () => [
@@ -267,40 +384,24 @@ const OrderDetail = ({ lang = "th" }) => {
       }
     : null;
 
-  const syncEvents = order
-    ? [
-        {
-          time: order.order_created_date,
-          text: labels.receiveEvent(order.platform),
-        },
-        {
-          time: new Date(
-            new Date(order.order_created_date).getTime() + 60_000,
-          ),
-          text: labels.saveEvent,
-        },
-        {
-          time: order.last_sync_date || order.order_created_date,
-          text: (() => {
-            const status = String(order.sync_status || "").toLowerCase();
-            if (status.includes("error") || status.includes("fail")) {
-              return isThai
-                ? "ตัวอย่าง: ส่งข้อมูลเข้า WM3 ไม่สำเร็จ"
-                : "Sample: sending the order to WM3 failed";
-            }
-            if (status.includes("pending") || status.includes("queue")) {
-              return isThai
-                ? "ตัวอย่าง: รอส่งเข้า WM3 ในรอบถัดไป"
-                : "Sample: waiting for the next WM3 sync batch";
-            }
-            return isThai
-              ? "ตัวอย่าง: ส่งข้อมูลเข้า WM3 สำเร็จ"
-              : "Sample: order sent to WM3 successfully";
-          })(),
-          error: /error|fail/i.test(String(order.sync_status || "")),
-        },
-      ]
-    : [];
+  const isCurrentHistory =
+    syncHistoryState.orderRecordId === numericOrderRecordId;
+  const syncHistory = isCurrentHistory ? syncHistoryState.events : [];
+  const syncHistoryLoading =
+    !isCurrentHistory || syncHistoryState.loading;
+  const syncHistoryError = isCurrentHistory ? syncHistoryState.error : "";
+  const syncHistoryRowCount = isCurrentHistory ? syncHistoryState.rowCount : 0;
+  const historyStatusColor = (value) => {
+    const status = String(value || "").trim().toUpperCase();
+    if (["ERROR", "FAILED", "FAIL"].includes(status)) return "error";
+    if (["PENDING", "PROCESSING", "QUEUED", "RETRY"].includes(status)) {
+      return "warning";
+    }
+    if (["SUCCESS", "SUCCEEDED", "COMPLETED"].includes(status)) {
+      return "success";
+    }
+    return "default";
+  };
 
   return (
     <Box
@@ -530,45 +631,275 @@ const OrderDetail = ({ lang = "th" }) => {
 
               {activeTab === "history" && (
                 <CardContent>
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    {labels.historyMockNotice}
-                  </Alert>
-                  <Box
-                    sx={{
-                      ml: 1,
-                      pl: 2.25,
-                      borderLeft: "2px solid",
-                      borderColor: "divider",
-                    }}
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    gap={1}
+                    alignItems={{ sm: "center" }}
+                    justifyContent="space-between"
+                    sx={{ mb: 2.5 }}
                   >
-                    {syncEvents.map((event, index) => (
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {labels.historyDescription}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {order.platform} · {order.platform_order_id}
+                      </Typography>
+                    </Box>
+                    {!syncHistoryLoading && !syncHistoryError && (
+                      <Stack direction="row" spacing={1}>
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          label={`${syncHistoryRowCount} ${copy("รายการ", "events")}`}
+                        />
+                        {syncHistory.some(
+                          (event) =>
+                            historyStatusColor(event.run_status) === "error" ||
+                            String(event.action || "").toUpperCase() === "ERROR",
+                        ) && (
+                          <Chip
+                            size="small"
+                            color="error"
+                            label={`${syncHistory.filter(
+                              (event) =>
+                                historyStatusColor(event.run_status) ===
+                                  "error" ||
+                                String(event.action || "").toUpperCase() ===
+                                  "ERROR",
+                            ).length} ${labels.errorEntries}`}
+                          />
+                        )}
+                      </Stack>
+                    )}
+                  </Stack>
+
+                  {syncHistoryRowCount > syncHistory.length &&
+                    !syncHistoryLoading &&
+                    !syncHistoryError && (
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        {labels.historyTruncated}
+                      </Alert>
+                    )}
+
+                  {syncHistoryLoading && (
+                    <Stack
+                      direction="row"
+                      spacing={1.25}
+                      alignItems="center"
+                      sx={{ py: 4 }}
+                    >
+                      <CircularProgress size={20} />
+                      <Typography color="text.secondary" variant="body2">
+                        {labels.historyLoading}
+                      </Typography>
+                    </Stack>
+                  )}
+
+                  {!syncHistoryLoading && syncHistoryError && (
+                    <Alert
+                      severity="error"
+                      action={
+                        <Button
+                          color="inherit"
+                          size="small"
+                          onClick={() =>
+                            setSyncHistoryRetry((attempt) => attempt + 1)
+                          }
+                        >
+                          {labels.retry}
+                        </Button>
+                      }
+                    >
+                      {syncHistoryError || labels.historyFailed}
+                    </Alert>
+                  )}
+
+                  {!syncHistoryLoading &&
+                    !syncHistoryError &&
+                    syncHistory.length === 0 && (
+                      <Alert severity="info">{labels.historyEmpty}</Alert>
+                    )}
+
+                  {!syncHistoryLoading &&
+                    !syncHistoryError &&
+                    syncHistory.length > 0 && (
                       <Box
-                        key={`${index}-${event.text}`}
                         sx={{
-                          position: "relative",
-                          pb: index === syncEvents.length - 1 ? 0 : 2.25,
-                          "&::before": {
-                            content: '""',
-                            position: "absolute",
-                            left: -2.625,
-                            top: 3,
-                            width: 10,
-                            height: 10,
-                            borderRadius: "50%",
-                            bgcolor: event.error ? "error.main" : "primary.main",
-                            boxShadow: `0 0 0 3px ${alpha(theme.palette.background.paper, 0.95)}`,
-                          },
+                          ml: { xs: 0.75, sm: 1 },
+                          pl: { xs: 2, sm: 2.5 },
+                          borderLeft: "2px solid",
+                          borderColor: "divider",
                         }}
                       >
-                        <Typography variant="caption" color="text.secondary">
-                          {formatDate(event.time, locale)}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mt: 0.25 }}>
-                          {event.text}
-                        </Typography>
+                        {syncHistory.map((event, index) => {
+                          const isError =
+                            historyStatusColor(event.run_status) === "error" ||
+                            String(event.action || "").toUpperCase() ===
+                              "ERROR";
+                          const eventTime =
+                            event.detail_create_date || event.run_start_date;
+                          const displayMessage =
+                            event.display_message ||
+                            event.detail_message ||
+                            event.run_error_message;
+                          const oldStatus = String(
+                            event.old_status || "",
+                          ).trim();
+                          const newStatus = String(
+                            event.new_status || "",
+                          ).trim();
+                          const transition =
+                            oldStatus || newStatus
+                              ? `${oldStatus || "—"} → ${newStatus || "—"}`
+                              : "";
+                          const duration = Number(event.duration_ms);
+
+                          return (
+                            <Box
+                              key={
+                                event.sync_log_detail_id ||
+                                `${event.sync_log_id}-${index}`
+                              }
+                              sx={{
+                                position: "relative",
+                                pb:
+                                  index === syncHistory.length - 1 ? 0 : 2.5,
+                                "&::before": {
+                                  content: '""',
+                                  position: "absolute",
+                                  left: { xs: -2.375, sm: -2.875 },
+                                  top: 5,
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  bgcolor: isError
+                                    ? "error.main"
+                                    : "primary.main",
+                                  boxShadow: `0 0 0 3px ${alpha(theme.palette.background.paper, 0.95)}`,
+                                },
+                              }}
+                            >
+                              <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                gap={1}
+                                alignItems={{ sm: "flex-start" }}
+                                justifyContent="space-between"
+                              >
+                                <Box sx={{ minWidth: 0, flex: 1 }}>
+                                  <Stack
+                                    direction="row"
+                                    gap={0.8}
+                                    alignItems="center"
+                                    flexWrap="wrap"
+                                  >
+                                    <Chip
+                                      size="small"
+                                      color={historyStatusColor(
+                                        event.run_status,
+                                      )}
+                                      variant={isError ? "filled" : "outlined"}
+                                      label={event.run_status || "—"}
+                                      sx={{
+                                        height: 23,
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                      }}
+                                    />
+                                    <Chip
+                                      size="small"
+                                      variant="outlined"
+                                      label={event.action || "—"}
+                                      sx={{
+                                        height: 23,
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                      }}
+                                    />
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      {labels.run} #{event.sync_log_id}
+                                    </Typography>
+                                  </Stack>
+
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={600}
+                                    sx={{ mt: 1, overflowWrap: "anywhere" }}
+                                  >
+                                    {event.sync_type || "ORDER"}
+                                    {event.sync_source
+                                      ? ` · ${labels.source}: ${event.sync_source}`
+                                      : ""}
+                                  </Typography>
+
+                                  {transition && (
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ display: "block", mt: 0.5 }}
+                                    >
+                                      {labels.statusChanged}: {transition}
+                                    </Typography>
+                                  )}
+
+                                  {displayMessage && (
+                                    <Box
+                                      sx={{
+                                        mt: 1,
+                                        px: 1.25,
+                                        py: 1,
+                                        borderRadius: 1.5,
+                                        bgcolor: isError
+                                          ? alpha(
+                                              theme.palette.error.main,
+                                              0.07,
+                                            )
+                                          : "action.hover",
+                                        color: isError
+                                          ? "error.main"
+                                          : "text.secondary",
+                                        fontSize: 12,
+                                        overflowWrap: "anywhere",
+                                      }}
+                                    >
+                                      {displayMessage}
+                                    </Box>
+                                  )}
+                                </Box>
+
+                                <Stack
+                                  direction={{ xs: "row", sm: "column" }}
+                                  gap={{ xs: 1.5, sm: 0.5 }}
+                                  alignItems={{ sm: "flex-end" }}
+                                  sx={{ flexShrink: 0 }}
+                                >
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {formatDate(eventTime, locale)}
+                                  </Typography>
+                                  {event.duration_ms !== null &&
+                                    event.duration_ms !== undefined &&
+                                    event.duration_ms !== "" &&
+                                    Number.isFinite(duration) && (
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      {labels.duration}: {duration} ms
+                                    </Typography>
+                                  )}
+                                </Stack>
+                              </Stack>
+                            </Box>
+                          );
+                        })}
                       </Box>
-                    ))}
-                  </Box>
+                    )}
                 </CardContent>
               )}
             </Card>
