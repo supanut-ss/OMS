@@ -11,6 +11,7 @@ namespace OmsApi.Services.Implementation;
 public class PlatformDocumentService : IPlatformDocumentService
 {
     private const string WaybillDocumentType = "WAYBILL";
+    private const string SystemUser = "OMS_API";
     private readonly ApplicationDbContext _db;
     private readonly IShippingService _shippingService;
     private readonly ILogger<PlatformDocumentService> _logger;
@@ -72,7 +73,9 @@ public class PlatformDocumentService : IPlatformDocumentService
                     DocumentType = WaybillDocumentType,
                     SourceFormat = "PDF",
                     DocumentStatus = "PENDING",
+                    CreateBy = SystemUser,
                     CreateDate = DateTime.UtcNow,
+                    UpdateBy = SystemUser,
                     UpdateDate = DateTime.UtcNow
                 };
                 _db.PlatformDocuments.Add(document);
@@ -88,6 +91,7 @@ public class PlatformDocumentService : IPlatformDocumentService
             document.TrackingNumber = package.TrackingNumber;
             document.DocumentStatus = "PROCESSING";
             document.LastError = null;
+            document.UpdateBy = SystemUser;
             document.UpdateDate = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -108,6 +112,7 @@ public class PlatformDocumentService : IPlatformDocumentService
                 if (!string.Equals(label.Status, "READY", StringComparison.OrdinalIgnoreCase))
                 {
                     document.DocumentStatus = "PROCESSING";
+                    document.UpdateBy = SystemUser;
                     document.UpdateDate = DateTime.UtcNow;
                     await _db.SaveChangesAsync(CancellationToken.None);
                     results.Add(ToResult(document, platform));
@@ -139,6 +144,7 @@ public class PlatformDocumentService : IPlatformDocumentService
                 document.LastError = document.PrintStorageKey == null
                     ? $"The source format '{contentType}' still requires PDF conversion."
                     : null;
+                document.UpdateBy = SystemUser;
                 document.UpdateDate = DateTime.UtcNow;
                 await _db.SaveChangesAsync(CancellationToken.None);
             }
@@ -152,6 +158,7 @@ public class PlatformDocumentService : IPlatformDocumentService
                     packageId ?? "(order)");
                 document.DocumentStatus = "FAILED";
                 document.LastError = Truncate(ex.Message, 2000);
+                document.UpdateBy = SystemUser;
                 document.UpdateDate = DateTime.UtcNow;
                 await _db.SaveChangesAsync(CancellationToken.None);
             }
@@ -206,6 +213,7 @@ public class PlatformDocumentService : IPlatformDocumentService
         {
             document.PrintCount += 1;
             document.LastPrintDate = DateTime.UtcNow;
+            document.UpdateBy = SystemUser;
             document.UpdateDate = DateTime.UtcNow;
             await _db.SaveChangesAsync(CancellationToken.None);
         }

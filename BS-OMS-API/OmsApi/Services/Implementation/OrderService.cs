@@ -222,6 +222,7 @@ namespace OmsApi.Services.Implementation
                             ImageUrl = item.ImageUrl,
                             Variation = item.Variation,
                             Weight = item.Weight,
+                            CreateBy = SystemUser,
                             CreateDate = now
                         });
                     }

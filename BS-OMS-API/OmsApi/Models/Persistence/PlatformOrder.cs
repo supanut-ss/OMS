@@ -73,7 +73,9 @@ public class PlatformOrderItem
     public string? ImageUrl { get; set; }
     public string? Variation { get; set; }
     public decimal? Weight { get; set; }
+    public string? CreateBy { get; set; }
     public DateTime CreateDate { get; set; }
+    public string? UpdateBy { get; set; }
     public DateTime? UpdateDate { get; set; }
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 

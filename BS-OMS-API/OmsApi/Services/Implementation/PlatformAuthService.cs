@@ -16,6 +16,7 @@ namespace OmsApi.Services.Implementation
     /// </summary>
     public class PlatformAuthService : IPlatformAuthService
     {
+        private const string SystemUser = "OMS_API";
         private readonly ILogger<PlatformAuthService> _logger;
         private readonly ApplicationDbContext _db;
         private readonly IDataProtector _tokenProtector;
@@ -285,6 +286,7 @@ namespace OmsApi.Services.Implementation
                 {
                     Platform = platform,
                     ShopId = shopId,
+                    CreateBy = SystemUser,
                     CreateDate = now
                 };
                 _db.PlatformCredentials.Add(credential);
@@ -299,6 +301,7 @@ namespace OmsApi.Services.Implementation
             credential.RequiresReauthorization = "NO";
             credential.LastRefreshDate = now;
             credential.LastError = null;
+            credential.UpdateBy = SystemUser;
             credential.UpdateDate = now;
             await _db.SaveChangesAsync();
         }
