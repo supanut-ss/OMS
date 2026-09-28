@@ -5,8 +5,23 @@ using TokenManagement.Extensions;
 using TokenManagement.Interfaces;
 using TokenManagement.Services;
 using TokenManagement.Middleware;
+using Microsoft.AspNetCore.DataProtection;
 var builder = WebApplication.CreateBuilder(args);
 DotNetEnv.Env.Load();
+
+// Keep token protection compatible with BS-OMS-API, which reads and refreshes
+// credentials from the same platform credential table.
+var dataProtection = builder.Services
+    .AddDataProtection()
+    .SetApplicationName(Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_APP_NAME") ?? "OmsApi");
+var dataProtectionKeysPath = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_KEYS_PATH");
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
+    Directory.CreateDirectory(keyDirectory);
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+}
+
 // Register database services (provider determined by DB_PROVIDER env var: SqlServer | PostgreSql)
 builder.Services.AddDatabase(builder.Configuration);
 
@@ -53,6 +68,7 @@ builder.Services.AddScoped<IInbound, InboundService>();
 builder.Services.AddScoped<ICount, CountService>();
 builder.Services.AddScoped<IInventory, InventoryService>();
 builder.Services.AddScoped<IPartAttachmentService, PartAttachmentService>();
+builder.Services.AddScoped<IConnectorService, ConnectorService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
