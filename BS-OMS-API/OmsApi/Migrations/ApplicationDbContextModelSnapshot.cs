@@ -937,8 +937,7 @@ namespace OmsApi.Migrations
 
                     b.Property<string>("PlatformOrderId")
                         .IsRequired()
-                        .HasColumnType("varchar(128)
-                        ")
+                        .HasColumnType("varchar(128)")
                         .HasColumnName("platform_order_id");
 
                     b.Property<long>("SyncLogId")
