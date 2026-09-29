@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using OmsApi.Extensions;
 using OmsApi.Models.Auth;
@@ -38,20 +39,32 @@ namespace OmsApi.Services.Implementation
 
             var platform = filter.Platform.Value;
             var client = _clientFactory.GetClient(platform);
-            return await _credentialService.ExecuteAsync(
-                platform,
-                filter.ShopId,
-                async credential =>
-                {
-                    filter.AccessToken = credential.AccessToken;
-                    filter.ShopId = credential.ShopId;
-                    var result = await client.GetOrdersAsync(
-                        credential.AccessToken,
-                        credential.ShopId,
-                        filter);
-                    await SyncOrdersAsync(platform, credential.ShopId, result.Items);
-                    return result;
-                });
+            var requestPayload = SerializeSyncPayload(filter);
+            var startDate = DateTime.Now;
+            try
+            {
+                var result = await _credentialService.ExecuteAsync(
+                    platform,
+                    filter.ShopId,
+                    async credential =>
+                    {
+                        filter.AccessToken = credential.AccessToken;
+                        filter.ShopId = credential.ShopId;
+                        var result = await client.GetOrdersAsync(
+                            credential.AccessToken,
+                            credential.ShopId,
+                            filter);
+                        await SyncOrdersAsync(platform, credential.ShopId, result.Items);
+                        return result;
+                    });
+                await LogSyncAsync(platform, filter.ShopId, "GetOrders", requestPayload, startDate, success: true, result.Items.Count, errorMessage: null);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                await LogSyncAsync(platform, filter.ShopId, "GetOrders", requestPayload, startDate, success: false, orderCount: 0, ex.Message);
+                throw;
+            }
         }
 
         public async Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string? shopId = null)
@@ -126,19 +139,31 @@ namespace OmsApi.Services.Implementation
                 IPlatformClient client,
                 OrderFilter platformFilter)
             {
-                return await _credentialService.ExecuteAsync(
-                    selection.Platform,
-                    string.IsNullOrWhiteSpace(selection.ShopId) ? null : selection.ShopId,
-                    async credential =>
-                    {
-                        platformFilter.AccessToken = credential.AccessToken;
-                        platformFilter.ShopId = credential.ShopId;
-                        var result = await client.GetOrdersAsync(
-                            credential.AccessToken,
-                            credential.ShopId,
-                            platformFilter);
-                        return (selection.Platform, (string?)credential.ShopId, result);
-                    });
+                var requestPayload = SerializeSyncPayload(platformFilter);
+                var startDate = DateTime.Now;
+                try
+                {
+                    var (resultPlatform, resultShopId, result) = await _credentialService.ExecuteAsync(
+                        selection.Platform,
+                        string.IsNullOrWhiteSpace(selection.ShopId) ? null : selection.ShopId,
+                        async credential =>
+                        {
+                            platformFilter.AccessToken = credential.AccessToken;
+                            platformFilter.ShopId = credential.ShopId;
+                            var result = await client.GetOrdersAsync(
+                                credential.AccessToken,
+                                credential.ShopId,
+                                platformFilter);
+                            return (selection.Platform, (string?)credential.ShopId, result);
+                        });
+                    await LogSyncAsync(resultPlatform, resultShopId, "GetOrdersFromAllPlatforms", requestPayload, startDate, success: true, result.Items.Count, errorMessage: null);
+                    return (resultPlatform, resultShopId, result);
+                }
+                catch (Exception ex)
+                {
+                    await LogSyncAsync(selection.Platform, selection.ShopId, "GetOrdersFromAllPlatforms", requestPayload, startDate, success: false, orderCount: 0, ex.Message);
+                    throw;
+                }
             }
         }
 
@@ -233,6 +258,65 @@ namespace OmsApi.Services.Implementation
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to sync {Count} order(s) for {Platform} into t_oms_order", orders.Count, platform);
+            }
+        }
+
+        private static string SerializeSyncPayload(OrderFilter filter)
+        {
+            // AccessToken is populated onto the filter after credential
+            // resolution; never persist it into the sync log.
+            return JsonSerializer.Serialize(new
+            {
+                filter.Platform,
+                filter.ShopId,
+                filter.Status,
+                filter.DateFrom,
+                filter.DateTo,
+                filter.Page,
+                filter.PageSize
+            });
+        }
+
+        /// <summary>
+        /// Records every OMS-initiated sync call into t_oms_sync_log, success
+        /// or failure, so a call that came back empty or errored can be traced
+        /// back to exactly what was requested. Best-effort: a logging failure
+        /// must never break the sync response the caller is waiting on.
+        /// </summary>
+        private async Task LogSyncAsync(
+            PlatformType platform,
+            string? shopId,
+            string syncSource,
+            string requestPayload,
+            DateTime startDate,
+            bool success,
+            int orderCount,
+            string? errorMessage)
+        {
+            try
+            {
+                var endDate = DateTime.Now;
+                _db.PlatformSyncLogs.Add(new PlatformSyncLog
+                {
+                    SyncType = "ORDER",
+                    SyncSource = syncSource,
+                    Platform = platform.ToString(),
+                    ShopId = shopId,
+                    SyncStatus = success ? "SUCCESS" : "ERROR",
+                    TotalFetched = orderCount,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    DurationMs = (int)(endDate - startDate).TotalMilliseconds,
+                    RequestPayload = requestPayload,
+                    ErrorMessage = errorMessage?.Length > 2000 ? errorMessage[..2000] : errorMessage,
+                    CreateBy = SystemUser,
+                    CreateDate = endDate
+                });
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write sync log for {Platform}/{SyncSource}", platform, syncSource);
             }
         }
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OmsApi.Extensions;
 
@@ -11,9 +12,11 @@ using OmsApi.Extensions;
 namespace OmsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929044938_AddPlatformSyncLog")]
+    partial class AddPlatformSyncLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -836,8 +839,7 @@ namespace OmsApi.Migrations
                         .HasColumnName("platform");
 
                     b.Property<string>("RequestPayload")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("request_payload");
 
                     b.Property<string>("ShopId")

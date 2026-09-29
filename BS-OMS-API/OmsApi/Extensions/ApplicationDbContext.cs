@@ -12,6 +12,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
     public DbSet<PlatformOrder> PlatformOrders => Set<PlatformOrder>();
     public DbSet<PlatformOrderItem> PlatformOrderItems => Set<PlatformOrderItem>();
+    public DbSet<PlatformSyncLog> PlatformSyncLogs => Set<PlatformSyncLog>();
 
     // Existing WMS tables. OMS only reads the packing manifest and updates the
     // tracking number on the matching packing master row.
@@ -244,6 +245,34 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+        });
+
+        builder.Entity<PlatformSyncLog>(entity =>
+        {
+            entity.ToTable("t_oms_sync_log", "oms");
+            entity.HasKey(e => e.SyncLogId).HasName("PK_t_oms_sync_log");
+            entity.HasIndex(e => new { e.Platform, e.ShopId, e.StartDate })
+                .HasDatabaseName("IX_t_oms_sync_log_platform_shop");
+            entity.HasIndex(e => new { e.SyncStatus, e.StartDate })
+                .HasDatabaseName("IX_t_oms_sync_log_status");
+
+            entity.Property(e => e.SyncLogId).HasColumnName("sync_log_id");
+            entity.Property(e => e.SyncType).HasColumnName("sync_type").HasColumnType("varchar(32)").IsRequired().HasDefaultValue("ORDER");
+            entity.Property(e => e.SyncSource).HasColumnName("sync_source").HasColumnType("varchar(32)").IsRequired();
+            entity.Property(e => e.Platform).HasColumnName("platform").HasColumnType("varchar(32)").IsRequired();
+            entity.Property(e => e.ShopId).HasColumnName("shop_id").HasColumnType("varchar(128)");
+            entity.Property(e => e.SyncStatus).HasColumnName("sync_status").HasColumnType("varchar(16)").IsRequired();
+            entity.Property(e => e.TotalFetched).HasColumnName("total_fetched").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.TotalInserted).HasColumnName("total_inserted").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.TotalUpdated).HasColumnName("total_updated").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.TotalFailed).HasColumnName("total_failed").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.StartDate).HasColumnName("start_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.EndDate).HasColumnName("end_date").HasColumnType("datetime");
+            entity.Property(e => e.DurationMs).HasColumnName("duration_ms");
+            entity.Property(e => e.RequestPayload).HasColumnName("request_payload").HasMaxLength(2000);
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message").HasMaxLength(2000);
+            entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
+            entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
         });
 
         builder.Entity<WmsOutboundMaster>(entity =>
