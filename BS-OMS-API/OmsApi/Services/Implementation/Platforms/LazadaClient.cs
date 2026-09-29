@@ -112,58 +112,87 @@ namespace OmsApi.Services.Implementation.Platforms
             }
         }
 
+        // A transient HTTP error, network exception, or a success response
+        // missing "data" (Lazada sometimes returns this under throttling/load
+        // rather than a real not-found code) looks identical to a genuine
+        // "order does not exist" from the caller's side. Retrying a few times
+        // before giving up turns that flakiness into a reliable answer instead
+        // of a false 404.
+        private const int OrderDetailMaxAttempts = 3;
+        private static readonly TimeSpan OrderDetailRetryDelay = TimeSpan.FromMilliseconds(400);
+
         public async Task<UnifiedOrder?> GetOrderDetailAsync(string accessToken, string? shopId, string orderId)
         {
-            _logger.LogInformation("🏪 Lazada: Fetching order detail {OrderId}", orderId);
-
             var client = _httpClientFactory.CreateClient("Lazada");
             var apiPath = "/order/get";
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
 
-            var parameters = new Dictionary<string, string>
+            for (var attempt = 1; attempt <= OrderDetailMaxAttempts; attempt++)
             {
-                { "app_key", _appKey },
-                { "timestamp", timestamp },
-                { "access_token", accessToken },
-                { "sign_method", "sha256" },
-                { "order_id", orderId }
-            };
+                _logger.LogInformation("🏪 Lazada: Fetching order detail {OrderId} (attempt {Attempt}/{MaxAttempts})", orderId, attempt, OrderDetailMaxAttempts);
 
-            var sign = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
-            parameters["sign"] = sign;
-
-            var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
-
-            try
-            {
-                var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
-                var content = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                var parameters = new Dictionary<string, string>
                 {
-                    _logger.LogWarning("❌ Lazada order detail error: {Content}", content);
-                    return null;
-                }
+                    { "app_key", _appKey },
+                    { "timestamp", timestamp },
+                    { "access_token", accessToken },
+                    { "sign_method", "sha256" },
+                    { "order_id", orderId }
+                };
 
-                var json = JsonDocument.Parse(content);
-                if (json.RootElement.TryGetProperty("data", out var data))
+                var sign = SignatureHelper.GenerateLazadaSignature(_appSecret, apiPath, parameters);
+                parameters["sign"] = sign;
+
+                var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+                var isLastAttempt = attempt == OrderDetailMaxAttempts;
+
+                try
                 {
-                    var unified = MapLazadaOrderDetail(data);
+                    var response = await client.GetAsync(BuildRequestUri(apiPath, queryString));
+                    var content = await response.Content.ReadAsStringAsync();
 
-                    // Fetch order items separately
-                    var items = await GetOrderItemsAsync(accessToken, orderId, client);
-                    unified.Items = items;
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning(
+                            "⚠️ Lazada order detail error (attempt {Attempt}/{MaxAttempts}, {StatusCode}): {Content}",
+                            attempt, OrderDetailMaxAttempts, response.StatusCode, content);
+                        if (isLastAttempt)
+                            return null;
+                        await Task.Delay(OrderDetailRetryDelay);
+                        continue;
+                    }
 
-                    return unified;
+                    var json = JsonDocument.Parse(content);
+                    if (json.RootElement.TryGetProperty("data", out var data))
+                    {
+                        var unified = MapLazadaOrderDetail(data);
+
+                        // Fetch order items separately
+                        var items = await GetOrderItemsAsync(accessToken, orderId, client);
+                        unified.Items = items;
+
+                        return unified;
+                    }
+
+                    var code = GetLazadaString(json.RootElement, "code");
+                    var message = GetLazadaString(json.RootElement, "message");
+                    _logger.LogWarning(
+                        "⚠️ Lazada order detail returned no data (attempt {Attempt}/{MaxAttempts}): code={Code}, message={Message}",
+                        attempt, OrderDetailMaxAttempts, code, message);
+                    if (isLastAttempt)
+                        return null;
+                    await Task.Delay(OrderDetailRetryDelay);
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Lazada: Error fetching order detail (attempt {Attempt}/{MaxAttempts})", attempt, OrderDetailMaxAttempts);
+                    if (isLastAttempt)
+                        return null;
+                    await Task.Delay(OrderDetailRetryDelay);
+                }
+            }
 
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Lazada: Error fetching order detail");
-                return null;
-            }
+            return null;
         }
 
         private async Task<List<OrderItem>> GetOrderItemsAsync(string accessToken, string orderId, HttpClient client)
