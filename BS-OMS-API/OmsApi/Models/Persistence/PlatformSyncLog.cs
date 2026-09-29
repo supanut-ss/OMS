@@ -1,8 +1,8 @@
 namespace OmsApi.Models.Persistence;
 
 /// <summary>
-/// One row per platform -> OMS sync batch (one platform + shop per call).
-/// Append-only audit trail, so there are no update/rowversion columns.
+/// One row per platform -> OMS sync batch (one platform + shop per call),
+/// mirroring the shared OMS table while capturing request payload for traceability.
 /// </summary>
 public class PlatformSyncLog
 {
@@ -19,6 +19,7 @@ public class PlatformSyncLog
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public int? DurationMs { get; set; }
+    public string? RequestPayload { get; set; }
     public string? ErrorMessage { get; set; }
     public string? CreateBy { get; set; }
     public DateTime CreateDate { get; set; }

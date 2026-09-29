@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OmsApi.Extensions;
 
@@ -11,9 +12,11 @@ using OmsApi.Extensions;
 namespace OmsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929044938_AddPlatformSyncLog")]
+    partial class AddPlatformSyncLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -836,9 +839,9 @@ namespace OmsApi.Migrations
                         .HasColumnName("platform");
 
                     b.Property<string>("RequestPayload")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("request_payload");
+
                     b.Property<string>("ShopId")
                         .HasColumnType("varchar(128)")
                         .HasColumnName("shop_id");
@@ -900,62 +903,6 @@ namespace OmsApi.Migrations
                     b.ToTable("t_oms_sync_log", "oms");
                 });
 
-            modelBuilder.Entity("OmsApi.Models.Persistence.PlatformSyncLogDetail", b =>
-                {
-                    b.Property<long>("SyncLogDetailId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("sync_log_detail_id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("SyncLogDetailId"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("varchar(16)")
-                        .HasColumnName("action");
-
-                    b.Property<DateTime>("CreateDate")
-                        .HasColumnType("datetime")
-                        .HasColumnName("create_date");
-
-                    b.Property<string>("Message")
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
-                        .HasColumnName("message");
-
-                    b.Property<string>("NewStatus")
-                        .HasColumnType("varchar(32)")
-                        .HasColumnName("new_status");
-
-                    b.Property<string>("OldStatus")
-                        .HasColumnType("varchar(32)")
-                        .HasColumnName("old_status");
-
-                    b.Property<long?>("OrderRecordId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("order_record_id");
-
-                    b.Property<string>("PlatformOrderId")
-                        .IsRequired()
-                        .HasColumnType("varchar(128)
-                        ")
-                        .HasColumnName("platform_order_id");
-
-                    b.Property<long>("SyncLogId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("sync_log_id");
-
-                    b.HasKey("SyncLogDetailId")
-                        .HasName("PK_t_oms_sync_log_detail");
-
-                    b.HasIndex("SyncLogId")
-                        .HasDatabaseName("IX_t_oms_sync_log_detail_log");
-
-                    b.HasIndex("PlatformOrderId", "CreateDate")
-                        .HasDatabaseName("IX_t_oms_sync_log_detail_order");
-
-                    b.ToTable("t_oms_sync_log_detail", "oms");
-                });
             modelBuilder.Entity("OmsApi.Models.Persistence.WmsOutboundMaster", b =>
                 {
                     b.Property<Guid>("OutboundOrderMasterId")
@@ -1196,18 +1143,6 @@ namespace OmsApi.Migrations
                     b.Navigation("PlatformPackage");
                 });
 
-            modelBuilder.Entity("OmsApi.Models.Persistence.PlatformSyncLogDetail", b =>
-                {
-                    b.HasOne("OmsApi.Models.Persistence.PlatformSyncLog", "SyncLog")
-                        .WithMany("Details")
-                        .HasForeignKey("SyncLogId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK_t_oms_sync_log_detail_log");
-
-                    b.Navigation("SyncLog");
-                });
-
             modelBuilder.Entity("OmsApi.Models.Persistence.PlatformOrder", b =>
                 {
                     b.Navigation("Items");
@@ -1218,11 +1153,6 @@ namespace OmsApi.Migrations
             modelBuilder.Entity("OmsApi.Models.Persistence.PlatformPackage", b =>
                 {
                     b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("OmsApi.Models.Persistence.PlatformSyncLog", b =>
-                {
-                    b.Navigation("Details");
                 });
 #pragma warning restore 612, 618
         }

@@ -270,6 +270,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.StartDate).HasColumnName("start_date").HasColumnType("datetime").IsRequired();
             entity.Property(e => e.EndDate).HasColumnName("end_date").HasColumnType("datetime");
             entity.Property(e => e.DurationMs).HasColumnName("duration_ms");
+            entity.Property(e => e.RequestPayload).HasColumnName("request_payload").HasMaxLength(2000);
             entity.Property(e => e.ErrorMessage).HasColumnName("error_message").HasMaxLength(2000);
             entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
             entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
