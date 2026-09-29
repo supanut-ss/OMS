@@ -271,7 +271,12 @@ namespace OmsApi.Services.Implementation
             record.RecipientDistrict = recipient?.District;
             record.RecipientProvince = recipient?.Province;
             record.RecipientPostalCode = recipient?.PostalCode;
-            record.RecipientCountry = recipient?.Country;
+            // recipient_country is varchar(2) (ISO 3166-1 alpha-2); some platforms
+            // send the full country name instead of the code, which would
+            // otherwise throw a truncation error and abort the whole sync.
+            record.RecipientCountry = recipient?.Country is { Length: > 2 } country
+                ? country[..2]
+                : recipient?.Country;
             record.RecipientFullAddress = recipient?.FullAddress;
 
             record.SyncStatus = "SYNCED";

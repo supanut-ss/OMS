@@ -38,6 +38,8 @@ namespace OmsApi.Services.Implementation.Platforms
             var client = _httpClientFactory.CreateClient("Lazada");
             var apiPath = "/orders/get";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+            var page = Math.Max(1, filter.Page);
 
             var parameters = new Dictionary<string, string>
             {
@@ -45,12 +47,15 @@ namespace OmsApi.Services.Implementation.Platforms
                 { "timestamp", timestamp },
                 { "access_token", accessToken },
                 { "sign_method", "sha256" },
-                { "created_after", (filter.DateFrom ?? DateTime.UtcNow.AddDays(-15)).ToString("yyyy-MM-ddTHH:mm:ss+07:00") },
-                { "limit", Math.Min(filter.PageSize, 100).ToString() },
-                { "offset", ((filter.Page - 1) * filter.PageSize).ToString() },
+                { "created_after", (filter.DateFrom ?? DateTime.UtcNow.AddDays(-15)).ToString("yyyy-MM-ddTHH:mm:ss+07:00", CultureInfo.InvariantCulture) },
+                { "limit", pageSize.ToString() },
+                { "offset", ((page - 1) * pageSize).ToString() },
                 { "sort_by", "created_at" },
                 { "sort_direction", "DESC" }
             };
+
+            if (filter.DateTo.HasValue)
+                parameters["created_before"] = filter.DateTo.Value.ToString("yyyy-MM-ddTHH:mm:ss+07:00", CultureInfo.InvariantCulture);
 
             if (filter.Status.HasValue)
             {
@@ -71,8 +76,8 @@ namespace OmsApi.Services.Implementation.Platforms
 
                 var result = new PaginatedResult<UnifiedOrder>
                 {
-                    Page = filter.Page,
-                    PageSize = filter.PageSize
+                    Page = page,
+                    PageSize = pageSize
                 };
 
                 if (!response.IsSuccessStatusCode)
@@ -452,7 +457,12 @@ namespace OmsApi.Services.Implementation.Platforms
         private static DateTime GetLazadaDateTime(JsonElement element, params string[] propertyNames)
         {
             var value = GetLazadaString(element, propertyNames);
-            if (DateTime.TryParse(value, out var dateTime)) return dateTime;
+            if (DateTime.TryParse(
+                    value,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var dateTime))
+                return dateTime;
             if (long.TryParse(value, out var timestamp))
             {
                 try
@@ -513,7 +523,7 @@ namespace OmsApi.Services.Implementation.Platforms
             var shippingDeadline = GetLazadaString(order, "shipping_deadline");
             if (!string.IsNullOrWhiteSpace(shippingDeadline))
             {
-                if (DateTime.TryParse(shippingDeadline, out var dlDt))
+                if (DateTime.TryParse(shippingDeadline, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dlDt))
                 {
                     unified.CancellationDeadline = dlDt;
                 }
@@ -586,14 +596,16 @@ namespace OmsApi.Services.Implementation.Platforms
             var client = _httpClientFactory.CreateClient("Lazada");
             var apiPath = "/products/get";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+            var page = Math.Max(1, filter.Page);
 
             var parameters = new Dictionary<string, string>
             {
                 { "app_key", _appKey }, { "timestamp", timestamp },
                 { "access_token", accessToken }, { "sign_method", "sha256" },
                 { "filter", filter.ItemStatus ?? "all" },
-                { "limit", Math.Min(filter.PageSize, 100).ToString() },
-                { "offset", ((filter.Page - 1) * filter.PageSize).ToString() }
+                { "limit", pageSize.ToString() },
+                { "offset", ((page - 1) * pageSize).ToString() }
             };
             if (!string.IsNullOrEmpty(filter.Keyword)) parameters["search"] = filter.Keyword;
 
@@ -601,7 +613,7 @@ namespace OmsApi.Services.Implementation.Platforms
             parameters["sign"] = sign;
             var qs = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
 
-            var result = new PaginatedResult<ProductItem> { Page = filter.Page, PageSize = filter.PageSize };
+            var result = new PaginatedResult<ProductItem> { Page = page, PageSize = pageSize };
             try
             {
                 var resp = await client.GetAsync(BuildRequestUri(apiPath, qs));
@@ -622,7 +634,8 @@ namespace OmsApi.Services.Implementation.Platforms
                                 ItemId = p.TryGetProperty("item_id", out var iid) ? iid.GetInt64().ToString() : "",
                                 Status = p.TryGetProperty("status", out var st) ? st.GetString() ?? "" : "",
                                 CreatedAt = p.TryGetProperty("created_time", out var ct)
-                                    ? DateTime.TryParse(ct.GetString(), out var ctd) ? ctd : DateTime.MinValue : DateTime.MinValue
+                                    ? DateTime.TryParse(ct.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var ctd) ? ctd : DateTime.MinValue
+                                    : DateTime.MinValue
                             };
 
                             if (p.TryGetProperty("skus", out var skus))
