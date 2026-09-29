@@ -54,6 +54,16 @@ const HIDDEN_ITEM_COLUMNS = ITEM_COLUMNS.filter((field) =>
   !["sku", "item_name", "quantity", "unit_price"].includes(field),
 );
 
+function formatRequestPayload(payload) {
+  if (payload === null || payload === undefined || payload === "") return "";
+  if (typeof payload !== "string") return JSON.stringify(payload, null, 2);
+  try {
+    return JSON.stringify(JSON.parse(payload), null, 2);
+  } catch {
+    return payload;
+  }
+}
+
 const DetailField = ({ label, children, span = 1 }) => (
   <Box sx={{ minWidth: 0, gridColumn: { xs: "1 / -1", md: `span ${span}` } }}>
     <Typography
@@ -108,13 +118,20 @@ const OrderDetail = ({ lang = "th" }) => {
     loading: true,
     error: "",
   });
+  const [syncPayloadState, setSyncPayloadState] = useState({
+    orderRecordId: null,
+    syncLogId: null,
+    payload: null,
+    loading: true,
+    error: "",
+  });
   const [syncHistoryRetry, setSyncHistoryRetry] = useState(0);
   const [activeTab, setActiveTab] = useState("raw");
 
   const labels = useMemo(
     () => ({
       back: isThai ? "กลับไปหน้า Order List" : "Back to Order List",
-      rawPayload: "Raw Payload (Platform)",
+      rawPayload: isThai ? "Request Payload (Sync)" : "Sync Request Payload",
       orderItems: isThai ? "รายการสินค้า" : "Order Items",
       syncHistory: isThai ? "ประวัติการ Sync" : "Sync History",
       platformOrder: isThai ? "เลขที่คำสั่งซื้อ (Platform)" : "Order Number (Platform)",
@@ -131,9 +148,18 @@ const OrderDetail = ({ lang = "th" }) => {
       product: isThai ? "ชื่อสินค้า" : "Product Name",
       quantity: isThai ? "จำนวน" : "Quantity",
       unitPrice: isThai ? "ราคา / หน่วย" : "Unit Price",
-      rawMockNotice: isThai
-        ? "ข้อมูลตัวอย่างสำหรับแสดงหน้าจอเท่านั้น — ไม่มี Raw Payload ต้นฉบับในตาราง OMS"
-        : "Illustrative mock only — the OMS tables do not store the original raw payload.",
+      payloadDescription: isThai
+        ? "Request Payload จากรอบ Sync ล่าสุดที่บันทึกไว้ใน OMS"
+        : "Request payload recorded for the latest OMS sync run.",
+      payloadLoading: isThai
+        ? "กำลังโหลด Request Payload..."
+        : "Loading request payload...",
+      payloadFailed: isThai
+        ? "โหลด Request Payload ไม่สำเร็จ"
+        : "Could not load the request payload.",
+      payloadEmpty: isThai
+        ? "ไม่พบ Request Payload ในรอบ Sync ของออเดอร์นี้"
+        : "No request payload is available for this order's sync run.",
       historyDescription: isThai
         ? "ประวัติการประมวลผลออเดอร์จาก Marketplace ที่บันทึกไว้ใน OMS"
         : "Recorded Marketplace order processing events from OMS.",
@@ -306,6 +332,119 @@ const OrderDetail = ({ lang = "th" }) => {
     };
   }, [hasValidOrderRecordId, labels.historyFailed, numericOrderRecordId, syncHistoryRetry]);
 
+  useEffect(() => {
+    if (!hasValidOrderRecordId) {
+      setSyncPayloadState({
+        orderRecordId: numericOrderRecordId,
+        syncLogId: null,
+        payload: null,
+        loading: false,
+        error: "",
+      });
+      return undefined;
+    }
+
+    if (
+      syncHistoryState.orderRecordId !== numericOrderRecordId ||
+      syncHistoryState.loading
+    ) {
+      setSyncPayloadState({
+        orderRecordId: numericOrderRecordId,
+        syncLogId: null,
+        payload: null,
+        loading: true,
+        error: "",
+      });
+      return undefined;
+    }
+
+    if (syncHistoryState.error) {
+      setSyncPayloadState({
+        orderRecordId: numericOrderRecordId,
+        syncLogId: null,
+        payload: null,
+        loading: false,
+        error: syncHistoryState.error,
+      });
+      return undefined;
+    }
+
+    const latestEvent = syncHistoryState.events.find(
+      (event) => event.sync_log_id !== null && event.sync_log_id !== undefined,
+    );
+    const syncLogId = latestEvent?.sync_log_id;
+    if (syncLogId === null || syncLogId === undefined || syncLogId === "") {
+      setSyncPayloadState({
+        orderRecordId: numericOrderRecordId,
+        syncLogId: null,
+        payload: null,
+        loading: false,
+        error: "",
+      });
+      return undefined;
+    }
+
+    let isActive = true;
+    setSyncPayloadState({
+      orderRecordId: numericOrderRecordId,
+      syncLogId,
+      payload: null,
+      loading: true,
+      error: "",
+    });
+
+    AxiosMaster.post("/dynamic/datagrid", {
+      tableName: "t_oms_sync_log",
+      schemaName: "oms",
+      start: 0,
+      end: 1,
+      selectColumns: ["sync_log_id", "request_payload"],
+      sortModel: [{ field: "sync_log_id", sort: "desc" }],
+      filterModel: {
+        items: [{ field: "sync_log_id", operator: "equals", value: syncLogId }],
+        logicOperator: "and",
+        quickFilterValues: "",
+      },
+      userLookup: { table: "", idField: "", displayFields: [] },
+    })
+      .then((response) => {
+        if (!isActive) return;
+        const rows = Array.isArray(response.data?.rows)
+          ? response.data.rows.map((row) => row?.data ?? row?.Data ?? row)
+          : [];
+        const syncLog = rows[0];
+        setSyncPayloadState({
+          orderRecordId: numericOrderRecordId,
+          syncLogId,
+          payload: syncLog?.request_payload ?? syncLog?.Request_Payload ?? null,
+          loading: false,
+          error: "",
+        });
+      })
+      .catch((requestError) => {
+        if (!isActive) return;
+        setSyncPayloadState({
+          orderRecordId: numericOrderRecordId,
+          syncLogId,
+          payload: null,
+          loading: false,
+          error: requestError.response?.data?.message || labels.payloadFailed,
+        });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    hasValidOrderRecordId,
+    labels.payloadFailed,
+    numericOrderRecordId,
+    syncHistoryState.events,
+    syncHistoryState.error,
+    syncHistoryState.loading,
+    syncHistoryState.orderRecordId,
+  ]);
+
   const itemColumns = useMemo(
     () => [
       {
@@ -364,26 +503,6 @@ const OrderDetail = ({ lang = "th" }) => {
         .join(" ")
     : "";
 
-  const rawPayload = order
-    ? {
-        id: order.platform_order_id,
-        status: order.original_status || order.status,
-        order_created_date: order.order_created_date,
-        buyer_name: order.buyer_name,
-        recipient: {
-          name: order.recipient_name || order.buyer_name,
-          phone: order.recipient_phone,
-          address: fullAddress,
-          postal_code: order.recipient_postal_code,
-        },
-        shipping_provider: order.shipping_carrier,
-        tracking_number: order.tracking_number,
-        total_amount: order.total_amount,
-        currency: order.currency,
-        line_items: "Mock payload preview — see Order Items for stored rows",
-      }
-    : null;
-
   const isCurrentHistory =
     syncHistoryState.orderRecordId === numericOrderRecordId;
   const syncHistory = isCurrentHistory ? syncHistoryState.events : [];
@@ -391,6 +510,16 @@ const OrderDetail = ({ lang = "th" }) => {
     !isCurrentHistory || syncHistoryState.loading;
   const syncHistoryError = isCurrentHistory ? syncHistoryState.error : "";
   const syncHistoryRowCount = isCurrentHistory ? syncHistoryState.rowCount : 0;
+  const isCurrentPayload =
+    syncPayloadState.orderRecordId === numericOrderRecordId;
+  const syncPayloadLoading =
+    !isCurrentPayload || syncPayloadState.loading;
+  const syncPayloadError = isCurrentPayload ? syncPayloadState.error : "";
+  const syncRequestPayload = isCurrentPayload ? syncPayloadState.payload : null;
+  const latestPayloadEvent = syncHistory.find(
+    (event) => String(event.sync_log_id) === String(syncPayloadState.syncLogId),
+  );
+  const formattedSyncPayload = formatRequestPayload(syncRequestPayload);
   const historyStatusColor = (value) => {
     const status = String(value || "").trim().toUpperCase();
     if (["ERROR", "FAILED", "FAIL"].includes(status)) return "error";
@@ -575,29 +704,75 @@ const OrderDetail = ({ lang = "th" }) => {
 
               {activeTab === "raw" && (
                 <CardContent>
-                  <Alert severity="info" sx={{ mb: 1.5 }}>
-                    {labels.rawMockNotice}
-                  </Alert>
-                  <Box
-                    component="pre"
-                    sx={{
-                      m: 0,
-                      p: 2,
-                      maxHeight: 440,
-                      overflow: "auto",
-                      borderRadius: 1.5,
-                      bgcolor: "#1e1e2e",
-                      color: "#c9d6e3",
-                      fontFamily: "Consolas, 'Courier New', monospace",
-                      fontSize: 12,
-                      lineHeight: 1.65,
-                      whiteSpace: "pre-wrap",
-                      overflowWrap: "anywhere",
-                      "& .json-key": { color: "#7ec9f0" },
-                    }}
-                  >
-                    {JSON.stringify(rawPayload, null, 2)}
-                  </Box>
+                  <Stack spacing={1.5}>
+                    <Typography variant="body2" color="text.secondary">
+                      {labels.payloadDescription}
+                    </Typography>
+
+                    {syncPayloadLoading && (
+                      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ py: 4 }}>
+                        <CircularProgress size={20} />
+                        <Typography color="text.secondary" variant="body2">
+                          {labels.payloadLoading}
+                        </Typography>
+                      </Stack>
+                    )}
+
+                    {!syncPayloadLoading && syncPayloadError && (
+                      <Alert
+                        severity="error"
+                        action={
+                          <Button
+                            color="inherit"
+                            size="small"
+                            onClick={() => setSyncHistoryRetry((attempt) => attempt + 1)}
+                          >
+                            {labels.retry}
+                          </Button>
+                        }
+                      >
+                        {syncPayloadError || labels.payloadFailed}
+                      </Alert>
+                    )}
+
+                    {!syncPayloadLoading && !syncPayloadError && !formattedSyncPayload && (
+                      <Alert severity="info">
+                        {labels.payloadEmpty}
+                        {syncPayloadState.syncLogId ? ` (${labels.run} #${syncPayloadState.syncLogId})` : ""}
+                      </Alert>
+                    )}
+
+                    {!syncPayloadLoading && !syncPayloadError && formattedSyncPayload && (
+                      <>
+                        <Typography variant="caption" color="text.secondary">
+                          {labels.run} #{syncPayloadState.syncLogId}
+                          {latestPayloadEvent?.run_start_date
+                            ? ` · ${formatDate(latestPayloadEvent.run_start_date, locale)}`
+                            : ""}
+                        </Typography>
+                        <Box
+                          component="pre"
+                          sx={{
+                            m: 0,
+                            p: 2,
+                            maxHeight: 440,
+                            overflow: "auto",
+                            borderRadius: 1.5,
+                            bgcolor: "#1e1e2e",
+                            color: "#c9d6e3",
+                            fontFamily: "Consolas, 'Courier New', monospace",
+                            fontSize: 12,
+                            lineHeight: 1.65,
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                            "& .json-key": { color: "#7ec9f0" },
+                          }}
+                        >
+                          {formattedSyncPayload}
+                        </Box>
+                      </>
+                    )}
+                  </Stack>
                 </CardContent>
               )}
 
