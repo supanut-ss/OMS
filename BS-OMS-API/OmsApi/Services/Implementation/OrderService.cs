@@ -236,6 +236,14 @@ namespace OmsApi.Services.Implementation
             }
         }
 
+        // SQL Server's datetime column rejects anything before this instant;
+        // DateTime.MinValue (0001-01-01) is a common "field was missing"
+        // sentinel from platform mappers and must never reach SaveChangesAsync.
+        private static readonly DateTime SqlDateTimeMin = new(1753, 1, 1);
+
+        private static DateTime? ClampToSqlDateTime(DateTime? value) =>
+            value.HasValue && value.Value < SqlDateTimeMin ? null : value;
+
         private static void MapToRecord(UnifiedOrder order, PlatformOrder record, DateTime now)
         {
             record.ShopName = order.ShopName;
@@ -248,9 +256,13 @@ namespace OmsApi.Services.Implementation
             record.TaxInvoiceCompanyName = order.TaxInvoice?.CompanyName;
             record.TaxInvoiceAddress = order.TaxInvoice?.Address;
             record.TaxInvoiceBranchCode = order.TaxInvoice?.BranchCode;
-            record.CancellationDeadline = order.CancellationDeadline;
-            record.OrderCreatedDate = order.CreatedAt;
-            record.OrderUpdatedDate = order.UpdatedAt;
+            record.CancellationDeadline = ClampToSqlDateTime(order.CancellationDeadline);
+            // Some platforms (e.g. Shopee's order list endpoint) omit the
+            // create-time field entirely, which maps to DateTime.MinValue —
+            // far below SQL Server's datetime floor (1753-01-01). Clamping
+            // here keeps the sync a best-effort cache instead of crashing.
+            record.OrderCreatedDate = ClampToSqlDateTime(order.CreatedAt) ?? SqlDateTimeMin;
+            record.OrderUpdatedDate = ClampToSqlDateTime(order.UpdatedAt);
             record.TotalAmount = order.TotalAmount;
             record.Currency = order.Currency;
 
@@ -260,7 +272,7 @@ namespace OmsApi.Services.Implementation
             record.PackageNumber = shipping?.PackageNumber;
             record.ShippingMethod = shipping?.ShippingMethod;
             record.ShippingFee = shipping?.ShippingFee;
-            record.EstimatedDeliveryDate = shipping?.EstimatedDeliveryDate;
+            record.EstimatedDeliveryDate = ClampToSqlDateTime(shipping?.EstimatedDeliveryDate);
 
             var recipient = shipping?.RecipientAddress;
             record.RecipientName = recipient?.Name;
