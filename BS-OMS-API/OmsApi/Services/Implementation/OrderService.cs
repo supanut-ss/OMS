@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using OmsApi.Extensions;
 using OmsApi.Models.Auth;
@@ -14,6 +15,14 @@ namespace OmsApi.Services.Implementation
     public class OrderService : IOrderService
     {
         private const string SystemUser = "OMS_API";
+        private const string SyncSourceOrderList = "ORDER_LIST";
+        private const string SyncSourceOrderDetail = "ORDER_DETAIL";
+        private const string SyncSourceAllPlatforms = "ALL_PLATFORMS";
+        private const string SyncStatusSuccess = "SUCCESS";
+        private const string SyncStatusError = "ERROR";
+        private const string SyncActionInsert = "INSERT";
+        private const string SyncActionUpdate = "UPDATE";
+        private const string SyncActionError = "ERROR";
         private readonly IPlatformClientFactory _clientFactory;
         private readonly IPlatformCredentialService _credentialService;
         private readonly ApplicationDbContext _db;
@@ -49,7 +58,7 @@ namespace OmsApi.Services.Implementation
                         credential.AccessToken,
                         credential.ShopId,
                         filter);
-                    await SyncOrdersAsync(platform, credential.ShopId, result.Items);
+                    await SyncOrdersAsync(platform, credential.ShopId, result.Items, SyncSourceOrderList);
                     return result;
                 });
         }
@@ -67,7 +76,7 @@ namespace OmsApi.Services.Implementation
                         credential.ShopId,
                         orderId);
                     if (order != null)
-                        await SyncOrdersAsync(platform, credential.ShopId, new[] { order });
+                        await SyncOrdersAsync(platform, credential.ShopId, new[] { order }, SyncSourceOrderDetail);
                     return order;
                 });
         }
@@ -110,7 +119,7 @@ namespace OmsApi.Services.Implementation
                 foreach (var (platform, shopId, result) in results)
                 {
                     allOrders.AddRange(result.Items);
-                    await SyncOrdersAsync(platform, shopId, result.Items);
+                    await SyncOrdersAsync(platform, shopId, result.Items, SyncSourceAllPlatforms);
                 }
             }
             catch (Exception ex)
@@ -163,15 +172,30 @@ namespace OmsApi.Services.Implementation
         /// local cache of what the platform APIs returned — a write failure
         /// here must never break the read response the caller is waiting on.
         /// </summary>
-        private async Task SyncOrdersAsync(PlatformType platform, string? rawShopId, IReadOnlyCollection<UnifiedOrder> orders)
+        private async Task SyncOrdersAsync(PlatformType platform, string? rawShopId, IReadOnlyCollection<UnifiedOrder> orders, string syncSource)
         {
             if (orders.Count == 0)
                 return;
 
+            var platformName = platform.ToString();
+            var startDate = DateTime.Now;
+            var stopwatch = Stopwatch.StartNew();
+            var syncLog = new PlatformSyncLog
+            {
+                SyncSource = syncSource,
+                Platform = platformName,
+                ShopId = rawShopId,
+                TotalFetched = orders.Count,
+                StartDate = startDate,
+                CreateBy = SystemUser,
+                CreateDate = startDate
+            };
+            var synced = new List<(PlatformOrder Record, string Action, string? OldStatus)>();
+
             try
             {
                 var shopId = PlatformShopIdResolver.Resolve(platform, rawShopId);
-                var platformName = platform.ToString();
+                syncLog.ShopId = shopId;
                 var orderIds = orders.Select(o => o.OrderId).ToList();
 
                 var existing = await _db.PlatformOrders
@@ -183,7 +207,9 @@ namespace OmsApi.Services.Implementation
                 var now = DateTime.Now;
                 foreach (var order in orders)
                 {
-                    if (!existingByOrderId.TryGetValue(order.OrderId, out var record))
+                    var isNew = !existingByOrderId.TryGetValue(order.OrderId, out var record);
+                    var oldStatus = record?.Status;
+                    if (record == null)
                     {
                         record = new PlatformOrder
                         {
@@ -198,6 +224,7 @@ namespace OmsApi.Services.Implementation
                     }
 
                     MapToRecord(order, record, now);
+                    synced.Add((record, isNew ? SyncActionInsert : SyncActionUpdate, oldStatus));
 
                     // Replace items wholesale; this table is a read-through
                     // cache, not a system of record, so there is no history
@@ -229,12 +256,85 @@ namespace OmsApi.Services.Implementation
                 }
 
                 await _db.SaveChangesAsync();
+
+                // Details are built after the save so new orders already carry
+                // their identity order_record_id.
+                syncLog.SyncStatus = SyncStatusSuccess;
+                foreach (var (record, action, previousStatus) in synced)
+                {
+                    syncLog.Details.Add(new PlatformSyncLogDetail
+                    {
+                        PlatformOrderId = record.PlatformOrderId,
+                        OrderRecordId = record.OrderRecordId,
+                        Action = action,
+                        OldStatus = previousStatus,
+                        NewStatus = record.Status,
+                        CreateDate = now
+                    });
+                }
+                syncLog.TotalInserted = synced.Count(x => x.Action == SyncActionInsert);
+                syncLog.TotalUpdated = synced.Count(x => x.Action == SyncActionUpdate);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to sync {Count} order(s) for {Platform} into t_oms_order", orders.Count, platform);
+
+                // Drop the pending order changes, otherwise the log save below
+                // would retry them and fail the same way.
+                foreach (var entry in _db.ChangeTracker.Entries()
+                             .Where(e => e.Entity is PlatformOrder or PlatformOrderItem && e.State != EntityState.Unchanged)
+                             .ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
+
+                var errorMessage = Truncate(ex.GetBaseException().Message, 2000);
+                syncLog.SyncStatus = SyncStatusError;
+                syncLog.TotalFailed = orders.Count;
+                syncLog.ErrorMessage = errorMessage;
+                foreach (var order in orders)
+                {
+                    syncLog.Details.Add(new PlatformSyncLogDetail
+                    {
+                        PlatformOrderId = order.OrderId,
+                        Action = SyncActionError,
+                        NewStatus = order.Status.ToString(),
+                        CreateDate = DateTime.Now
+                    });
+                }
+            }
+
+            stopwatch.Stop();
+            syncLog.EndDate = DateTime.Now;
+            syncLog.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+            await WriteSyncLogAsync(syncLog);
+        }
+
+        /// <summary>
+        /// Saves a sync log row. Logging is diagnostics only, so a failure here
+        /// is swallowed and must never break the order response.
+        /// </summary>
+        private async Task WriteSyncLogAsync(PlatformSyncLog syncLog)
+        {
+            try
+            {
+                _db.PlatformSyncLogs.Add(syncLog);
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write t_oms_sync_log for {Platform} ({Source})", syncLog.Platform, syncLog.SyncSource);
+                foreach (var entry in _db.ChangeTracker.Entries()
+                             .Where(e => e.Entity is PlatformSyncLog or PlatformSyncLogDetail)
+                             .ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
             }
         }
+
+        private static string Truncate(string value, int maxLength) =>
+            value.Length <= maxLength ? value : value[..maxLength];
 
         private static void MapToRecord(UnifiedOrder order, PlatformOrder record, DateTime now)
         {

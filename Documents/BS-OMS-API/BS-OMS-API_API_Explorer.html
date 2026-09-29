@@ -142,7 +142,7 @@ pre{margin:0;padding:14px 16px;overflow-x:auto;color:var(--code-ink);font:13px/1
   <aside class="side" id="side">
     <div class="brand">
       <h1>BS-OMS-API <span>Explorer</span></h1>
-      <p>API v1 · 35 endpoints · Shopee / Lazada / TikTok</p>
+      <p>API v1 · เอกสาร v1.1 · 35 endpoints · Shopee / Lazada / TikTok</p>
       <button class="menu-btn" id="menuBtn" aria-expanded="true" aria-controls="nav">ซ่อนรายการ API</button>
     </div>
     <div class="filters">
@@ -184,8 +184,7 @@ const ok = (data, message = "Success", totalCount) => {
 };
 const PLAT = P("platform", "path", "string", "y", "<code>shopee</code>, <code>lazada</code>, <code>tiktok</code> (ไม่สนตัวพิมพ์)");
 const PLAT_ENUM = P("platform", "path", "PlatformType", "y", "<code>Shopee</code>, <code>Lazada</code>, <code>TikTok</code> หรือ 0–2");
-const TOKEN_Q = P("accessToken", "query", "string", "y", "Token ของ Marketplace");
-const SHOP_Q = P("shopId", "query", "string", "n", "Shop ID ของร้าน");
+const SHOP_Q = P("shopId", "query", "string", "c", "จำเป็นเมื่อ platform นั้นมีหลายร้านที่ active");
 const SHOP_QR = P("shopId", "query", "string", "y", "Shop ID ของร้าน");
 
 const sampleOrder = {
@@ -242,64 +241,65 @@ const E = [
 
   // ─── Order ───
   { id: "order-list", group: "Order", method: "POST", path: "/api/order/list", summary: "ดึง Order จาก 1 Platform",
-    desc: "ดึง Order แบบแบ่งหน้าจาก platform ที่ระบุ คืน PaginatedResult<UnifiedOrder>", token: "request",
-    bodyFields: [F("platform", "int", "y", "PlatformType (0 Shopee, 1 Lazada, 2 TikTok)"), F("accessToken", "string", "y", "Token ของ Marketplace (ไม่เกิน 512 ตัวอักษร)"), F("shopId", "string", "c", "จำเป็นสำหรับ Shopee"), F("status", "int", "n", "OrderStatus ดูหัวข้อ Reference"), F("dateFrom", "datetime", "n", "วันที่สร้าง Order เริ่มต้น"), F("dateTo", "datetime", "n", "วันที่สร้าง Order สิ้นสุด"), F("page", "int", "n", "default 1"), F("pageSize", "int", "n", "default 50")],
-    body: J({ platform: 0, accessToken: "<marketplace-token>", shopId: "123456", status: 2, dateFrom: "2026-09-01T00:00:00Z", dateTo: "2026-09-24T00:00:00Z", page: 1, pageSize: 50 }),
+    desc: "ดึง Order แบบแบ่งหน้าจาก platform ที่ระบุ คืน PaginatedResult<UnifiedOrder> และบันทึก Order ลง oms.t_oms_order พร้อม log ใน oms.t_oms_sync_log", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType (0 Shopee, 1 Lazada, 2 TikTok)"), F("shopId", "string", "c", "จำเป็นเมื่อ platform นั้นมีหลายร้านที่ active"), F("status", "int", "n", "OrderStatus ดูหัวข้อ Reference"), F("dateFrom", "datetime", "n", "วันที่สร้าง Order เริ่มต้น"), F("dateTo", "datetime", "n", "วันที่สร้าง Order สิ้นสุด"), F("page", "int", "n", "default 1"), F("pageSize", "int", "n", "default 50")],
+    body: J({ platform: 0, shopId: "123456", status: 2, dateFrom: "2026-09-01T00:00:00Z", dateTo: "2026-09-24T00:00:00Z", page: 1, pageSize: 50 }),
     response: ok({ items: [sampleOrder], totalCount: 120, page: 1, pageSize: 50, hasMore: true }, "Retrieved 50 orders from Shopee", 120),
     statuses: [[200, "สำเร็จ"], [400, "ไม่ได้ระบุ platform"], [500, "Error ภายใน / Marketplace ตอบผิดพลาด"]] },
   { id: "order-all", group: "Order", method: "POST", path: "/api/order/all", summary: "ดึง Order จากหลาย Platform",
-    desc: "ดึง Order จากทุก platform ที่ส่ง credential มาพร้อมกัน (parallel) แล้วรวมเรียงตามเวลาสร้างล่าสุด", token: "request",
-    bodyFields: [F("platformCredentials[]", "array", "y", "อย่างน้อย 1 รายการ: platform, accessToken, shopId"), F("status", "int", "n", "OrderStatus"), F("dateFrom / dateTo", "datetime", "n", "ช่วงวันที่สร้าง Order"), F("page / pageSize", "int", "n", "ใช้กับแต่ละ platform")],
-    body: J({ status: 2, platformCredentials: [{ platform: 0, accessToken: "<token>", shopId: "123456" }, { platform: 1, accessToken: "<token>" }] }),
+    desc: "ดึง Order จากหลายร้านพร้อมกัน (parallel) โดยใช้ credential ที่ OMS เก็บไว้ แล้วรวมเรียงตามเวลาสร้างล่าสุด ถ้าไม่ส่ง platformCredentials จะดึงจากทุกร้านที่ active", token: "stored",
+    bodyFields: [F("platformCredentials[]", "array", "n", "ตัวเลือกร้าน: platform + shopId (ไม่ส่ง = ทุกร้านที่ active)"), F("status", "int", "n", "OrderStatus"), F("dateFrom / dateTo", "datetime", "n", "ช่วงวันที่สร้าง Order"), F("page / pageSize", "int", "n", "ใช้กับแต่ละ platform")],
+    body: J({ status: 2, platformCredentials: [{ platform: 0, shopId: "123456" }, { platform: 1, shopId: "100001" }] }),
+    warn: "ถ้าร้านใดร้านหนึ่ง error ระบบจะ log ไว้และคืน list ว่างทั้งหมดพร้อม 200 (ไม่ใช่ผลบางส่วน)",
     response: ok([sampleOrder], "Retrieved 1 orders from 2 platforms", 1),
-    statuses: [[200, "สำเร็จ"], [400, "ไม่มี platformCredentials"], [500, "Error ภายใน"]] },
+    statuses: [[200, "สำเร็จ (list ว่างถ้ามีร้านใด error)"], [500, "ไม่มีร้านที่ active (CREDENTIAL_NOT_FOUND)"]] },
   { id: "order-detail", group: "Order", method: "GET", path: "/api/order/{platform}/{orderId}", summary: "รายละเอียด Order",
-    desc: "ดูรายละเอียด Order รวม items, shipping, tax invoice และ buyer remarks", token: "request",
-    params: [PLAT, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), TOKEN_Q, SHOP_Q],
+    desc: "ดูรายละเอียด Order รวม items, shipping, tax invoice และ buyer remarks", token: "stored",
+    params: [PLAT, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_Q],
     response: ok(sampleOrder, "Order detail retrieved successfully"),
     statuses: [[200, "สำเร็จ"], [400, "platform ไม่รองรับ"], [404, "ไม่พบ Order"], [500, "Error ภายใน"]] },
   { id: "order-status", group: "Order", method: "GET", path: "/api/order/{platform}/{orderId}/status", summary: "สถานะ Order",
-    desc: "เช็คสถานะ Order และเส้นตายการจัดส่ง isUrgent เป็น true เมื่อเหลือไม่เกิน 1 วัน", token: "request",
-    params: [PLAT, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), TOKEN_Q, SHOP_Q],
+    desc: "เช็คสถานะ Order และเส้นตายการจัดส่ง isUrgent เป็น true เมื่อเหลือไม่เกิน 1 วัน", token: "stored",
+    params: [PLAT, P("orderId", "path", "string", "y", "เลข Order ของ Marketplace"), SHOP_Q],
     response: ok({ orderId: "240924ABCDEF", platform: 0, status: 2, statusName: "ReadyToShip", originalStatus: "READY_TO_SHIP", cancellationDeadline: "2026-09-26T10:00:00Z", daysUntilCancellation: 1, isUrgent: true }, "Order status retrieved"),
     statuses: [[200, "สำเร็จ"], [404, "ไม่พบ Order"], [500, "Error ภายใน"]] },
   { id: "order-deadline", group: "Order", method: "POST", path: "/api/order/cancellation-deadlines", summary: "Order ใกล้หมดเขตส่ง",
-    desc: "คืน Order ที่เหลือเวลาส่งไม่เกิน daysThreshold วัน ใช้ทำ alert ก่อนถูกยกเลิกอัตโนมัติ", token: "request",
+    desc: "คืน Order ที่เหลือเวลาส่งไม่เกิน daysThreshold วัน ใช้ทำ alert ก่อนถูกยกเลิกอัตโนมัติ", token: "stored",
     params: [P("daysThreshold", "query", "int", "n", "จำนวนวัน (default 2)")],
     bodyFields: [F("(OrderFilter)", "object", "y", "เหมือน /api/order/list หรือส่ง platformCredentials สำหรับหลาย platform")],
-    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", status: 2 }),
+    body: J({ platform: 0, shopId: "123456", status: 2 }),
     response: ok([sampleOrder], "Found 1 orders near cancellation deadline", 1),
     statuses: [[200, "สำเร็จ"], [500, "Error ภายใน"]] },
 
   // ─── Inventory ───
   { id: "inv-products", group: "Inventory", method: "POST", path: "/api/inventory/products", summary: "รายการสินค้าจาก 1 Platform",
-    desc: "ดึงรายการสินค้าพร้อมสต็อก คืน PaginatedResult<ProductItem>", token: "request",
-    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "c", "จำเป็นสำหรับ Shopee"), F("keyword", "string", "n", "คำค้นชื่อสินค้า"), F("itemStatus", "string", "n", "สถานะสินค้าของ platform"), F("page / pageSize", "int", "n", "default 1 / 50")],
-    body: J({ platform: 1, accessToken: "<token>", keyword: "shirt", itemStatus: "NORMAL", page: 1, pageSize: 50 }),
+    desc: "ดึงรายการสินค้าพร้อมสต็อก คืน PaginatedResult<ProductItem>", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "c", "จำเป็นเมื่อ platform นั้นมีหลายร้านที่ active"), F("keyword", "string", "n", "คำค้นชื่อสินค้า"), F("itemStatus", "string", "n", "สถานะสินค้าของ platform"), F("page / pageSize", "int", "n", "default 1 / 50")],
+    body: J({ platform: 1, shopId: "100001", keyword: "shirt", itemStatus: "NORMAL", page: 1, pageSize: 50 }),
     response: ok({ items: [sampleProduct], totalCount: 1, page: 1, pageSize: 50, hasMore: false }, "Retrieved 1 products from Lazada"),
     statuses: [[200, "สำเร็จ"], [400, "ไม่ได้ระบุ platform"]] },
   { id: "inv-products-all", group: "Inventory", method: "POST", path: "/api/inventory/products/all", summary: "สินค้าจากหลาย Platform",
-    desc: "ดึงสินค้าจากทุก platform ที่ส่ง credential มา คืน List<ProductItem>", token: "request",
-    bodyFields: [F("platformCredentials[]", "array", "y", "platform, accessToken, shopId"), F("keyword", "string", "n", "คำค้น"), F("itemStatus", "string", "n", "สถานะสินค้า")],
-    body: J({ keyword: "shirt", platformCredentials: [{ platform: 0, accessToken: "<token>", shopId: "123456" }, { platform: 2, accessToken: "<token>", shopId: "7000001" }] }),
+    desc: "ดึงสินค้าจากหลายร้าน คืน List<ProductItem> ถ้าไม่ส่ง platformCredentials จะดึงจากทุกร้านที่ active", token: "stored",
+    bodyFields: [F("platformCredentials[]", "array", "n", "ตัวเลือกร้าน: platform + shopId (ไม่ส่ง = ทุกร้านที่ active)"), F("keyword", "string", "n", "คำค้น"), F("itemStatus", "string", "n", "สถานะสินค้า")],
+    body: J({ keyword: "shirt", platformCredentials: [{ platform: 0, shopId: "123456" }, { platform: 2, shopId: "7000001" }] }),
     response: ok([sampleProduct], "Retrieved 1 products from all platforms"),
     statuses: [[200, "สำเร็จ"]] },
   { id: "inv-detail", group: "Inventory", method: "GET", path: "/api/inventory/{platform}/{itemId}", summary: "รายละเอียดสินค้า",
-    desc: "ดูรายละเอียดสินค้าและสต็อกแยก variation", token: "request",
-    params: [PLAT_ENUM, P("itemId", "path", "string", "y", "รหัสสินค้า"), TOKEN_Q, SHOP_Q],
+    desc: "ดูรายละเอียดสินค้าและสต็อกแยก variation", token: "stored",
+    params: [PLAT_ENUM, P("itemId", "path", "string", "y", "รหัสสินค้า"), SHOP_Q],
     response: ok(sampleProduct),
     statuses: [[200, "สำเร็จ"], [404, "ไม่พบสินค้า"]] },
   { id: "inv-low", group: "Inventory", method: "POST", path: "/api/inventory/low-stock", summary: "สินค้าสต็อกต่ำ",
-    desc: "คืนสินค้าที่สต็อกรวมไม่เกิน threshold", token: "request",
+    desc: "คืนสินค้าที่สต็อกรวมไม่เกิน threshold", token: "stored",
     params: [P("threshold", "query", "int", "n", "จำนวนขั้นต่ำ (default 5)")],
     bodyFields: [F("(ProductFilter)", "object", "y", "เหมือน /api/inventory/products หรือส่ง platformCredentials")],
-    body: J({ platform: 0, accessToken: "<token>", shopId: "123456" }),
+    body: J({ platform: 0, shopId: "123456" }),
     response: ok([{ ...sampleProduct, stock: { currentStock: 3, reservedStock: 0, availableStock: 3 }, variations: [], totalStock: 3 }], "Found 1 products with stock <= 5"),
     statuses: [[200, "สำเร็จ"]] },
   { id: "inv-update", group: "Inventory", method: "POST", path: "/api/inventory/update-stock", summary: "อัปเดตสต็อก",
-    desc: "ตั้งจำนวนสต็อกใหม่ของสินค้าหรือ variation บน Marketplace", token: "request",
-    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "c", "จำเป็นสำหรับ Shopee"), F("itemId", "string", "y", "รหัสสินค้า (ไม่เกิน 100 ตัวอักษร)"), F("variationId", "string", "n", "รหัส variation"), F("newStock", "int", "y", "จำนวนใหม่ (≥ 0)")],
-    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", itemId: "100200300", variationId: "555", newStock: 20 }),
+    desc: "ตั้งจำนวนสต็อกใหม่ของสินค้าหรือ variation บน Marketplace", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "c", "จำเป็นเมื่อ platform นั้นมีหลายร้านที่ active"), F("itemId", "string", "y", "รหัสสินค้า (ไม่เกิน 100 ตัวอักษร)"), F("variationId", "string", "n", "รหัส variation"), F("newStock", "int", "y", "จำนวนใหม่ (≥ 0)")],
+    body: J({ platform: 0, shopId: "123456", itemId: "100200300", variationId: "555", newStock: 20 }),
     response: ok("", "Stock updated successfully"),
     statuses: [[200, "สำเร็จ"], [400, "อัปเดตไม่สำเร็จ"]] },
 
@@ -373,21 +373,21 @@ const E = [
 
   // ─── Shipping: Label & tracking ───
   { id: "lb-print", group: "Shipping · Label & Tracking", method: "POST", path: "/api/shipping/print-label", summary: "ใบปะหน้าพัสดุ",
-    desc: "ขอใบปะหน้า (Shipping Label / AWB) ของ 1 Order จาก Marketplace", token: "request",
-    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "n", "Shop ID"), F("orderId", "string", "y", "เลข Order"), F("packageId", "string", "n", "Package ID (TikTok)"), F("trackingNumber", "string", "n", "เลข Tracking"), F("documentType", "string", "n", "default NORMAL_AIR_WAYBILL")],
-    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEF", packageId: null, trackingNumber: null, documentType: "NORMAL_AIR_WAYBILL" }),
+    desc: "ขอใบปะหน้า (Shipping Label / AWB) ของ 1 Order จาก Marketplace", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID"), F("orderId", "string", "y", "เลข Order"), F("packageId", "string", "n", "Package ID (TikTok)"), F("trackingNumber", "string", "n", "เลข Tracking"), F("documentType", "string", "n", "default NORMAL_AIR_WAYBILL")],
+    body: J({ platform: 0, shopId: "123456", orderId: "240924ABCDEF", packageId: null, trackingNumber: null, documentType: "NORMAL_AIR_WAYBILL" }),
     response: ok({ platform: 0, orderId: "240924ABCDEF", packageId: "OFG123", documentType: "NORMAL_AIR_WAYBILL", trackingNumber: "TH0123456789", documentUrl: null, documentBase64: "JVBERi0xLjQK...", contentType: "application/pdf", status: "READY", carrier: "Shopee Xpress" }, "Shipping label generated successfully"),
     statuses: [[200, "สำเร็จ"], [404, "สร้างไม่ได้ ตรวจสถานะ Order"]] },
   { id: "lb-batch", group: "Shipping · Label & Tracking", method: "POST", path: "/api/shipping/print-labels-batch", summary: "ใบปะหน้าหลาย Order",
-    desc: "ขอใบปะหน้าหลาย Order พร้อมกัน body เป็น array ของ ShippingLabelRequest", token: "request",
+    desc: "ขอใบปะหน้าหลาย Order พร้อมกัน body เป็น array ของ ShippingLabelRequest", token: "stored",
     bodyFields: [F("[ ]", "array", "y", "ShippingLabelRequest แต่ละรายการเหมือน /print-label")],
-    body: J([{ platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEF" }, { platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEG" }]),
+    body: J([{ platform: 0, shopId: "123456", orderId: "240924ABCDEF" }, { platform: 0, shopId: "123456", orderId: "240924ABCDEG" }]),
     response: ok([{ platform: 0, orderId: "240924ABCDEF", trackingNumber: "TH0123456789", documentBase64: "JVBERi0xLjQK...", contentType: "application/pdf", status: "READY", carrier: "Shopee Xpress" }], "Generated 1/2 shipping labels"),
     statuses: [[200, "สำเร็จ (ดูจำนวนใน message)"]] },
   { id: "lb-arrange", group: "Shipping · Label & Tracking", method: "POST", path: "/api/shipping/arrange", summary: "Arrange Shipment",
-    desc: "Arrange shipment ทีละ Order กับ Marketplace", token: "request",
-    bodyFields: [F("platform", "int", "y", "PlatformType"), F("accessToken", "string", "y", "Token ของ Marketplace"), F("shopId", "string", "n", "Shop ID"), F("orderId", "string", "y", "เลข Order"), F("packageId", "string", "n", "Package ID สำหรับ split order"), F("shippingMethod", "string", "n", "pickup, dropoff (default), non_integrated"), F("trackingNumber", "string", "n", "สำหรับ seller shipping"), F("shippingProviderId", "string", "n", "สำหรับ seller shipping")],
-    body: J({ platform: 0, accessToken: "<token>", shopId: "123456", orderId: "240924ABCDEF", packageId: null, shippingMethod: "dropoff", trackingNumber: null, shippingProviderId: null }),
+    desc: "Arrange shipment ทีละ Order กับ Marketplace", token: "stored",
+    bodyFields: [F("platform", "int", "y", "PlatformType"), F("shopId", "string", "n", "Shop ID"), F("orderId", "string", "y", "เลข Order"), F("packageId", "string", "n", "Package ID สำหรับ split order"), F("shippingMethod", "string", "n", "pickup, dropoff (default), non_integrated"), F("trackingNumber", "string", "n", "สำหรับ seller shipping"), F("shippingProviderId", "string", "n", "สำหรับ seller shipping")],
+    body: J({ platform: 0, shopId: "123456", orderId: "240924ABCDEF", packageId: null, shippingMethod: "dropoff", trackingNumber: null, shippingProviderId: null }),
     response: ok("", "Shipment arranged successfully"),
     statuses: [[200, "สำเร็จ"], [400, "arrange ไม่สำเร็จ ตรวจสถานะ Order"]] },
   { id: "tr-get", group: "Shipping · Label & Tracking", method: "GET", path: "/api/shipping/tracking/{platform}/{orderId}", summary: "ติดตามพัสดุ",
@@ -398,8 +398,8 @@ const E = [
       packages: [{ wmsPackageRef: "", boxNumber: null, platformPackageRecordId: null, packageId: "OFG123", trackingNumber: "TH0123456789", carrier: "Shopee Xpress", status: "IN_TRANSIT", isShipmentArranged: true, shippingMethod: "dropoff", itemIds: ["100200300"], items: [], events: [] }] }),
     statuses: [[200, "สำเร็จ"], [400, "ไม่มี credential หรือ Marketplace ปฏิเสธ"], [404, "ยังไม่มีข้อมูล tracking"]] },
   { id: "tr-providers", group: "Shipping · Label & Tracking", method: "GET", path: "/api/shipping/providers/{platform}", summary: "ผู้ให้บริการขนส่ง",
-    desc: "รายการผู้ให้บริการขนส่งที่ร้านใช้ได้บน platform นั้น", token: "request",
-    params: [PLAT_ENUM, TOKEN_Q, SHOP_Q],
+    desc: "รายการผู้ให้บริการขนส่งที่ร้านใช้ได้บน platform นั้น", token: "stored",
+    params: [PLAT_ENUM, SHOP_Q],
     response: ok([{ providerId: "18025", name: "Shopee Xpress", platform: 0, enabled: true }, { providerId: "18028", name: "Kerry Express", platform: 0, enabled: true }], "Found 2 shipping providers for Shopee"),
     statuses: [[200, "สำเร็จ"]] },
   { id: "tr-test", group: "Shipping · Label & Tracking", method: "GET", path: "/api/shipping/test-connection/{platform}", summary: "ทดสอบการเชื่อมต่อ",
@@ -432,6 +432,7 @@ const REF = [
   { id: "ref-basics", group: "Reference", method: "REF", path: "หลักการใช้งาน", summary: "Authentication และรูปแบบ Response", ref: "basics" },
   { id: "ref-enums", group: "Reference", method: "REF", path: "PlatformType · OrderStatus", summary: "ค่า Enum", ref: "enums" },
   { id: "ref-models", group: "Reference", method: "REF", path: "UnifiedOrder · ProductItem", summary: "Data Models หลัก", ref: "models" },
+  { id: "ref-changes", group: "Reference", method: "REF", path: "v1.1 · 29/09/2026", summary: "มีอะไรเปลี่ยนแปลง", ref: "changes" },
 ];
 const ALL = [...REF, ...E];
 
@@ -481,7 +482,6 @@ function renderEndpoint(ep) {
   const badges = [];
   badges.push(ep.auth === "none" ? '<span class="badge warn">ไม่ต้องใช้ X-Api-Key</span>' : '<span class="badge ok">ต้องใช้ X-Api-Key</span>');
   if (ep.token === "stored") badges.push('<span class="badge info">ใช้ token ที่ OMS เก็บไว้</span>');
-  if (ep.token === "request") badges.push('<span class="badge">ต้องส่ง accessToken ของ Marketplace</span>');
   if (ep.responseType === "file") badges.push('<span class="badge">คืนไฟล์ PDF</span>');
 
   let html = `<div class="crumb">${esc(ep.group)}</div>
@@ -491,6 +491,7 @@ function renderEndpoint(ep) {
     <div class="badges">${badges.join("")}</div>`;
   if (ep.warn) html += `<div class="callout warn"><b>ข้อควรรู้:</b> ${ep.warn}</div>`;
   if (ep.info) html += `<div class="callout info"><b>หมายเหตุ:</b> ${ep.info}</div>`;
+  if (ep.token === "stored") html += `<p class="note">ไม่ต้องส่ง accessToken · ถ้าไม่พบ credential ของร้านจะได้ error เช่น <code>CREDENTIAL_NOT_FOUND</code>, <code>SHOP_ID_REQUIRED</code>, <code>REAUTHORIZATION_REQUIRED</code> ดูที่ <a href="#ref-basics" data-id="ref-basics">หลักการใช้งาน</a></p>`;
   if (ep.flow) html += `<section class="block"><h3>ลำดับการทำงาน</h3><ol class="fields">${ep.flow.map(s => `<li>${esc(s)}</li>`).join("")}</ol></section>`;
 
   if (ep.params && ep.params.length) {
@@ -521,12 +522,37 @@ function renderRef(r) {
       <div style="margin-top:12px">${codeBox("401 Unauthorized", J({ success: false, message: "Unauthorized: Invalid or missing API key. Include 'X-Api-Key' header." }))}</div>
     </section>
     <section class="block"><h3>Token ของ Marketplace</h3>${table(["กลุ่ม", "วิธีใช้ token"], [
-      `<tr><td>Shipping · Package, Waybill, tracking, test-connection</td><td>ใช้ token ที่ OMS เก็บไว้ ส่งแค่ <code>shopId</code></td></tr>`,
-      `<tr><td>Order, Inventory, print-label, arrange, providers</td><td>ต้องส่ง <code>accessToken</code> ของ Marketplace มาใน request</td></tr>`])}</section>
+      `<tr><td>ทุก endpoint ที่เรียก Marketplace</td><td>ใช้ token ที่ OMS เก็บไว้ใน <code>oms.t_oms_platform_credential</code> ส่งแค่ <code>platform</code> + <code>shopId</code> ไม่ต้องส่ง <code>accessToken</code></td></tr>`,
+      `<tr><td>Refresh</td><td>refresh อัตโนมัติเมื่อ token จะหมดอายุภายใน 2 นาที และลองใหม่ 1 ครั้งเมื่อ Marketplace ปฏิเสธ token</td></tr>`,
+      `<tr><td>shopId</td><td>จำเป็นเมื่อ platform เดียวกันมีร้านที่ active มากกว่า 1 ร้าน</td></tr>`])}
+      <div style="margin-top:12px">${table(["Error code", "สาเหตุ", "วิธีแก้"], [
+        ["CREDENTIAL_NOT_FOUND", "ไม่พบ credential ที่ active ของร้านนั้น", "เชื่อมร้านผ่าน OAuth หรือเปิด active ใน Connector"],
+        ["SHOP_ID_REQUIRED", "มีหลายร้านใน platform เดียวกันแต่ไม่ได้ส่ง shopId", "ส่ง shopId"],
+        ["REAUTHORIZATION_REQUIRED", "refresh token หมดอายุ หรือร้านถูกตั้งให้เชื่อมใหม่", "ทำ OAuth ใหม่ที่ /api/auth/{platform}/authorize"],
+        ["CREDENTIAL_DECRYPT_FAILED", "ถอดรหัส token ไม่ได้ (Data Protection key เปลี่ยนหรือหาย)", "ตรวจ OMS_DATA_PROTECTION_KEYS_PATH แล้วเชื่อมร้านใหม่"]
+      ].map(r => `<tr><td class="n">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`))}</div>
+      <p class="note">Error เหล่านี้กลับมาใน message โดย Order และ Inventory คืน 500 ส่วน Shipping คืน 400</p></section>
     <section class="block"><h3>รูปแบบ Response</h3>${codeBox("ApiResponse<T>", J({ success: true, message: "Retrieved 50 orders from Shopee", data: {}, totalCount: 120 }))}
       <div style="margin-top:12px">${codeBox("PaginatedResult<T> (อยู่ใน data)", J({ items: [], totalCount: 120, page: 1, pageSize: 50, hasMore: true }))}</div></section>
     <section class="block"><h3>HTTP Status Codes</h3>${table(["Code", "เมื่อไหร่"], [[200, "สำเร็จ"], [302, "OAuth redirect"], [400, "Parameter ผิด, platform ไม่รองรับ, Marketplace ปฏิเสธ"], [401, "API Key ไม่ถูกหรือไม่มี"], [404, "ไม่พบข้อมูล"], [500, "Error ภายใน"], [501, "ยังไม่ implement (Chat)"], [503, "Document service ไม่พร้อม"]].map(([c, t]) => `<tr><td><span class="code-status ${statusCls(c)}">${c}</span></td><td>${t}</td></tr>`))}
       <p class="note">Error จาก Marketplace: <code>{Platform} API error '{code}': {message} (request_id: ...)</code></p></section>`;
+  } else if (r.ref === "changes") {
+    const chg = (list) => table(["Endpoint", "สิ่งที่เปลี่ยน"], list.map(([a, b]) => `<tr><td class="n">${a}</td><td>${b}</td></tr>`));
+    h += `<p class="ep-desc">เอกสารเวอร์ชัน 1.1 อัปเดตตาม source code ล่าสุด (origin/main a00077d) การเปลี่ยนแปลงหลักคือ client ไม่ต้องส่ง accessToken ของ Marketplace อีกต่อไป</p>
+    <section class="block"><h3>v1.1 · 29/09/2026</h3>${chg([
+      ["POST /api/order/list", "ลบ <code>accessToken</code> ออกจาก body · บันทึก Order ลง <code>oms.t_oms_order</code> และ log ใน <code>oms.t_oms_sync_log</code>"],
+      ["POST /api/order/all", "<code>platformCredentials</code> ไม่บังคับ (ไม่ส่ง = ทุกร้านที่ active) และเหลือแค่ platform + shopId"],
+      ["GET /api/order/{platform}/{orderId}, /status", "ลบ query <code>accessToken</code>"],
+      ["POST /api/inventory/products, /low-stock, /update-stock", "ลบ <code>accessToken</code> ออกจาก body"],
+      ["POST /api/inventory/products/all", "<code>platformCredentials</code> ไม่บังคับ"],
+      ["GET /api/inventory/{platform}/{itemId}", "ลบ query <code>accessToken</code>"],
+      ["POST /api/shipping/print-label, /print-labels-batch, /arrange", "ลบ <code>accessToken</code> ออกจาก body"],
+      ["POST /api/shipping/packages/sync-from-platform", "ลบ <code>accessToken</code> ออกจาก body"],
+      ["GET /api/shipping/providers/{platform}", "ลบ query <code>accessToken</code>"],
+      ["ทุก endpoint ที่เรียก Marketplace", "refresh token อัตโนมัติ และมี error code ใหม่ของ credential"],
+    ])}
+    <p class="note">ฐานข้อมูล: เพิ่มตาราง <code>oms.t_oms_sync_log</code> และทุกตาราง <code>oms.*</code> ใช้ audit columns ชุดเดียวกัน (create_by, create_date, update_by, update_date)</p></section>
+    <section class="block"><h3>v1.0 · 24/09/2026</h3><p class="ep-desc">ฉบับแรก จัดทำจาก source code ของ BS-OMS-API</p></section>`;
   } else if (r.ref === "enums") {
     h += `<p class="ep-desc">โปรเจกต์ไม่ได้ตั้ง JsonStringEnumConverter ดังนั้น enum ใน JSON body และ response เป็นตัวเลข ส่วนใน path/query ใช้ชื่อได้</p>
     <section class="block"><h3>PlatformType</h3>${table(["ค่า", "ชื่อ", "ใน path"], [["0", "Shopee", "shopee"], ["1", "Lazada", "lazada"], ["2", "TikTok", "tiktok"]].map(r => `<tr><td class="n">${r[0]}</td><td>${r[1]}</td><td class="n">${r[2]}</td></tr>`))}</section>

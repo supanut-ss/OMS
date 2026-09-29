@@ -94,6 +94,7 @@ public class MultiPackageMappingTests
         Assert.Equal("3333333333333", order.TaxInvoice!.TaxId);
         Assert.Equal(2026, order.CreatedAt.Year);
         Assert.Equal(2026, order.UpdatedAt!.Value.Year);
+        Assert.Equal("TH", order.Shipping!.RecipientAddress!.Country);
     }
 
     [Fact]

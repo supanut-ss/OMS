@@ -54,12 +54,10 @@ namespace OmsApi.Services.Implementation.Platforms
             var apiPath = "/order/202309/orders/search";
             var timestamp = DateTimeHelper.CurrentUnixTimestamp();
 
-            // Build request body
+            // Build request body. Paging/sorting are query parameters in
+            // 202309; only the search filters go in the body.
             var body = new
             {
-                page_size = Math.Min(filter.PageSize, 100),
-                sort_order = "DESC",
-                sort_field = "CREATE_TIME",
                 create_time_ge = filter.DateFrom.HasValue
                     ? DateTimeHelper.ToUnixTimestamp(filter.DateFrom.Value)
                     : DateTimeHelper.ToUnixTimestamp(DateTime.UtcNow.AddDays(-15)),
@@ -75,7 +73,10 @@ namespace OmsApi.Services.Implementation.Platforms
                 { "app_key", _appKey },
                 { "timestamp", timestamp.ToString() },
                 { "shop_cipher", shopId ?? "" },
-                { "version", "202309" }
+                { "version", "202309" },
+                { "page_size", Math.Min(filter.PageSize, 100).ToString() },
+                { "sort_order", "DESC" },
+                { "sort_field", "create_time" }
             };
 
             var sign = SignatureHelper.GenerateTikTokSignature(_appSecret, apiPath, queryParams, bodyJson);

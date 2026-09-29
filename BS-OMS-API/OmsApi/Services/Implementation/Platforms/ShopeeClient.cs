@@ -90,6 +90,16 @@ namespace OmsApi.Services.Implementation.Platforms
                         result.TotalCount = result.Items.Count; // Shopee sandbox may not return total_count
                 }
 
+                // get_order_list only returns order_sn + status, so swap each stub
+                // for its full detail (create time, amount, address, items).
+                if (result.Items.Count > 0)
+                {
+                    var details = await GetOrderDetailsAsync(client, accessToken, shopIdLong, result.Items.Select(o => o.OrderId).ToList());
+                    result.Items = result.Items
+                        .Select(o => details.TryGetValue(o.OrderId, out var detail) ? detail : o)
+                        .ToList();
+                }
+
                 _logger.LogInformation("✅ Shopee: Retrieved {Count} orders", result.Items.Count);
                 return result;
             }
@@ -140,6 +150,58 @@ namespace OmsApi.Services.Implementation.Platforms
             }
             catch (PlatformApiException) { throw; }
             catch (Exception ex) { _logger.LogError(ex, "❌ Shopee: Error fetching order detail"); return null; }
+        }
+
+        /// <summary>
+        /// Batch get_order_detail (Shopee allows up to 50 order_sn per call).
+        /// Orders that fail to load are simply missing from the result.
+        /// </summary>
+        private async Task<Dictionary<string, UnifiedOrder>> GetOrderDetailsAsync(
+            HttpClient client, string accessToken, long shopIdLong, IReadOnlyList<string> orderSns)
+        {
+            const string apiPath = "/api/v2/order/get_order_detail";
+            var details = new Dictionary<string, UnifiedOrder>();
+
+            foreach (var batch in orderSns.Where(sn => !string.IsNullOrEmpty(sn)).Distinct().Chunk(50))
+            {
+                var timestamp = DateTimeHelper.CurrentUnixTimestamp();
+                var sign = SignatureHelper.GenerateShopeeSignature(_partnerKey, _partnerId, apiPath, timestamp, accessToken, shopIdLong);
+                var queryParams = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}" +
+                                  $"&shop_id={shopIdLong}&sign={sign}" +
+                                  $"&order_sn_list={string.Join(",", batch)}" +
+                                  $"&response_optional_fields=buyer_user_id,buyer_username,estimated_shipping_fee," +
+                                  $"recipient_address,actual_shipping_fee,note,item_list,pay_time," +
+                                  $"message_to_seller,ship_by_date,invoice_data,package_list,shipping_carrier";
+
+                try
+                {
+                    var response = await client.GetAsync(apiPath + queryParams);
+                    var content = await response.Content.ReadAsStringAsync();
+                    using var json = JsonDocument.Parse(content);
+                    var errCode = json.RootElement.TryGetProperty("error", out var errProp) ? errProp.GetString() : "";
+                    if (!response.IsSuccessStatusCode || !string.IsNullOrEmpty(errCode))
+                    {
+                        _logger.LogWarning("⚠️ Shopee order detail batch error: {Content}", content);
+                        continue;
+                    }
+
+                    if (json.RootElement.TryGetProperty("response", out var resp) &&
+                        resp.TryGetProperty("order_list", out var orderList))
+                    {
+                        foreach (var order in orderList.EnumerateArray())
+                        {
+                            var detail = MapShopeeOrderDetail(order);
+                            details[detail.OrderId] = detail;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ Shopee: Error fetching order detail batch");
+                }
+            }
+
+            return details;
         }
 
         #endregion

@@ -538,7 +538,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 var address4 = addr.TryGetProperty("address4", out var a4) ? a4.GetString() ?? "" : ""; // City/District
                 var address5 = addr.TryGetProperty("address5", out var a5) ? a5.GetString() ?? "" : ""; // Sub-district
                 var postCode = addr.TryGetProperty("post_code", out var pc) ? pc.GetString() ?? "" : "";
-                var country = addr.TryGetProperty("country", out var co) ? co.GetString() ?? "TH" : "TH";
+                var country = ToCountryCode(addr.TryGetProperty("country", out var co) ? co.GetString() : null);
 
                 if (unified.Shipping == null)
                 {
@@ -564,6 +564,30 @@ namespace OmsApi.Services.Implementation.Platforms
                     FullAddress = fullAddress
                 };
             }
+        }
+
+        /// <summary>
+        /// Lazada sends the full country name ("Thailand"), while RecipientAddress.Country
+        /// and t_oms_order.recipient_country hold a 2-letter ISO code.
+        /// </summary>
+        private static string ToCountryCode(string? country)
+        {
+            var value = country?.Trim();
+            if (string.IsNullOrEmpty(value))
+                return "TH";
+            if (value.Length == 2)
+                return value.ToUpperInvariant();
+
+            return value.ToLowerInvariant() switch
+            {
+                "thailand" => "TH",
+                "malaysia" => "MY",
+                "singapore" => "SG",
+                "philippines" => "PH",
+                "indonesia" => "ID",
+                "vietnam" or "viet nam" => "VN",
+                _ => "TH"
+            };
         }
 
         private static string MapStatusToLazada(OrderStatus status) => status switch
