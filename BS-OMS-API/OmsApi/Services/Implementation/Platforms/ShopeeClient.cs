@@ -46,17 +46,45 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var timeFrom = DateTimeHelper.ToUnixTimestamp(filter.DateFrom ?? DateTime.UtcNow.AddDays(-15));
             var timeTo = DateTimeHelper.ToUnixTimestamp(filter.DateTo ?? DateTime.UtcNow);
-            var cursor = "0"; // Shopee uses cursor-based pagination; "0" for first page
+            var cursor = "0";
+            var requestedPage = Math.Max(1, filter.Page);
+            var pageSize = Math.Clamp(filter.PageSize, 1, 100);
             var statusFilter = MapStatusToShopee(filter.Status);
             var queryParams = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}" +
                               $"&shop_id={shopIdLong}&sign={sign}" +
                               $"&time_range_field=create_time&time_from={timeFrom}&time_to={timeTo}" +
-                              $"&page_size={Math.Min(filter.PageSize, 100)}&cursor={cursor}" +
+                              $"&page_size={pageSize}&cursor={cursor}" +
                               $"&response_optional_fields=order_status" +
                               (statusFilter != "ALL" ? $"&order_status={statusFilter}" : "");
 
             try
             {
+                var visitedCursors = new HashSet<string>(StringComparer.Ordinal) { cursor };
+                for (var page = 1; page < requestedPage; page++)
+                {
+                    using var pageResponse = await client.GetAsync(apiPath + queryParams);
+                    var pageContent = await pageResponse.Content.ReadAsStringAsync();
+                    if (!pageResponse.IsSuccessStatusCode)
+                        throw CreateShopeeException(pageContent, "http_" + (int)pageResponse.StatusCode);
+
+                    using var pageJson = JsonDocument.Parse(pageContent);
+                    if (!pageJson.RootElement.TryGetProperty("response", out var pageData) ||
+                        !pageData.TryGetProperty("more", out var more) || more.ValueKind != JsonValueKind.True ||
+                        !pageData.TryGetProperty("next_cursor", out var nextCursor) ||
+                        string.IsNullOrEmpty(nextCursor.GetString()))
+                        return new PaginatedResult<UnifiedOrder> { Page = requestedPage, PageSize = pageSize };
+
+                    var next = nextCursor.GetString()!;
+                    if (!visitedCursors.Add(next))
+                        throw new InvalidOperationException("Shopee returned a repeated order cursor.");
+
+                    queryParams = queryParams.Replace(
+                        $"&cursor={Uri.EscapeDataString(cursor)}",
+                        $"&cursor={Uri.EscapeDataString(next)}",
+                        StringComparison.Ordinal);
+                    cursor = next;
+                }
+
                 var response = await client.GetAsync(apiPath + queryParams);
                 var content = await response.Content.ReadAsStringAsync();
                 _logger.LogDebug("Shopee response: {Content}", content);
@@ -66,18 +94,17 @@ namespace OmsApi.Services.Implementation.Platforms
                 var errCode = json.RootElement.TryGetProperty("error", out var errProp) ? errProp.GetString() : "";
                 if (!string.IsNullOrEmpty(errCode))
                 {
-                    var errMsg = json.RootElement.TryGetProperty("message", out var msgProp) ? msgProp.GetString() : "";
-                    _logger.LogWarning("⚠️ Shopee API error in body: {Code} - {Msg}", errCode, errMsg);
-                    return new PaginatedResult<UnifiedOrder>();
+                    _logger.LogWarning("⚠️ Shopee API error in body: {Content}", content);
+                    throw CreateShopeeException(content, errCode);
                 }
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("❌ Shopee API error: {StatusCode} - {Content}", response.StatusCode, content);
-                    return new PaginatedResult<UnifiedOrder>();
+                    throw CreateShopeeException(content, "http_" + (int)response.StatusCode);
                 }
 
-                var result = new PaginatedResult<UnifiedOrder> { Page = filter.Page, PageSize = filter.PageSize };
+                var result = new PaginatedResult<UnifiedOrder> { Page = requestedPage, PageSize = pageSize };
 
                 if (json.RootElement.TryGetProperty("response", out var resp))
                 {
@@ -87,11 +114,18 @@ namespace OmsApi.Services.Implementation.Platforms
                     if (resp.TryGetProperty("total_count", out var total))
                         result.TotalCount = total.GetInt32();
                     else
-                        result.TotalCount = result.Items.Count; // Shopee sandbox may not return total_count
+                    {
+                        var hasMore = resp.TryGetProperty("more", out var more) && more.ValueKind == JsonValueKind.True;
+                        result.TotalCount = (requestedPage - 1) * pageSize + result.Items.Count + (hasMore ? 1 : 0);
+                    }
                 }
 
                 _logger.LogInformation("✅ Shopee: Retrieved {Count} orders", result.Items.Count);
                 return result;
+            }
+            catch (PlatformApiException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -156,12 +190,14 @@ namespace OmsApi.Services.Implementation.Platforms
             var shopIdLong = long.TryParse(shopId, out var sid) ? sid : 0;
             var sign = SignatureHelper.GenerateShopeeSignature(_partnerKey, _partnerId, apiPath, timestamp, accessToken, shopIdLong);
 
-            var offset = (filter.Page - 1) * filter.PageSize;
+            var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+            var page = Math.Max(1, filter.Page);
+            var offset = (page - 1) * pageSize;
             var itemStatus = filter.ItemStatus ?? "NORMAL";
 
             var queryParams = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}" +
                               $"&shop_id={shopIdLong}&sign={sign}" +
-                              $"&offset={offset}&page_size={Math.Min(filter.PageSize, 100)}" +
+                              $"&offset={offset}&page_size={pageSize}" +
                               $"&item_status={itemStatus}";
 
             try
@@ -169,7 +205,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 var response = await client.GetAsync(apiPath + queryParams);
                 var content = await response.Content.ReadAsStringAsync();
 
-                var result = new PaginatedResult<ProductItem> { Page = filter.Page, PageSize = filter.PageSize };
+                var result = new PaginatedResult<ProductItem> { Page = page, PageSize = pageSize };
 
                 if (!response.IsSuccessStatusCode)
                 {

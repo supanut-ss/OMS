@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using OmsApi.Extensions;
 using OmsApi.Models.Auth;
@@ -38,20 +39,32 @@ namespace OmsApi.Services.Implementation
 
             var platform = filter.Platform.Value;
             var client = _clientFactory.GetClient(platform);
-            return await _credentialService.ExecuteAsync(
-                platform,
-                filter.ShopId,
-                async credential =>
-                {
-                    filter.AccessToken = credential.AccessToken;
-                    filter.ShopId = credential.ShopId;
-                    var result = await client.GetOrdersAsync(
-                        credential.AccessToken,
-                        credential.ShopId,
-                        filter);
-                    await SyncOrdersAsync(platform, credential.ShopId, result.Items);
-                    return result;
-                });
+            var requestPayload = SerializeSyncPayload(filter);
+            var startDate = DateTime.Now;
+            try
+            {
+                var result = await _credentialService.ExecuteAsync(
+                    platform,
+                    filter.ShopId,
+                    async credential =>
+                    {
+                        filter.AccessToken = credential.AccessToken;
+                        filter.ShopId = credential.ShopId;
+                        var result = await client.GetOrdersAsync(
+                            credential.AccessToken,
+                            credential.ShopId,
+                            filter);
+                        await SyncOrdersAsync(platform, credential.ShopId, result.Items);
+                        return result;
+                    });
+                await LogSyncAsync(platform, filter.ShopId, "GetOrders", requestPayload, startDate, success: true, result.Items.Count, errorMessage: null);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                await LogSyncAsync(platform, filter.ShopId, "GetOrders", requestPayload, startDate, success: false, orderCount: 0, ex.Message);
+                throw;
+            }
         }
 
         public async Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string? shopId = null)
@@ -126,19 +139,31 @@ namespace OmsApi.Services.Implementation
                 IPlatformClient client,
                 OrderFilter platformFilter)
             {
-                return await _credentialService.ExecuteAsync(
-                    selection.Platform,
-                    string.IsNullOrWhiteSpace(selection.ShopId) ? null : selection.ShopId,
-                    async credential =>
-                    {
-                        platformFilter.AccessToken = credential.AccessToken;
-                        platformFilter.ShopId = credential.ShopId;
-                        var result = await client.GetOrdersAsync(
-                            credential.AccessToken,
-                            credential.ShopId,
-                            platformFilter);
-                        return (selection.Platform, (string?)credential.ShopId, result);
-                    });
+                var requestPayload = SerializeSyncPayload(platformFilter);
+                var startDate = DateTime.Now;
+                try
+                {
+                    var (resultPlatform, resultShopId, result) = await _credentialService.ExecuteAsync(
+                        selection.Platform,
+                        string.IsNullOrWhiteSpace(selection.ShopId) ? null : selection.ShopId,
+                        async credential =>
+                        {
+                            platformFilter.AccessToken = credential.AccessToken;
+                            platformFilter.ShopId = credential.ShopId;
+                            var result = await client.GetOrdersAsync(
+                                credential.AccessToken,
+                                credential.ShopId,
+                                platformFilter);
+                            return (selection.Platform, (string?)credential.ShopId, result);
+                        });
+                    await LogSyncAsync(resultPlatform, resultShopId, "GetOrdersFromAllPlatforms", requestPayload, startDate, success: true, result.Items.Count, errorMessage: null);
+                    return (resultPlatform, resultShopId, result);
+                }
+                catch (Exception ex)
+                {
+                    await LogSyncAsync(selection.Platform, selection.ShopId, "GetOrdersFromAllPlatforms", requestPayload, startDate, success: false, orderCount: 0, ex.Message);
+                    throw;
+                }
             }
         }
 
@@ -236,6 +261,73 @@ namespace OmsApi.Services.Implementation
             }
         }
 
+        private static string SerializeSyncPayload(OrderFilter filter)
+        {
+            // AccessToken is populated onto the filter after credential
+            // resolution; never persist it into the sync log.
+            return JsonSerializer.Serialize(new
+            {
+                filter.Platform,
+                filter.ShopId,
+                filter.Status,
+                filter.DateFrom,
+                filter.DateTo,
+                filter.Page,
+                filter.PageSize
+            });
+        }
+
+        /// <summary>
+        /// Records every OMS-initiated sync call into t_oms_sync_log, success
+        /// or failure, so a call that came back empty or errored can be traced
+        /// back to exactly what was requested. Best-effort: a logging failure
+        /// must never break the sync response the caller is waiting on.
+        /// </summary>
+        private async Task LogSyncAsync(
+            PlatformType platform,
+            string? shopId,
+            string syncSource,
+            string requestPayload,
+            DateTime startDate,
+            bool success,
+            int orderCount,
+            string? errorMessage)
+        {
+            try
+            {
+                var endDate = DateTime.Now;
+                _db.PlatformSyncLogs.Add(new PlatformSyncLog
+                {
+                    SyncType = "ORDER",
+                    SyncSource = syncSource,
+                    Platform = platform.ToString(),
+                    ShopId = shopId,
+                    SyncStatus = success ? "SUCCESS" : "ERROR",
+                    TotalFetched = orderCount,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    DurationMs = (int)(endDate - startDate).TotalMilliseconds,
+                    RequestPayload = requestPayload,
+                    ErrorMessage = errorMessage?.Length > 2000 ? errorMessage[..2000] : errorMessage,
+                    CreateBy = SystemUser,
+                    CreateDate = endDate
+                });
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write sync log for {Platform}/{SyncSource}", platform, syncSource);
+            }
+        }
+
+        // SQL Server's datetime column rejects anything before this instant;
+        // DateTime.MinValue (0001-01-01) is a common "field was missing"
+        // sentinel from platform mappers and must never reach SaveChangesAsync.
+        private static readonly DateTime SqlDateTimeMin = new(1753, 1, 1);
+
+        private static DateTime? ClampToSqlDateTime(DateTime? value) =>
+            value.HasValue && value.Value < SqlDateTimeMin ? null : value;
+
         private static void MapToRecord(UnifiedOrder order, PlatformOrder record, DateTime now)
         {
             record.ShopName = order.ShopName;
@@ -248,9 +340,13 @@ namespace OmsApi.Services.Implementation
             record.TaxInvoiceCompanyName = order.TaxInvoice?.CompanyName;
             record.TaxInvoiceAddress = order.TaxInvoice?.Address;
             record.TaxInvoiceBranchCode = order.TaxInvoice?.BranchCode;
-            record.CancellationDeadline = order.CancellationDeadline;
-            record.OrderCreatedDate = order.CreatedAt;
-            record.OrderUpdatedDate = order.UpdatedAt;
+            record.CancellationDeadline = ClampToSqlDateTime(order.CancellationDeadline);
+            // Some platforms (e.g. Shopee's order list endpoint) omit the
+            // create-time field entirely, which maps to DateTime.MinValue —
+            // far below SQL Server's datetime floor (1753-01-01). Clamping
+            // here keeps the sync a best-effort cache instead of crashing.
+            record.OrderCreatedDate = ClampToSqlDateTime(order.CreatedAt) ?? SqlDateTimeMin;
+            record.OrderUpdatedDate = ClampToSqlDateTime(order.UpdatedAt);
             record.TotalAmount = order.TotalAmount;
             record.Currency = order.Currency;
 
@@ -260,7 +356,7 @@ namespace OmsApi.Services.Implementation
             record.PackageNumber = shipping?.PackageNumber;
             record.ShippingMethod = shipping?.ShippingMethod;
             record.ShippingFee = shipping?.ShippingFee;
-            record.EstimatedDeliveryDate = shipping?.EstimatedDeliveryDate;
+            record.EstimatedDeliveryDate = ClampToSqlDateTime(shipping?.EstimatedDeliveryDate);
 
             var recipient = shipping?.RecipientAddress;
             record.RecipientName = recipient?.Name;
@@ -271,7 +367,12 @@ namespace OmsApi.Services.Implementation
             record.RecipientDistrict = recipient?.District;
             record.RecipientProvince = recipient?.Province;
             record.RecipientPostalCode = recipient?.PostalCode;
-            record.RecipientCountry = recipient?.Country;
+            // recipient_country is varchar(2) (ISO 3166-1 alpha-2); some platforms
+            // send the full country name instead of the code, which would
+            // otherwise throw a truncation error and abort the whole sync.
+            record.RecipientCountry = recipient?.Country is { Length: > 2 } country
+                ? country[..2]
+                : recipient?.Country;
             record.RecipientFullAddress = recipient?.FullAddress;
 
             record.SyncStatus = "SYNCED";

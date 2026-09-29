@@ -52,14 +52,9 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var client = _httpClientFactory.CreateClient("TikTok");
             var apiPath = "/order/202309/orders/search";
-            var timestamp = DateTimeHelper.CurrentUnixTimestamp();
-
             // Build request body
             var body = new
             {
-                page_size = Math.Min(filter.PageSize, 100),
-                sort_order = "DESC",
-                sort_field = "CREATE_TIME",
                 create_time_ge = filter.DateFrom.HasValue
                     ? DateTimeHelper.ToUnixTimestamp(filter.DateFrom.Value)
                     : DateTimeHelper.ToUnixTimestamp(DateTime.UtcNow.AddDays(-15)),
@@ -69,22 +64,35 @@ namespace OmsApi.Services.Implementation.Platforms
             };
 
             var bodyJson = JsonSerializer.Serialize(body);
+            var requestedPage = Math.Max(1, filter.Page);
+            var pageSize = Math.Clamp(filter.PageSize, 1, 100);
 
             var queryParams = new Dictionary<string, string>
             {
                 { "app_key", _appKey },
-                { "timestamp", timestamp.ToString() },
                 { "shop_cipher", shopId ?? "" },
-                { "version", "202309" }
+                { "version", "202309" },
+                { "page_size", pageSize.ToString() },
+                { "sort_order", "DESC" },
+                { "sort_field", "create_time" }
             };
-
-            var sign = SignatureHelper.GenerateTikTokSignature(_appSecret, apiPath, queryParams, bodyJson);
-            queryParams["sign"] = sign;
-
-            var queryString = string.Join("&", queryParams.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
 
             try
             {
+                string? pageToken = null;
+                var visitedTokens = new HashSet<string>(StringComparer.Ordinal);
+                for (var page = 1; page <= requestedPage; page++)
+                {
+                    queryParams["timestamp"] = DateTimeHelper.CurrentUnixTimestamp().ToString();
+                    queryParams.Remove("sign");
+                    if (pageToken == null)
+                        queryParams.Remove("page_token");
+                    else
+                        queryParams["page_token"] = pageToken;
+
+                    queryParams["sign"] = SignatureHelper.GenerateTikTokSignature(
+                        _appSecret, apiPath, queryParams, bodyJson);
+                    var queryString = string.Join("&", queryParams.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
                 using var request = CreateAuthenticatedRequest(
                     HttpMethod.Post, $"{apiPath}?{queryString}", accessToken, bodyJson);
 
@@ -95,8 +103,8 @@ namespace OmsApi.Services.Implementation.Platforms
 
                 var result = new PaginatedResult<UnifiedOrder>
                 {
-                    Page = filter.Page,
-                    PageSize = filter.PageSize
+                    Page = requestedPage,
+                    PageSize = pageSize
                 };
 
                 if (!response.IsSuccessStatusCode)
@@ -121,8 +129,25 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
                 }
 
-                _logger.LogInformation("✅ TikTok: Retrieved {Count} orders", result.Items.Count);
-                return result;
+                    if (page == requestedPage)
+                        return result;
+
+                    if (!json.RootElement.TryGetProperty("data", out var pageData) ||
+                        !pageData.TryGetProperty("next_page_token", out var nextToken) ||
+                        string.IsNullOrEmpty(nextToken.GetString()))
+                        return new PaginatedResult<UnifiedOrder>
+                        {
+                            Page = requestedPage,
+                            PageSize = pageSize,
+                            TotalCount = result.TotalCount
+                        };
+
+                    pageToken = nextToken.GetString();
+                    if (!visitedTokens.Add(pageToken!))
+                        throw new InvalidOperationException("TikTok returned a repeated order page token.");
+                }
+
+                throw new InvalidOperationException("TikTok order pagination ended unexpectedly.");
             }
             catch (Exception ex)
             {
@@ -606,22 +631,51 @@ namespace OmsApi.Services.Implementation.Platforms
             var client = _httpClientFactory.CreateClient("TikTok");
             var apiPath = "/product/202309/products/search";
             var timestamp = DateTimeHelper.CurrentUnixTimestamp();
+            var requestedPage = Math.Max(1, filter.Page);
+            var pageSize = Math.Clamp(filter.PageSize, 1, 100);
 
-            var body = new { page_size = Math.Min(filter.PageSize, 100) };
+            var body = new { page_size = pageSize };
             var bodyJson = JsonSerializer.Serialize(body);
 
             var qp = new Dictionary<string, string>
             {
                 { "app_key", _appKey }, { "timestamp", timestamp.ToString() },
-                { "shop_cipher", shopId ?? "" }, { "version", "202309" }
+                { "shop_cipher", shopId ?? "" }, { "version", "202309" },
+                { "page_size", pageSize.ToString() }
             };
             var sign = SignatureHelper.GenerateTikTokSignature(_appSecret, apiPath, qp, bodyJson);
             qp["sign"] = sign;
             var qs = string.Join("&", qp.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
 
-            var result = new PaginatedResult<ProductItem> { Page = filter.Page, PageSize = filter.PageSize };
+            var result = new PaginatedResult<ProductItem> { Page = requestedPage, PageSize = pageSize };
             try
             {
+                var visitedTokens = new HashSet<string>(StringComparer.Ordinal);
+                for (var page = 1; page < requestedPage; page++)
+                {
+                    using var previousRequest = CreateAuthenticatedRequest(
+                        HttpMethod.Post, $"{apiPath}?{qs}", accessToken, bodyJson);
+                    using var previousResponse = await client.SendAsync(previousRequest);
+                    if (!previousResponse.IsSuccessStatusCode)
+                        return result;
+
+                    using var previousJson = JsonDocument.Parse(await previousResponse.Content.ReadAsStringAsync());
+                    if (!previousJson.RootElement.TryGetProperty("data", out var previousData) ||
+                        !previousData.TryGetProperty("next_page_token", out var nextToken) ||
+                        string.IsNullOrEmpty(nextToken.GetString()))
+                        return result;
+
+                    var token = nextToken.GetString()!;
+                    if (!visitedTokens.Add(token))
+                        throw new InvalidOperationException("TikTok returned a repeated product page token.");
+
+                    qp.Remove("sign");
+                    qp["page_token"] = token;
+                    qp["timestamp"] = DateTimeHelper.CurrentUnixTimestamp().ToString();
+                    qp["sign"] = SignatureHelper.GenerateTikTokSignature(_appSecret, apiPath, qp, bodyJson);
+                    qs = string.Join("&", qp.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+                }
+
                 using var req = CreateAuthenticatedRequest(
                     HttpMethod.Post, $"{apiPath}?{qs}", accessToken, bodyJson);
                 var resp = await client.SendAsync(req);
