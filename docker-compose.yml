@@ -64,6 +64,8 @@ services:
       - KEY_WEB=API_KEY_WEB
       - DB_SCHEMA=sec
       - USERNAME_ADMIN=Wau7MCRQswc=
+      - OMS_API_URL=http://bs_oms_api:8080
+      - OMS_API_KEY=BS-OMS-API-Key-2025
     networks:
       - internal
     restart: always
@@ -130,7 +132,7 @@ services:
     environment:
       - TZ=Asia/Bangkok
       - ASPNETCORE_ENVIRONMENT=Production
-      - API_KEY_OMS=BS-OMS-API-Key-2025
+      - OMS_API_KEY=BS-OMS-API-Key-2025
       # Shopee
       - SHOPEE_PARTNER_ID=your_partner_id
       - SHOPEE_PARTNER_KEY=your_partner_key

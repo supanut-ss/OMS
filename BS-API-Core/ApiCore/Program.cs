@@ -70,6 +70,7 @@ builder.Services.AddScoped<IInventory, InventoryService>();
 builder.Services.AddScoped<IPartAttachmentService, PartAttachmentService>();
 builder.Services.AddScoped<IConnectorService, ConnectorService>();
 
+builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
