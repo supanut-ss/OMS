@@ -95,7 +95,7 @@ const SyncLog = ({ lang = "th" }) => {
           bsPreObj="oms"
           bsObj="vw_oms_order_sync_history"
           bsObjBy="detail_create_date desc"
-          bsObjWh="run_status IS NULL OR UPPER(run_status) NOT IN ('SUCCESS', 'SUCCEEDED', 'SYNCED', 'COMPLETED')"
+          // bsObjWh="run_status IS NULL OR UPPER(run_status) NOT IN ('SUCCESS', 'SUCCEEDED', 'SYNCED', 'COMPLETED')"
           bsCols={[
             "sync_log_detail_id",
             "sync_log_id",
