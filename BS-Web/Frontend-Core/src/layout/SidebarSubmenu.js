@@ -54,6 +54,12 @@ const SidebarSubmenu = ({
   const isActive = submenuPath === currentPath || submenuPath === currentPathnameOnly;
 
   const handleNavigate = useCallback(() => {
+    if (submenu?.externalUrl) {
+      window.open(submenu.externalUrl, "_blank", "noopener,noreferrer");
+      if (isMobile) setOpen(false);
+      return;
+    }
+
     if (!submenu?.path) return;
 
     if (submenuPath === currentPath) {
@@ -66,6 +72,7 @@ const SidebarSubmenu = ({
     if (isMobile) setOpen(false);
   }, [
     submenu?.path,
+    submenu?.externalUrl,
     submenuPath,
     currentPath,
     isMobile,
@@ -162,21 +169,23 @@ const SidebarSubmenu = ({
           }}
         />
         <Box component={motion.div} {...iconMotion}>
-          <IconButton
-            size="small"
-            edge="end"
-            sx={{ ml: 1 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              callSetFavorite();
-            }}
-          >
-            {submenu.favorite ? (
-              <StarIcon fontSize="small" />
-            ) : (
-              <StarBorderIcon fontSize="small" />
-            )}
-          </IconButton>
+          {submenu?.menu_id != null && (
+            <IconButton
+              size="small"
+              edge="end"
+              sx={{ ml: 1 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                callSetFavorite();
+              }}
+            >
+              {submenu.favorite ? (
+                <StarIcon fontSize="small" />
+              ) : (
+                <StarBorderIcon fontSize="small" />
+              )}
+            </IconButton>
+          )}
         </Box>
         {hovered && (
           <Box component={motion.div} {...iconMotion}>
@@ -187,10 +196,12 @@ const SidebarSubmenu = ({
               onClick={(e) => {
                 e.stopPropagation();
                 window.open(
-                  Config.BASE_URL !== ""
-                    ? Config.BASE_URL + "" + submenu?.path
-                    : submenu?.path,
+                  submenu?.externalUrl ||
+                    (Config.BASE_URL !== ""
+                      ? Config.BASE_URL + "" + submenu?.path
+                      : submenu?.path),
                   "_blank",
+                  "noopener,noreferrer",
                 );
               }}
             >

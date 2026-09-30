@@ -148,6 +148,16 @@ const SidebarMenu = ({ setLoading, open, isMobile, setOpen, theme, lang, activeM
         hidden: favoriteMenu.length === 0, // Hide when no favorites
       },
       ...data,
+      {
+        text: "Developer Tools",
+        path: "",
+        submenu: [
+          {
+            text: "API Explorer",
+            externalUrl: `${process.env.PUBLIC_URL}/api-explorer.html`,
+          },
+        ],
+      },
     ];
 
     setFilteredMenu(data);
