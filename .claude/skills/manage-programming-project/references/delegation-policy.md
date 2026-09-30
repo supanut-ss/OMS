@@ -1,55 +1,71 @@
 # Delegation Policy
 
-## Agent type and model selection
+## Model selection
 
-Delegation in Claude Code goes through the `Agent` tool: pick a `subagent_type` for the *kind* of work, and optionally a `model` override for cost/speed/quality.
-
-| Subagent type | Assign when | Avoid when |
+| Model | Assign when | Avoid when |
 | --- | --- | --- |
-| `Explore` | Locating code, answering "where is X defined", multi-location keyword search, read-only reconnaissance | The task needs to write/edit files, or requires judgment beyond retrieval |
-| `Plan` | Designing an implementation strategy, weighing architectural trade-offs before committing to a plan | The task is a small, already-well-specified edit |
-| `general-purpose` | Multi-step tasks mixing research and execution, ambiguous scope, tasks needing broad tool access | A narrower agent type already fits (prefer the specific one) |
-| `claude-code-guide` | Questions about Claude Code itself, the Agent SDK, or the Claude API | The task is about the user's own codebase, not Claude Code tooling |
-| leader (no delegation) | Architecture, ambiguous requirements, security-sensitive changes, integration, final review, anything touching files another concurrent agent also owns | A cheaper, well-scoped mechanical subtask can be handed off without raising integration risk |
+| `haiku` (Haiku 4.5) | Repository searches, file inventory, mechanical edits, formatting, small isolated tests or docs, reproducible command checks | Ambiguous logic, architecture, security decisions, difficult debugging, final approval |
+| `sonnet` (Sonnet 5.5) | Default leader and workhorse: routine-to-complex implementation, debugging, tests, integration, review, final verification | A cheaper model can finish a fully specified subtask, or the work needs deeper reasoning |
+| `opus` (Opus 5.5) | Hard architecture, ambiguous requirements, cross-system failure analysis, security-sensitive or high-risk design review | Routine implementation, mechanical work, or a duplicate review that adds no confidence |
+| `fable` (Fable 5.1) | Rare last resort for very high-consequence decisions still unresolved after Opus at high effort | Anything Opus can resolve; never the default |
 
-| Model override | Assign when | Avoid when |
+Prefer the inherited model unless another one materially improves cost, speed, or quality. Use only model identifiers the runtime exposes.
+
+## Effort selection
+
+| Effort | Use for | Examples |
 | --- | --- | --- |
-| `opus` | The hardest reasoning: architecture, security-sensitive design, difficult/nondeterministic debugging | A cheaper model can complete a fully specified mechanical subtask without increasing integration risk |
-| `sonnet` (default) | Routine feature implementation, isolated multi-file changes, tests, refactors, API wiring | Rarely — this is the safe default; override only with a reason |
-| `haiku` | Fast repository searches, inventory, simple mechanical edits, formatting, small doc updates | Ambiguous logic, architecture, security decisions, or anything needing final approval |
+| `low` | Clear, deterministic, low-risk work | Locate symbols, inventory files, mechanical rename, small comment |
+| `medium` | Routine work with familiar patterns | Fix a known bug, add a focused test, small endpoint |
+| `high` | Real uncertainty or multi-component integration risk | Nondeterministic bug, multi-file feature, auth or data-flow review |
+| `xhigh` | Cross-cutting architecture, multi-system reasoning | Major migration, concurrency across services |
+| `max` | Rare: high/xhigh still leaves consequential uncertainty | Repeated failed diagnosis, high-impact design tradeoff |
 
-Omit `model` to inherit the session's current model unless a different one materially improves cost, speed, or quality. Use only model identifiers actually available in this environment (`opus`, `sonnet`, `haiku`, `fable`).
+The Agent tool accepts `model` but has no effort parameter: a subagent inherits the session effort or the effort in its agent definition. Choose the model to control cost, and state the intended depth in the prompt (for example "quick lookup, no deep analysis"). The efforts above apply to the leader session (changed by the user) and to agent definitions that set `effort`.
+
+Start at the lowest effort likely to meet the acceptance criteria. Raise it only on new evidence (repeated failures, contradicted assumptions), not because more files are involved. Support varies by model (for example `xhigh` and `max` may be missing on smaller models): use only efforts the selected model exposes, and fall back to the next lower level, ordinarily `high`, when one is unavailable. Do not assume a level is supported without checking the model picker.
 
 ## Delegation decision
 
-Delegate only when all are true:
+Delegate only when all hold:
 
 1. The output is independently describable and reviewable.
-2. Relevant context can be supplied in a self-contained prompt without transferring project leadership.
+2. Context can be supplied without transferring leadership.
 3. File ownership is non-overlapping, or the task is findings-only.
-4. Parallel work saves time or a narrower agent (e.g. `Explore`) is a better fit than doing it inline.
+4. Parallelism or specialist attention saves more than the added prompt, coordination, and review cost.
 5. The leader can verify the result before integration.
 
-Keep work with the leader when it determines architecture, changes a shared contract, is too small to justify coordination overhead, depends on rapidly changing local state, or cannot be independently verified.
+Keep work with the leader when it sets architecture, changes a shared contract, is too small to justify coordination, depends on fast-changing local state, or cannot be verified independently. Consult Opus for unusually high complexity while the leader keeps integration ownership.
 
-## Default routing examples
+## Token and context control
 
-| Task | Subagent type | Model |
+- Do simple, localized, or mechanical work directly rather than delegating.
+- Reuse findings already in the conversation; read a file once and revisit only changed parts.
+- Batch related searches into one findings-only assignment; avoid duplicate agents and duplicate reviews.
+- Keep prompts and reports compact: cite paths and line numbers, do not paste whole files.
+- Filter command output to relevant lines; broaden or rerun only when evidence requires it.
+
+## Default routing
+
+| Task | Model | Effort |
 | --- | --- | --- |
-| Inspect repository structure and identify test commands | `Explore` | `haiku` or default |
-| Implement an isolated CRUD module with established patterns | `general-purpose` | `sonnet` (default) |
-| Add regression tests for a known bug | `general-purpose` | `sonnet` (default) |
-| Diagnose an intermittent race across services | leader (no delegation) | `opus` if escalating |
-| Design a database migration with rollback and compatibility | `Plan`, then leader executes | `opus` |
-| Review integrated changes against acceptance criteria | leader (no delegation), or `code-review` skill | default |
+| Find affected paths and test commands | haiku or leader | low |
+| Mechanical edit or formatting | leader; haiku only if it saves effort | low |
+| Isolated CRUD module with established patterns | sonnet | medium |
+| Known bug plus regression test | sonnet | medium |
+| Multi-component feature | sonnet | high |
+| Intermittent race across services | sonnet lead, opus consult | xhigh |
+| Migration with rollback and compatibility | sonnet, opus consult for tradeoffs | xhigh |
+| Review integrated changes against criteria | sonnet | high |
+| Critical decision unresolved after Opus | fable | max |
 
 ## Quality gates
 
-Require the leader to reject or revise delegated work when it:
+Reject or revise delegated work that:
 
 - changes files outside scope without necessity;
 - lacks requested tests or evidence;
 - conflicts with repository instructions or architecture;
 - introduces an unhandled error, compatibility break, or security regression;
-- relies on an assumption that the leader cannot validate;
-- reports completion without an inspectable artifact or reproducible finding (a subagent's summary describes intent, not necessarily what happened — verify the actual diff).
+- rests on an assumption the leader cannot validate;
+- reports completion without an inspectable artifact or reproducible finding.
