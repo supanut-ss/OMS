@@ -10,12 +10,10 @@ namespace ApiCore.Controllers;
 public sealed class OmsOrdersController : ControllerBase
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
 
-    public OmsOrdersController(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public OmsOrdersController(IHttpClientFactory httpClientFactory)
     {
         _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
     }
 
     [HttpGet("{platform}/{orderId}/resync")]
@@ -31,8 +29,8 @@ public sealed class OmsOrdersController : ControllerBase
         if (string.IsNullOrWhiteSpace(orderId))
             return BadRequest(new { message = "Order ID is required." });
 
-        var baseUrl = _configuration["OMS_API_URL"];
-        var apiKey = _configuration["OMS_API_KEY"];
+        var baseUrl = Environment.GetEnvironmentVariable("OMS_API_URL");
+        var apiKey = Environment.GetEnvironmentVariable("OMS_API_KEY");
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var omsBaseUri) ||
             (omsBaseUri.Scheme != Uri.UriSchemeHttp && omsBaseUri.Scheme != Uri.UriSchemeHttps) ||
             string.IsNullOrWhiteSpace(apiKey))
