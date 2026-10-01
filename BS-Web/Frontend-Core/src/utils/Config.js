@@ -1,5 +1,9 @@
 const Config = {
   API_URL: process.env.REACT_APP_API_URL,
+  OMS_API_URL: process.env.REACT_APP_OMS_API_URL || "/api",
+  FRONTEND_BASE_URL: process.env.REACT_APP_FRONTEND_BASE_URL || window.location.origin,
+  OAUTH_CALLBACK_BASE_URL: process.env.REACT_APP_OAUTH_CALLBACK_BASE_URL || "",
+  WEBHOOK_BASE_URL: process.env.REACT_APP_WEBHOOK_BASE_URL || "",
   AUTH_API_URL: process.env.REACT_APP_AUTH_API_URL,
   IMPORT_API_URL: process.env.REACT_APP_IMPORT_API_URL,
   CORE_DIRECT_URL: process.env.REACT_APP_CORE_DIRECT_URL,

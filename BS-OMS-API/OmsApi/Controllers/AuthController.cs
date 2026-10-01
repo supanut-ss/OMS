@@ -76,22 +76,47 @@ namespace OmsApi.Controllers
         /// </summary>
         [HttpGet("{platform}/callback")]
         [SwaggerOperation(Summary = "Handle OAuth callback from platform")]
-        public async Task<IActionResult> Callback(string platform, [FromQuery] string code, [FromQuery] string? shop_id = null)
+        public async Task<IActionResult> Callback(
+            string platform,
+            [FromQuery] string? code = null,
+            [FromQuery] string? shop_id = null,
+            [FromQuery] string? error = null)
         {
+            var connectorUrl = Environment.GetEnvironmentVariable("OMS_FRONTEND_CONNECTOR_URL")?.Trim();
             try
             {
-                var platformType = ParsePlatform(platform);
-                var tokenInfo = await _authService.HandleCallbackAsync(platformType, code, shop_id);
+                if (!string.IsNullOrWhiteSpace(error))
+                    return OAuthResult(connectorUrl, platform, false);
+                if (string.IsNullOrWhiteSpace(code))
+                    return OAuthResult(connectorUrl, platform, false);
 
-                _logger.LogInformation("✅ {Platform} OAuth success: token received", platform);
-                return Ok(ApiResponse<TokenInfo>.Ok(tokenInfo, "Authorization successful"));
+                var platformType = ParsePlatform(platform);
+                await _authService.HandleCallbackAsync(platformType, code, shop_id);
+
+                _logger.LogInformation("{Platform} OAuth authorization completed", platform);
+                return OAuthResult(connectorUrl, platform, true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ OAuth callback error for {Platform}", platform);
-                return BadRequest(ApiResponse<string>.Fail(
-                    $"OAuth error: {BuildExceptionDetails(ex)}"));
+                _logger.LogError(ex, "OAuth callback failed for {Platform}", platform);
+                return OAuthResult(connectorUrl, platform, false);
             }
+        }
+
+        private IActionResult OAuthResult(string? connectorUrl, string platform, bool success)
+        {
+            if (!Uri.TryCreate(connectorUrl, UriKind.Absolute, out var target) ||
+                (target.Scheme != Uri.UriSchemeHttps && !_environment.IsDevelopment()))
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { success = false, message = "OAuth return URL is not configured." });
+
+            var builder = new UriBuilder(target);
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(builder.Query);
+            var values = query.ToDictionary(pair => pair.Key, pair => (string?)pair.Value.ToString());
+            values["oauth"] = success ? "success" : "error";
+            values["platform"] = platform.ToLowerInvariant();
+            builder.Query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("", values).TrimStart('?');
+            return Redirect(builder.Uri.ToString());
         }
 
         /// <summary>

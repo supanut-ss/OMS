@@ -1,5 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import dayjs from "dayjs";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AddRounded,
   CheckCircleRounded,
@@ -8,6 +10,7 @@ import {
   PauseCircleOutlineRounded,
   RefreshRounded,
   SyncRounded,
+  OpenInNewRounded,
 } from "@mui/icons-material";
 import {
   Avatar,
@@ -30,6 +33,7 @@ import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton
 import BSSaveOutlinedButton from "../../components/Button/BSSaveOutlinedButton";
 import BSDialog from "../../components/BSDialog";
 import AxiosMaster from "../../utils/AxiosMaster";
+import Config from "../../utils/Config";
 
 const platforms = {
   shopee: {
@@ -110,7 +114,11 @@ const toApiUtcIsoString = (value) => {
 };
 
 export default function Connector() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [connectors, setConnectors] = useState([]);
+  const [oauthRedirecting, setOauthRedirecting] = useState("");
+  const handledOAuthResult = React.useRef(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({
@@ -156,6 +164,36 @@ export default function Connector() {
   useEffect(() => {
     loadConnectors();
   }, [loadConnectors]);
+
+  useEffect(() => {
+    const result = searchParams.get("oauth");
+    const platform = searchParams.get("platform");
+    if (!result || handledOAuthResult.current) return;
+    handledOAuthResult.current = true;
+    if (result === "success") {
+      setNotice({ open: true, severity: "success", message: `เชื่อมต่อ ${platforms[platform]?.name || "ร้านค้า"} สำเร็จ` });
+      loadConnectors();
+    } else {
+      setNotice({ open: true, severity: "error", message: `เชื่อมต่อ ${platforms[platform]?.name || "ร้านค้า"} ไม่สำเร็จ กรุณาลองใหม่` });
+    }
+    navigate("/connector", { replace: true });
+  }, [loadConnectors, navigate, searchParams]);
+
+  const connectOAuth = async (platform) => {
+    setOauthRedirecting(platform);
+    try {
+      const { data } = await axios.get(
+        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url`,
+        { timeout: 15000 },
+      );
+      const authUrl = data?.data?.url || data?.url;
+      if (!authUrl || !/^https:\/\//i.test(authUrl)) throw new Error("API ไม่ได้ส่ง OAuth URL ที่ถูกต้อง");
+      window.location.assign(authUrl);
+    } catch (error) {
+      setOauthRedirecting("");
+      setNotice({ open: true, severity: "error", message: error?.response?.data?.message_text || error?.message || "เริ่ม OAuth ไม่สำเร็จ" });
+    }
+  };
 
   const openAdd = (platform = "shopee") => {
     setEditingId(null);
@@ -329,6 +367,31 @@ export default function Connector() {
             เพิ่ม Connector
           </Button>
         </Stack>
+
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: "#e3e9f1" }}>
+          <Typography variant="subtitle1" fontWeight={700} color="#172b4d" sx={{ mb: 1.5 }}>
+            เชื่อมต่อผ่าน OAuth
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            {Object.entries(platforms).map(([key, platform]) => {
+              const needsReauthorization = connectors.some(
+                (item) => item.platform === key && item.requiresReauthorization,
+              );
+              return (
+                <Button
+                  key={key}
+                  variant="outlined"
+                  disabled={Boolean(oauthRedirecting)}
+                  onClick={() => connectOAuth(key)}
+                  startIcon={oauthRedirecting === key ? <CircularProgress size={16} /> : <OpenInNewRounded />}
+                  sx={{ borderRadius: 2, textTransform: "none", borderColor: `${platform.color}66`, color: platform.color }}
+                >
+                  {oauthRedirecting === key ? "กำลังเปลี่ยนเส้นทาง…" : needsReauthorization ? `ยืนยัน ${platform.name} ใหม่` : `เชื่อมต่อ ${platform.name}`}
+                </Button>
+              );
+            })}
+          </Stack>
+        </Paper>
 
         <Stack
           direction={{ xs: "column", sm: "row" }}

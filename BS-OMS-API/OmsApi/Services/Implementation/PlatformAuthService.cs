@@ -164,7 +164,7 @@ namespace OmsApi.Services.Implementation
 
         private async Task<TokenInfo> HandleShopeeCallbackAsync(string code, string? shopId)
         {
-            _logger.LogInformation("🛒 Shopee OAuth callback: code={Code}, shopId={ShopId}", code, shopId);
+            _logger.LogInformation("Processing Shopee OAuth callback for shop {ShopId}", shopId);
 
             var shopIdLong = long.TryParse(shopId, out var sid) ? sid : 0;
             var timestamp  = DateTimeHelper.CurrentUnixTimestamp();
