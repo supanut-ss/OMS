@@ -12,6 +12,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
     public DbSet<PlatformOrder> PlatformOrders => Set<PlatformOrder>();
     public DbSet<PlatformOrderItem> PlatformOrderItems => Set<PlatformOrderItem>();
+    public DbSet<PlatformWebhookEvent> PlatformWebhookEvents => Set<PlatformWebhookEvent>();
     public DbSet<PlatformSyncLog> PlatformSyncLogs => Set<PlatformSyncLog>();
     public DbSet<PlatformSyncLogDetail> PlatformSyncLogDetails => Set<PlatformSyncLogDetail>();
 
@@ -246,6 +247,38 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+        });
+
+        builder.Entity<PlatformWebhookEvent>(entity =>
+        {
+            entity.ToTable("t_oms_webhook_event", "oms");
+            entity.HasKey(e => e.WebhookEventRecordId).HasName("PK_t_oms_webhook_event");
+            entity.HasIndex(e => e.EventKey)
+                .IsUnique()
+                .HasDatabaseName("UQ_t_oms_webhook_event_key");
+            entity.HasIndex(e => new { e.Platform, e.ProcessingStatus, e.ReceivedDate })
+                .HasDatabaseName("IX_t_oms_webhook_event_processing");
+            entity.HasIndex(e => new { e.Platform, e.ShopId, e.PlatformOrderId, e.EventTime })
+                .HasDatabaseName("IX_t_oms_webhook_event_order");
+
+            entity.Property(e => e.WebhookEventRecordId).HasColumnName("webhook_event_record_id");
+            entity.Property(e => e.EventKey).HasColumnName("event_key").HasColumnType("varchar(512)").IsRequired();
+            entity.Property(e => e.Platform).HasColumnName("platform").HasColumnType("varchar(32)").IsRequired();
+            entity.Property(e => e.EventType).HasColumnName("event_type").HasColumnType("varchar(128)").IsRequired();
+            entity.Property(e => e.ShopId).HasColumnName("shop_id").HasColumnType("varchar(256)");
+            entity.Property(e => e.PlatformOrderId).HasColumnName("platform_order_id").HasColumnType("varchar(128)");
+            entity.Property(e => e.PlatformStatus).HasColumnName("platform_status").HasColumnType("varchar(128)");
+            entity.Property(e => e.TrackingNumber).HasColumnName("tracking_number").HasColumnType("varchar(256)");
+            entity.Property(e => e.EventTime).HasColumnName("event_time").HasColumnType("datetime");
+            entity.Property(e => e.SignatureStatus).HasColumnName("signature_status").HasColumnType("varchar(16)").IsRequired();
+            entity.Property(e => e.ProcessingStatus).HasColumnName("processing_status").HasColumnType("varchar(16)").IsRequired();
+            entity.Property(e => e.AttemptCount).HasColumnName("attempt_count").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.RequestPayload).HasColumnName("request_payload").HasMaxLength(16000);
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message").HasMaxLength(2000);
+            entity.Property(e => e.ReceivedDate).HasColumnName("received_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.ProcessedDate).HasColumnName("processed_date").HasColumnType("datetime");
+            entity.Property(e => e.LastAttemptDate).HasColumnName("last_attempt_date").HasColumnType("datetime");
+            entity.Property(e => e.InternalStatus).HasColumnName("internal_status").HasColumnType("varchar(32)");
         });
 
         builder.Entity<PlatformSyncLog>(entity =>

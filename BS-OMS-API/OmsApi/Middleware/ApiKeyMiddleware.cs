@@ -22,6 +22,7 @@
             if (path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/api/webhooks/", StringComparison.OrdinalIgnoreCase) ||
                 IsOAuthBrowserPath(path))
             {
                 await _next(context);

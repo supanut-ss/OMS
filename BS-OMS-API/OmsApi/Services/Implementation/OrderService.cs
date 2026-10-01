@@ -18,6 +18,7 @@ namespace OmsApi.Services.Implementation
         private const string SystemUser = "OMS_API";
         private const string SyncSourceOrderList = "ORDER_LIST";
         private const string SyncSourceOrderDetail = "ORDER_DETAIL";
+        private const string SyncSourceWebhook = "WEBHOOK";
         private const string SyncSourceAllPlatforms = "ALL_PLATFORMS";
         private const string SyncStatusSuccess = "SUCCESS";
         private const string SyncStatusError = "ERROR";
@@ -91,6 +92,39 @@ namespace OmsApi.Services.Implementation
                         orderId);
                     if (order != null)
                         await SyncOrdersAsync(platform, credential.ShopId, new[] { order }, SyncSourceOrderDetail);
+                    return order;
+                });
+        }
+
+        public async Task<UnifiedOrder?> SyncOrderFromWebhookAsync(
+            PlatformType platform,
+            string orderId,
+            string? shopId = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(orderId))
+                throw new ArgumentException("Order id is required.", nameof(orderId));
+
+            var client = _clientFactory.GetClient(platform);
+            return await _credentialService.ExecuteAsync(
+                platform,
+                shopId,
+                async credential =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var order = await client.GetOrderDetailAsync(
+                        credential.AccessToken,
+                        credential.ShopId,
+                        orderId);
+                    if (order != null)
+                    {
+                        await SyncOrdersAsync(
+                            platform,
+                            credential.ShopId,
+                            new[] { order },
+                            SyncSourceWebhook,
+                            throwOnFailure: true);
+                    }
                     return order;
                 });
         }
@@ -198,7 +232,12 @@ namespace OmsApi.Services.Implementation
         /// local cache of what the platform APIs returned — a write failure
         /// here must never break the read response the caller is waiting on.
         /// </summary>
-        private async Task SyncOrdersAsync(PlatformType platform, string? rawShopId, IReadOnlyCollection<UnifiedOrder> orders, string syncSource)
+        private async Task SyncOrdersAsync(
+            PlatformType platform,
+            string? rawShopId,
+            IReadOnlyCollection<UnifiedOrder> orders,
+            string syncSource,
+            bool throwOnFailure = false)
         {
             if (orders.Count == 0)
                 return;
@@ -206,6 +245,7 @@ namespace OmsApi.Services.Implementation
             var platformName = platform.ToString();
             var startDate = DateTime.Now;
             var stopwatch = Stopwatch.StartNew();
+            Exception? syncException = null;
             var syncLog = new PlatformSyncLog
             {
                 SyncSource = syncSource,
@@ -303,6 +343,7 @@ namespace OmsApi.Services.Implementation
             }
             catch (Exception ex)
             {
+                syncException = ex;
                 _logger.LogWarning(ex, "Failed to sync {Count} order(s) for {Platform} into t_oms_order", orders.Count, platform);
 
                 // Drop the pending order changes, otherwise the log save below
@@ -334,6 +375,9 @@ namespace OmsApi.Services.Implementation
             syncLog.EndDate = DateTime.Now;
             syncLog.DurationMs = (int)stopwatch.ElapsedMilliseconds;
             await WriteSyncLogAsync(syncLog);
+
+            if (throwOnFailure && syncException != null)
+                throw new InvalidOperationException("Webhook order upsert failed.", syncException);
         }
 
         /// <summary>

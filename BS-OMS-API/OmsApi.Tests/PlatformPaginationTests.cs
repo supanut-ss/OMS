@@ -14,14 +14,16 @@ public class PlatformPaginationTests
     {
         var handler = new SequenceHandler(
             """{"response":{"order_list":[{"order_sn":"first"}],"more":true,"next_cursor":"cursor/2","total_count":2}}""",
-            """{"response":{"order_list":[{"order_sn":"second"}],"more":false,"total_count":2}}""");
+            """{"response":{"order_list":[{"order_sn":"second"}],"more":false,"total_count":2}}""",
+            """{"response":{"order_list":[{"order_sn":"second"}]}}""");
         var client = new ShopeeClient(CreateFactory(handler), NullLogger<ShopeeClient>.Instance);
 
         var result = await client.GetOrdersAsync("token", "123", new OrderFilter { Page = 2, PageSize = 1 });
 
         Assert.Equal("second", Assert.Single(result.Items).OrderId);
-        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(3, handler.Requests.Count);
         Assert.Contains("cursor=cursor%2F2", handler.Requests[1].Query);
+        Assert.Contains("order_sn_list=second", handler.Requests[2].Query);
     }
 
     [Fact]

@@ -2,6 +2,8 @@ using OmsApi.Models.Common;
 using OmsApi.Models.Shipping;
 using OmsApi.Services.Interfaces;
 using OmsApi.Models.Orders;
+using Microsoft.EntityFrameworkCore;
+using OmsApi.Extensions;
 
 namespace OmsApi.Services.Implementation
 {
@@ -10,15 +12,18 @@ namespace OmsApi.Services.Implementation
         private readonly IPlatformClientFactory _clientFactory;
         private readonly ILogger<ShippingService> _logger;
         private readonly IPlatformCredentialService _credentialService;
+        private readonly ApplicationDbContext _db;
 
         public ShippingService(
             IPlatformClientFactory clientFactory,
             ILogger<ShippingService> logger,
-            IPlatformCredentialService credentialService)
+            IPlatformCredentialService credentialService,
+            ApplicationDbContext db)
         {
             _clientFactory = clientFactory;
             _logger = logger;
             _credentialService = credentialService;
+            _db = db;
         }
 
         public async Task<ShippingLabelResult?> GetShippingLabelAsync(ShippingLabelRequest request)
@@ -77,6 +82,20 @@ namespace OmsApi.Services.Implementation
 
         public async Task<bool> ShipOrderAsync(ShipOrderRequest request)
         {
+            if (request.Platform == PlatformType.TikTok)
+            {
+                var onHold = await _db.PlatformOrders
+                    .AsNoTracking()
+                    .AnyAsync(x =>
+                        x.Platform == PlatformType.TikTok.ToString() &&
+                        x.ShopId == (request.ShopId ?? string.Empty) &&
+                        x.PlatformOrderId == request.OrderId &&
+                        x.OriginalStatus == "ON_HOLD");
+                if (onHold)
+                    throw new InvalidOperationException(
+                        $"TikTok order '{request.OrderId}' is ON_HOLD and cannot be fulfilled yet.");
+            }
+
             var client = _clientFactory.GetClient(request.Platform);
             try
             {

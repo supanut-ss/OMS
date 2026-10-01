@@ -14,6 +14,13 @@ namespace OmsApi.Services.Interfaces
         /// <summary>ดึงรายละเอียด order เฉพาะ</summary>
         Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string? shopId = null);
 
+        /// <summary>ดึงรายละเอียดล่าสุดจาก platform แล้ว sync แบบ strict สำหรับ webhook</summary>
+        Task<UnifiedOrder?> SyncOrderFromWebhookAsync(
+            PlatformType platform,
+            string orderId,
+            string? shopId = null,
+            CancellationToken cancellationToken = default);
+
         /// <summary>ดึง orders จากทุก platform รวมกัน</summary>
         Task<List<UnifiedOrder>> GetOrdersFromAllPlatformsAsync(OrderFilter filter);
 
