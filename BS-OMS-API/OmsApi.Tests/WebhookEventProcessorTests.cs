@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using OmsApi.Extensions;
 using OmsApi.Models.Common;
@@ -95,6 +95,45 @@ public class WebhookEventProcessorTests
         Assert.Equal("YES", credential.RequiresReauthorization);
     }
 
+    [Fact]
+    public async Task EveryCallback_RefreshesOrderListForShop_AndCoalescesBursts()
+    {
+        WebhookEventProcessor.ResetOrderListThrottle();
+        await using var db = CreateDb();
+        db.PlatformWebhookEvents.Add(NewEvent("ORD-A", "ORDER_STATUS_UPDATE"));
+        db.PlatformWebhookEvents.Add(NewEvent("ORD-B", "ORDER_STATUS_UPDATE"));
+        await db.SaveChangesAsync();
+        var orderService = new StubOrderService(new UnifiedOrder { OrderId = "x", Platform = PlatformType.Shopee });
+        var processor = new WebhookEventProcessor(db, orderService, NullLogger<WebhookEventProcessor>.Instance);
+
+        await processor.ProcessAsync(1);
+        await processor.ProcessAsync(2);
+
+        var call = Assert.Single(orderService.ListCalls);
+        Assert.Equal(PlatformType.Shopee, call.Platform);
+        Assert.Equal("SHOP-1", call.ShopId);
+        Assert.NotNull(call.DateFrom);
+    }
+
+    [Fact]
+    public async Task OrderListFailure_DoesNotChangeEventStatus()
+    {
+        WebhookEventProcessor.ResetOrderListThrottle();
+        await using var db = CreateDb();
+        db.PlatformWebhookEvents.Add(NewEvent("ORD-C", "ORDER_STATUS_UPDATE"));
+        await db.SaveChangesAsync();
+        var orderService = new StubOrderService(new UnifiedOrder { OrderId = "x", Platform = PlatformType.Shopee })
+        {
+            ListException = new InvalidOperationException("list failed")
+        };
+        var processor = new WebhookEventProcessor(db, orderService, NullLogger<WebhookEventProcessor>.Instance);
+
+        await processor.ProcessAsync(1);
+
+        Assert.Single(orderService.ListCalls);
+        Assert.Equal(WebhookProcessingStatuses.Processed, (await db.PlatformWebhookEvents.SingleAsync()).ProcessingStatus);
+    }
+
     private static PlatformWebhookEvent NewEvent(string orderId, string eventType) => new()
     {
         EventKey = $"Shopee:ORDER:SHOP-1:{orderId}:{eventType}:1",
@@ -116,9 +155,16 @@ public class WebhookEventProcessorTests
         Exception? exception = null) : IOrderService
     {
         public int WebhookCalls { get; private set; }
+        public List<OrderFilter> ListCalls { get; } = new();
+        public Exception? ListException { get; init; }
 
-        public Task<PaginatedResult<UnifiedOrder>> GetOrdersAsync(OrderFilter filter) =>
-            Task.FromResult(new PaginatedResult<UnifiedOrder>());
+        public Task<PaginatedResult<UnifiedOrder>> GetOrdersAsync(OrderFilter filter)
+        {
+            ListCalls.Add(filter);
+            if (ListException != null)
+                throw ListException;
+            return Task.FromResult(new PaginatedResult<UnifiedOrder>());
+        }
 
         public Task<UnifiedOrder?> GetOrderDetailAsync(PlatformType platform, string orderId, string? shopId = null) =>
             Task.FromResult<UnifiedOrder?>(null);

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using OmsApi.Extensions;
 using OmsApi.Helpers;
@@ -159,8 +159,12 @@ public sealed class WebhookIngestService : IWebhookIngestService
         string? authorization,
         SignatureConfiguration config) => platform switch
         {
-            PlatformType.Shopee => WebhookSignatureVerifier.VerifyShopee(
-                rawBody, authorization, config.CallbackUrl!, config.Secret!),
+            // Shopee signs Test Push with a separate test partner key, so the
+            // secret may be a comma-separated list; any matching key is valid.
+            PlatformType.Shopee => config.Secret!
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(secret => WebhookSignatureVerifier.VerifyShopee(
+                    rawBody, authorization, config.CallbackUrl!, secret)),
             PlatformType.Lazada => WebhookSignatureVerifier.VerifyLazada(
                 rawBody, authorization, config.AppKey!, config.Secret!),
             PlatformType.TikTok => WebhookSignatureVerifier.VerifyTikTok(
@@ -183,8 +187,12 @@ public sealed class WebhookIngestService : IWebhookIngestService
             PlatformType.Shopee => new SignatureConfiguration(
                 callbackUrl,
                 AppKey: null,
-                Environment.GetEnvironmentVariable("SHOPEE_WEBHOOK_SECRET") ??
-                Environment.GetEnvironmentVariable("SHOPEE_PARTNER_KEY"),
+                string.Join(',', new[]
+                    {
+                        Environment.GetEnvironmentVariable("SHOPEE_WEBHOOK_SECRET"),
+                        Environment.GetEnvironmentVariable("SHOPEE_PARTNER_KEY"),
+                        Environment.GetEnvironmentVariable("SHOPEE_TEST_PUSH_KEY")
+                    }.Where(k => !string.IsNullOrWhiteSpace(k))),
                 RequiresAppKey: false),
             PlatformType.Lazada => new SignatureConfiguration(
                 callbackUrl,

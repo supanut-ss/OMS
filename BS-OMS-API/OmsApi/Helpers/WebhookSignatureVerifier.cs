@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 
 namespace OmsApi.Helpers;
@@ -21,8 +21,12 @@ public static class WebhookSignatureVerifier
             string.IsNullOrWhiteSpace(partnerKey))
             return false;
 
-        var prefix = Encoding.UTF8.GetBytes(callbackUrl);
-        return CompareHex(authorization, ComputeHex(partnerKey, prefix, rawBody));
+        // Shopee documents the signed string as "url|body"; accept the plain
+        // "url+body" form as well so either variant verifies.
+        var withSeparator = Encoding.UTF8.GetBytes(callbackUrl + "|");
+        var withoutSeparator = Encoding.UTF8.GetBytes(callbackUrl);
+        return CompareHex(authorization, ComputeHex(partnerKey, withSeparator, rawBody)) ||
+               CompareHex(authorization, ComputeHex(partnerKey, withoutSeparator, rawBody));
     }
 
     public static bool VerifyLazada(

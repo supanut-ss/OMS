@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using OmsApi.Helpers;
 
@@ -19,6 +19,17 @@ public class WebhookSignatureTests
 
         var reformatted = Encoding.UTF8.GetBytes("{ \"code\": 3, \"amount\": 10.5 }");
         Assert.False(WebhookSignatureVerifier.VerifyShopee(reformatted, expected, callback, key));
+    }
+
+    [Fact]
+    public void Shopee_AcceptsPipeSeparatedUrlAndBody()
+    {
+        var body = Encoding.UTF8.GetBytes("{\"code\":0}");
+        const string callback = "https://example.test/api/webhooks/shopee";
+        var signature = Hmac("partner-key", callback + "|", body);
+
+        Assert.True(WebhookSignatureVerifier.VerifyShopee(body, signature, callback, "partner-key"));
+        Assert.False(WebhookSignatureVerifier.VerifyShopee(body, signature, callback, "wrong-key"));
     }
 
     [Fact]
