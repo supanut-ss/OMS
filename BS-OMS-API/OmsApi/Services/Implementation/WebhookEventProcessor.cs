@@ -1,5 +1,7 @@
+﻿using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using OmsApi.Extensions;
+using OmsApi.Models.Orders;
 using OmsApi.Models.Persistence;
 using OmsApi.Models.Webhooks;
 using OmsApi.Services.Interfaces;
@@ -10,6 +12,10 @@ public sealed class WebhookEventProcessor : IWebhookEventProcessor
 {
     public const int MaxAttempts = 3;
     private const string SystemUser = "OMS_WEBHOOK";
+    private const int DefaultOrderListLookbackHours = 24;
+    private const int OrderListMaxPages = 5;
+    private static readonly TimeSpan OrderListMinInterval = TimeSpan.FromSeconds(30);
+    private static readonly ConcurrentDictionary<string, DateTime> LastOrderListRefresh = new();
     private readonly ApplicationDbContext _db;
     private readonly IOrderService _orderService;
     private readonly ILogger<WebhookEventProcessor> _logger;
@@ -101,6 +107,81 @@ public sealed class WebhookEventProcessor : IWebhookEventProcessor
                 webhookEvent.EventType,
                 webhookEvent.PlatformOrderId,
                 webhookEvent.AttemptCount);
+        }
+
+        await RefreshOrderListAsync(webhookEvent, cancellationToken);
+    }
+
+    /// <summary>Clears the per-shop throttle (used by tests).</summary>
+    public static void ResetOrderListThrottle() => LastOrderListRefresh.Clear();
+
+    /// <summary>
+    /// After every platform callback, pull the platform's order list for the
+    /// shop so new and updated orders are synchronized even if the pushed
+    /// event carried no usable order id. Best-effort: a failure here is logged
+    /// and never changes the webhook event's own processing status. Calls for
+    /// the same shop are coalesced within a short interval so a burst of
+    /// callbacks triggers a single list request.
+    /// </summary>
+    private async Task RefreshOrderListAsync(
+        PlatformWebhookEvent webhookEvent,
+        CancellationToken cancellationToken)
+    {
+        if (webhookEvent.EventType == "SHOP_DEAUTHORIZATION")
+            return;
+
+        var key = $"{webhookEvent.Platform}|{webhookEvent.ShopId}";
+        var now = DateTime.UtcNow;
+        if (LastOrderListRefresh.TryGetValue(key, out var last) && now - last < OrderListMinInterval)
+            return;
+        LastOrderListRefresh[key] = now;
+
+        try
+        {
+            var platform = ParsePlatform(webhookEvent.Platform);
+            var lookbackHours = int.TryParse(
+                Environment.GetEnvironmentVariable("WEBHOOK_ORDER_LIST_LOOKBACK_HOURS"), out var hours) && hours > 0
+                ? hours
+                : DefaultOrderListLookbackHours;
+            var dateTo = DateTime.Now;
+            var total = 0;
+
+            for (var page = 1; page <= OrderListMaxPages; page++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var result = await _orderService.GetOrdersAsync(new OrderFilter
+                {
+                    Platform = platform,
+                    ShopId = string.IsNullOrWhiteSpace(webhookEvent.ShopId) ? null : webhookEvent.ShopId,
+                    DateFrom = dateTo.AddHours(-lookbackHours),
+                    DateTo = dateTo,
+                    Page = page,
+                    PageSize = 50
+                });
+                total += result.Items.Count;
+                if (!result.HasMore)
+                    break;
+            }
+
+            _logger.LogInformation(
+                "Order list refreshed after {Platform} webhook {EventType}: {Count} order(s)",
+                webhookEvent.Platform,
+                webhookEvent.EventType,
+                total);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Allow the next callback to retry immediately.
+            LastOrderListRefresh.TryRemove(key, out _);
+            _logger.LogWarning(
+                ex,
+                "Order list refresh after {Platform} webhook {EventType} failed",
+                webhookEvent.Platform,
+                webhookEvent.EventType);
         }
     }
 

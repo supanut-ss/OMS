@@ -133,6 +133,14 @@ These examples are intentionally sanitized. The signature is an HTTP header, not
 }
 ```
 
+## Automatic order list refresh
+
+After every processed callback (new order, update, or any other event except shop deauthorization), the worker also calls the platform's order list for that shop and upserts the result into `t_oms_order`. This covers orders whose push carried no usable order id.
+
+- Window: the last `WEBHOOK_ORDER_LIST_LOOKBACK_HOURS` hours (default 24), up to 5 pages of 50.
+- Callbacks for the same platform and shop within 30 seconds share one list call.
+- Best-effort: a list failure is logged and never changes the webhook event's own status.
+
 ## Testing
 
 The automated tests cover:
