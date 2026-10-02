@@ -1,7 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AddRounded,
   CheckCircleRounded,
@@ -114,11 +113,8 @@ const toApiUtcIsoString = (value) => {
 };
 
 export default function Connector() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [connectors, setConnectors] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
-  const handledOAuthResult = React.useRef(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({
@@ -165,31 +161,35 @@ export default function Connector() {
     loadConnectors();
   }, [loadConnectors]);
 
-  useEffect(() => {
-    const result = searchParams.get("oauth");
-    const platform = searchParams.get("platform");
-    if (!result || handledOAuthResult.current) return;
-    handledOAuthResult.current = true;
-    if (result === "success") {
-      setNotice({ open: true, severity: "success", message: `เชื่อมต่อ ${platforms[platform]?.name || "ร้านค้า"} สำเร็จ` });
-      loadConnectors();
-    } else {
-      setNotice({ open: true, severity: "error", message: `เชื่อมต่อ ${platforms[platform]?.name || "ร้านค้า"} ไม่สำเร็จ กรุณาลองใหม่` });
-    }
-    navigate("/connector", { replace: true });
-  }, [loadConnectors, navigate, searchParams]);
-
   const connectOAuth = async (platform) => {
     setOauthRedirecting(platform);
+    const oauthTab = window.open("about:blank", "_blank");
+    if (!oauthTab) {
+      setOauthRedirecting("");
+      setNotice({
+        open: true,
+        severity: "warning",
+        message: "Browser บล็อกแท็บใหม่ กรุณาอนุญาต Popup แล้วลองอีกครั้ง",
+      });
+      return;
+    }
+    oauthTab.opener = null;
+    oauthTab.document.title = "กำลังเชื่อมต่อ Marketplace";
+    oauthTab.document.body.textContent = "กำลังเตรียมหน้าเชื่อมต่อ...";
+
     try {
       const { data } = await axios.get(
         `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url`,
         { timeout: 15000 },
       );
       const authUrl = data?.data?.url || data?.url;
-      if (!authUrl || !/^https:\/\//i.test(authUrl)) throw new Error("API ไม่ได้ส่ง OAuth URL ที่ถูกต้อง");
-      window.location.assign(authUrl);
+      if (!authUrl || !/^https:\/\//i.test(authUrl)) {
+        throw new Error("API ไม่ได้ส่ง OAuth URL ที่ถูกต้อง");
+      }
+      setOauthRedirecting("");
+      oauthTab.location.replace(authUrl);
     } catch (error) {
+      oauthTab.close();
       setOauthRedirecting("");
       setNotice({ open: true, severity: "error", message: error?.response?.data?.message_text || error?.message || "เริ่ม OAuth ไม่สำเร็จ" });
     }

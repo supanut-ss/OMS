@@ -4,7 +4,7 @@
 
 Publish the OMS API under the same HTTPS host as the React app, or set
 `REACT_APP_OMS_API_URL` to the HTTPS API origin plus `/api`. The React application
-is mounted at `/oms`; its UI route is `/oms/connector`.
+is mounted at `/oms`; its UI route is `/oms/master/connector`.
 
 | Purpose | Public URL |
 | --- | --- |
@@ -16,7 +16,8 @@ is mounted at `/oms`; its UI route is `/oms/connector`.
 | TikTok Shop webhook | `https://<domain>/api/webhooks/tiktok` |
 
 Set each platform's existing backend `*_REDIRECT_URL` to its exact callback URL.
-Set backend `OMS_FRONTEND_CONNECTOR_URL` to `https://<domain>/oms/connector`.
+Set backend `OMS_FRONTEND_CONNECTOR_URL` to
+`https://<domain>/oms/master/connector`.
 After OMS processes a callback, it redirects to the connector with only an OAuth
 success/error marker and platform name. The authorization code is consumed by OMS
 and removed from the browser URL by the backend redirect. Tokens are never
@@ -86,7 +87,7 @@ configuration and event setup.
    The marketplace sends `code`, `shop_id`, and/or its error query directly to
    OMS through the reverse proxy. Do not route the callback to a React page.
 3. OMS exchanges the code and saves the credential, then redirects to
-   `/oms/connector`. The connector reports success/failure and refreshes shop
+   `/oms/master/connector`. The connector reports success/failure and refreshes shop
    status after success.
 
 For a basic route check, open `/api/auth/shopee/auth-url` on the public host (or

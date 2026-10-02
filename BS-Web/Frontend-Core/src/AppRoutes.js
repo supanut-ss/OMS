@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import MainLayout from "./layout/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -9,7 +9,8 @@ import UserGroupPage from "./pages/Authentication/UserGroup";
 import MenuPage from "./pages/Authentication/Menu";
 import ImportExcel from "./pages/Import/ImportExcel";
 import Resource from "./pages/Configs/Resource";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Alert, Snackbar } from "@mui/material";
 import { useAuth } from "./contexts/AuthContext";
 import secureStorage from "./utils/SecureStorage";
 import Home from "./pages/Home";
@@ -55,6 +56,27 @@ import SyncLog from "./pages/LogSync/SyncLog";
 export default function AppRoutes() {
   const [lang, setLang] = useState(secureStorage.get("lang") || "en");
   const { switchLang } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [oauthNotice, setOauthNotice] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const result = params.get("oauth");
+    const platform = params.get("platform");
+    if (!result) return;
+
+    const platformName = { shopee: "Shopee", lazada: "Lazada", tiktok: "TikTok Shop" }[platform?.toLowerCase()] || "ร้านค้า";
+    setOauthNotice({
+      severity: result === "success" ? "success" : "error",
+      message: result === "success"
+        ? `เชื่อมต่อ ${platformName} สำเร็จ`
+        : `เชื่อมต่อ ${platformName} ไม่สำเร็จ กรุณาลองใหม่`,
+    });
+    params.delete("oauth");
+    params.delete("platform");
+    navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : "", hash: location.hash }, { replace: true });
+  }, [location.hash, location.pathname, location.search, navigate]);
   const onChangeLang = async (lang) => {
     if (secureStorage.get("token")) {
       if (await switchLang(lang)) {
@@ -68,6 +90,7 @@ export default function AppRoutes() {
     }
   };
   return (
+    <>
     <Routes>
       <Route
         path="/login"
@@ -217,5 +240,16 @@ export default function AppRoutes() {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    <Snackbar
+      open={Boolean(oauthNotice)}
+      autoHideDuration={6000}
+      onClose={() => setOauthNotice(null)}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+    >
+      <Alert severity={oauthNotice?.severity || "success"} variant="filled" onClose={() => setOauthNotice(null)}>
+        {oauthNotice?.message}
+      </Alert>
+    </Snackbar>
+    </>
   );
 }
