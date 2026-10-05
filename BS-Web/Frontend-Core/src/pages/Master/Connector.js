@@ -3,6 +3,7 @@ import axios from "axios";
 import {
   AddRounded,
   CheckCircleRounded,
+  DeleteOutlineRounded,
   EditOutlined,
   HubRounded,
   PauseCircleOutlineRounded,
@@ -30,6 +31,7 @@ import { IOSSwitch } from "../../components/BSSwitch";
 import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../components/Button/BSSaveOutlinedButton";
 import BSDialog from "../../components/BSDialog";
+import BSAlertSwal2 from "../../components/BSAlertSwal2";
 import AxiosMaster from "../../utils/AxiosMaster";
 import Config from "../../utils/Config";
 
@@ -108,6 +110,7 @@ export default function Connector() {
   const [connectors, setConnectors] = useState([]);
   const [platformApps, setPlatformApps] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
+  const [deletingConnectorId, setDeletingConnectorId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({
@@ -340,6 +343,48 @@ export default function Connector() {
     }
   };
 
+  const deleteConnector = async (connector) => {
+    const platform = platforms[connector.platform] || platforms.shopee;
+    const confirmed = await BSAlertSwal2.confirm(
+      `ยืนยันลบ Connector ${platform.name} (${connector.displayName || connector.account}) หรือไม่?`,
+      {
+        title: "ยืนยันการลบ Connector",
+        confirmButtonText: "ลบ Connector",
+        cancelButtonText: "ยกเลิก",
+      },
+    );
+    if (!confirmed) return;
+
+    setDeletingConnectorId(connector.id);
+    try {
+      await AxiosMaster.post(`/Connector/${connector.id}`);
+      setConnectors((current) => current.filter((item) => item.id !== connector.id));
+      setNotice({
+        open: true,
+        severity: "success",
+        message: `ลบ Connector ${platform.name} สำเร็จ`,
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.message_text ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "ลบ Connector ไม่สำเร็จ";
+      await BSAlertSwal2.show(
+        error?.response?.status === 409 ? "warning" : "error",
+        message,
+        {
+          title:
+            error?.response?.status === 409
+              ? "ไม่สามารถลบ Connector ได้"
+              : "ลบ Connector ไม่สำเร็จ",
+        },
+      );
+    } finally {
+      setDeletingConnectorId(null);
+    }
+  };
+
   return (
     <Box sx={{ minHeight: "100%", p: { xs: 2, md: 3 }, bgcolor: "#f5f7fb" }}>
       <Stack spacing={2.5} sx={{ maxWidth: 1440, mx: "auto" }}>
@@ -554,9 +599,39 @@ export default function Connector() {
                       aria-label={`แก้ไข ${platform.name}`}
                       onClick={() => openEdit(connector)}
                       size="small"
-                      sx={{ border: "1px solid #e3e9f1", borderRadius: 2 }}
+                      sx={{
+                        border: "1px solid #e3e9f1",
+                        borderRadius: "50%",
+                        width: 36,
+                        height: 36,
+                      }}
                     >
                       <EditOutlined fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      aria-label={`ลบ ${platform.name}`}
+                      title={`ลบ ${platform.name}`}
+                      size="small"
+                      disabled={deletingConnectorId !== null}
+                      onClick={() => deleteConnector(connector)}
+                      sx={{
+                        border: "1px solid #e3e9f1",
+                        borderRadius: "50%",
+                        width: 36,
+                        height: 36,
+                        color: "text.secondary",
+                        "&:hover": {
+                          color: "error.main",
+                          borderColor: "error.light",
+                          bgcolor: "rgba(211, 47, 47, 0.06)",
+                        },
+                      }}
+                    >
+                      {deletingConnectorId === connector.id ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <DeleteOutlineRounded fontSize="small" />
+                      )}
                     </IconButton>
                   </Stack>
                 </Stack>

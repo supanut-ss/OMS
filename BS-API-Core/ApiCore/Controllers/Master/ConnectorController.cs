@@ -66,6 +66,20 @@ namespace ApiCore.Controllers.Master
             }
         }
 
+        [HttpPost("{id:long}")]
+        public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _connectorService.DeleteAsync(id, cancellationToken);
+                return AccessResponseDataSuccess("success", new { PlatformCredentialId = id });
+            }
+            catch (Exception ex)
+            {
+                return HandleError(ex, $"delete connector {id}");
+            }
+        }
+
         [HttpPost("save")]
         public async Task<IActionResult> Save(
             [FromBody] SaveConnectorRequest request,
