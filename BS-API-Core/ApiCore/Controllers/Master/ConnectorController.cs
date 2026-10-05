@@ -72,7 +72,7 @@ namespace ApiCore.Controllers.Master
             try
             {
                 await _connectorService.DeleteAsync(id, cancellationToken);
-                return AccessResponseDataSuccess("success", new { PlatformCredentialId = id });
+                return AccessResponseDataSuccess("success", new { PlatformAppShopId = id });
             }
             catch (Exception ex)
             {

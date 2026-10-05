@@ -795,6 +795,8 @@ export default function Connector() {
             label="Shop ID / Seller ID"
             value={draft.account}
             onChange={updateDraft("account")}
+            readOnly={Boolean(editingId)}
+            helperText={editingId ? "ไม่สามารถแก้ไข Shop ID หลังสร้าง Connector ได้" : ""}
             labelAbove
             sx={fieldSx}
           />
