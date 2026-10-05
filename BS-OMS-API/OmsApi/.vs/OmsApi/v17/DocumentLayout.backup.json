@@ -82,8 +82,12 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 32,
+          "SelectedChildIndex": 33,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:131:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
@@ -220,7 +224,7 @@
               "RelativeDocumentMoniker": "Extensions\\ApplicationDbContext.cs",
               "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Extensions\\ApplicationDbContext.cs",
               "RelativeToolTip": "Extensions\\ApplicationDbContext.cs",
-              "ViewState": "AgIAAB8AAAAAAAAAAAAqwBsAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAABcAAAAAAAAAAAA4wBoAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-05T04:13:51.545Z",
               "EditorCaption": ""
@@ -414,7 +418,7 @@
               "RelativeDocumentMoniker": ".env",
               "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\.env",
               "RelativeToolTip": ".env",
-              "ViewState": "AgIAACcAAAAAAAAAAAAAACkAAAATAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAATAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2026-09-23T03:58:53.08Z",
               "EditorCaption": ""

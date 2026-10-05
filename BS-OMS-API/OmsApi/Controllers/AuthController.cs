@@ -52,6 +52,11 @@ namespace OmsApi.Controllers
             {
                 return BadRequest(ApiResponse<string>.Fail(ex.Message));
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Unable to create OAuth URL for {Platform}", platform);
+                return BadRequest(ApiResponse<string>.Fail(ex.Message));
+            }
         }
 
         /// <summary>
@@ -69,6 +74,11 @@ namespace OmsApi.Controllers
             }
             catch (ArgumentException ex)
             {
+                return BadRequest(ApiResponse<string>.Fail(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Unable to create OAuth URL for {Platform}", platform);
                 return BadRequest(ApiResponse<string>.Fail(ex.Message));
             }
         }

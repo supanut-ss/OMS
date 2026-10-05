@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>D:\Program\OMS\BS-OMS-API\OmsApi\bin\Release\net9.0\publish\</_PublishTargetUrl>
-    <History>True|2026-10-05T04:36:14.6998407Z||;True|2026-10-01T14:43:50.0800154+07:00||;</History>
+    <History>True|2026-10-05T07:28:02.6941537Z||;True|2026-10-05T13:16:48.4500303+07:00||;True|2026-10-05T11:36:14.6998407+07:00||;True|2026-10-01T14:43:50.0800154+07:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

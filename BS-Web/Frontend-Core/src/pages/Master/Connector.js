@@ -208,7 +208,7 @@ export default function Connector() {
     } catch (error) {
       oauthTab.close();
       setOauthRedirecting("");
-      setNotice({ open: true, severity: "error", message: error?.response?.data?.message_text || error?.message || "เริ่ม OAuth ไม่สำเร็จ" });
+      setNotice({ open: true, severity: "error", message: error?.response?.data?.message_text || error?.response?.data?.message || error?.message || "เริ่ม OAuth ไม่สำเร็จ" });
     }
   };
 

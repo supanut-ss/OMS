@@ -18,20 +18,23 @@ if (File.Exists(envFilePath))
 {
     DotNetEnv.Env.Load(envFilePath);
 }
-var dataProtection = builder.Services
-    .AddDataProtection()
-    .SetApplicationName(
-        Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_APP_NAME")
-        ?? "OmsApi");
-
+// Credentials are written by BS-API-Core and decrypted here.  Require the
+// shared key ring instead of falling back to a machine-local key ring.
+var dataProtectionAppName = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_APP_NAME");
 var dataProtectionKeysPath = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_KEYS_PATH");
-if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+if (string.IsNullOrWhiteSpace(dataProtectionAppName) || string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
-    var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
-    // ─── ดูการเชื่อมต่อ ได้ที่ docs/Connected.md ───────────────────────────────────────────────
-    Directory.CreateDirectory(keyDirectory);
-    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+    throw new InvalidOperationException(
+        "OMS_DATA_PROTECTION_APP_NAME and OMS_DATA_PROTECTION_KEYS_PATH must be configured.");
 }
+
+var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
+// ─── ดูการเชื่อมต่อ ได้ที่ docs/Connected.md ───────────────────────────────────────────────
+Directory.CreateDirectory(keyDirectory);
+builder.Services
+    .AddDataProtection()
+    .SetApplicationName(dataProtectionAppName.Trim())
+    .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
 
 var dbConnectionString = Environment.GetEnvironmentVariable("OMS_DB_CONNECTION_STRING");
 if (!string.IsNullOrWhiteSpace(dbConnectionString))

@@ -1,77 +1,77 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\",
+  "WorkspaceRootPath": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\extensions\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\extensions\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:extensions\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\.env||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\.env||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:.env||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\controllers\\webhookscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\controllers\\webhookscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:controllers\\webhookscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\docs\\connected.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\docs\\connected.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:docs\\connected.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\docs\\marketplace_webhooks.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\docs\\marketplace_webhooks.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:docs\\marketplace_webhooks.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\services\\implementation\\platformcredentialservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\services\\implementation\\platformcredentialservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:services\\implementation\\platformcredentialservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\services\\implementation\\orderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\services\\implementation\\orderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:services\\implementation\\orderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\controllers\\ordercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\controllers\\ordercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:controllers\\ordercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\models\\orders\\orderstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\models\\orders\\orderstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:models\\orders\\orderstatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\models\\orders\\orderfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\models\\orders\\orderfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:models\\orders\\orderfilter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\controllers\\shippingcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\controllers\\shippingcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:controllers\\shippingcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\controllers\\inventorycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\controllers\\inventorycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:controllers\\inventorycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\services\\implementation\\inventoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\services\\implementation\\inventoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:services\\implementation\\inventoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\services\\interfaces\\ishippingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\services\\interfaces\\ishippingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:services\\interfaces\\ishippingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\services\\interfaces\\iorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\services\\interfaces\\iorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:services\\interfaces\\iorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\services\\interfaces\\iinventoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\services\\interfaces\\iinventoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:services\\interfaces\\iinventoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\work\\projectwebreact\\oms\\bs-oms-api\\omsapi\\docs\\processflow.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "AbsoluteMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|d:\\program\\oms\\bs-oms-api\\omsapi\\docs\\processflow.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
       "RelativeMoniker": "D:0:0:{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}|OmsApi.csproj|solutionrelative:docs\\processflow.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
     }
   ],
@@ -82,19 +82,31 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 35,
+          "SelectedChildIndex": 34,
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+              "Name": "ST:128:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
+              "Name": "ST:131:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+              "Name": "ST:137:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:139:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{65ddf8c3-8f89-4077-a6c6-dbb8853aab13}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:17:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
             },
             {
               "$type": "Bookmark",
@@ -150,35 +162,11 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:17:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
+              "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:16:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{bdb66994-1ae7-31f2-baea-81e782782493}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{67d15d2e-5bac-311f-82c3-d49feab601fd}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{33c88fe3-43b3-374e-9aac-c4679036dce0}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{65ddf8c3-8f89-4077-a6c6-dbb8853aab13}"
+              "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
             },
             {
               "$type": "Bookmark",
@@ -186,53 +174,61 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{80454082-9ab8-47d4-af23-82bf6739e2a9}"
+              "Name": "ST:13:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:1:0:{80454082-9ab8-47d4-af23-82bf6739e2a9}"
+              "Name": "ST:15:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{7ad0d46f-df4a-3d4b-9f9b-8322f9c21927}"
+              "Name": "ST:134:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:3:0:{57d563b6-44a5-47df-85be-f4199ad6b651}"
+              "Name": "ST:136:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:7:0:{57d563b6-44a5-47df-85be-f4199ad6b651}"
+              "Name": "ST:142:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:1:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+              "Name": "ST:141:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{01321f1c-6c9e-3b5b-9c0f-66d2a373c254}"
+              "Name": "ST:140:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{3fd5e0cc-709a-4f8c-94c3-7f0f8dff5bb2}"
+              "Name": "ST:139:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{57d563b6-44a5-47df-85be-f4199ad6b651}"
+              "Name": "ST:529317650:0:{81164725-9a96-4ece-a4cb-440d8fd285e5}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:421934398:0:{81164725-9a96-4ece-a4cb-440d8fd285e5}"
+              "Name": "ST:0:0:{cf577b8c-4134-11d2-83e5-00c04f9902c1}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:136:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "ApplicationDbContext.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Extensions\\ApplicationDbContext.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Extensions\\ApplicationDbContext.cs",
               "RelativeDocumentMoniker": "Extensions\\ApplicationDbContext.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Extensions\\ApplicationDbContext.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Extensions\\ApplicationDbContext.cs",
               "RelativeToolTip": "Extensions\\ApplicationDbContext.cs",
-              "ViewState": "AgIAAB8AAAAAAAAAAAAqwBsAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAABcAAAAAAAAAAAA4wBoAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-05T04:13:51.545Z",
               "EditorCaption": ""
@@ -241,9 +237,9 @@
               "$type": "Document",
               "DocumentIndex": 2,
               "Title": "WebhooksController.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\WebhooksController.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\WebhooksController.cs",
               "RelativeDocumentMoniker": "Controllers\\WebhooksController.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\WebhooksController.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\WebhooksController.cs",
               "RelativeToolTip": "Controllers\\WebhooksController.cs",
               "ViewState": "AgIAACgAAAAAAAAAAAAqwDIAAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -253,9 +249,9 @@
               "$type": "Document",
               "DocumentIndex": 4,
               "Title": "MARKETPLACE_WEBHOOKS.md",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\docs\\MARKETPLACE_WEBHOOKS.md",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\docs\\MARKETPLACE_WEBHOOKS.md",
               "RelativeDocumentMoniker": "docs\\MARKETPLACE_WEBHOOKS.md",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\docs\\MARKETPLACE_WEBHOOKS.md",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\docs\\MARKETPLACE_WEBHOOKS.md",
               "RelativeToolTip": "docs\\MARKETPLACE_WEBHOOKS.md",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
@@ -265,9 +261,9 @@
               "$type": "Document",
               "DocumentIndex": 8,
               "Title": "OrderStatus.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderStatus.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderStatus.cs",
               "RelativeDocumentMoniker": "Models\\Orders\\OrderStatus.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderStatus.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderStatus.cs",
               "RelativeToolTip": "Models\\Orders\\OrderStatus.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAACMAAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -277,9 +273,9 @@
               "$type": "Document",
               "DocumentIndex": 9,
               "Title": "OrderFilter.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderFilter.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderFilter.cs",
               "RelativeDocumentMoniker": "Models\\Orders\\OrderFilter.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderFilter.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Models\\Orders\\OrderFilter.cs",
               "RelativeToolTip": "Models\\Orders\\OrderFilter.cs",
               "ViewState": "AgIAAAsAAAAAAAAAAAAAwBcAAAAPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -289,9 +285,9 @@
               "$type": "Document",
               "DocumentIndex": 10,
               "Title": "Program.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Program.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Program.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Program.cs",
               "RelativeToolTip": "Program.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -301,21 +297,22 @@
               "$type": "Document",
               "DocumentIndex": 5,
               "Title": "PlatformCredentialService.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\PlatformCredentialService.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\PlatformCredentialService.cs",
               "RelativeDocumentMoniker": "Services\\Implementation\\PlatformCredentialService.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\PlatformCredentialService.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\PlatformCredentialService.cs",
               "RelativeToolTip": "Services\\Implementation\\PlatformCredentialService.cs",
               "ViewState": "AgIAABYAAAAAAAAAAAAQwBkAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-09-24T07:25:12.569Z"
+              "WhenOpened": "2026-09-24T07:25:12.569Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 12,
               "Title": "InventoryController.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\InventoryController.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\InventoryController.cs",
               "RelativeDocumentMoniker": "Controllers\\InventoryController.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\InventoryController.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\InventoryController.cs",
               "RelativeToolTip": "Controllers\\InventoryController.cs",
               "ViewState": "AgIAADEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -325,9 +322,9 @@
               "$type": "Document",
               "DocumentIndex": 7,
               "Title": "OrderController.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\OrderController.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\OrderController.cs",
               "RelativeDocumentMoniker": "Controllers\\OrderController.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\OrderController.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\OrderController.cs",
               "RelativeToolTip": "Controllers\\OrderController.cs",
               "ViewState": "AgIAABIAAAAAAAAAAAAzwCAAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -337,9 +334,9 @@
               "$type": "Document",
               "DocumentIndex": 14,
               "Title": "IShippingService.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IShippingService.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IShippingService.cs",
               "RelativeDocumentMoniker": "Services\\Interfaces\\IShippingService.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IShippingService.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IShippingService.cs",
               "RelativeToolTip": "Services\\Interfaces\\IShippingService.cs",
               "ViewState": "AgIAABQAAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -349,9 +346,9 @@
               "$type": "Document",
               "DocumentIndex": 15,
               "Title": "IOrderService.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IOrderService.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IOrderService.cs",
               "RelativeDocumentMoniker": "Services\\Interfaces\\IOrderService.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IOrderService.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IOrderService.cs",
               "RelativeToolTip": "Services\\Interfaces\\IOrderService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -361,9 +358,9 @@
               "$type": "Document",
               "DocumentIndex": 16,
               "Title": "IInventoryService.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IInventoryService.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IInventoryService.cs",
               "RelativeDocumentMoniker": "Services\\Interfaces\\IInventoryService.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IInventoryService.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Interfaces\\IInventoryService.cs",
               "RelativeToolTip": "Services\\Interfaces\\IInventoryService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -373,9 +370,9 @@
               "$type": "Document",
               "DocumentIndex": 13,
               "Title": "InventoryService.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\InventoryService.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\InventoryService.cs",
               "RelativeDocumentMoniker": "Services\\Implementation\\InventoryService.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\InventoryService.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\InventoryService.cs",
               "RelativeToolTip": "Services\\Implementation\\InventoryService.cs",
               "ViewState": "AgIAAA0AAAAAAAAAAAAzwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -385,9 +382,9 @@
               "$type": "Document",
               "DocumentIndex": 6,
               "Title": "OrderService.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\OrderService.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\OrderService.cs",
               "RelativeDocumentMoniker": "Services\\Implementation\\OrderService.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\OrderService.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Services\\Implementation\\OrderService.cs",
               "RelativeToolTip": "Services\\Implementation\\OrderService.cs",
               "ViewState": "AgIAABcAAAAAAAAAAAAjwCIAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -397,9 +394,9 @@
               "$type": "Document",
               "DocumentIndex": 17,
               "Title": "ProcessFlow.md",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\docs\\ProcessFlow.md",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\docs\\ProcessFlow.md",
               "RelativeDocumentMoniker": "docs\\ProcessFlow.md",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\docs\\ProcessFlow.md",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\docs\\ProcessFlow.md",
               "RelativeToolTip": "docs\\ProcessFlow.md",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
@@ -409,9 +406,9 @@
               "$type": "Document",
               "DocumentIndex": 3,
               "Title": "Connected.md",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\docs\\Connected.md",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\docs\\Connected.md",
               "RelativeDocumentMoniker": "docs\\Connected.md",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\docs\\Connected.md",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\docs\\Connected.md",
               "RelativeToolTip": "docs\\Connected.md",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
@@ -421,21 +418,22 @@
               "$type": "Document",
               "DocumentIndex": 1,
               "Title": ".env",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\.env",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\.env",
               "RelativeDocumentMoniker": ".env",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\.env",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\.env",
               "RelativeToolTip": ".env",
-              "ViewState": "AgIAACcAAAAAAAAAAAAAACkAAAATAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAATAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-09-23T03:58:53.08Z"
+              "WhenOpened": "2026-09-23T03:58:53.08Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 11,
               "Title": "ShippingController.cs",
-              "DocumentMoniker": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\ShippingController.cs",
+              "DocumentMoniker": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\ShippingController.cs",
               "RelativeDocumentMoniker": "Controllers\\ShippingController.cs",
-              "ToolTip": "D:\\WORK\\ProjectWebReact\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\ShippingController.cs",
+              "ToolTip": "D:\\Program\\OMS\\BS-OMS-API\\OmsApi\\Controllers\\ShippingController.cs",
               "RelativeToolTip": "Controllers\\ShippingController.cs",
               "ViewState": "AgIAAJMGAAAAAAAAAAAkwKYGAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -449,15 +447,11 @@
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
-            },
-            {
-              "$type": "Bookmark",
               "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
+              "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
             }
           ]
         },

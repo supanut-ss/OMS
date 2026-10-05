@@ -7,20 +7,32 @@ using TokenManagement.Services;
 using TokenManagement.Middleware;
 using Microsoft.AspNetCore.DataProtection;
 var builder = WebApplication.CreateBuilder(args);
-DotNetEnv.Env.Load();
-
-// Keep token protection compatible with BS-OMS-API, which reads and refreshes
-// credentials from the same platform credential table.
-var dataProtection = builder.Services
-    .AddDataProtection()
-    .SetApplicationName(Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_APP_NAME") ?? "OmsApi");
-var dataProtectionKeysPath = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_KEYS_PATH");
-if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+// IIS may start the process from C:\Windows\System32\inetsrv.  Resolve the
+// deployed .env from the application content root so Data Protection uses the
+// same key ring as BS-OMS-API when encrypting App Master credentials.
+var envFilePath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (File.Exists(envFilePath))
 {
-    var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
-    Directory.CreateDirectory(keyDirectory);
-    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+    DotNetEnv.Env.Load(envFilePath);
 }
+
+// Credentials are encrypted here and decrypted by BS-OMS-API.  Do not allow a
+// server to silently create a machine-local key ring, because that produces
+// records which BS-OMS-API cannot decrypt.
+var dataProtectionAppName = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_APP_NAME");
+var dataProtectionKeysPath = Environment.GetEnvironmentVariable("OMS_DATA_PROTECTION_KEYS_PATH");
+if (string.IsNullOrWhiteSpace(dataProtectionAppName) || string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    throw new InvalidOperationException(
+        "OMS_DATA_PROTECTION_APP_NAME and OMS_DATA_PROTECTION_KEYS_PATH must be configured.");
+}
+
+var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
+Directory.CreateDirectory(keyDirectory);
+builder.Services
+    .AddDataProtection()
+    .SetApplicationName(dataProtectionAppName.Trim())
+    .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
 
 // Register database services (provider determined by DB_PROVIDER env var: SqlServer | PostgreSql)
 builder.Services.AddDatabase(builder.Configuration);
