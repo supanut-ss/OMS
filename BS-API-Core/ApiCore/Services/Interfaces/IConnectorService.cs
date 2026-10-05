@@ -7,6 +7,7 @@ namespace ApiCore.Services.Interfaces
     {
         Task<IReadOnlyList<ConnectorResponse>> GetAllAsync(CancellationToken cancellationToken = default);
         Task<ConnectorResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+        Task DeleteAsync(long id, CancellationToken cancellationToken = default);
         Task<ConnectorResponse> SaveAsync(
             SaveConnectorRequest request,
             string updateBy,

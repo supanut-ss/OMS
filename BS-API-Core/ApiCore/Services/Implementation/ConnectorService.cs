@@ -4,6 +4,7 @@ using ApiCore.Services.Interfaces;
 using Dapper;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.SqlClient;
+using System.Data;
 using System.Data.Common;
 using System.Text.RegularExpressions;
 
@@ -88,6 +89,65 @@ namespace ApiCore.Services.Implementation
                 _logger.LogError(ex, "Failed to load platform connector {ConnectorId}", id);
                 throw;
             }
+        }
+
+        public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
+        {
+            if (id <= 0)
+                throw new ArgumentException("platform_credential_id must be greater than zero.");
+
+            await using var connection = await _connectionFactory.CreateAndOpenConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+
+            var connector = await connection.QuerySingleOrDefaultAsync<ConnectorDeleteTarget>(
+                new CommandDefinition($"""
+                    SELECT platform AS Platform, shop_id AS ShopId
+                    FROM {CredentialTable} WITH (UPDLOCK, HOLDLOCK)
+                    WHERE platform_credential_id = @Id
+                    """,
+                    new { Id = id },
+                    transaction,
+                    cancellationToken: cancellationToken));
+
+            if (connector is null)
+                throw new KeyNotFoundException($"Connector '{id}' was not found.");
+
+            var hasOrders = await connection.ExecuteScalarAsync<bool>(new CommandDefinition($"""
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM [OMS].[oms].[t_oms_order] WITH (UPDLOCK, HOLDLOCK)
+                    WHERE platform = @Platform AND shop_id = @ShopId
+                ) THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
+                """,
+                new { connector.Platform, connector.ShopId },
+                transaction,
+                cancellationToken: cancellationToken));
+
+            if (hasOrders)
+                throw new InvalidOperationException(
+                    "ไม่สามารถลบ Connector นี้ได้ เนื่องจากพบข้อมูลคำสั่งซื้อของร้านนี้ในระบบ");
+
+            var deleted = await connection.ExecuteAsync(new CommandDefinition($"""
+                DELETE FROM {CredentialTable}
+                WHERE platform_credential_id = @Id
+                  AND platform = @Platform
+                  AND shop_id = @ShopId
+                """,
+                new { Id = id, connector.Platform, connector.ShopId },
+                transaction,
+                cancellationToken: cancellationToken));
+
+            if (deleted == 0)
+                throw new KeyNotFoundException($"Connector '{id}' was not found.");
+
+            await transaction.CommitAsync(cancellationToken);
+            _logger.LogInformation(
+                "Deleted connector {ConnectorId} for platform {Platform}, shop {ShopId}",
+                id,
+                connector.Platform,
+                connector.ShopId);
         }
 
         public async Task<ConnectorResponse> SaveAsync(
@@ -288,6 +348,12 @@ namespace ApiCore.Services.Implementation
                 FROM {CredentialTable}
                 WHERE platform_credential_id = @Id
                 """, new { Id = id }, cancellationToken: cancellationToken));
+        }
+
+        private sealed class ConnectorDeleteTarget
+        {
+            public string Platform { get; set; } = string.Empty;
+            public string ShopId { get; set; } = string.Empty;
         }
 
         private static string NormalizePlatform(string? value)

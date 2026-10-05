@@ -794,6 +794,22 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/api/Connector/{id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/{id}",
+      "UpstreamHttpMethod": ["delete"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/Connector/save",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
