@@ -193,13 +193,31 @@ public class PlatformCredentialServiceTests
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var protector = provider.GetRequiredService<IDataProtectionProvider>()
             .CreateProtector("OmsApi.PlatformCredentials.v1");
+        var app = new PlatformApp
+        {
+            Platform = PlatformType.Shopee.ToString(),
+            AppName = "Test Shopee App",
+            AppKeyEncrypted = protector.Protect("123"),
+            AppSecretEncrypted = protector.Protect("app-secret"),
+            RedirectUrl = "https://example.test/callback",
+            IsActive = "YES",
+            CreateDate = DateTime.UtcNow,
+            UpdateDate = DateTime.UtcNow
+        };
+        db.PlatformApps.Add(app);
+        db.PlatformAppShops.Add(new PlatformAppShop
+        {
+            PlatformApp = app,
+            Platform = PlatformType.Shopee.ToString(),
+            ShopId = "shop-1",
+            IsActive = "YES",
+            CreateDate = DateTime.UtcNow,
+            UpdateDate = DateTime.UtcNow
+        });
         db.PlatformCredentials.Add(new PlatformCredential
         {
             Platform = PlatformType.Shopee.ToString(),
             ShopId = "shop-1",
-            AppKeyEncrypted = protector.Protect("123"),
-            AppSecretEncrypted = protector.Protect("app-secret"),
-            RedirectUrl = "https://example.test/callback",
             AccessTokenEncrypted = protector.Protect(accessToken),
             RefreshTokenEncrypted = protector.Protect("refresh-token"),
             AccessTokenExpiresDate = accessExpiresAt,
@@ -233,7 +251,7 @@ public class PlatformCredentialServiceTests
             _state = state;
         }
 
-        public Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformCredentialId, CancellationToken cancellationToken = default) =>
+        public Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformAppShopId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<TokenInfo> HandleCallbackAsync(
@@ -264,7 +282,7 @@ public class PlatformCredentialServiceTests
                 ShopId = shopId,
                 AccessToken = "refreshed-token",
                 RefreshToken = refreshToken,
-                ExpiresAt = row.AccessTokenExpiresDate,
+                ExpiresAt = row.AccessTokenExpiresDate ?? now,
                 RefreshExpiresAt = row.RefreshTokenExpiresDate ?? now
             };
         }

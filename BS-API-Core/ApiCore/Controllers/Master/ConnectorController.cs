@@ -36,6 +36,20 @@ namespace ApiCore.Controllers.Master
             }
         }
 
+        [HttpGet("apps")]
+        public async Task<IActionResult> GetPlatformApps([FromQuery] string? platform, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var apps = await _connectorService.GetPlatformAppsAsync(platform, cancellationToken);
+                return AccessResponseDataSuccess("success", apps);
+            }
+            catch (Exception ex)
+            {
+                return HandleError(ex, "load platform apps");
+            }
+        }
+
         [HttpGet("{id:long}")]
         public async Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         {

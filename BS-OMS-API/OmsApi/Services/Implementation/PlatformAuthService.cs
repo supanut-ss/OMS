@@ -59,10 +59,10 @@ namespace OmsApi.Services.Implementation
             _tiktokApiUrl = Environment.GetEnvironmentVariable("TIKTOK_API_URL") ?? "https://open-api.tiktokglobalshop.com";
         }
 
-        public async Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformCredentialId, CancellationToken cancellationToken = default)
+        public async Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformAppShopId, CancellationToken cancellationToken = default)
         {
-            await LoadAppCredentialAsync(platform, platformCredentialId, cancellationToken);
-            var state = _oauthStateProtector.Protect(JsonSerializer.Serialize(new OAuthState(platformCredentialId, platform, DateTime.UtcNow.AddMinutes(10))));
+            await LoadAppCredentialAsync(platform, platformAppShopId, cancellationToken);
+            var state = _oauthStateProtector.Protect(JsonSerializer.Serialize(new OAuthState(platformAppShopId, platform, DateTime.UtcNow.AddMinutes(10))));
 
             return platform switch
             {
@@ -76,43 +76,42 @@ namespace OmsApi.Services.Implementation
         public async Task<TokenInfo> HandleCallbackAsync(PlatformType platform, string code, string? shopId = null, string? state = null)
         {
             _logger.LogInformation("🔑 Handling OAuth callback for {Platform}", platform);
-            if (platform == PlatformType.Shopee)
-            {
-                if (string.IsNullOrWhiteSpace(shopId)) throw new ArgumentException("Shopee callback did not include shop_id.");
-                var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x => x.Platform == platform.ToString() && x.ShopId == shopId);
-                if (credential == null) throw new InvalidOperationException("No configured Shopee connector was found for the callback shop.");
-                await LoadAppCredentialAsync(platform, credential.PlatformCredentialId, CancellationToken.None);
-            }
-            else
-            {
-                if (string.IsNullOrWhiteSpace(state)) throw new ArgumentException("OAuth state is required.");
-                var oauthState = JsonSerializer.Deserialize<OAuthState>(_oauthStateProtector.Unprotect(state))
-                    ?? throw new ArgumentException("OAuth state is invalid.");
-                if (oauthState.Platform != platform || oauthState.ExpiresAtUtc <= DateTime.UtcNow)
-                    throw new ArgumentException("OAuth state is invalid or expired.");
-                await LoadAppCredentialAsync(platform, oauthState.PlatformCredentialId, CancellationToken.None);
-            }
+            if (string.IsNullOrWhiteSpace(state)) throw new ArgumentException("OAuth state is required.");
+            var oauthState = JsonSerializer.Deserialize<OAuthState>(_oauthStateProtector.Unprotect(state))
+                ?? throw new ArgumentException("OAuth state is invalid.");
+            if (oauthState.Platform != platform || oauthState.ExpiresAtUtc <= DateTime.UtcNow)
+                throw new ArgumentException("OAuth state is invalid or expired.");
+
+            var appShop = await _db.PlatformAppShops.SingleOrDefaultAsync(
+                x => x.PlatformAppShopId == oauthState.PlatformAppShopId && x.Platform == platform.ToString())
+                ?? throw new InvalidOperationException("Configured connector was not found for the OAuth callback.");
+            if (platform == PlatformType.Shopee && !string.Equals(appShop.ShopId, shopId, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Shopee callback shop_id does not match the configured connector.");
+            await LoadAppCredentialAsync(platform, appShop.PlatformAppShopId, CancellationToken.None);
 
             return platform switch
             {
-                PlatformType.Shopee => await HandleShopeeCallbackAsync(code, shopId),
-                PlatformType.Lazada => await HandleLazadaCallbackAsync(code),
-                PlatformType.TikTok => await HandleTikTokCallbackAsync(code, shopId),
+                PlatformType.Shopee => await HandleShopeeCallbackAsync(code, appShop.ShopId),
+                PlatformType.Lazada => await HandleLazadaCallbackAsync(code, appShop.ShopId),
+                PlatformType.TikTok => await HandleTikTokCallbackAsync(code, appShop.ShopId),
                 _ => throw new ArgumentException($"Unsupported platform: {platform}")
             };
         }
 
         private async Task LoadAppCredentialAsync(PlatformType platform, long credentialId, CancellationToken cancellationToken)
         {
-            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x => x.PlatformCredentialId == credentialId, cancellationToken)
+            var appShop = await _db.PlatformAppShops.Include(x => x.PlatformApp)
+                .SingleOrDefaultAsync(x => x.PlatformAppShopId == credentialId, cancellationToken)
                 ?? throw new InvalidOperationException("Connector was not found.");
-            if (!string.Equals(credential.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(appShop.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("Connector platform does not match the OAuth platform.");
+            if (appShop.IsActive != "YES" || appShop.PlatformApp.IsActive != "YES")
+                throw new InvalidOperationException("Connector or App Master is inactive.");
             try
             {
-                var appKey = _tokenProtector.Unprotect(credential.AppKeyEncrypted ?? throw new InvalidOperationException("App key is not configured."));
-                var appSecret = _tokenProtector.Unprotect(credential.AppSecretEncrypted ?? throw new InvalidOperationException("App secret is not configured."));
-                var redirectUrl = credential.RedirectUrl?.Trim();
+                var appKey = _tokenProtector.Unprotect(appShop.PlatformApp.AppKeyEncrypted);
+                var appSecret = _tokenProtector.Unprotect(appShop.PlatformApp.AppSecretEncrypted);
+                var redirectUrl = appShop.PlatformApp.RedirectUrl?.Trim();
                 if (string.IsNullOrWhiteSpace(redirectUrl)) throw new InvalidOperationException("Redirect URL is not configured.");
                 switch (platform)
                 {
@@ -122,25 +121,25 @@ namespace OmsApi.Services.Implementation
                     case PlatformType.Lazada:
                         _lazadaAppKey = appKey; _lazadaAppSecret = appSecret; _lazadaRedirectUrl = redirectUrl; break;
                     case PlatformType.TikTok:
-                        _tiktokAppKey = appKey; _tiktokAppSecret = appSecret; _tiktokRedirectUrl = redirectUrl; _tiktokServiceId = credential.ServiceId?.Trim() ?? string.Empty; break;
+                        _tiktokAppKey = appKey; _tiktokAppSecret = appSecret; _tiktokRedirectUrl = redirectUrl; _tiktokServiceId = appShop.PlatformApp.ServiceId?.Trim() ?? string.Empty; break;
                 }
             }
             catch (PlatformCredentialException) { throw; }
             catch (Exception ex) { throw new InvalidOperationException("Connector app credential could not be decrypted or is incomplete.", ex); }
         }
 
-        private sealed record OAuthState(long PlatformCredentialId, PlatformType Platform, DateTime ExpiresAtUtc);
+        private sealed record OAuthState(long PlatformAppShopId, PlatformType Platform, DateTime ExpiresAtUtc);
 
         public async Task<TokenInfo> RefreshTokenAsync(PlatformType platform, string refreshToken, string? shopId = null)
         {
             _logger.LogInformation("🔄 Refreshing token for {Platform}", platform);
             if (string.IsNullOrWhiteSpace(shopId))
                 throw new ArgumentException("shopId is required when refreshing a connector token.");
-            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x =>
+            var appShop = await _db.PlatformAppShops.SingleOrDefaultAsync(x =>
                 x.Platform == platform.ToString() && x.ShopId == shopId);
-            if (credential == null)
+            if (appShop == null)
                 throw new InvalidOperationException("Connector was not found for the requested shop.");
-            await LoadAppCredentialAsync(platform, credential.PlatformCredentialId, CancellationToken.None);
+            await LoadAppCredentialAsync(platform, appShop.PlatformAppShopId, CancellationToken.None);
 
             return platform switch
             {
@@ -358,7 +357,7 @@ namespace OmsApi.Services.Implementation
                    $"&client_id={_lazadaAppKey}&state={state}";
         }
 
-        private async Task<TokenInfo> HandleLazadaCallbackAsync(string code)
+        private async Task<TokenInfo> HandleLazadaCallbackAsync(string code, string? shopId)
         {
             _logger.LogInformation("🏪 Exchanging Lazada authorization code");
 
@@ -371,7 +370,7 @@ namespace OmsApi.Services.Implementation
             };
 
             return await CallLazadaTokenApiAsync(
-                "/auth/token/create", parameters, "exchanging token");
+                "/auth/token/create", parameters, "exchanging token", shopId);
         }
 
         private async Task<TokenInfo> RefreshLazadaTokenAsync(string refreshToken, string? shopId)

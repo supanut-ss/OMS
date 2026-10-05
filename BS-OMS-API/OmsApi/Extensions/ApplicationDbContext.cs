@@ -7,6 +7,8 @@ public class ApplicationDbContext : DbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
     public DbSet<PlatformCredential> PlatformCredentials => Set<PlatformCredential>();
+    public DbSet<PlatformApp> PlatformApps => Set<PlatformApp>();
+    public DbSet<PlatformAppShop> PlatformAppShops => Set<PlatformAppShop>();
     public DbSet<PlatformPackage> PlatformPackages => Set<PlatformPackage>();
     public DbSet<PlatformPackageItem> PlatformPackageItems => Set<PlatformPackageItem>();
     public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
@@ -37,10 +39,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RefreshTokenEncrypted).HasColumnName("refresh_token_encrypted").HasColumnType("nvarchar(max)");
             entity.Property(e => e.AccessTokenExpiresDate).HasColumnName("access_token_expires_date").HasColumnType("datetime");
             entity.Property(e => e.RefreshTokenExpiresDate).HasColumnName("refresh_token_expires_date").HasColumnType("datetime");
-            entity.Property(e => e.AppKeyEncrypted).HasColumnName("app_key_encrypted").HasColumnType("nvarchar(max)");
-            entity.Property(e => e.AppSecretEncrypted).HasColumnName("app_secret_encrypted").HasColumnType("nvarchar(max)");
-            entity.Property(e => e.RedirectUrl).HasColumnName("redirect_url").HasMaxLength(2048);
-            entity.Property(e => e.ServiceId).HasColumnName("service_id").HasMaxLength(255);
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasColumnType("varchar(3)").IsRequired().HasDefaultValue("YES");
             entity.Property(e => e.RequiresReauthorization).HasColumnName("requires_reauthorization").HasColumnType("varchar(3)").IsRequired().HasDefaultValue("NO");
             entity.Property(e => e.LastRefreshDate).HasColumnName("last_refresh_date").HasColumnType("datetime");
@@ -51,6 +49,45 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+        });
+
+        builder.Entity<PlatformApp>(entity =>
+        {
+            entity.ToTable("t_oms_platform_apps", "oms");
+            entity.HasKey(e => e.PlatformAppId);
+            entity.HasIndex(e => new { e.Platform, e.AppName }).IsUnique();
+            entity.Property(e => e.PlatformAppId).HasColumnName("platform_app_id");
+            entity.Property(e => e.Platform).HasColumnName("platform").HasMaxLength(32).IsRequired();
+            entity.Property(e => e.AppName).HasColumnName("app_name").HasMaxLength(128).IsRequired();
+            entity.Property(e => e.AppKeyEncrypted).HasColumnName("app_key_encrypted").HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(e => e.AppSecretEncrypted).HasColumnName("app_secret_encrypted").HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(e => e.RedirectUrl).HasColumnName("redirect_url").HasMaxLength(2048).IsRequired();
+            entity.Property(e => e.ServiceId).HasColumnName("service_id").HasMaxLength(255);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasMaxLength(3).IsRequired();
+            entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
+            entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
+            entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
+            entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+        });
+
+        builder.Entity<PlatformAppShop>(entity =>
+        {
+            entity.ToTable("t_oms_platform_app_shops", "oms");
+            entity.HasKey(e => e.PlatformAppShopId);
+            entity.HasIndex(e => new { e.Platform, e.ShopId }).IsUnique();
+            entity.Property(e => e.PlatformAppShopId).HasColumnName("platform_app_shop_id");
+            entity.Property(e => e.PlatformAppId).HasColumnName("platform_app_id");
+            entity.Property(e => e.Platform).HasColumnName("platform").HasMaxLength(32).IsRequired();
+            entity.Property(e => e.ShopId).HasColumnName("shop_id").HasMaxLength(128).IsRequired();
+            entity.Property(e => e.ShopName).HasColumnName("shop_name").HasMaxLength(256);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasMaxLength(3).IsRequired();
+            entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
+            entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
+            entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
+            entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+            entity.HasOne(e => e.PlatformApp).WithMany(e => e.Shops).HasForeignKey(e => e.PlatformAppId);
         });
 
         builder.Entity<PlatformPackage>(entity =>

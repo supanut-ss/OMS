@@ -19,6 +19,7 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  MenuItem,
   Paper,
   Snackbar,
   Stack,
@@ -78,6 +79,9 @@ const emptyDraft = {
   platform: "shopee",
   displayName: "",
   account: "",
+  platformAppId: "",
+  useNewApp: false,
+  appName: "",
   appKey: "",
   appSecret: "",
   redirectUrl: "",
@@ -90,7 +94,7 @@ const mapConnector = (item) => {
     .replace(" shop", "");
   return {
     ...item,
-    id: item.platformCredentialId,
+    id: item.platformAppShopId,
     platform,
     displayName:
       item.shopName || platforms[platform]?.subtitle || item.platform,
@@ -100,18 +104,9 @@ const mapConnector = (item) => {
   };
 };
 
-const toUtcIsoString = (value) =>
-  value ? new Date(value).toISOString() : null;
-
-const toApiUtcIsoString = (value) => {
-  if (!value) return "";
-  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
-  const date = new Date(hasTimezone ? value : `${value}Z`);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
-};
-
 export default function Connector() {
   const [connectors, setConnectors] = useState([]);
+  const [platformApps, setPlatformApps] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,6 +150,26 @@ export default function Connector() {
     }
   }, []);
 
+  const loadPlatformApps = useCallback(async (platform) => {
+    try {
+      const response = await AxiosMaster.get("/Connector/apps", {
+        params: { platform },
+      });
+      const rows = response?.data?.data;
+      if (!Array.isArray(rows)) throw new Error("รูปแบบข้อมูล App Master จาก API ไม่ถูกต้อง");
+      setPlatformApps(rows);
+      return rows;
+    } catch (error) {
+      setPlatformApps([]);
+      setNotice({
+        open: true,
+        severity: "error",
+        message: error?.response?.data?.message_text || error?.message || "โหลด App Master ไม่สำเร็จ",
+      });
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     loadConnectors();
   }, [loadConnectors]);
@@ -178,7 +193,7 @@ export default function Connector() {
 
     try {
       const { data } = await axios.get(
-        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url?platformCredentialId=${encodeURIComponent(connector.id)}`,
+        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url?platformAppShopId=${encodeURIComponent(connector.id)}`,
         { timeout: 15000 },
       );
       const authUrl = data?.data?.url || data?.url;
@@ -197,6 +212,7 @@ export default function Connector() {
   const openAdd = (platform = "shopee") => {
     setEditingId(null);
     setDraft({ ...emptyDraft, platform });
+    loadPlatformApps(platform);
     setDialogOpen(true);
   };
   const openEdit = (connector) => {
@@ -206,10 +222,25 @@ export default function Connector() {
       platform: connector.platform,
       displayName: connector.shopName || connector.displayName,
       account: connector.shopId || connector.account,
-      redirectUrl: connector.redirectUrl || "",
-      serviceId: connector.serviceId || "",
+      platformAppId: String(connector.platformAppId || ""),
     });
+    loadPlatformApps(connector.platform);
     setDialogOpen(true);
+  };
+  const selectPlatform = (platform) => {
+    if (editingId) return;
+    setDraft((current) => ({
+      ...current,
+      platform,
+      platformAppId: "",
+      useNewApp: false,
+      appName: "",
+      appKey: "",
+      appSecret: "",
+      redirectUrl: "",
+      serviceId: "",
+    }));
+    loadPlatformApps(platform);
   };
   const saveConnector = async () => {
     if (!draft.account.trim()) {
@@ -220,19 +251,19 @@ export default function Connector() {
       });
       return;
     }
-    if (!editingId && (!draft.appKey.trim() || !draft.appSecret.trim())) {
+    if (!draft.useNewApp && !draft.platformAppId) {
       setNotice({
         open: true,
         severity: "warning",
-        message: "กรุณาระบุ App Key และ App Secret",
+        message: "กรุณาเลือก App Master หรือสร้าง App ใหม่",
       });
       return;
     }
-    if (!draft.redirectUrl.trim()) {
+    if (draft.useNewApp && (!draft.appName.trim() || !draft.appKey.trim() || !draft.appSecret.trim() || !draft.redirectUrl.trim())) {
       setNotice({
         open: true,
         severity: "warning",
-        message: "กรุณาระบุ Redirect URL",
+        message: "กรุณาระบุชื่อ App, App Key, App Secret และ Redirect URL",
       });
       return;
     }
@@ -241,13 +272,19 @@ export default function Connector() {
       platform: draft.platform,
       shopId: draft.account.trim(),
       shopName: draft.displayName.trim() || null,
-      appKey: draft.appKey.trim() || null,
-      appSecret: draft.appSecret.trim() || null,
-      redirectUrl: draft.redirectUrl.trim(),
-      serviceId: draft.serviceId.trim() || null,
+      platformAppId: draft.useNewApp ? null : Number(draft.platformAppId),
+      newApp: draft.useNewApp
+        ? {
+            appName: draft.appName.trim(),
+            appKey: draft.appKey.trim(),
+            appSecret: draft.appSecret.trim(),
+            redirectUrl: draft.redirectUrl.trim(),
+            serviceId: draft.serviceId.trim() || null,
+          }
+        : null,
       isActive: editingConnector?.isActive ?? true,
     };
-    if (editingId) payload.platformCredentialId = editingId;
+    if (editingId) payload.platformAppShopId = editingId;
 
     setSaving(true);
     try {
@@ -278,7 +315,7 @@ export default function Connector() {
     const nextIsActive = !connector.isActive;
     try {
       await AxiosMaster.post("/Connector/set-active", {
-        platformCredentialId: connector.id,
+        platformAppShopId: connector.id,
         isActive: nextIsActive,
       });
       const refreshed = await loadConnectors();
@@ -353,7 +390,7 @@ export default function Connector() {
         </Stack>
 
         <Alert severity="info">
-          บันทึก App Credential ของแต่ละร้านก่อน แล้วกด “เชื่อมต่อ OAuth” บนการ์ดของร้านนั้นเพื่อรับ Token อัตโนมัติ
+          เลือก App Master ที่มีอยู่ หรือสร้าง App ใหม่พร้อม Shop ครั้งแรก จากนั้นกด “เชื่อมต่อ OAuth” เพื่อรับ Token อัตโนมัติ
         </Alert>
 
         <Stack
@@ -457,6 +494,9 @@ export default function Connector() {
                     <Typography variant="body2" color="text.secondary" noWrap>
                       {platform.name} · {connector.account}
                     </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      App: {connector.appName || "—"}
+                    </Typography>
                     <Stack
                       direction="row"
                       alignItems="center"
@@ -496,7 +536,7 @@ export default function Connector() {
                     <Button
                       size="small"
                       variant="outlined"
-                      disabled={Boolean(oauthRedirecting) || !connector.hasAppKey || !connector.hasAppSecret || !connector.redirectUrl}
+                      disabled={Boolean(oauthRedirecting) || !connector.hasAppKey || !connector.hasAppSecret}
                       onClick={() => connectOAuth(connector)}
                       startIcon={oauthRedirecting === connector.id ? <CircularProgress size={14} /> : <OpenInNewRounded />}
                       sx={{ textTransform: "none", borderRadius: 2 }}
@@ -632,7 +672,7 @@ export default function Connector() {
                 <Paper
                   key={key}
                   variant="outlined"
-                  onClick={() => !editingId && updateDraft("platform")(key)}
+                  onClick={() => selectPlatform(key)}
                   sx={{
                     p: 1.2,
                     borderRadius: 2,
@@ -683,41 +723,94 @@ export default function Connector() {
             labelAbove
             sx={fieldSx}
           />
-          <BSTextField
-            label={`App Key / Partner ID${editingId ? " (leave blank to keep current)" : ""}`}
-            type="password"
-            value={draft.appKey}
-            onChange={updateDraft("appKey")}
-            labelAbove
-            sx={fieldSx}
-          />
-          <BSTextField
-            label={`App Secret / Partner Key${editingId ? " (leave blank to keep current)" : ""}`}
-            type="password"
-            value={draft.appSecret}
-            onChange={updateDraft("appSecret")}
-            labelAbove
-            sx={fieldSx}
-          />
-          <BSTextField
-            label="Redirect URL"
-            value={draft.redirectUrl}
-            onChange={updateDraft("redirectUrl")}
-            labelAbove
-            sx={fieldSx}
-          />
-          {draft.platform === "tiktok" && (
-          <BSTextField
-            label="TikTok Service ID (optional)"
-            value={draft.serviceId}
-            onChange={updateDraft("serviceId")}
-            labelAbove
-            sx={fieldSx}
-          />
+          <Divider />
+          <Box>
+            <Typography variant="body2" fontWeight={650} color="#46566b" sx={{ mb: 1 }}>
+              App Master
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button
+                variant={!draft.useNewApp ? "contained" : "outlined"}
+                onClick={() => setDraft((current) => ({ ...current, useNewApp: false }))}
+                sx={{ textTransform: "none", borderRadius: 2 }}
+              >
+                เลือก App ที่มีอยู่
+              </Button>
+              <Button
+                variant={draft.useNewApp ? "contained" : "outlined"}
+                onClick={() => setDraft((current) => ({ ...current, useNewApp: true, platformAppId: "" }))}
+                sx={{ textTransform: "none", borderRadius: 2 }}
+              >
+                สร้าง App ใหม่
+              </Button>
+            </Stack>
+          </Box>
+          {!draft.useNewApp ? (
+            <>
+              <BSTextField
+                select
+                label="App Master"
+                value={draft.platformAppId}
+                onChange={updateDraft("platformAppId")}
+                labelAbove
+                sx={fieldSx}
+              >
+                <MenuItem value="">เลือก App Master</MenuItem>
+                {platformApps.map((app) => (
+                  <MenuItem key={app.platformAppId} value={String(app.platformAppId)}>
+                    {app.appName}{app.shopCount ? ` · ใช้งาน ${app.shopCount} Shop` : ""}
+                  </MenuItem>
+                ))}
+              </BSTextField>
+              {platformApps.length === 0 && (
+                <Alert severity="info">ยังไม่มี App Master สำหรับแพลตฟอร์มนี้ ให้เลือก “สร้าง App ใหม่” เพื่อเพิ่มครั้งแรก</Alert>
+              )}
+            </>
+          ) : (
+            <>
+              <BSTextField
+                label="App name"
+                value={draft.appName}
+                onChange={updateDraft("appName")}
+                labelAbove
+                sx={fieldSx}
+              />
+              <BSTextField
+                label="App Key / Partner ID"
+                type="password"
+                value={draft.appKey}
+                onChange={updateDraft("appKey")}
+                labelAbove
+                sx={fieldSx}
+              />
+              <BSTextField
+                label="App Secret / Partner Key"
+                type="password"
+                value={draft.appSecret}
+                onChange={updateDraft("appSecret")}
+                labelAbove
+                sx={fieldSx}
+              />
+              <BSTextField
+                label="Redirect URL"
+                value={draft.redirectUrl}
+                onChange={updateDraft("redirectUrl")}
+                labelAbove
+                sx={fieldSx}
+              />
+              {draft.platform === "tiktok" && (
+                <BSTextField
+                  label="TikTok Service ID (optional)"
+                  value={draft.serviceId}
+                  onChange={updateDraft("serviceId")}
+                  labelAbove
+                  sx={fieldSx}
+                />
+              )}
+            </>
           )}
           <Alert severity="info">
-            App credentials will be encrypted by the API. Access and refresh tokens
-            are created only after completing OAuth and are never shown here.
+            App Key และ App Secret จะถูกเข้ารหัสใน App Master ส่วน Access Token และ Refresh Token จะถูกสร้างหลังทำ OAuth และไม่แสดงในหน้านี้
           </Alert>
         </Stack>
       </BSDialog>

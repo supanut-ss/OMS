@@ -65,11 +65,19 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var rows = await db.PlatformCredentials.AsNoTracking()
-            .Where(x => x.IsActive == "YES" && x.RequiresReauthorization == "NO")
-            .OrderBy(x => x.Platform)
-            .ThenBy(x => x.ShopId)
-            .Select(x => new { x.Platform, x.ShopId })
+        var rows = await (
+            from credential in db.PlatformCredentials.AsNoTracking()
+            join appShop in db.PlatformAppShops.AsNoTracking()
+                on new { credential.Platform, credential.ShopId }
+                equals new { appShop.Platform, appShop.ShopId }
+            join app in db.PlatformApps.AsNoTracking()
+                on appShop.PlatformAppId equals app.PlatformAppId
+            where credential.IsActive == "YES"
+               && credential.RequiresReauthorization == "NO"
+               && appShop.IsActive == "YES"
+               && app.IsActive == "YES"
+            orderby credential.Platform, credential.ShopId
+            select new { credential.Platform, credential.ShopId })
             .ToListAsync(cancellationToken);
 
         return rows
@@ -124,7 +132,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
             credential.AccessTokenExpiresDate.Value <= DateTime.UtcNow.Add(RefreshWindow))
         {
             return await RefreshAsync(
-                ToContext(platform, credential, string.Empty),
+                await ToContextAsync(platform, credential, string.Empty, cancellationToken),
                 forceRefresh: false,
                 rejectedAccessToken: null,
                 cancellationToken);
@@ -144,7 +152,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
         }
 
         await TouchLastUseAsync(credential.PlatformCredentialId, cancellationToken);
-        return ToContext(platform, credential, accessToken);
+        return await ToContextAsync(platform, credential, accessToken, cancellationToken);
     }
 
     private async Task<PlatformAccessCredential> RefreshAsync(
@@ -207,7 +215,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
             {
                 credential.LastUseDate = DateTime.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
-                return ToContext(current.Platform, credential, latestAccessToken);
+                return await ToContextAsync(current.Platform, credential, latestAccessToken, cancellationToken);
             }
 
             if (string.IsNullOrWhiteSpace(credential.RefreshTokenEncrypted) ||
@@ -255,7 +263,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
                 updated.LastUseDate = DateTime.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
 
-                return ToContext(current.Platform, updated, refreshed.AccessToken);
+                return await ToContextAsync(current.Platform, updated, refreshed.AccessToken, cancellationToken);
             }
             catch (PlatformCredentialException)
             {
@@ -312,21 +320,26 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
             $"{platform.ToString().ToUpperInvariant()}_DEFAULT_SHOP_ID")?.Trim();
     }
 
-    private PlatformAccessCredential ToContext(
+    private async Task<PlatformAccessCredential> ToContextAsync(
         PlatformType platform,
         PlatformCredential credential,
-        string accessToken)
+        string accessToken,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var appKey = _tokenProtector.Unprotect(credential.AppKeyEncrypted
-                ?? throw new InvalidOperationException("App key is missing."));
-            var appSecret = _tokenProtector.Unprotect(credential.AppSecretEncrypted
-                ?? throw new InvalidOperationException("App secret is missing."));
-            var redirectUrl = credential.RedirectUrl;
-            if (string.IsNullOrWhiteSpace(redirectUrl)) throw new InvalidOperationException("Redirect URL is missing.");
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var appShop = await db.PlatformAppShops
+                .Include(x => x.PlatformApp)
+                .SingleOrDefaultAsync(x => x.Platform == platform.ToString() && x.ShopId == credential.ShopId &&
+                    x.IsActive == "YES" && x.PlatformApp.IsActive == "YES", cancellationToken)
+                ?? throw new InvalidOperationException("No active app configuration is mapped to this shop.");
+            var appKey = _tokenProtector.Unprotect(appShop.PlatformApp.AppKeyEncrypted);
+            var appSecret = _tokenProtector.Unprotect(appShop.PlatformApp.AppSecretEncrypted);
+            var redirectUrl = appShop.PlatformApp.RedirectUrl;
             return new PlatformAccessCredential(credential.PlatformCredentialId, platform, credential.ShopId,
-                accessToken, appKey, appSecret, redirectUrl, credential.ServiceId);
+                accessToken, appKey, appSecret, redirectUrl, appShop.PlatformApp.ServiceId);
         }
         catch (Exception ex) when (ex is not PlatformCredentialException)
         {

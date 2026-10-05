@@ -4,7 +4,7 @@ namespace ApiCore.Models.Requests
 {
     public sealed class SaveConnectorRequest
     {
-        public long? PlatformCredentialId { get; set; }
+        public long? PlatformAppShopId { get; set; }
 
         [Required, StringLength(32)]
         public string? Platform { get; set; }
@@ -15,10 +15,27 @@ namespace ApiCore.Models.Requests
         [StringLength(256)]
         public string? ShopName { get; set; }
 
-        [StringLength(2048)]
+        [Range(1, long.MaxValue)]
+        public long? PlatformAppId { get; set; }
+
+        /// <summary>
+        /// New App Master to create together with this shop mapping.  When supplied,
+        /// PlatformAppId must not be supplied.
+        /// </summary>
+        public NewPlatformAppRequest? NewApp { get; set; }
+
+        public bool? IsActive { get; set; }
+    }
+
+    public sealed class NewPlatformAppRequest
+    {
+        [Required, StringLength(128)]
+        public string? AppName { get; set; }
+
+        [Required, StringLength(2048)]
         public string? AppKey { get; set; }
 
-        [StringLength(4096)]
+        [Required, StringLength(4096)]
         public string? AppSecret { get; set; }
 
         [Required, StringLength(2048)]
@@ -26,6 +43,5 @@ namespace ApiCore.Models.Requests
 
         [StringLength(255)]
         public string? ServiceId { get; set; }
-        public bool? IsActive { get; set; }
     }
 }

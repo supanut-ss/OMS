@@ -5,7 +5,7 @@ namespace ApiCore.Models.Requests
     public sealed class SetConnectorReauthorizationRequest
     {
         [Range(1, long.MaxValue)]
-        public long PlatformCredentialId { get; set; }
+        public long PlatformAppShopId { get; set; }
 
         public bool RequiresReauthorization { get; set; }
 

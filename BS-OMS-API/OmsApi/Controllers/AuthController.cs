@@ -31,17 +31,19 @@ namespace OmsApi.Controllers
         /// Get OAuth authorization URL for a platform
         /// </summary>
         /// <param name="platform">Platform name: shopee, lazada, tiktok</param>
+        /// <param name="platformAppShopId">Configured App Master and shop mapping identifier</param>
+        /// <param name="cancellationToken">Request cancellation token</param>
         /// <returns>Redirect to platform OAuth page</returns>
         [HttpGet("{platform}/authorize")]
         [SwaggerOperation(Summary = "Redirect to platform OAuth authorization page")]
         [SwaggerResponse(302, "Redirect to OAuth page")]
         [SwaggerResponse(400, "Invalid platform")]
-        public async Task<IActionResult> Authorize(string platform, [FromQuery] long platformCredentialId, CancellationToken cancellationToken)
+        public async Task<IActionResult> Authorize(string platform, [FromQuery] long platformAppShopId, CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformCredentialId, cancellationToken);
+                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId, cancellationToken);
 
                 _logger.LogInformation("🔑 Redirecting to {Platform} OAuth: {Url}", platform, authUrl);
                 return Redirect(authUrl);
@@ -57,12 +59,12 @@ namespace OmsApi.Controllers
         /// </summary>
         [HttpGet("{platform}/auth-url")]
         [SwaggerOperation(Summary = "Get OAuth authorization URL")]
-        public async Task<IActionResult> GetAuthUrl(string platform, [FromQuery] long platformCredentialId, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAuthUrl(string platform, [FromQuery] long platformAppShopId, CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformCredentialId, cancellationToken);
+                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId, cancellationToken);
                 return Ok(ApiResponse<object>.Ok(new { url = authUrl }));
             }
             catch (ArgumentException ex)

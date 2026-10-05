@@ -6,6 +6,9 @@ namespace ApiCore.Services.Interfaces
     public interface IConnectorService
     {
         Task<IReadOnlyList<ConnectorResponse>> GetAllAsync(CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<PlatformAppOptionResponse>> GetPlatformAppsAsync(
+            string? platform,
+            CancellationToken cancellationToken = default);
         Task<ConnectorResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
         Task<ConnectorResponse> SaveAsync(
             SaveConnectorRequest request,

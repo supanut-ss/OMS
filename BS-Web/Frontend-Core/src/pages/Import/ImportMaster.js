@@ -12,7 +12,6 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { motion } from "framer-motion";
 import BSDataGrid from "../../components/BSDataGrid";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useResource } from "../../hooks/useResource";
@@ -561,7 +560,7 @@ const ImportMaster = (props) => {
       <Paper
         sx={{
           p: 2,
-         // mb: 3,
+          // mb: 3,
           width: "100%",
           maxWidth: "100%",
           height: "100%",
