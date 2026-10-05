@@ -20,6 +20,10 @@ namespace ApiCore.Services.Implementation
             shop_name AS ShopName,
             CASE WHEN access_token_encrypted IS NOT NULL THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS HasAccessToken,
             CASE WHEN refresh_token_encrypted IS NOT NULL THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS HasRefreshToken,
+            CASE WHEN app_key_encrypted IS NOT NULL THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS HasAppKey,
+            CASE WHEN app_secret_encrypted IS NOT NULL THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS HasAppSecret,
+            redirect_url AS RedirectUrl,
+            service_id AS ServiceId,
             access_token_expires_date AS AccessTokenExpiresDate,
             refresh_token_expires_date AS RefreshTokenExpiresDate,
             CASE WHEN is_active = N'YES' THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS IsActive,
@@ -164,18 +168,14 @@ namespace ApiCore.Services.Implementation
                 throw new ArgumentException("shop_id cannot exceed 128 characters.");
 
             var isNew = !request.PlatformCredentialId.HasValue;
-            var hasAccessToken = !string.IsNullOrWhiteSpace(request.AccessToken);
-            var hasRefreshToken = !string.IsNullOrWhiteSpace(request.RefreshToken);
-            if (isNew && (!hasAccessToken || !request.AccessTokenExpiresDate.HasValue))
-                throw new ArgumentException("access_token and access_token_expires_date are required when creating an authorized connector.");
-            if (hasAccessToken && !request.AccessTokenExpiresDate.HasValue)
-                throw new ArgumentException("access_token_expires_date is required when access_token is supplied.");
-            if (hasAccessToken && request.AccessTokenExpiresDate!.Value <= DateTime.UtcNow)
-                throw new ArgumentException("access_token_expires_date must be in the future.");
-            if (hasRefreshToken && !request.RefreshTokenExpiresDate.HasValue)
-                throw new ArgumentException("refresh_token_expires_date is required when refresh_token is supplied.");
-            if (hasRefreshToken && request.RefreshTokenExpiresDate!.Value <= DateTime.UtcNow)
-                throw new ArgumentException("refresh_token_expires_date must be in the future.");
+            var hasAppKey = !string.IsNullOrWhiteSpace(request.AppKey);
+            var hasAppSecret = !string.IsNullOrWhiteSpace(request.AppSecret);
+            if (isNew && (!hasAppKey || !hasAppSecret))
+                throw new ArgumentException("app_key and app_secret are required when creating a connector.");
+            if (string.IsNullOrWhiteSpace(request.RedirectUrl) ||
+                !Uri.TryCreate(request.RedirectUrl.Trim(), UriKind.Absolute, out var redirectUri) ||
+                (redirectUri.Scheme != Uri.UriSchemeHttps && redirectUri.Scheme != Uri.UriSchemeHttp))
+                throw new ArgumentException("redirect_url must be an absolute HTTP or HTTPS URL.");
              
             try
             {
@@ -186,26 +186,24 @@ namespace ApiCore.Services.Implementation
                 {
                     connectorId = await connection.ExecuteScalarAsync<long>(new CommandDefinition($"""
                         INSERT INTO {CredentialTable}
-                            (platform, shop_id, shop_name, access_token_encrypted, refresh_token_encrypted,
-                             access_token_expires_date, refresh_token_expires_date, is_active,
+                            (platform, shop_id, shop_name, app_key_encrypted, app_secret_encrypted, redirect_url, service_id,
+                             access_token_encrypted, refresh_token_encrypted, access_token_expires_date, refresh_token_expires_date, is_active,
                              requires_reauthorization, create_date, update_date, create_by, update_by)
                         OUTPUT INSERTED.platform_credential_id
                         VALUES
-                            (@Platform, @ShopId, @ShopName, @AccessTokenEncrypted, @RefreshTokenEncrypted,
-                             @AccessTokenExpiresDate, @RefreshTokenExpiresDate, @IsActive,
-                             N'NO', SYSUTCDATETIME(), SYSUTCDATETIME(), @UpdateBy, @UpdateBy)
+                            (@Platform, @ShopId, @ShopName, @AppKeyEncrypted, @AppSecretEncrypted, @RedirectUrl, @ServiceId,
+                             NULL, NULL, NULL, NULL, @IsActive,
+                             N'YES', SYSUTCDATETIME(), SYSUTCDATETIME(), @UpdateBy, @UpdateBy)
                         """,
                         new
                         {
                             Platform = platform,
                             ShopId = shopId,
                             ShopName = NullIfWhiteSpace(request.ShopName),
-                            AccessTokenEncrypted = _tokenProtector.Protect(request.AccessToken!),
-                            RefreshTokenEncrypted = hasRefreshToken ? _tokenProtector.Protect(request.RefreshToken!) : null,
-                            AccessTokenExpiresDate = AsUtc(request.AccessTokenExpiresDate!.Value),
-                            RefreshTokenExpiresDate = hasRefreshToken
-                                ? AsUtc(request.RefreshTokenExpiresDate!.Value)
-                                : (DateTime?)null,
+                            AppKeyEncrypted = _tokenProtector.Protect(request.AppKey!.Trim()),
+                            AppSecretEncrypted = _tokenProtector.Protect(request.AppSecret!.Trim()),
+                            RedirectUrl = request.RedirectUrl.Trim(),
+                            ServiceId = NullIfWhiteSpace(request.ServiceId),
                             IsActive = request.IsActive == false ? "NO" : "YES",
                             UpdateBy = updateBy,
                         }, cancellationToken: cancellationToken));
@@ -221,13 +219,17 @@ namespace ApiCore.Services.Implementation
                         SET platform = @Platform,
                             shop_id = @ShopId,
                             shop_name = @ShopName,
-                            access_token_encrypted = COALESCE(@AccessTokenEncrypted, access_token_encrypted),
-                            refresh_token_encrypted = CASE WHEN @HasRefreshToken = 1 THEN @RefreshTokenEncrypted ELSE refresh_token_encrypted END,
-                            access_token_expires_date = COALESCE(@AccessTokenExpiresDate, access_token_expires_date),
-                            refresh_token_expires_date = CASE WHEN @HasRefreshToken = 1 THEN @RefreshTokenExpiresDate ELSE refresh_token_expires_date END,
+                            app_key_encrypted = COALESCE(@AppKeyEncrypted, app_key_encrypted),
+                            app_secret_encrypted = COALESCE(@AppSecretEncrypted, app_secret_encrypted),
+                            redirect_url = @RedirectUrl,
+                            service_id = @ServiceId,
                             is_active = COALESCE(@IsActive, is_active),
-                            requires_reauthorization = CASE WHEN @AccessTokenEncrypted IS NOT NULL THEN N'NO' ELSE requires_reauthorization END,
-                            last_error = CASE WHEN @AccessTokenEncrypted IS NOT NULL THEN NULL ELSE last_error END,
+                            access_token_encrypted = CASE WHEN @CredentialChanged = 1 THEN NULL ELSE access_token_encrypted END,
+                            refresh_token_encrypted = CASE WHEN @CredentialChanged = 1 THEN NULL ELSE refresh_token_encrypted END,
+                            access_token_expires_date = CASE WHEN @CredentialChanged = 1 THEN NULL ELSE access_token_expires_date END,
+                            refresh_token_expires_date = CASE WHEN @CredentialChanged = 1 THEN NULL ELSE refresh_token_expires_date END,
+                            requires_reauthorization = CASE WHEN @CredentialChanged = 1 THEN N'YES' ELSE requires_reauthorization END,
+                            last_error = CASE WHEN @CredentialChanged = 1 THEN NULL ELSE last_error END,
                             update_date = SYSUTCDATETIME(),
                             update_by = @UpdateBy
                         WHERE platform_credential_id = @Id 
@@ -238,15 +240,11 @@ namespace ApiCore.Services.Implementation
                             Platform = platform,
                             ShopId = shopId,
                             ShopName = NullIfWhiteSpace(request.ShopName),
-                            AccessTokenEncrypted = hasAccessToken ? _tokenProtector.Protect(request.AccessToken!) : null,
-                            RefreshTokenEncrypted = hasRefreshToken ? _tokenProtector.Protect(request.RefreshToken!) : null,
-                            HasRefreshToken = hasRefreshToken,
-                            AccessTokenExpiresDate = request.AccessTokenExpiresDate.HasValue
-                                ? AsUtc(request.AccessTokenExpiresDate.Value)
-                                : (DateTime?)null,
-                            RefreshTokenExpiresDate = hasRefreshToken && request.RefreshTokenExpiresDate.HasValue
-                                ? AsUtc(request.RefreshTokenExpiresDate.Value)
-                                : (DateTime?)null,
+                            AppKeyEncrypted = hasAppKey ? _tokenProtector.Protect(request.AppKey!.Trim()) : null,
+                            AppSecretEncrypted = hasAppSecret ? _tokenProtector.Protect(request.AppSecret!.Trim()) : null,
+                            RedirectUrl = request.RedirectUrl.Trim(),
+                            ServiceId = NullIfWhiteSpace(request.ServiceId),
+                            CredentialChanged = hasAppKey || hasAppSecret,
                             IsActive = request.IsActive.HasValue ? (request.IsActive.Value ? "YES" : "NO") : null,
                             UpdateBy = updateBy, 
                         }, cancellationToken: cancellationToken));

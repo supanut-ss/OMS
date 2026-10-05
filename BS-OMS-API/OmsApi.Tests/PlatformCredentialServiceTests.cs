@@ -197,6 +197,9 @@ public class PlatformCredentialServiceTests
         {
             Platform = PlatformType.Shopee.ToString(),
             ShopId = "shop-1",
+            AppKeyEncrypted = protector.Protect("123"),
+            AppSecretEncrypted = protector.Protect("app-secret"),
+            RedirectUrl = "https://example.test/callback",
             AccessTokenEncrypted = protector.Protect(accessToken),
             RefreshTokenEncrypted = protector.Protect("refresh-token"),
             AccessTokenExpiresDate = accessExpiresAt,
@@ -230,13 +233,14 @@ public class PlatformCredentialServiceTests
             _state = state;
         }
 
-        public string GetAuthorizationUrl(PlatformType platform, string? state = null) =>
+        public Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformCredentialId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<TokenInfo> HandleCallbackAsync(
             PlatformType platform,
             string code,
-            string? shopId = null) =>
+            string? shopId = null,
+            string? state = null) =>
             throw new NotSupportedException();
 
         public async Task<TokenInfo> RefreshTokenAsync(

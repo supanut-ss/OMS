@@ -40,7 +40,8 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
         var credential = await ResolveAsync(platform, shopId, cancellationToken);
         try
         {
-            return await operation(credential);
+            using (PlatformCredentialExecutionContext.Push(credential))
+                return await operation(credential);
         }
         catch (PlatformApiException ex) when (IsInvalidAccessToken(ex))
         {
@@ -54,7 +55,8 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
                 forceRefresh: true,
                 rejectedAccessToken: credential.AccessToken,
                 cancellationToken);
-            return await operation(refreshed);
+            using (PlatformCredentialExecutionContext.Push(refreshed))
+                return await operation(refreshed);
         }
     }
 
@@ -117,7 +119,9 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
         }
 
         var credential = credentials[0];
-        if (credential.AccessTokenExpiresDate <= DateTime.UtcNow.Add(RefreshWindow))
+        if (string.IsNullOrWhiteSpace(credential.AccessTokenEncrypted) ||
+            !credential.AccessTokenExpiresDate.HasValue ||
+            credential.AccessTokenExpiresDate.Value <= DateTime.UtcNow.Add(RefreshWindow))
         {
             return await RefreshAsync(
                 ToContext(platform, credential, string.Empty),
@@ -129,7 +133,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
         string accessToken;
         try
         {
-            accessToken = _tokenProtector.Unprotect(credential.AccessTokenEncrypted);
+            accessToken = _tokenProtector.Unprotect(credential.AccessTokenEncrypted!);
         }
         catch (Exception ex)
         {
@@ -178,7 +182,8 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
             string latestAccessToken;
             try
             {
-                latestAccessToken = _tokenProtector.Unprotect(credential.AccessTokenEncrypted);
+                latestAccessToken = _tokenProtector.Unprotect(credential.AccessTokenEncrypted
+                    ?? throw new PlatformCredentialException("REAUTHORIZATION_REQUIRED", "The stored access token is missing."));
             }
             catch (Exception ex)
             {
@@ -192,10 +197,12 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
                 forceRefresh &&
                 rejectedAccessToken != null &&
                 !string.Equals(latestAccessToken, rejectedAccessToken, StringComparison.Ordinal) &&
-                credential.AccessTokenExpiresDate > DateTime.UtcNow.Add(RefreshWindow);
+                credential.AccessTokenExpiresDate.HasValue &&
+                credential.AccessTokenExpiresDate.Value > DateTime.UtcNow.Add(RefreshWindow);
             var tokenIsStillUsable =
                 !forceRefresh &&
-                credential.AccessTokenExpiresDate > DateTime.UtcNow.Add(RefreshWindow);
+                credential.AccessTokenExpiresDate.HasValue &&
+                credential.AccessTokenExpiresDate.Value > DateTime.UtcNow.Add(RefreshWindow);
             if (anotherRequestAlreadyRefreshed || tokenIsStillUsable)
             {
                 credential.LastUseDate = DateTime.UtcNow;
@@ -248,11 +255,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
                 updated.LastUseDate = DateTime.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
 
-                return new PlatformAccessCredential(
-                    updated.PlatformCredentialId,
-                    current.Platform,
-                    updated.ShopId,
-                    refreshed.AccessToken);
+                return ToContext(current.Platform, updated, refreshed.AccessToken);
             }
             catch (PlatformCredentialException)
             {
@@ -309,11 +312,28 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
             $"{platform.ToString().ToUpperInvariant()}_DEFAULT_SHOP_ID")?.Trim();
     }
 
-    private static PlatformAccessCredential ToContext(
+    private PlatformAccessCredential ToContext(
         PlatformType platform,
         PlatformCredential credential,
-        string accessToken) =>
-        new(credential.PlatformCredentialId, platform, credential.ShopId, accessToken);
+        string accessToken)
+    {
+        try
+        {
+            var appKey = _tokenProtector.Unprotect(credential.AppKeyEncrypted
+                ?? throw new InvalidOperationException("App key is missing."));
+            var appSecret = _tokenProtector.Unprotect(credential.AppSecretEncrypted
+                ?? throw new InvalidOperationException("App secret is missing."));
+            var redirectUrl = credential.RedirectUrl;
+            if (string.IsNullOrWhiteSpace(redirectUrl)) throw new InvalidOperationException("Redirect URL is missing.");
+            return new PlatformAccessCredential(credential.PlatformCredentialId, platform, credential.ShopId,
+                accessToken, appKey, appSecret, redirectUrl, credential.ServiceId);
+        }
+        catch (Exception ex) when (ex is not PlatformCredentialException)
+        {
+            throw new PlatformCredentialException("APP_CREDENTIAL_DECRYPT_FAILED",
+                $"The stored {platform} app credential for shop '{credential.ShopId}' could not be decrypted.", ex);
+        }
+    }
 
     private static bool IsInvalidAccessToken(PlatformApiException exception)
     {

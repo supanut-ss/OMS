@@ -36,12 +36,12 @@ namespace OmsApi.Controllers
         [SwaggerOperation(Summary = "Redirect to platform OAuth authorization page")]
         [SwaggerResponse(302, "Redirect to OAuth page")]
         [SwaggerResponse(400, "Invalid platform")]
-        public IActionResult Authorize(string platform)
+        public async Task<IActionResult> Authorize(string platform, [FromQuery] long platformCredentialId, CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = _authService.GetAuthorizationUrl(platformType);
+                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformCredentialId, cancellationToken);
 
                 _logger.LogInformation("🔑 Redirecting to {Platform} OAuth: {Url}", platform, authUrl);
                 return Redirect(authUrl);
@@ -57,12 +57,12 @@ namespace OmsApi.Controllers
         /// </summary>
         [HttpGet("{platform}/auth-url")]
         [SwaggerOperation(Summary = "Get OAuth authorization URL")]
-        public IActionResult GetAuthUrl(string platform)
+        public async Task<IActionResult> GetAuthUrl(string platform, [FromQuery] long platformCredentialId, CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = _authService.GetAuthorizationUrl(platformType);
+                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformCredentialId, cancellationToken);
                 return Ok(ApiResponse<object>.Ok(new { url = authUrl }));
             }
             catch (ArgumentException ex)
@@ -80,6 +80,7 @@ namespace OmsApi.Controllers
             string platform,
             [FromQuery] string? code = null,
             [FromQuery] string? shop_id = null,
+            [FromQuery] string? state = null,
             [FromQuery] string? error = null)
         {
             var connectorUrl = Environment.GetEnvironmentVariable("OMS_FRONTEND_CONNECTOR_URL")?.Trim();
@@ -91,7 +92,7 @@ namespace OmsApi.Controllers
                     return OAuthResult(connectorUrl, platform, false);
 
                 var platformType = ParsePlatform(platform);
-                await _authService.HandleCallbackAsync(platformType, code, shop_id);
+                await _authService.HandleCallbackAsync(platformType, code, shop_id, state);
 
                 _logger.LogInformation("{Platform} OAuth authorization completed", platform);
                 return OAuthResult(connectorUrl, platform, true);

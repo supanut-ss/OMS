@@ -10,7 +10,11 @@ public sealed record PlatformAccessCredential(
     long PlatformCredentialId,
     PlatformType Platform,
     string ShopId,
-    string AccessToken);
+    string AccessToken,
+    string AppKey,
+    string AppSecret,
+    string RedirectUrl,
+    string? ServiceId);
 
 /// <summary>
 /// Identifies one active platform shop without exposing its token.
