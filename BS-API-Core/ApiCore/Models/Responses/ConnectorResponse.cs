@@ -8,7 +8,11 @@ namespace ApiCore.Models.Responses
         public string? ShopName { get; set; }
         public bool HasAccessToken { get; set; }
         public bool HasRefreshToken { get; set; }
-        public DateTime AccessTokenExpiresDate { get; set; }
+        public bool HasAppKey { get; set; }
+        public bool HasAppSecret { get; set; }
+        public string? RedirectUrl { get; set; }
+        public string? ServiceId { get; set; }
+        public DateTime? AccessTokenExpiresDate { get; set; }
         public DateTime? RefreshTokenExpiresDate { get; set; }
         public bool IsActive { get; set; }
         public bool RequiresReauthorization { get; set; }

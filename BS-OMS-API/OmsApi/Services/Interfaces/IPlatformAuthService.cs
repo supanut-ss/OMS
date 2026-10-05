@@ -9,10 +9,10 @@ namespace OmsApi.Services.Interfaces
     public interface IPlatformAuthService
     {
         /// <summary>สร้าง OAuth authorization URL</summary>
-        string GetAuthorizationUrl(PlatformType platform, string? state = null);
+        Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformCredentialId, CancellationToken cancellationToken = default);
 
         /// <summary>แลก authorization code เป็น access token</summary>
-        Task<TokenInfo> HandleCallbackAsync(PlatformType platform, string code, string? shopId = null);
+        Task<TokenInfo> HandleCallbackAsync(PlatformType platform, string code, string? shopId = null, string? state = null);
 
         /// <summary>Refresh expired access token</summary>
         Task<TokenInfo> RefreshTokenAsync(PlatformType platform, string refreshToken, string? shopId = null);

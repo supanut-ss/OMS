@@ -7,6 +7,7 @@ using OmsApi.Models.Inventory;
 using OmsApi.Models.Orders;
 using OmsApi.Models.Shipping;
 using OmsApi.Services.Interfaces;
+using OmsApi.Services.Implementation;
 
 namespace OmsApi.Services.Implementation.Platforms
 {
@@ -18,8 +19,8 @@ namespace OmsApi.Services.Implementation.Platforms
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<LazadaClient> _logger;
-        private readonly string _appKey;
-        private readonly string _appSecret;
+        private string _appKey => PlatformCredentialExecutionContext.Require(Platform).AppKey;
+        private string _appSecret => PlatformCredentialExecutionContext.Require(Platform).AppSecret;
 
         public PlatformType Platform => PlatformType.Lazada;
 
@@ -27,8 +28,6 @@ namespace OmsApi.Services.Implementation.Platforms
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
-            _appKey = Environment.GetEnvironmentVariable("LAZADA_APP_KEY") ?? "";
-            _appSecret = Environment.GetEnvironmentVariable("LAZADA_APP_SECRET") ?? "";
         }
 
         public async Task<PaginatedResult<UnifiedOrder>> GetOrdersAsync(string accessToken, string? shopId, OrderFilter filter)

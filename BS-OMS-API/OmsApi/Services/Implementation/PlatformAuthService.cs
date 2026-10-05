@@ -20,59 +20,49 @@ namespace OmsApi.Services.Implementation
         private readonly ILogger<PlatformAuthService> _logger;
         private readonly ApplicationDbContext _db;
         private readonly IDataProtector _tokenProtector;
+        private readonly IDataProtector _oauthStateProtector;
 
         // Shopee credentials
-        private readonly long _shopeePartnerId;
-        private readonly string _shopeePartnerKey;
+        private long _shopeePartnerId;
+        private string _shopeePartnerKey = string.Empty;
         private readonly string _shopeeApiUrl;
-        private readonly string _shopeeRedirectUrl;
+        private string _shopeeRedirectUrl = string.Empty;
 
         // Lazada credentials
-        private readonly string _lazadaAppKey;
-        private readonly string _lazadaAppSecret;
+        private string _lazadaAppKey = string.Empty;
+        private string _lazadaAppSecret = string.Empty;
         private readonly string _lazadaAuthUrl;
         private readonly string _lazadaAuthApiUrl;
-        private readonly string _lazadaRedirectUrl;
+        private string _lazadaRedirectUrl = string.Empty;
 
         // TikTok credentials
-        private readonly string _tiktokAppKey;
-        private readonly string _tiktokAppSecret;
-        private readonly string _tiktokServiceId;
+        private string _tiktokAppKey = string.Empty;
+        private string _tiktokAppSecret = string.Empty;
+        private string _tiktokServiceId = string.Empty;
         private readonly string _tiktokAuthUrl;
         private readonly string _tiktokAuthApiUrl;
         private readonly string _tiktokApiUrl;
-        private readonly string _tiktokRedirectUrl;
+        private string _tiktokRedirectUrl = string.Empty;
 
         public PlatformAuthService(ILogger<PlatformAuthService> logger, ApplicationDbContext db, IDataProtectionProvider protectionProvider)
         {
             _db = db;
             _tokenProtector = protectionProvider.CreateProtector("OmsApi.PlatformCredentials.v1");
+            _oauthStateProtector = protectionProvider.CreateProtector("OmsApi.OAuthState.v1");
             _logger = logger;
 
-            _shopeePartnerId = long.TryParse(Environment.GetEnvironmentVariable("SHOPEE_PARTNER_ID"), out var sid) ? sid : 0;
-            _shopeePartnerKey = Environment.GetEnvironmentVariable("SHOPEE_PARTNER_KEY") ?? "";
             _shopeeApiUrl = Environment.GetEnvironmentVariable("SHOPEE_API_URL") ?? "https://partner.shopeemobile.com";
-            _shopeeRedirectUrl = Environment.GetEnvironmentVariable("SHOPEE_REDIRECT_URL") ?? "";
-
-            _lazadaAppKey = Environment.GetEnvironmentVariable("LAZADA_APP_KEY") ?? "";
-            _lazadaAppSecret = Environment.GetEnvironmentVariable("LAZADA_APP_SECRET") ?? "";
             _lazadaAuthUrl = Environment.GetEnvironmentVariable("LAZADA_AUTH_URL") ?? "https://auth.lazada.com/oauth/authorize";
             _lazadaAuthApiUrl = Environment.GetEnvironmentVariable("LAZADA_AUTH_API_URL") ?? "https://auth.lazada.com/rest";
-            _lazadaRedirectUrl = Environment.GetEnvironmentVariable("LAZADA_REDIRECT_URL") ?? "";
-
-            _tiktokAppKey = Environment.GetEnvironmentVariable("TIKTOK_APP_KEY") ?? "";
-            _tiktokAppSecret = Environment.GetEnvironmentVariable("TIKTOK_APP_SECRET") ?? "";
-            var tiktokServiceId = Environment.GetEnvironmentVariable("TIKTOK_SERVICE_ID");
-            _tiktokServiceId = tiktokServiceId?.Trim() ?? "";
             _tiktokAuthUrl = Environment.GetEnvironmentVariable("TIKTOK_AUTH_URL") ?? "https://services.tiktokshop.com/open/authorize";
             _tiktokAuthApiUrl = Environment.GetEnvironmentVariable("TIKTOK_AUTH_API_URL") ?? "https://auth.tiktok-shops.com";
             _tiktokApiUrl = Environment.GetEnvironmentVariable("TIKTOK_API_URL") ?? "https://open-api.tiktokglobalshop.com";
-            _tiktokRedirectUrl = Environment.GetEnvironmentVariable("TIKTOK_REDIRECT_URL") ?? "";
         }
 
-        public string GetAuthorizationUrl(PlatformType platform, string? state = null)
+        public async Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformCredentialId, CancellationToken cancellationToken = default)
         {
-            state ??= Guid.NewGuid().ToString("N");
+            await LoadAppCredentialAsync(platform, platformCredentialId, cancellationToken);
+            var state = _oauthStateProtector.Protect(JsonSerializer.Serialize(new OAuthState(platformCredentialId, platform, DateTime.UtcNow.AddMinutes(10))));
 
             return platform switch
             {
@@ -83,9 +73,25 @@ namespace OmsApi.Services.Implementation
             };
         }
 
-        public async Task<TokenInfo> HandleCallbackAsync(PlatformType platform, string code, string? shopId = null)
+        public async Task<TokenInfo> HandleCallbackAsync(PlatformType platform, string code, string? shopId = null, string? state = null)
         {
             _logger.LogInformation("🔑 Handling OAuth callback for {Platform}", platform);
+            if (platform == PlatformType.Shopee)
+            {
+                if (string.IsNullOrWhiteSpace(shopId)) throw new ArgumentException("Shopee callback did not include shop_id.");
+                var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x => x.Platform == platform.ToString() && x.ShopId == shopId);
+                if (credential == null) throw new InvalidOperationException("No configured Shopee connector was found for the callback shop.");
+                await LoadAppCredentialAsync(platform, credential.PlatformCredentialId, CancellationToken.None);
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(state)) throw new ArgumentException("OAuth state is required.");
+                var oauthState = JsonSerializer.Deserialize<OAuthState>(_oauthStateProtector.Unprotect(state))
+                    ?? throw new ArgumentException("OAuth state is invalid.");
+                if (oauthState.Platform != platform || oauthState.ExpiresAtUtc <= DateTime.UtcNow)
+                    throw new ArgumentException("OAuth state is invalid or expired.");
+                await LoadAppCredentialAsync(platform, oauthState.PlatformCredentialId, CancellationToken.None);
+            }
 
             return platform switch
             {
@@ -96,9 +102,45 @@ namespace OmsApi.Services.Implementation
             };
         }
 
+        private async Task LoadAppCredentialAsync(PlatformType platform, long credentialId, CancellationToken cancellationToken)
+        {
+            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x => x.PlatformCredentialId == credentialId, cancellationToken)
+                ?? throw new InvalidOperationException("Connector was not found.");
+            if (!string.Equals(credential.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Connector platform does not match the OAuth platform.");
+            try
+            {
+                var appKey = _tokenProtector.Unprotect(credential.AppKeyEncrypted ?? throw new InvalidOperationException("App key is not configured."));
+                var appSecret = _tokenProtector.Unprotect(credential.AppSecretEncrypted ?? throw new InvalidOperationException("App secret is not configured."));
+                var redirectUrl = credential.RedirectUrl?.Trim();
+                if (string.IsNullOrWhiteSpace(redirectUrl)) throw new InvalidOperationException("Redirect URL is not configured.");
+                switch (platform)
+                {
+                    case PlatformType.Shopee:
+                        if (!long.TryParse(appKey, out _shopeePartnerId) || _shopeePartnerId <= 0) throw new InvalidOperationException("Shopee Partner ID is invalid.");
+                        _shopeePartnerKey = appSecret; _shopeeRedirectUrl = redirectUrl; break;
+                    case PlatformType.Lazada:
+                        _lazadaAppKey = appKey; _lazadaAppSecret = appSecret; _lazadaRedirectUrl = redirectUrl; break;
+                    case PlatformType.TikTok:
+                        _tiktokAppKey = appKey; _tiktokAppSecret = appSecret; _tiktokRedirectUrl = redirectUrl; _tiktokServiceId = credential.ServiceId?.Trim() ?? string.Empty; break;
+                }
+            }
+            catch (PlatformCredentialException) { throw; }
+            catch (Exception ex) { throw new InvalidOperationException("Connector app credential could not be decrypted or is incomplete.", ex); }
+        }
+
+        private sealed record OAuthState(long PlatformCredentialId, PlatformType Platform, DateTime ExpiresAtUtc);
+
         public async Task<TokenInfo> RefreshTokenAsync(PlatformType platform, string refreshToken, string? shopId = null)
         {
             _logger.LogInformation("🔄 Refreshing token for {Platform}", platform);
+            if (string.IsNullOrWhiteSpace(shopId))
+                throw new ArgumentException("shopId is required when refreshing a connector token.");
+            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x =>
+                x.Platform == platform.ToString() && x.ShopId == shopId);
+            if (credential == null)
+                throw new InvalidOperationException("Connector was not found for the requested shop.");
+            await LoadAppCredentialAsync(platform, credential.PlatformCredentialId, CancellationToken.None);
 
             return platform switch
             {

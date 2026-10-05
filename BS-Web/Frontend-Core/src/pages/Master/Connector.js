@@ -1,6 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import dayjs from "dayjs";
 import {
   AddRounded,
   CheckCircleRounded,
@@ -26,7 +25,6 @@ import {
   Typography,
 } from "@mui/material";
 import BSTextField from "../../components/BSTextField";
-import BSDatepicker from "../../components/BSDatepicker";
 import { IOSSwitch } from "../../components/BSSwitch";
 import BSCloseOutlinedButton from "../../components/Button/BSCloseOutlinedButton";
 import BSSaveOutlinedButton from "../../components/Button/BSSaveOutlinedButton";
@@ -80,10 +78,10 @@ const emptyDraft = {
   platform: "shopee",
   displayName: "",
   account: "",
-  accessToken: "",
-  refreshToken: "",
-  accessTokenExpiresDate: "",
-  refreshTokenExpiresDate: "",
+  appKey: "",
+  appSecret: "",
+  redirectUrl: "",
+  serviceId: "",
 };
 
 const mapConnector = (item) => {
@@ -161,8 +159,9 @@ export default function Connector() {
     loadConnectors();
   }, [loadConnectors]);
 
-  const connectOAuth = async (platform) => {
-    setOauthRedirecting(platform);
+  const connectOAuth = async (connector) => {
+    const platform = connector.platform;
+    setOauthRedirecting(connector.id);
     const oauthTab = window.open("about:blank", "_blank");
     if (!oauthTab) {
       setOauthRedirecting("");
@@ -179,7 +178,7 @@ export default function Connector() {
 
     try {
       const { data } = await axios.get(
-        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url`,
+        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url?platformCredentialId=${encodeURIComponent(connector.id)}`,
         { timeout: 15000 },
       );
       const authUrl = data?.data?.url || data?.url;
@@ -207,12 +206,8 @@ export default function Connector() {
       platform: connector.platform,
       displayName: connector.shopName || connector.displayName,
       account: connector.shopId || connector.account,
-      accessTokenExpiresDate: toApiUtcIsoString(
-        connector.accessTokenExpiresDate,
-      ),
-      refreshTokenExpiresDate: toApiUtcIsoString(
-        connector.refreshTokenExpiresDate,
-      ),
+      redirectUrl: connector.redirectUrl || "",
+      serviceId: connector.serviceId || "",
     });
     setDialogOpen(true);
   };
@@ -225,30 +220,19 @@ export default function Connector() {
       });
       return;
     }
-    if (
-      !editingId &&
-      (!draft.accessToken.trim() || !draft.accessTokenExpiresDate)
-    ) {
+    if (!editingId && (!draft.appKey.trim() || !draft.appSecret.trim())) {
       setNotice({
         open: true,
         severity: "warning",
-        message: "การเพิ่ม Connector ต้องระบุ Access Token และวันหมดอายุ",
+        message: "กรุณาระบุ App Key และ App Secret",
       });
       return;
     }
-    if (draft.accessToken.trim() && !draft.accessTokenExpiresDate) {
+    if (!draft.redirectUrl.trim()) {
       setNotice({
         open: true,
         severity: "warning",
-        message: "กรุณาระบุวันหมดอายุของ Access Token",
-      });
-      return;
-    }
-    if (draft.refreshToken.trim() && !draft.refreshTokenExpiresDate) {
-      setNotice({
-        open: true,
-        severity: "warning",
-        message: "กรุณาระบุวันหมดอายุของ Refresh Token",
+        message: "กรุณาระบุ Redirect URL",
       });
       return;
     }
@@ -257,10 +241,10 @@ export default function Connector() {
       platform: draft.platform,
       shopId: draft.account.trim(),
       shopName: draft.displayName.trim() || null,
-      accessToken: draft.accessToken.trim() || null,
-      refreshToken: draft.refreshToken.trim() || null,
-      accessTokenExpiresDate: toUtcIsoString(draft.accessTokenExpiresDate),
-      refreshTokenExpiresDate: toUtcIsoString(draft.refreshTokenExpiresDate),
+      appKey: draft.appKey.trim() || null,
+      appSecret: draft.appSecret.trim() || null,
+      redirectUrl: draft.redirectUrl.trim(),
+      serviceId: draft.serviceId.trim() || null,
       isActive: editingConnector?.isActive ?? true,
     };
     if (editingId) payload.platformCredentialId = editingId;
@@ -368,30 +352,9 @@ export default function Connector() {
           </Button>
         </Stack>
 
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: "#e3e9f1" }}>
-          <Typography variant="subtitle1" fontWeight={700} color="#172b4d" sx={{ mb: 1.5 }}>
-            เชื่อมต่อผ่าน OAuth
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-            {Object.entries(platforms).map(([key, platform]) => {
-              const needsReauthorization = connectors.some(
-                (item) => item.platform === key && item.requiresReauthorization,
-              );
-              return (
-                <Button
-                  key={key}
-                  variant="outlined"
-                  disabled={Boolean(oauthRedirecting)}
-                  onClick={() => connectOAuth(key)}
-                  startIcon={oauthRedirecting === key ? <CircularProgress size={16} /> : <OpenInNewRounded />}
-                  sx={{ borderRadius: 2, textTransform: "none", borderColor: `${platform.color}66`, color: platform.color }}
-                >
-                  {oauthRedirecting === key ? "กำลังเปลี่ยนเส้นทาง…" : needsReauthorization ? `ยืนยัน ${platform.name} ใหม่` : `เชื่อมต่อ ${platform.name}`}
-                </Button>
-              );
-            })}
-          </Stack>
-        </Paper>
+        <Alert severity="info">
+          บันทึก App Credential ของแต่ละร้านก่อน แล้วกด “เชื่อมต่อ OAuth” บนการ์ดของร้านนั้นเพื่อรับ Token อัตโนมัติ
+        </Alert>
 
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -530,6 +493,16 @@ export default function Connector() {
                     </Stack>
                   </Box>
                   <Stack direction="row" alignItems="center" spacing={0.75}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={Boolean(oauthRedirecting) || !connector.hasAppKey || !connector.hasAppSecret || !connector.redirectUrl}
+                      onClick={() => connectOAuth(connector)}
+                      startIcon={oauthRedirecting === connector.id ? <CircularProgress size={14} /> : <OpenInNewRounded />}
+                      sx={{ textTransform: "none", borderRadius: 2 }}
+                    >
+                      {oauthRedirecting === connector.id ? "กำลังเปิด OAuth…" : connected ? "เชื่อมต่อใหม่" : "เชื่อมต่อ OAuth"}
+                    </Button>
                     <IOSSwitch
                       checked={connector.isActive}
                       onChange={() => toggleConnector(connector)}
@@ -710,52 +683,41 @@ export default function Connector() {
             labelAbove
             sx={fieldSx}
           />
-          {editingId && (
-            <Alert severity="info">
-              Access Token: {editingConnector?.hasAccessToken ? "มีข้อมูลบันทึกแล้ว" : "ไม่มีข้อมูล"}
-              {" · "}
-              Refresh Token: {editingConnector?.hasRefreshToken ? "มีข้อมูลบันทึกแล้ว" : "ไม่มีข้อมูล"}
-              <br />
-              Token เดิมถูกเข้ารหัสและจะไม่แสดงในช่องนี้ หากเว้นช่อง Token ว่าง ระบบจะเก็บค่าเดิมไว้
-            </Alert>
+          <BSTextField
+            label={`App Key / Partner ID${editingId ? " (leave blank to keep current)" : ""}`}
+            type="password"
+            value={draft.appKey}
+            onChange={updateDraft("appKey")}
+            labelAbove
+            sx={fieldSx}
+          />
+          <BSTextField
+            label={`App Secret / Partner Key${editingId ? " (leave blank to keep current)" : ""}`}
+            type="password"
+            value={draft.appSecret}
+            onChange={updateDraft("appSecret")}
+            labelAbove
+            sx={fieldSx}
+          />
+          <BSTextField
+            label="Redirect URL"
+            value={draft.redirectUrl}
+            onChange={updateDraft("redirectUrl")}
+            labelAbove
+            sx={fieldSx}
+          />
+          {draft.platform === "tiktok" && (
+          <BSTextField
+            label="TikTok Service ID (optional)"
+            value={draft.serviceId}
+            onChange={updateDraft("serviceId")}
+            labelAbove
+            sx={fieldSx}
+          />
           )}
-          <BSTextField
-            label={`Access Token${editingId ? " (leave blank to keep current)" : ""}`}
-            type="password"
-            value={draft.accessToken}
-            onChange={updateDraft("accessToken")}
-            labelAbove
-            sx={fieldSx}
-          />
-          <BSDatepicker
-            label="Access Token expires (date and time)"
-            value={draft.accessTokenExpiresDate ? dayjs(draft.accessTokenExpiresDate) : null}
-            onChange={(value) => updateDraft("accessTokenExpiresDate")(value?.isValid() ? value.toISOString() : "")}
-            isDateOnly={false}
-            format="DD/MM/YYYY HH:mm"
-            required={!editingId}
-            sx={fieldSx}
-          />
-          <BSTextField
-            label="Refresh Token (optional)"
-            type="password"
-            value={draft.refreshToken}
-            onChange={updateDraft("refreshToken")}
-            labelAbove
-            sx={fieldSx}
-          />
-          <BSDatepicker
-            label="Refresh Token expires (date and time, optional)"
-            value={draft.refreshTokenExpiresDate ? dayjs(draft.refreshTokenExpiresDate) : null}
-            onChange={(value) => updateDraft("refreshTokenExpiresDate")(value?.isValid() ? value.toISOString() : "")}
-            isDateOnly={false}
-            format="DD/MM/YYYY HH:mm"
-            sx={fieldSx}
-          />
           <Alert severity="info">
-            Tokens are encrypted by the API. App keys, app secrets, regions, and
-            general polling settings are not stored by the current Connector
-            API.
+            App credentials will be encrypted by the API. Access and refresh tokens
+            are created only after completing OAuth and are never shown here.
           </Alert>
         </Stack>
       </BSDialog>

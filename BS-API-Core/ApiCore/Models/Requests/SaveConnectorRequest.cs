@@ -15,10 +15,17 @@ namespace ApiCore.Models.Requests
         [StringLength(256)]
         public string? ShopName { get; set; }
 
-        public string? AccessToken { get; set; }
-        public string? RefreshToken { get; set; }
-        public DateTime? AccessTokenExpiresDate { get; set; }
-        public DateTime? RefreshTokenExpiresDate { get; set; }
+        [StringLength(2048)]
+        public string? AppKey { get; set; }
+
+        [StringLength(4096)]
+        public string? AppSecret { get; set; }
+
+        [Required, StringLength(2048)]
+        public string? RedirectUrl { get; set; }
+
+        [StringLength(255)]
+        public string? ServiceId { get; set; }
         public bool? IsActive { get; set; }
     }
 }

@@ -7,6 +7,7 @@ using OmsApi.Models.Inventory;
 using OmsApi.Models.Orders;
 using OmsApi.Models.Shipping;
 using OmsApi.Services.Interfaces;
+using OmsApi.Services.Implementation;
 
 namespace OmsApi.Services.Implementation.Platforms
 {
@@ -18,8 +19,8 @@ namespace OmsApi.Services.Implementation.Platforms
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<ShopeeClient> _logger;
-        private readonly long _partnerId;
-        private readonly string _partnerKey;
+        private long _partnerId => long.TryParse(PlatformCredentialExecutionContext.Require(Platform).AppKey, out var id) ? id : 0;
+        private string _partnerKey => PlatformCredentialExecutionContext.Require(Platform).AppSecret;
 
         public PlatformType Platform => PlatformType.Shopee;
 
@@ -27,8 +28,6 @@ namespace OmsApi.Services.Implementation.Platforms
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
-            _partnerId = long.TryParse(Environment.GetEnvironmentVariable("SHOPEE_PARTNER_ID"), out var id) ? id : 0;
-            _partnerKey = Environment.GetEnvironmentVariable("SHOPEE_PARTNER_KEY") ?? "";
         }
 
         #region Orders

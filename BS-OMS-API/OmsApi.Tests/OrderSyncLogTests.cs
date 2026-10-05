@@ -92,7 +92,7 @@ public class OrderSyncLogTests
             string? requestedShopId,
             Func<PlatformAccessCredential, Task<T>> operation,
             CancellationToken cancellationToken = default) =>
-            operation(new PlatformAccessCredential(1, platform, shopId, "token"));
+            operation(new PlatformAccessCredential(1, platform, shopId, "token", "app-key", "app-secret", "https://example.test/callback", null));
 
         public Task<IReadOnlyList<PlatformCredentialSelection>> GetActiveCredentialSelectionsAsync(
             CancellationToken cancellationToken = default) =>

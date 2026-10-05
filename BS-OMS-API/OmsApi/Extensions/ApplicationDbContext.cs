@@ -27,16 +27,20 @@ public class ApplicationDbContext : DbContext
         builder.Entity<PlatformCredential>(entity =>
         {
             entity.ToTable("t_oms_platform_credential", "oms");
-            entity.HasKey(e => e.PlatformCredentialId).HasName("PK_t_oms_platform_credential");
-            entity.HasIndex(e => new { e.Platform, e.ShopId }).IsUnique().HasDatabaseName("UQ_t_oms_platform_credential_platform_shop");
+            entity.HasKey(e => e.PlatformCredentialId);
+            entity.HasIndex(e => new { e.Platform, e.ShopId }).IsUnique();
             entity.Property(e => e.PlatformCredentialId).HasColumnName("platform_credential_id");
             entity.Property(e => e.Platform).HasColumnName("platform").HasColumnType("varchar(32)").IsRequired();
             entity.Property(e => e.ShopId).HasColumnName("shop_id").HasColumnType("varchar(128)").IsRequired();
             entity.Property(e => e.ShopName).HasColumnName("shop_name").HasMaxLength(256);
-            entity.Property(e => e.AccessTokenEncrypted).HasColumnName("access_token_encrypted").HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(e => e.AccessTokenEncrypted).HasColumnName("access_token_encrypted").HasColumnType("nvarchar(max)");
             entity.Property(e => e.RefreshTokenEncrypted).HasColumnName("refresh_token_encrypted").HasColumnType("nvarchar(max)");
-            entity.Property(e => e.AccessTokenExpiresDate).HasColumnName("access_token_expires_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.AccessTokenExpiresDate).HasColumnName("access_token_expires_date").HasColumnType("datetime");
             entity.Property(e => e.RefreshTokenExpiresDate).HasColumnName("refresh_token_expires_date").HasColumnType("datetime");
+            entity.Property(e => e.AppKeyEncrypted).HasColumnName("app_key_encrypted").HasColumnType("nvarchar(max)");
+            entity.Property(e => e.AppSecretEncrypted).HasColumnName("app_secret_encrypted").HasColumnType("nvarchar(max)");
+            entity.Property(e => e.RedirectUrl).HasColumnName("redirect_url").HasMaxLength(2048);
+            entity.Property(e => e.ServiceId).HasColumnName("service_id").HasMaxLength(255);
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasColumnType("varchar(3)").IsRequired().HasDefaultValue("YES");
             entity.Property(e => e.RequiresReauthorization).HasColumnName("requires_reauthorization").HasColumnType("varchar(3)").IsRequired().HasDefaultValue("NO");
             entity.Property(e => e.LastRefreshDate).HasColumnName("last_refresh_date").HasColumnType("datetime");
