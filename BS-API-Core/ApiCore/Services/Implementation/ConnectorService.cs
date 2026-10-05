@@ -266,6 +266,18 @@ namespace ApiCore.Services.Implementation
                     }
                 }
 
+                // A connector is actionable before its first OAuth callback. Keep one
+                // token record per platform/shop so the UI and reauthorization flow can
+                // represent that initial "OAuth required" state without storing tokens.
+                await EnsureCredentialPlaceholderAsync(
+                    connection,
+                    transaction,
+                    platform,
+                    shopId,
+                    NullIfWhiteSpace(request.ShopName),
+                    updateBy,
+                    cancellationToken);
+
                 await transaction.CommitAsync(cancellationToken);
                 return (await LoadByIdAsync(connection, platformAppShopId, cancellationToken))
                     ?? throw new InvalidOperationException("The saved connector could not be loaded.");
@@ -424,6 +436,36 @@ namespace ApiCore.Services.Implementation
                 WHERE platform_app_id = @Id AND platform = @Platform AND is_active = N'YES'
                 """, new { Id = appId, Platform = platform }, transaction: transaction, cancellationToken: cancellationToken));
             return matchedId ?? throw new ArgumentException("The selected App Master is unavailable for this platform.");
+        }
+
+        private static async Task EnsureCredentialPlaceholderAsync(
+            DbConnection connection,
+            DbTransaction transaction,
+            string platform,
+            string shopId,
+            string? shopName,
+            string updateBy,
+            CancellationToken cancellationToken)
+        {
+            await connection.ExecuteAsync(new CommandDefinition($"""
+                INSERT INTO {CredentialTable}
+                    (platform, shop_id, shop_name, is_active, requires_reauthorization,
+                     create_by, create_date, update_by, update_date)
+                SELECT @Platform, @ShopId, @ShopName, N'YES', N'YES',
+                       @UpdateBy, SYSUTCDATETIME(), @UpdateBy, SYSUTCDATETIME()
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM {CredentialTable} WITH (UPDLOCK, HOLDLOCK)
+                    WHERE platform = @Platform AND shop_id = @ShopId
+                )
+                """,
+                new
+                {
+                    Platform = platform,
+                    ShopId = shopId,
+                    ShopName = shopName,
+                    UpdateBy = updateBy,
+                }, transaction: transaction, cancellationToken: cancellationToken));
         }
 
         private sealed class ConnectorDeleteTarget
