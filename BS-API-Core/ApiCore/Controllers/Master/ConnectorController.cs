@@ -52,7 +52,7 @@ namespace ApiCore.Controllers.Master
             }
         }
 
-        [HttpDelete("{id:long}")]
+        [HttpPost("{id:long}")]
         public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
         {
             try

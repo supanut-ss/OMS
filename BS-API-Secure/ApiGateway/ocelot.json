@@ -803,7 +803,7 @@
         }
       ],
       "UpstreamPathTemplate": "/v1/api/Connector/{id}",
-      "UpstreamHttpMethod": ["delete"],
+      "UpstreamHttpMethod": ["post"],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []

@@ -320,7 +320,7 @@ export default function Connector() {
 
     setDeletingConnectorId(connector.id);
     try {
-      await AxiosMaster.delete(`/Connector/${connector.id}`);
+      await AxiosMaster.post(`/Connector/${connector.id}`);
       setConnectors((current) => current.filter((item) => item.id !== connector.id));
       setNotice({
         open: true,
