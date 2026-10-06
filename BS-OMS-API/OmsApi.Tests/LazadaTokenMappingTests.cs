@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.Json;
 using OmsApi.Services.Implementation;
 
@@ -55,5 +55,16 @@ public class LazadaTokenMappingTests
 
         Assert.Equal("222", result.ShopId);
         Assert.Equal("SHOPTH (TH)", result.ShopName);
+    }
+
+    [Theory]
+    [InlineData("https://x.test/cb", "https://x.test/cb?state=a%2Bb%3D")]
+    [InlineData("https://x.test/cb?v=1", "https://x.test/cb?v=1&state=a%2Bb%3D")]
+    public void ShopeeRedirect_CarriesEscapedState(string redirect, string expected)
+    {
+        var method = typeof(PlatformAuthService).GetMethod(
+            "BuildShopeeRedirectUrl", BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.Equal(expected, (string)method!.Invoke(null, [redirect, "a+b="])!);
     }
 }

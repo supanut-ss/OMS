@@ -196,11 +196,22 @@ namespace OmsApi.Services.Implementation
         {
             var timestamp = DateTimeHelper.CurrentUnixTimestamp();
             var apiPath = "/api/v2/shop/auth_partner";
-            var redirectUrl = Uri.EscapeDataString(_shopeeRedirectUrl);
+            var redirectUrl = Uri.EscapeDataString(BuildShopeeRedirectUrl(_shopeeRedirectUrl, state));
             var sign = SignatureHelper.GenerateShopeeSignature(_shopeePartnerKey, _shopeePartnerId, apiPath, timestamp);
 
             return $"{_shopeeApiUrl}{apiPath}?partner_id={_shopeePartnerId}&timestamp={timestamp}" +
                    $"&sign={sign}&redirect={redirectUrl}";
+        }
+
+        /// <summary>
+        /// Shopee has no OAuth "state" parameter and only appends code/shop_id to
+        /// the redirect URL, so the signed state travels inside the redirect URL
+        /// itself and comes back on the callback request.
+        /// </summary>
+        private static string BuildShopeeRedirectUrl(string redirectUrl, string state)
+        {
+            var separator = redirectUrl.Contains('?') ? "&" : "?";
+            return $"{redirectUrl}{separator}state={Uri.EscapeDataString(state)}";
         }
 
         private async Task<TokenInfo> HandleShopeeCallbackAsync(string code, string? shopId)
