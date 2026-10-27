@@ -162,7 +162,7 @@ export default function AppRoutes() {
 
         <Route path="master" element={<PermissionRoute />}>
           <Route path="connector" element={<Connector />} />
-          <Route path="connector/apps" element={<PlatformAppAdmin />} />
+          <Route path="platformApp" element={<PlatformAppAdmin />} />
           <Route path="warehouse" element={<Warehouse lang={lang} />} />
           <Route path="owner" element={<Owner lang={lang} />} />
           <Route path="part" element={<Part lang={lang} />} />

@@ -2,7 +2,6 @@
 import axios from "axios";
 import {
   AddRounded,
-  AdminPanelSettingsRounded,
   CheckCircleRounded,
   DeleteOutlineRounded,
   HubRounded,
@@ -11,7 +10,6 @@ import {
   SyncRounded,
   OpenInNewRounded,
 } from "@mui/icons-material";
-import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Avatar,
   Alert,
@@ -108,9 +106,6 @@ const mapConnector = (item) => {
 };
 
 export default function Connector() {
-  const navigate = useNavigate();
-  const { permission = {} } = useOutletContext();
-  const canManageApps = Boolean(permission.is_add || permission.is_edit);
   const [connectors, setConnectors] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
   const [deletingConnectorId, setDeletingConnectorId] = useState(null);
@@ -305,34 +300,22 @@ export default function Connector() {
               </Box>
             </Stack>
           </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            {canManageApps && (
-              <Button
-                onClick={() => navigate("/master/connector/apps")}
-                variant="outlined"
-                startIcon={<AdminPanelSettingsRounded />}
-                sx={{ borderRadius: 2, px: 2.25, py: 1.1, textTransform: "none" }}
-              >
-                จัดการ App กลาง
-              </Button>
-            )}
-            <Button
-              onClick={() => openAdd()}
-              variant="contained"
-              startIcon={<AddRounded />}
-              sx={{
-                borderRadius: 2,
-                px: 2.25,
-                py: 1.1,
-                textTransform: "none",
-                boxShadow: "none",
-                bgcolor: "#168dae",
-                "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
-              }}
-            >
-              เพิ่ม Connector
-            </Button>
-          </Stack>
+          <Button
+            onClick={() => openAdd()}
+            variant="contained"
+            startIcon={<AddRounded />}
+            sx={{
+              borderRadius: 2,
+              px: 2.25,
+              py: 1.1,
+              textTransform: "none",
+              boxShadow: "none",
+              bgcolor: "#168dae",
+              "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
+            }}
+          >
+            เพิ่ม Connector
+          </Button>
         </Stack>
 
         <Alert severity="info">

@@ -342,11 +342,12 @@ Web OMS คือเว็บไซต์ที่รวมออเดอร์
 
 - React 19, React Router 7, Material UI 7 + MUI X Data Grid, Chart.js, Axios, SweetAlert2 ให้บริการใต้พาธ `/oms` (`REACT_APP_BASE_URL`)
 - สิทธิ์แต่ละหน้าควบคุมด้วยสิทธิ์เมนู (`PermissionRoute`) กำหนดเมนูที่ Authentication → Assign Menu
-- Route: `/dashboard/dashboard`, `/orderlist/orderlist`, `/orderlist/orderlist/:orderRecordId`, `/log/sync`, `/master/connector`, `/master/connector/apps`
+- Route: `/dashboard/dashboard`, `/orderlist/orderlist`, `/orderlist/orderlist/:orderRecordId`, `/log/sync`, `/master/connector`, `/master/platformApp`
 - การเข้าถึงข้อมูล:
   - Grid และ Dashboard ใช้ Gateway กลาง (`AxiosMaster`, `BSDataGrid`, `POST /dynamic/datagrid`) อ่าน schema `oms`: `t_oms_order`, `t_oms_sync_log`, `vw_oms_order_sync_history` ส่วนค่า combobox มาจาก `sec.t_com_combobox_item` (กลุ่ม `platform_shop`, `order_status`, `sync_status`)
   - Connector ใช้ Gateway: `GET /Connector`, `GET /Connector/apps`, `POST /Connector/save`, `POST /Connector/set-active`, `POST /Connector/{id}` (ลบ; ได้ HTTP 409 เมื่อยังถูกอ้างอิง)
   - Platform App Admin ใช้ Gateway: `GET /PlatformApp`, `GET /PlatformApp/{id}`, `POST /PlatformApp/save`, `POST /PlatformApp/{id}/delete`
+    โดย Ocelot รับที่ `/v1/api/PlatformApp*` และส่งต่อไป `bs_core_api:8080/api/PlatformApp*` พร้อมตรวจ Bearer token
   - เริ่ม OAuth เรียก OMS API ตรง: `GET {OMS_API_URL}/auth/{platform}/auth-url?platformAppShopId={id}` และ URL ที่ได้ต้องเป็น `https://`
   - Resync: `GET /oms-orders/{platform}/{orderId}/resync[?shopId=]`
 - Secret ของ Marketplace ถูกส่งเพียงครั้งเดียวตอนสร้าง App Master และไม่ถูกส่งกลับมาที่เบราว์เซอร์ (มีเฉพาะแฟลก เช่น `hasAppKey`, `hasAppSecret`) Token เก็บอยู่ที่ OMS API
@@ -376,8 +377,9 @@ npm run build      # build สำหรับ production (craco)
 
 ### 5.4 จัดการ Platform App กลาง
 
-ผู้ใช้ที่มีสิทธิ์เพิ่มหรือแก้ไขเมนู Connector จะเห็นปุ่ม **จัดการ App กลาง**
-และเข้าใช้งานหน้า `/master/connector/apps` ได้โดยใช้สิทธิ์ของเมนู Connector เดิม
+สร้างเมนู Master แยกโดยกำหนด path เป็น `/master/platformApp` แล้วกำหนดสิทธิ์
+View/Add/Edit/Delete ให้กลุ่มผู้ดูแลที่ Authentication → Assign Menu หน้า App Master
+จะใช้ permission ของ path นี้เองและไม่สืบทอดสิทธิ์จากหน้า Connector
 
 - App Key และ App Secret ถูกเข้ารหัสก่อนบันทึกและไม่ถูกส่งกลับมาแสดงใน Browser
 - เว้น App Key หรือ App Secret ว่างตอนแก้ไขเพื่อคงค่าเดิม

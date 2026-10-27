@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import {
   AddRounded,
   AdminPanelSettingsRounded,
-  ArrowBackRounded,
   DeleteOutlineRounded,
   EditRounded,
   KeyRounded,
@@ -70,7 +69,6 @@ const getErrorMessage = (error, fallback) =>
   fallback;
 
 export default function PlatformAppAdmin() {
-  const navigate = useNavigate();
   const { permission = {} } = useOutletContext();
   const canAdd = Boolean(permission.is_add);
   const canEdit = Boolean(permission.is_edit);
@@ -228,9 +226,6 @@ export default function PlatformAppAdmin() {
             </Box>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Button startIcon={<ArrowBackRounded />} onClick={() => navigate("/master/connector")}>
-              กลับหน้า Connector
-            </Button>
             <Tooltip title={canAdd ? "" : "ไม่มีสิทธิ์เพิ่มข้อมูล"}>
               <span>
                 <Button
