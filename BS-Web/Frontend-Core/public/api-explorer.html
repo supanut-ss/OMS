@@ -164,7 +164,7 @@ pre{margin:0;padding:14px 16px;overflow-x:auto;color:var(--code-ink);font:13px/1
   <aside class="side" id="side">
     <div class="brand">
       <h1>BS-OMS-API <span>Explorer</span></h1>
-      <p>API v1 · เอกสาร v1.1 · 35 endpoints · WGE-OGA · Shopee / Lazada / TikTok</p>
+      <p>API v1 · เอกสาร v1.2 · 38 endpoints · WGE-OGA · Shopee / Lazada / TikTok</p>
       <button class="menu-btn" id="menuBtn" aria-expanded="true" aria-controls="nav">ซ่อนรายการ API</button>
     </div>
     <div class="filters">
@@ -234,25 +234,28 @@ const sampleDoc = { platformDocumentId: 55, platform: 0, shopId: "123456", platf
 const E = [
   // ─── Auth ───
   { id: "auth-authorize", group: "Auth", method: "GET", path: "/api/auth/{platform}/authorize", summary: "Redirect ไปหน้า OAuth",
-    desc: "เปิดจาก browser เพื่อเริ่มเชื่อมร้าน ระบบ redirect (302) ไปหน้าอนุญาตสิทธิ์ของ Marketplace", auth: "none",
-    params: [PLAT], responseType: "redirect",
-    response: "HTTP/1.1 302 Found\nLocation: https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&redirect=...&sign=...",
-    statuses: [[302, "Redirect ไปหน้า OAuth"], [400, "platform ไม่รองรับ"]] },
+    desc: "เปิดจาก browser (ปุ่มเชื่อมร้านในหน้า Connector) ระบบอ่าน App Key/Secret ของ Connector จากฐานข้อมูล สร้าง state ที่เซ็นแล้ว (อายุ 10 นาที) และ redirect (302) ไปหน้าอนุญาตสิทธิ์ของ Marketplace", auth: "none",
+    params: [PLAT, P("platformAppShopId", "query", "long", "y", "รหัส Connector (<code>oms.t_oms_platform_app_shops.platform_app_shop_id</code>) จากหน้า Connector")], responseType: "redirect",
+    response: "HTTP/1.1 302 Found\nLocation: https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&redirect=...%3Fstate%3D...&sign=...",
+    info: "App Key, App Secret และ Redirect URL มาจากตาราง <code>oms.t_oms_platform_apps</code> ซึ่งจัดการผ่านหน้า Connector ของ BS-Web ไม่ได้อ่านจาก <code>.env</code> แล้ว",
+    statuses: [[302, "Redirect ไปหน้า OAuth"], [400, "platform ไม่รองรับ, ไม่พบ Connector, Connector/App Master ไม่ active หรือถอดรหัส App Key ไม่ได้"]] },
   { id: "auth-url", group: "Auth", method: "GET", path: "/api/auth/{platform}/auth-url", summary: "ขอ URL OAuth",
     desc: "คืน URL ของหน้า OAuth โดยไม่ redirect เหมาะกับหน้าเว็บที่ต้องการเปิด URL เอง", auth: "none",
-    params: [PLAT], response: ok({ url: "https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&sign=..." }),
-    statuses: [[200, "สำเร็จ"], [400, "platform ไม่รองรับ"]] },
+    params: [PLAT, P("platformAppShopId", "query", "long", "y", "รหัส Connector (<code>oms.t_oms_platform_app_shops.platform_app_shop_id</code>) จากหน้า Connector")], response: ok({ url: "https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&sign=..." }),
+    statuses: [[200, "สำเร็จ"], [400, "platform ไม่รองรับ, ไม่พบ Connector หรือ Connector ไม่ active"]] },
   { id: "auth-callback", group: "Auth", method: "GET", path: "/api/auth/{platform}/callback", summary: "OAuth Callback",
-    desc: "Marketplace เรียกกลับมาหลังผู้ใช้อนุญาตสิทธิ์ OMS แลก code เป็น token แล้วบันทึกแบบเข้ารหัสในตาราง oms.t_oms_platform_credential", auth: "none",
-    params: [PLAT, P("code", "query", "string", "y", "Authorization code จาก Marketplace"), P("shop_id", "query", "string", "n", "Shop ID (Shopee ส่งมา)")],
-    response: ok(sampleToken, "Authorization successful"),
-    statuses: [[200, "บันทึก token สำเร็จ"], [400, "แลก code ไม่สำเร็จ (message = OAuth error: ...)"]] },
+    desc: "Marketplace เรียกกลับมาหลังผู้ใช้อนุญาตสิทธิ์ OMS ตรวจ state แลก code เป็น token บันทึกแบบเข้ารหัสในตาราง oms.t_oms_platform_credential แล้ว redirect กลับหน้า Connector ของ BS-Web (ไม่คืน JSON แล้ว)", auth: "none",
+    params: [PLAT, P("code", "query", "string", "y", "Authorization code จาก Marketplace (ไม่มี = ล้มเหลว)"), P("state", "query", "string", "y", "state ที่ OMS สร้างตอน authorize (Shopee ฝากไว้ใน redirect URL)"), P("shop_id", "query", "string", "c", "Shopee ส่งมา ต้องตรงกับร้านของ Connector"), P("error", "query", "string", "n", "Marketplace ส่งมาเมื่อผู้ใช้ปฏิเสธ")],
+    responseType: "redirect",
+    response: "HTTP/1.1 302 Found\nLocation: https://<bs-web>/master/connector?oauth=success&platform=shopee",
+    warn: "ต้องตั้ง <code>OMS_FRONTEND_CONNECTOR_URL</code> (https นอก Development) มิฉะนั้นจะได้ 500 <code>OAuth return URL is not configured.</code>",
+    statuses: [[302, "กลับหน้า Connector พร้อม oauth=success หรือ oauth=error"], [500, "ไม่ได้ตั้ง OMS_FRONTEND_CONNECTOR_URL"]] },
   { id: "auth-refresh", group: "Auth", method: "POST", path: "/api/auth/{platform}/refresh", summary: "Refresh Token",
-    desc: "ขอ access token ใหม่ด้วย refresh token", params: [PLAT],
-    bodyFields: [F("refreshToken", "string", "y", "Refresh token (ไม่เกิน 512 ตัวอักษร)"), F("shopId", "string", "n", "Shop ID")],
+    desc: "ขอ access token ใหม่ด้วย refresh token ตั้งแต่ v1.2 ต้องส่ง shopId เพื่อหา Connector ของร้าน", params: [PLAT],
+    bodyFields: [F("refreshToken", "string", "y", "Refresh token (ไม่เกิน 512 ตัวอักษร)"), F("shopId", "string", "y", "Shop ID (ใช้หา Connector)")],
     body: J({ refreshToken: "<refresh-token>", shopId: "123456" }),
     response: ok(sampleToken, "Token refreshed successfully"),
-    statuses: [[200, "สำเร็จ"], [400, "refresh ไม่สำเร็จ (message = Refresh error: ...)"]] },
+    statuses: [[200, "สำเร็จ"], [400, "ไม่ส่ง shopId, ไม่พบ Connector หรือ refresh ไม่สำเร็จ (message = Refresh error: ...)"]] },
   { id: "auth-sandbox", group: "Auth", method: "POST", path: "/api/auth/sandbox-token", summary: "Import Sandbox Token",
     desc: "บันทึก token ที่สร้างจากเครื่องมือ Sandbox ของ Marketplace แบบเข้ารหัส",
     warn: "ใช้ได้เฉพาะ environment Development หรือ Staging หรือเมื่อตั้ง <code>OMS_ENABLE_SANDBOX_TOKEN_IMPORT=YES</code> มิฉะนั้นคืน 404",
@@ -431,6 +434,33 @@ const E = [
     statuses: [[200, "ผลการทดสอบ (สำเร็จหรือไม่ดูที่ data.connected)"]] },
 
   // ─── Shop & Chat ───
+  { id: "wh-shopee", group: "Webhook", method: "POST", path: "/api/webhooks/shopee", summary: "รับ Push จาก Shopee",
+    desc: "Shopee Push Mechanism แจ้งเหตุการณ์ของ Order มาที่ OMS ไม่ใช้ X-Api-Key แต่ตรวจลายเซ็น HMAC-SHA256 ใน header Authorization", auth: "none",
+    params: [P("Authorization", "header", "string", "y", "hex HMAC-SHA256 ของ <code>callback URL + raw body</code> ด้วย key <code>SHOPEE_WEBHOOK_SECRET</code> หรือ <code>SHOPEE_PARTNER_KEY</code>")],
+    bodyFields: [F("(raw JSON)", "bytes", "y", "body ตามรูปแบบของแต่ละ Marketplace ไม่เกิน 1 MB ลายเซ็นคำนวณจาก raw body ที่ได้รับ")],
+    body: J({ code: 3, shop_id: 1274495, timestamp: 1660124246, data: { ordersn: "220810QXVJM3EX", status: "READY_TO_SHIP", update_time: 1660124246 } }),
+    response: J({ accepted: true, duplicate: false, eventId: 1024, message: "Webhook accepted." }), flow: ["บันทึก event (ตัด token/secret ออก) ลง oms.t_oms_webhook_event โดยใช้ event_key กันรับซ้ำ แล้วตอบ 200 ทันที", "Background worker ดึง Order Detail จาก Marketplace แล้ว upsert ลง oms.t_oms_order", "ดึง order list ของร้านย้อนหลัง WEBHOOK_ORDER_LIST_LOOKBACK_HOURS ชั่วโมง (default 24, สูงสุด 5 หน้า × 50) ร้านเดียวกันภายใน 30 วินาทีรวมเป็นครั้งเดียว", "event ที่ค้างหรือ FAILED ถูกหยิบมาทำใหม่ตอน service start"],
+    info: "code 3 สถานะ Order, 4 Tracking, 5, 8, 15 (เมื่อมีเลข Order) · code 2 ยกเลิกสิทธิ์ร้าน = ปิด credential และต้องเชื่อมใหม่ · code 1, 12 บันทึกไว้ตรวจสอบ · callback URL มาจาก <code>SHOPEE_WEBHOOK_URL</code> หรือ <code>OMS_PUBLIC_BASE_URL</code> ต้องตรงกับที่ลงทะเบียนทุกตัวอักษร",
+    curl: "curl -X POST \"https://<oms-public-url>/api/webhooks/shopee\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: <hex HMAC-SHA256>\" \\\n  -d '{\"code\":3,\"shop_id\":1274495,\"timestamp\":1660124246,\"data\":{\"ordersn\":\"220810QXVJM3EX\",\"status\":\"READY_TO_SHIP\"}}'",
+    statuses: [[200, "รับแล้ว (รวมถึงส่งซ้ำ duplicate: true)"], [400, "body ว่าง ไม่ใช่ JSON หรือข้อมูลไม่ครบ"], [401, "ลายเซ็นไม่ถูกต้อง"], [413, "body ใหญ่เกิน 1 MB"], [503, "ยังไม่ได้ตั้ง secret หรือบันทึก event ไม่สำเร็จ"]] },
+  { id: "wh-lazada", group: "Webhook", method: "POST", path: "/api/webhooks/lazada", summary: "รับ Message จาก Lazada",
+    desc: "Lazada Message Service แจ้งเหตุการณ์ของ Order มาที่ OMS ไม่ใช้ X-Api-Key แต่ตรวจลายเซ็น HMAC-SHA256 ใน header Authorization", auth: "none",
+    params: [P("Authorization", "header", "string", "y", "hex HMAC-SHA256 ของ <code>LAZADA_APP_KEY + raw body</code> ด้วย key <code>LAZADA_WEBHOOK_SECRET</code> หรือ <code>LAZADA_APP_SECRET</code>")],
+    bodyFields: [F("(raw JSON)", "bytes", "y", "body ตามรูปแบบของแต่ละ Marketplace ไม่เกิน 1 MB ลายเซ็นคำนวณจาก raw body ที่ได้รับ")],
+    body: J({ seller_id: "1234567", message_type: 0, timestamp: 1603766859530, site: "lazada_th", data: { order_status: "unpaid", trade_order_id: "260422900198363", status_update_time: 1603698638 } }),
+    response: J({ accepted: true, duplicate: false, eventId: 1024, message: "Webhook accepted." }), flow: ["บันทึก event (ตัด token/secret ออก) ลง oms.t_oms_webhook_event โดยใช้ event_key กันรับซ้ำ แล้วตอบ 200 ทันที", "Background worker ดึง Order Detail จาก Marketplace แล้ว upsert ลง oms.t_oms_order", "ดึง order list ของร้านย้อนหลัง WEBHOOK_ORDER_LIST_LOOKBACK_HOURS ชั่วโมง (default 24, สูงสุด 5 หน้า × 50) ร้านเดียวกันภายใน 30 วินาทีรวมเป็นครั้งเดียว", "event ที่ค้างหรือ FAILED ถูกหยิบมาทำใหม่ตอน service start"],
+    info: "message_type 0 = Trade Order (รวม reverse order / return / refund), 14 = Fulfillment Order Update · Lazada ส่งแบบ at-least-once ระบบกันซ้ำด้วย event_key",
+    curl: "curl -X POST \"https://<oms-public-url>/api/webhooks/lazada\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: <hex HMAC-SHA256>\" \\\n  -d '{\"seller_id\":\"1234567\",\"message_type\":0,\"timestamp\":1603766859530,\"site\":\"lazada_th\",\"data\":{\"order_status\":\"unpaid\",\"trade_order_id\":\"260422900198363\"}}'",
+    statuses: [[200, "รับแล้ว (รวมถึงส่งซ้ำ duplicate: true)"], [400, "body ว่าง ไม่ใช่ JSON หรือข้อมูลไม่ครบ"], [401, "ลายเซ็นไม่ถูกต้อง"], [413, "body ใหญ่เกิน 1 MB"], [503, "ยังไม่ได้ตั้ง secret หรือบันทึก event ไม่สำเร็จ"]] },
+  { id: "wh-tiktok", group: "Webhook", method: "POST", path: "/api/webhooks/tiktok", summary: "รับ Event จาก TikTok Shop",
+    desc: "TikTok Shop แจ้ง event ตาม topic ที่เปิดใน Partner Center ไม่ใช้ X-Api-Key แต่ตรวจลายเซ็น HMAC-SHA256 ใน header Authorization", auth: "none",
+    params: [P("Authorization", "header", "string", "y", "hex HMAC-SHA256 ของ <code>TIKTOK_APP_KEY + raw body</code> ด้วย key <code>TIKTOK_WEBHOOK_SECRET</code> หรือ <code>TIKTOK_APP_SECRET</code>")],
+    bodyFields: [F("(raw JSON)", "bytes", "y", "body ตามรูปแบบของแต่ละ Marketplace ไม่เกิน 1 MB ลายเซ็นคำนวณจาก raw body ที่ได้รับ")],
+    body: J({ type: 1, shop_id: "7494049642642441621", tts_notification_id: "7327112393057371910", timestamp: 1644412885, data: { order_id: "576461413038785752", order_status: "ON_HOLD", update_time: 1644412845 } }),
+    response: J({ accepted: true, duplicate: false, eventId: 1024, message: "Webhook accepted." }), flow: ["บันทึก event (ตัด token/secret ออก) ลง oms.t_oms_webhook_event โดยใช้ event_key กันรับซ้ำ แล้วตอบ 200 ทันที", "Background worker ดึง Order Detail จาก Marketplace แล้ว upsert ลง oms.t_oms_order", "ดึง order list ของร้านย้อนหลัง WEBHOOK_ORDER_LIST_LOOKBACK_HOURS ชั่วโมง (default 24, สูงสุด 5 หน้า × 50) ร้านเดียวกันภายใน 30 วินาทีรวมเป็นครั้งเดียว", "event ที่ค้างหรือ FAILED ถูกหยิบมาทำใหม่ตอน service start"],
+    warn: "event ที่มีแค่ package id ไม่มีเลข Order จะถูกบันทึกเป็น IGNORED · Order ที่ ON_HOLD จะ arrange shipment ไม่ได้จนกว่าสถานะจะเปลี่ยน",
+    curl: "curl -X POST \"https://<oms-public-url>/api/webhooks/tiktok\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: <hex HMAC-SHA256>\" \\\n  -d '{\"type\":1,\"shop_id\":\"7494049642642441621\",\"timestamp\":1644412885,\"data\":{\"order_id\":\"576461413038785752\",\"order_status\":\"ON_HOLD\"}}'",
+    statuses: [[200, "รับแล้ว (รวมถึงส่งซ้ำ duplicate: true)"], [400, "body ว่าง ไม่ใช่ JSON หรือข้อมูลไม่ครบ"], [401, "ลายเซ็นไม่ถูกต้อง"], [413, "body ใหญ่เกิน 1 MB"], [503, "ยังไม่ได้ตั้ง secret หรือบันทึก event ไม่สำเร็จ"]] },
   { id: "shop", group: "Shop & Chat", method: "GET", path: "/api/shop", summary: "ร้านที่เชื่อม (placeholder)",
     desc: "ยังเป็น placeholder คืนรายการ 3 platform ที่ connected = false เสมอ",
     response: ok([{ platform: "shopee", shopId: "", shopName: "Not connected", connected: false }, { platform: "lazada", shopId: "", shopName: "Not connected", connected: false }, { platform: "tiktok", shopId: "", shopName: "Not connected", connected: false }], "Shop connections retrieved"),
@@ -457,7 +487,7 @@ const REF = [
   { id: "ref-basics", group: "Reference", method: "REF", path: "หลักการใช้งาน", summary: "Authentication และรูปแบบ Response", ref: "basics" },
   { id: "ref-enums", group: "Reference", method: "REF", path: "PlatformType · OrderStatus", summary: "ค่า Enum", ref: "enums" },
   { id: "ref-models", group: "Reference", method: "REF", path: "UnifiedOrder · ProductItem", summary: "Data Models หลัก", ref: "models" },
-  { id: "ref-changes", group: "Reference", method: "REF", path: "v1.1 · 29/09/2026", summary: "มีอะไรเปลี่ยนแปลง", ref: "changes" },
+  { id: "ref-changes", group: "Reference", method: "REF", path: "v1.2 · 06/10/2026", summary: "มีอะไรเปลี่ยนแปลง", ref: "changes" },
 ];
 const ALL = [...REF, ...E];
 
@@ -489,6 +519,7 @@ function table(head, rows) {
   return `<div class="tbl-wrap"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
 function curlFor(ep) {
+  if (ep.curl) return ep.curl;
   const base = ($("#baseUrl").value || "").replace(/\/+$/, "");
   const key = $("#apiKey").value || "<your-api-key>";
   let path = ep.path;
@@ -875,7 +906,15 @@ function renderRef(r) {
       <p class="note">Error จาก Marketplace: <code>{Platform} API error '{code}': {message} (request_id: ...)</code></p></section>`;
   } else if (r.ref === "changes") {
     const chg = (list) => table(["Endpoint", "สิ่งที่เปลี่ยน"], list.map(([a, b]) => `<tr><td class="n">${a}</td><td>${b}</td></tr>`));
-    h += `<p class="ep-desc">เอกสารเวอร์ชัน 1.1 อัปเดตตาม source code ล่าสุด (origin/main a00077d) การเปลี่ยนแปลงหลักคือ client ไม่ต้องส่ง accessToken ของ Marketplace อีกต่อไป</p>
+    h += `<p class="ep-desc">เอกสารเวอร์ชัน 1.2 อัปเดตตาม source code ล่าสุด (origin/main 9c6a51e)</p>
+    <section class="block"><h3>v1.2 · 06/10/2026</h3>${chg([
+      ["POST /api/webhooks/shopee, /lazada, /tiktok", "ใหม่: รับ webhook จาก Marketplace ตรวจลายเซ็น HMAC บันทึกลง <code>oms.t_oms_webhook_event</code> แล้วประมวลผลเบื้องหลัง"],
+      ["GET /api/auth/{platform}/authorize, /auth-url", "ต้องส่ง <code>platformAppShopId</code> (รหัส Connector) · App Key/Secret อ่านจากตาราง <code>oms.t_oms_platform_apps</code> แทน <code>.env</code>"],
+      ["GET /api/auth/{platform}/callback", "ตรวจ <code>state</code> และ redirect กลับหน้า Connector (<code>?oauth=success|error</code>) แทนการคืน JSON"],
+      ["POST /api/auth/{platform}/refresh", "ต้องส่ง <code>shopId</code>"],
+      ["การตั้งค่า", "<code>OMS_DATA_PROTECTION_APP_NAME</code> และ <code>OMS_DATA_PROTECTION_KEYS_PATH</code> บังคับ (ใช้ key ring ร่วมกับ BS-API-Core) · เพิ่ม <code>OMS_FRONTEND_CONNECTOR_URL</code>, <code>OMS_PUBLIC_BASE_URL</code> และค่า webhook"],
+    ])}
+    <p class="note">ฐานข้อมูล: เพิ่มตาราง <code>oms.t_oms_platform_apps</code>, <code>oms.t_oms_platform_app_shops</code> (จาก <code>Database/002_Create_PlatformApps.sql</code>), <code>oms.t_oms_webhook_event</code> และ <code>oms.t_oms_sync_log_detail</code></p></section>
     <section class="block"><h3>v1.1 · 29/09/2026</h3>${chg([
       ["POST /api/order/list", "ลบ <code>accessToken</code> ออกจาก body · บันทึก Order ลง <code>oms.t_oms_order</code> และ log ใน <code>oms.t_oms_sync_log</code>"],
       ["POST /api/order/all", "<code>platformCredentials</code> ไม่บังคับ (ไม่ส่ง = ทุกร้านที่ active) และเหลือแค่ platform + shopId"],
