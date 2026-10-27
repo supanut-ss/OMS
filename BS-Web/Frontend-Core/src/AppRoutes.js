@@ -50,6 +50,7 @@ import BusinessPartner from "./pages/Master/BusinessPartner";
 import ZoneCategory from "./pages/Master/ZoneCategory";
 import ZoneLocation from "./pages/Master/ZoneLocation";
 import Connector from "./pages/Master/Connector";
+import PlatformAppAdmin from "./pages/Master/PlatformAppAdmin";
 import InventoryViewer from "./pages/Transaction/InventoryViewer";
 import SyncLog from "./pages/LogSync/SyncLog";
 
@@ -161,6 +162,7 @@ export default function AppRoutes() {
 
         <Route path="master" element={<PermissionRoute />}>
           <Route path="connector" element={<Connector />} />
+          <Route path="connector/apps" element={<PlatformAppAdmin />} />
           <Route path="warehouse" element={<Warehouse lang={lang} />} />
           <Route path="owner" element={<Owner lang={lang} />} />
           <Route path="part" element={<Part lang={lang} />} />

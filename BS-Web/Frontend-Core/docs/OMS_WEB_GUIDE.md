@@ -342,10 +342,11 @@ Web OMS คือเว็บไซต์ที่รวมออเดอร์
 
 - React 19, React Router 7, Material UI 7 + MUI X Data Grid, Chart.js, Axios, SweetAlert2 ให้บริการใต้พาธ `/oms` (`REACT_APP_BASE_URL`)
 - สิทธิ์แต่ละหน้าควบคุมด้วยสิทธิ์เมนู (`PermissionRoute`) กำหนดเมนูที่ Authentication → Assign Menu
-- Route: `/dashboard/dashboard`, `/orderlist/orderlist`, `/orderlist/orderlist/:orderRecordId`, `/log/sync`, `/master/connector`
+- Route: `/dashboard/dashboard`, `/orderlist/orderlist`, `/orderlist/orderlist/:orderRecordId`, `/log/sync`, `/master/connector`, `/master/connector/apps`
 - การเข้าถึงข้อมูล:
   - Grid และ Dashboard ใช้ Gateway กลาง (`AxiosMaster`, `BSDataGrid`, `POST /dynamic/datagrid`) อ่าน schema `oms`: `t_oms_order`, `t_oms_sync_log`, `vw_oms_order_sync_history` ส่วนค่า combobox มาจาก `sec.t_com_combobox_item` (กลุ่ม `platform_shop`, `order_status`, `sync_status`)
   - Connector ใช้ Gateway: `GET /Connector`, `GET /Connector/apps`, `POST /Connector/save`, `POST /Connector/set-active`, `POST /Connector/{id}` (ลบ; ได้ HTTP 409 เมื่อยังถูกอ้างอิง)
+  - Platform App Admin ใช้ Gateway: `GET /PlatformApp`, `GET /PlatformApp/{id}`, `POST /PlatformApp/save`, `POST /PlatformApp/{id}/delete`
   - เริ่ม OAuth เรียก OMS API ตรง: `GET {OMS_API_URL}/auth/{platform}/auth-url?platformAppShopId={id}` และ URL ที่ได้ต้องเป็น `https://`
   - Resync: `GET /oms-orders/{platform}/{orderId}/resync[?shopId=]`
 - Secret ของ Marketplace ถูกส่งเพียงครั้งเดียวตอนสร้าง App Master และไม่ถูกส่งกลับมาที่เบราว์เซอร์ (มีเฉพาะแฟลก เช่น `hasAppKey`, `hasAppSecret`) Token เก็บอยู่ที่ OMS API
@@ -366,17 +367,29 @@ npm run build      # build สำหรับ production (craco)
 | `REACT_APP_BASE_URL` | `/oms` | พาธที่ให้บริการ SPA |
 | `REACT_APP_API_URL` | `https://<domain>/oms_gateway/v1/api` | Gateway สำหรับ Grid และ Connector |
 | `REACT_APP_OMS_API_URL` | `/api` | Base ของ OMS API สำหรับเริ่ม OAuth |
+| `REACT_APP_DEFAULT_MARKET_CODE` | `TH` | Market เริ่มต้นในหน้าต่างเชื่อมต่อร้าน |
 | `REACT_APP_FRONTEND_BASE_URL` | `https://<domain>/oms` | URL สาธารณะของ SPA |
 | `REACT_APP_OAUTH_CALLBACK_BASE_URL` | `https://<domain>/api/auth` | อ้างอิงสำหรับผู้ดูแล |
 | `REACT_APP_WEBHOOK_BASE_URL` | `https://<domain>/api/webhooks` | อ้างอิงสำหรับผู้ดูแล |
 
 ห้ามใส่ App Key, Secret หรือ Token ของ Marketplace ในตัวแปร `REACT_APP_*`
 
-### 5.4 Proxy, OAuth Callback และ Webhook
+### 5.4 จัดการ Platform App กลาง
+
+ผู้ใช้ที่มีสิทธิ์เพิ่มหรือแก้ไขเมนู Connector จะเห็นปุ่ม **จัดการ App กลาง**
+และเข้าใช้งานหน้า `/master/connector/apps` ได้โดยใช้สิทธิ์ของเมนู Connector เดิม
+
+- App Key และ App Secret ถูกเข้ารหัสก่อนบันทึกและไม่ถูกส่งกลับมาแสดงใน Browser
+- เว้น App Key หรือ App Secret ว่างตอนแก้ไขเพื่อคงค่าเดิม
+- ในหนึ่ง Platform + Market + Environment มี Active Default App ได้หนึ่งรายการ
+- การเปลี่ยน App Key/Secret จะกำหนดให้ Connector ที่ผูกอยู่ต้อง OAuth ใหม่
+- App ที่มี Connector หรือประวัติ OAuth แล้วจะลบไม่ได้ ให้ปิดใช้งานแทน
+
+### 5.5 Proxy, OAuth Callback และ Webhook
 
 ดู [OMS_MARKETPLACE_OAUTH_WEBHOOKS.md](OMS_MARKETPLACE_OAUTH_WEBHOOKS.md) โดยสรุป: ต้อง route `/api/auth/*` และ `/api/webhooks/*` ไปที่ OMS API **ก่อน** กฎ fallback ของ SPA และลงทะเบียน Callback URL ให้ตรงกัน (เหมือน Redirect URL ของ Connector) ในคอนโซลของแต่ละ Marketplace
 
-### 5.5 เอกสารที่เกี่ยวข้อง
+### 5.6 เอกสารที่เกี่ยวข้อง
 
 - [OMS_MARKETPLACE_OAUTH_WEBHOOKS.md](OMS_MARKETPLACE_OAUTH_WEBHOOKS.md) — Public route, proxy, ตั้งค่า OAuth และ Webhook
 - [BSDataGrid.md](BSDataGrid.md) — คอมโพเนนต์ตารางที่ใช้ใน Order List และ Sync Log

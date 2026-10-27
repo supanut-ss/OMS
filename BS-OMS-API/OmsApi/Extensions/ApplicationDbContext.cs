@@ -9,6 +9,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PlatformCredential> PlatformCredentials => Set<PlatformCredential>();
     public DbSet<PlatformApp> PlatformApps => Set<PlatformApp>();
     public DbSet<PlatformAppShop> PlatformAppShops => Set<PlatformAppShop>();
+    public DbSet<OAuthSession> OAuthSessions => Set<OAuthSession>();
     public DbSet<PlatformPackage> PlatformPackages => Set<PlatformPackage>();
     public DbSet<PlatformPackageItem> PlatformPackageItems => Set<PlatformPackageItem>();
     public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
@@ -31,7 +32,9 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("t_oms_platform_credential", "oms");
             entity.HasKey(e => e.PlatformCredentialId);
             entity.HasIndex(e => new { e.Platform, e.ShopId }).IsUnique();
+            entity.HasIndex(e => e.PlatformAppShopId).IsUnique().HasFilter("[platform_app_shop_id] IS NOT NULL");
             entity.Property(e => e.PlatformCredentialId).HasColumnName("platform_credential_id");
+            entity.Property(e => e.PlatformAppShopId).HasColumnName("platform_app_shop_id");
             entity.Property(e => e.Platform).HasColumnName("platform").HasColumnType("varchar(32)").IsRequired();
             entity.Property(e => e.ShopId).HasColumnName("shop_id").HasColumnType("varchar(128)").IsRequired();
             entity.Property(e => e.ShopName).HasColumnName("shop_name").HasMaxLength(256);
@@ -49,6 +52,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdateBy).HasColumnName("update_by").HasMaxLength(80);
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+            entity.HasOne(e => e.PlatformAppShop)
+                .WithOne(e => e.Credential)
+                .HasForeignKey<PlatformCredential>(e => e.PlatformAppShopId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<PlatformApp>(entity =>
@@ -63,6 +70,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AppSecretEncrypted).HasColumnName("app_secret_encrypted").HasColumnType("nvarchar(max)").IsRequired();
             entity.Property(e => e.RedirectUrl).HasColumnName("redirect_url").HasMaxLength(2048).IsRequired();
             entity.Property(e => e.ServiceId).HasColumnName("service_id").HasMaxLength(255);
+            entity.Property(e => e.CountryCode).HasColumnName("country_code").HasColumnType("varchar(2)").IsRequired();
+            entity.Property(e => e.Environment).HasColumnName("environment").HasColumnType("varchar(16)").IsRequired();
+            entity.Property(e => e.IsDefault).HasColumnName("is_default").HasColumnType("varchar(3)").IsRequired();
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasMaxLength(3).IsRequired();
             entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
             entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
@@ -81,6 +91,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Platform).HasColumnName("platform").HasMaxLength(32).IsRequired();
             entity.Property(e => e.ShopId).HasColumnName("shop_id").HasMaxLength(128).IsRequired();
             entity.Property(e => e.ShopName).HasColumnName("shop_name").HasMaxLength(256);
+            entity.Property(e => e.ConnectionStatus).HasColumnName("connection_status").HasColumnType("varchar(32)").IsRequired();
+            entity.Property(e => e.AuthorizedDate).HasColumnName("authorized_date").HasColumnType("datetime");
+            entity.Property(e => e.DisconnectedDate).HasColumnName("disconnected_date").HasColumnType("datetime");
+            entity.Property(e => e.LastAuthError).HasColumnName("last_auth_error").HasMaxLength(2000);
             entity.Property(e => e.IsActive).HasColumnName("is_active").HasMaxLength(3).IsRequired();
             entity.Property(e => e.CreateBy).HasColumnName("create_by").HasMaxLength(80);
             entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
@@ -88,6 +102,30 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
             entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
             entity.HasOne(e => e.PlatformApp).WithMany(e => e.Shops).HasForeignKey(e => e.PlatformAppId);
+        });
+
+        builder.Entity<OAuthSession>(entity =>
+        {
+            entity.ToTable("t_oms_oauth_session", "oms");
+            entity.HasKey(e => e.OAuthSessionId);
+            entity.HasIndex(e => e.StateHash).IsUnique();
+            entity.HasIndex(e => new { e.Status, e.ExpiresDate });
+            entity.Property(e => e.OAuthSessionId).HasColumnName("oauth_session_id");
+            entity.Property(e => e.StateHash).HasColumnName("state_hash").HasColumnType("binary(32)").IsRequired();
+            entity.Property(e => e.PlatformAppId).HasColumnName("platform_app_id");
+            entity.Property(e => e.Platform).HasColumnName("platform").HasMaxLength(32).IsRequired();
+            entity.Property(e => e.RequestedBy).HasColumnName("requested_by").HasMaxLength(80);
+            entity.Property(e => e.Status).HasColumnName("status").HasColumnType("varchar(16)").IsRequired();
+            entity.Property(e => e.ExpiresDate).HasColumnName("expires_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.ConsumedDate).HasColumnName("consumed_date").HasColumnType("datetime");
+            entity.Property(e => e.CallbackError).HasColumnName("callback_error").HasMaxLength(2000);
+            entity.Property(e => e.CreateDate).HasColumnName("create_date").HasColumnType("datetime").IsRequired();
+            entity.Property(e => e.UpdateDate).HasColumnName("update_date").HasColumnType("datetime");
+            entity.Property(e => e.RowVersion).HasColumnName("rowversion").IsRowVersion();
+            entity.HasOne(e => e.PlatformApp)
+                .WithMany(e => e.OAuthSessions)
+                .HasForeignKey(e => e.PlatformAppId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<PlatformPackage>(entity =>

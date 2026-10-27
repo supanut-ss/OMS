@@ -9,6 +9,9 @@ public sealed class PlatformApp
     public string AppSecretEncrypted { get; set; } = string.Empty;
     public string RedirectUrl { get; set; } = string.Empty;
     public string? ServiceId { get; set; }
+    public string CountryCode { get; set; } = "TH";
+    public string Environment { get; set; } = "PRODUCTION";
+    public string IsDefault { get; set; } = "NO";
     public string IsActive { get; set; } = "YES";
     public string? CreateBy { get; set; }
     public DateTime CreateDate { get; set; }
@@ -16,4 +19,5 @@ public sealed class PlatformApp
     public DateTime? UpdateDate { get; set; }
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public ICollection<PlatformAppShop> Shops { get; set; } = new List<PlatformAppShop>();
+    public ICollection<OAuthSession> OAuthSessions { get; set; } = new List<OAuthSession>();
 }

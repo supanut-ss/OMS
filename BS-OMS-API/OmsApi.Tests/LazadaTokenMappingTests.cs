@@ -28,7 +28,7 @@ public class LazadaTokenMappingTests
             "ReadLazadaShop", BindingFlags.NonPublic | BindingFlags.Static);
 
         var result = ((string ShopId, string? ShopName))method!.Invoke(
-            null, [document.RootElement, null])!;
+            null, [document.RootElement, null, null])!;
 
         Assert.Equal("222", result.ShopId);
         Assert.Equal("THABC123 (TH)", result.ShopName);
@@ -51,7 +51,30 @@ public class LazadaTokenMappingTests
             "ReadLazadaShop", BindingFlags.NonPublic | BindingFlags.Static);
 
         var result = ((string ShopId, string? ShopName))method!.Invoke(
-            null, [document.RootElement, "222"])!;
+            null, [document.RootElement, "222", null])!;
+
+        Assert.Equal("222", result.ShopId);
+        Assert.Equal("SHOPTH (TH)", result.ShopName);
+    }
+
+    [Fact]
+    public void ReadLazadaShop_SelectsShopForRequestedMarket()
+    {
+        const string json = """
+        {
+          "country_user_info": [
+            { "country": "sg", "seller_id": "111", "short_code": "SHOPSG" },
+            { "country": "th", "seller_id": "222", "short_code": "SHOPTH" }
+          ]
+        }
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var method = typeof(PlatformAuthService).GetMethod(
+            "ReadLazadaShop", BindingFlags.NonPublic | BindingFlags.Static);
+
+        var result = ((string ShopId, string? ShopName))method!.Invoke(
+            null, [document.RootElement, null, "TH"])!;
 
         Assert.Equal("222", result.ShopId);
         Assert.Equal("SHOPTH (TH)", result.ShopName);

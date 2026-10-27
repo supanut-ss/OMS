@@ -2,6 +2,7 @@
 public class PlatformCredential
 {
     public long PlatformCredentialId { get; set; }
+    public long? PlatformAppShopId { get; set; }
     public string Platform { get; set; } = string.Empty;
     public string ShopId { get; set; } = string.Empty;
     public string? ShopName { get; set; }
@@ -19,4 +20,5 @@ public class PlatformCredential
     public string? UpdateBy { get; set; }
     public DateTime? UpdateDate { get; set; }
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    public PlatformAppShop? PlatformAppShop { get; set; }
 }

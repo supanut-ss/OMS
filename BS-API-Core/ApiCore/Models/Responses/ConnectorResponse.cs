@@ -5,6 +5,8 @@ namespace ApiCore.Models.Responses
         public long PlatformAppShopId { get; set; }
         public long PlatformAppId { get; set; }
         public string AppName { get; set; } = string.Empty;
+        public string CountryCode { get; set; } = string.Empty;
+        public string Environment { get; set; } = string.Empty;
         public string Platform { get; set; } = string.Empty;
         public string ShopId { get; set; } = string.Empty;
         public string? ShopName { get; set; }
@@ -16,6 +18,8 @@ namespace ApiCore.Models.Responses
         public DateTime? RefreshTokenExpiresDate { get; set; }
         public bool IsActive { get; set; }
         public bool RequiresReauthorization { get; set; }
+        public string ConnectionStatus { get; set; } = string.Empty;
+        public DateTime? AuthorizedDate { get; set; }
         public DateTime? LastRefreshDate { get; set; }
         public DateTime? LastUseDate { get; set; }
         public string? LastError { get; set; }
@@ -28,6 +32,9 @@ namespace ApiCore.Models.Responses
         public long PlatformAppId { get; set; }
         public string Platform { get; set; } = string.Empty;
         public string AppName { get; set; } = string.Empty;
+        public string CountryCode { get; set; } = string.Empty;
+        public string Environment { get; set; } = string.Empty;
+        public bool IsDefault { get; set; }
         public bool IsActive { get; set; }
         public int ShopCount { get; set; }
     }

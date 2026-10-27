@@ -18,6 +18,8 @@ namespace ApiCore.Services.Implementation
             shop.platform_app_shop_id AS PlatformAppShopId,
             shop.platform_app_id AS PlatformAppId,
             app.app_name AS AppName,
+            app.country_code AS CountryCode,
+            app.environment AS Environment,
             shop.platform AS Platform,
             shop.shop_id AS ShopId,
             shop.shop_name AS ShopName,
@@ -30,6 +32,8 @@ namespace ApiCore.Services.Implementation
             CASE WHEN shop.is_active = N'YES' THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS IsActive,
             CASE WHEN credential.platform_credential_id IS NULL OR credential.access_token_encrypted IS NULL OR credential.requires_reauthorization = N'YES'
                  THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS RequiresReauthorization,
+            shop.connection_status AS ConnectionStatus,
+            shop.authorized_date AS AuthorizedDate,
             credential.last_refresh_date AS LastRefreshDate,
             credential.last_use_date AS LastUseDate,
             credential.last_error AS LastError,
@@ -68,7 +72,7 @@ namespace ApiCore.Services.Implementation
                 SELECT {SelectColumns}
                 FROM {PlatformAppShopsTable} shop
                 INNER JOIN {PlatformAppsTable} app ON app.platform_app_id = shop.platform_app_id
-                LEFT JOIN {CredentialTable} credential ON credential.platform = shop.platform AND credential.shop_id = shop.shop_id
+                LEFT JOIN {CredentialTable} credential ON credential.platform_app_shop_id = shop.platform_app_shop_id
                 ORDER BY shop.platform, shop.shop_name, shop.shop_id
                 """, cancellationToken: cancellationToken));
             return rows.AsList();
@@ -84,14 +88,18 @@ namespace ApiCore.Services.Implementation
                 SELECT app.platform_app_id AS PlatformAppId,
                        app.platform AS Platform,
                        app.app_name AS AppName,
+                       app.country_code AS CountryCode,
+                       app.environment AS Environment,
+                       CASE WHEN app.is_default = N'YES' THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS IsDefault,
                        CAST(1 AS bit) AS IsActive,
                        COUNT(shop.platform_app_shop_id) AS ShopCount
                 FROM {PlatformAppsTable} app
                 LEFT JOIN {PlatformAppShopsTable} shop
                     ON shop.platform_app_id = app.platform_app_id AND shop.is_active = N'YES'
                 WHERE (@Platform IS NULL OR app.platform = @Platform) AND app.is_active = N'YES'
-                GROUP BY app.platform_app_id, app.platform, app.app_name
-                ORDER BY app.platform, app.app_name
+                GROUP BY app.platform_app_id, app.platform, app.app_name,
+                         app.country_code, app.environment, app.is_default
+                ORDER BY app.platform, app.country_code, app.environment, app.app_name
                 """, new { Platform = normalizedPlatform }, cancellationToken: cancellationToken));
             return rows.AsList();
         }
@@ -145,10 +153,9 @@ namespace ApiCore.Services.Implementation
 
             await connection.ExecuteAsync(new CommandDefinition($"""
                 DELETE FROM {CredentialTable}
-                WHERE platform = @Platform
-                  AND shop_id = @ShopId
+                WHERE platform_app_shop_id = @Id
                 """,
-                new { connector.Platform, connector.ShopId },
+                new { Id = id },
                 transaction,
                 cancellationToken: cancellationToken));
 
@@ -256,11 +263,18 @@ namespace ApiCore.Services.Implementation
                     if (previousAppId.Value != appId)
                     {
                         await connection.ExecuteAsync(new CommandDefinition($"""
+                            UPDATE {PlatformAppShopsTable}
+                            SET connection_status = 'REAUTHORIZATION_REQUIRED',
+                                last_auth_error = NULL,
+                                update_by = @UpdateBy,
+                                update_date = SYSUTCDATETIME()
+                            WHERE platform_app_shop_id = @Id;
+
                             UPDATE credential
                             SET requires_reauthorization = N'YES', last_error = NULL,
                                 update_by = @UpdateBy, update_date = SYSUTCDATETIME()
                             FROM {CredentialTable} credential
-                            INNER JOIN {PlatformAppShopsTable} shop ON shop.platform = credential.platform AND shop.shop_id = credential.shop_id
+                            INNER JOIN {PlatformAppShopsTable} shop ON shop.platform_app_shop_id = credential.platform_app_shop_id
                             WHERE shop.platform_app_shop_id = @Id
                             """, new { Id = platformAppShopId, UpdateBy = updateBy }, transaction: transaction, cancellationToken: cancellationToken));
                     }
@@ -272,6 +286,7 @@ namespace ApiCore.Services.Implementation
                 await EnsureCredentialPlaceholderAsync(
                     connection,
                     transaction,
+                    platformAppShopId,
                     platform,
                     shopId,
                     NullIfWhiteSpace(request.ShopName),
@@ -332,19 +347,29 @@ namespace ApiCore.Services.Implementation
              
             await using var connection = await _connectionFactory.CreateAndOpenConnectionAsync();
             var affected = await connection.ExecuteAsync(new CommandDefinition($"""
+                UPDATE {PlatformAppShopsTable}
+                SET connection_status = @ConnectionStatus,
+                    last_auth_error = @LastError,
+                    update_date = SYSUTCDATETIME(),
+                    update_by = @UpdateBy
+                WHERE platform_app_shop_id = @Id;
+
                 UPDATE credential
                 SET requires_reauthorization = @RequiresReauthorization,
                     last_error = @LastError,
                     update_date = SYSUTCDATETIME(),
                     update_by = @UpdateBy
                 FROM {CredentialTable} credential
-                INNER JOIN {PlatformAppShopsTable} shop ON shop.platform = credential.platform AND shop.shop_id = credential.shop_id
+                INNER JOIN {PlatformAppShopsTable} shop ON shop.platform_app_shop_id = credential.platform_app_shop_id
                 WHERE shop.platform_app_shop_id = @Id
                 """,
                 new
                 {
                     Id = request.PlatformAppShopId,
                     RequiresReauthorization = request.RequiresReauthorization ? "YES" : "NO",
+                    ConnectionStatus = request.RequiresReauthorization
+                        ? "REAUTHORIZATION_REQUIRED"
+                        : "CONNECTED",
                     LastError = NullIfWhiteSpace(request.RequiresReauthorization ? request.LastError : null),
                     UpdateBy = updateBy, 
                 }, cancellationToken: cancellationToken));
@@ -382,7 +407,7 @@ namespace ApiCore.Services.Implementation
                 SELECT {SelectColumns}
                 FROM {PlatformAppShopsTable} shop
                 INNER JOIN {PlatformAppsTable} app ON app.platform_app_id = shop.platform_app_id
-                LEFT JOIN {CredentialTable} credential ON credential.platform = shop.platform AND credential.shop_id = shop.shop_id
+                LEFT JOIN {CredentialTable} credential ON credential.platform_app_shop_id = shop.platform_app_shop_id
                 WHERE shop.platform_app_shop_id = @Id
                 """, new { Id = id }, cancellationToken: cancellationToken));
         }
@@ -441,6 +466,7 @@ namespace ApiCore.Services.Implementation
         private static async Task EnsureCredentialPlaceholderAsync(
             DbConnection connection,
             DbTransaction transaction,
+            long platformAppShopId,
             string platform,
             string shopId,
             string? shopName,
@@ -448,10 +474,19 @@ namespace ApiCore.Services.Implementation
             CancellationToken cancellationToken)
         {
             await connection.ExecuteAsync(new CommandDefinition($"""
+                UPDATE {CredentialTable}
+                SET platform_app_shop_id = @PlatformAppShopId,
+                    shop_name = COALESCE(@ShopName, shop_name),
+                    update_by = @UpdateBy,
+                    update_date = SYSUTCDATETIME()
+                WHERE platform = @Platform
+                  AND shop_id = @ShopId
+                  AND platform_app_shop_id IS NULL;
+
                 INSERT INTO {CredentialTable}
-                    (platform, shop_id, shop_name, is_active, requires_reauthorization,
+                    (platform_app_shop_id, platform, shop_id, shop_name, is_active, requires_reauthorization,
                      create_by, create_date, update_by, update_date)
-                SELECT @Platform, @ShopId, @ShopName, N'YES', N'YES',
+                SELECT @PlatformAppShopId, @Platform, @ShopId, @ShopName, N'YES', N'YES',
                        @UpdateBy, SYSUTCDATETIME(), @UpdateBy, SYSUTCDATETIME()
                 WHERE NOT EXISTS (
                     SELECT 1
@@ -461,6 +496,7 @@ namespace ApiCore.Services.Implementation
                 """,
                 new
                 {
+                    PlatformAppShopId = platformAppShopId,
                     Platform = platform,
                     ShopId = shopId,
                     ShopName = shopName,

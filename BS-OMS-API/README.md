@@ -143,6 +143,10 @@ OMS_DB_CONNECTION_STRING=<SQL Server connection string>
 # On Server use an absolute persistent folder and grant Modify to the OMS process.
 OMS_DATA_PROTECTION_KEYS_PATH=D:\ProgramData\BS-OMS\keys
 OMS_DATA_PROTECTION_APP_NAME=OmsApi
+# Default used when the client omits marketCode; App Master rows use the same value.
+OMS_DEFAULT_MARKET_CODE=TH
+# Select App Master rows from PRODUCTION or SANDBOX.
+OMS_PLATFORM_ENVIRONMENT=PRODUCTION
 # ST only; remove or leave unset in Production
 # OMS_ENABLE_SANDBOX_TOKEN_IMPORT=YES
 # CORS_ALLOWED_ORIGINS=http://localhost:3000,https://your-wms-host

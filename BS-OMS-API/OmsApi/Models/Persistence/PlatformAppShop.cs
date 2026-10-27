@@ -7,6 +7,10 @@ public sealed class PlatformAppShop
     public string Platform { get; set; } = string.Empty;
     public string ShopId { get; set; } = string.Empty;
     public string? ShopName { get; set; }
+    public string ConnectionStatus { get; set; } = "PENDING_AUTHORIZATION";
+    public DateTime? AuthorizedDate { get; set; }
+    public DateTime? DisconnectedDate { get; set; }
+    public string? LastAuthError { get; set; }
     public string IsActive { get; set; } = "YES";
     public string? CreateBy { get; set; }
     public DateTime CreateDate { get; set; }
@@ -14,4 +18,5 @@ public sealed class PlatformAppShop
     public DateTime? UpdateDate { get; set; }
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     public PlatformApp PlatformApp { get; set; } = null!;
+    public PlatformCredential? Credential { get; set; }
 }

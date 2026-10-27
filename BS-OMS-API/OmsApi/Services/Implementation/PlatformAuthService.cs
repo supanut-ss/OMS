@@ -1,6 +1,8 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using OmsApi.Extensions;
 using OmsApi.Models.Persistence;
 using System.Text.Json;
@@ -20,7 +22,6 @@ namespace OmsApi.Services.Implementation
         private readonly ILogger<PlatformAuthService> _logger;
         private readonly ApplicationDbContext _db;
         private readonly IDataProtector _tokenProtector;
-        private readonly IDataProtector _oauthStateProtector;
 
         // Shopee credentials
         private long _shopeePartnerId;
@@ -48,7 +49,6 @@ namespace OmsApi.Services.Implementation
         {
             _db = db;
             _tokenProtector = protectionProvider.CreateProtector("OmsApi.PlatformCredentials.v1");
-            _oauthStateProtector = protectionProvider.CreateProtector("OmsApi.OAuthState.v1");
             _logger = logger;
 
             _shopeeApiUrl = Environment.GetEnvironmentVariable("SHOPEE_API_URL") ?? "https://partner.shopeemobile.com";
@@ -61,8 +61,73 @@ namespace OmsApi.Services.Implementation
 
         public async Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformAppShopId, CancellationToken cancellationToken = default)
         {
-            await LoadAppCredentialAsync(platform, platformAppShopId, cancellationToken);
-            var state = _oauthStateProtector.Protect(JsonSerializer.Serialize(new OAuthState(platformAppShopId, platform, DateTime.UtcNow.AddMinutes(10))));
+            var appShop = await _db.PlatformAppShops
+                .Include(x => x.PlatformApp)
+                .SingleOrDefaultAsync(x => x.PlatformAppShopId == platformAppShopId, cancellationToken)
+                ?? throw new InvalidOperationException("Connector was not found.");
+            if (!string.Equals(appShop.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Connector platform does not match the OAuth platform.");
+            if (appShop.IsActive != "YES")
+                throw new InvalidOperationException("Connector is inactive.");
+
+            return await CreateAuthorizationUrlAsync(
+                platform,
+                appShop.PlatformApp,
+                appShop.UpdateBy ?? appShop.CreateBy,
+                cancellationToken);
+        }
+
+        public async Task<string> GetAuthorizationUrlAsync(
+            PlatformType platform,
+            string? marketCode,
+            string? requestedBy = null,
+            CancellationToken cancellationToken = default)
+        {
+            var normalizedMarket = NormalizeMarketCode(marketCode);
+            var appEnvironment = NormalizeEnvironment(
+                Environment.GetEnvironmentVariable("OMS_PLATFORM_ENVIRONMENT"));
+            var platformName = platform.ToString();
+
+            var platformApp = await _db.PlatformApps.SingleOrDefaultAsync(x =>
+                x.Platform == platformName &&
+                x.CountryCode == normalizedMarket &&
+                x.Environment == appEnvironment &&
+                x.IsDefault == "YES" &&
+                x.IsActive == "YES",
+                cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"No active default {platformName} App Master is configured for market " +
+                    $"'{normalizedMarket}' and environment '{appEnvironment}'.");
+
+            return await CreateAuthorizationUrlAsync(
+                platform,
+                platformApp,
+                requestedBy,
+                cancellationToken);
+        }
+
+        private async Task<string> CreateAuthorizationUrlAsync(
+            PlatformType platform,
+            PlatformApp platformApp,
+            string? requestedBy,
+            CancellationToken cancellationToken)
+        {
+            LoadAppCredential(platform, platformApp);
+
+            var state = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+            var now = DateTime.UtcNow;
+            _db.OAuthSessions.Add(new OAuthSession
+            {
+                OAuthSessionId = Guid.NewGuid(),
+                StateHash = HashOAuthState(state),
+                PlatformAppId = platformApp.PlatformAppId,
+                Platform = platform.ToString(),
+                RequestedBy = Truncate(string.IsNullOrWhiteSpace(requestedBy) ? null : requestedBy.Trim(), 80),
+                Status = "PENDING",
+                ExpiresDate = now.AddMinutes(10),
+                CreateDate = now
+            });
+            await _db.SaveChangesAsync(cancellationToken);
 
             return platform switch
             {
@@ -77,25 +142,62 @@ namespace OmsApi.Services.Implementation
         {
             _logger.LogInformation("🔑 Handling OAuth callback for {Platform}", platform);
             if (string.IsNullOrWhiteSpace(state)) throw new ArgumentException("OAuth state is required.");
-            var oauthState = JsonSerializer.Deserialize<OAuthState>(_oauthStateProtector.Unprotect(state))
+            var stateHash = HashOAuthState(state.Trim());
+            var now = DateTime.UtcNow;
+            var oauthSession = await _db.OAuthSessions
+                .Include(x => x.PlatformApp)
+                .SingleOrDefaultAsync(x => x.StateHash == stateHash)
                 ?? throw new ArgumentException("OAuth state is invalid.");
-            if (oauthState.Platform != platform || oauthState.ExpiresAtUtc <= DateTime.UtcNow)
-                throw new ArgumentException("OAuth state is invalid or expired.");
 
-            var appShop = await _db.PlatformAppShops.SingleOrDefaultAsync(
-                x => x.PlatformAppShopId == oauthState.PlatformAppShopId && x.Platform == platform.ToString())
-                ?? throw new InvalidOperationException("Configured connector was not found for the OAuth callback.");
-            if (platform == PlatformType.Shopee && !string.Equals(appShop.ShopId, shopId, StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("Shopee callback shop_id does not match the configured connector.");
-            await LoadAppCredentialAsync(platform, appShop.PlatformAppShopId, CancellationToken.None);
-
-            return platform switch
+            if (!string.Equals(oauthSession.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("OAuth state does not match the callback platform.");
+            if (oauthSession.Status != "PENDING")
+                throw new ArgumentException("OAuth state was already used.");
+            if (oauthSession.ExpiresDate <= now)
             {
-                PlatformType.Shopee => await HandleShopeeCallbackAsync(code, appShop.ShopId),
-                PlatformType.Lazada => await HandleLazadaCallbackAsync(code, appShop.ShopId),
-                PlatformType.TikTok => await HandleTikTokCallbackAsync(code, appShop.ShopId),
-                _ => throw new ArgumentException($"Unsupported platform: {platform}")
-            };
+                oauthSession.Status = "EXPIRED";
+                oauthSession.UpdateDate = now;
+                await _db.SaveChangesAsync(CancellationToken.None);
+                throw new ArgumentException("OAuth state is expired.");
+            }
+
+            // Consume before calling the marketplace. Authorization codes and state
+            // values are single-use, so concurrent callbacks cannot exchange twice.
+            oauthSession.Status = "CONSUMED";
+            oauthSession.ConsumedDate = now;
+            oauthSession.UpdateDate = now;
+            await _db.SaveChangesAsync(CancellationToken.None);
+
+            try
+            {
+                LoadAppCredential(platform, oauthSession.PlatformApp);
+                var tokenInfo = platform switch
+                {
+                    PlatformType.Shopee => await HandleShopeeCallbackAsync(code, shopId),
+                    PlatformType.Lazada => await HandleLazadaCallbackAsync(
+                        code, null, oauthSession.PlatformApp.CountryCode),
+                    PlatformType.TikTok => await HandleTikTokCallbackAsync(code, null),
+                    _ => throw new ArgumentException($"Unsupported platform: {platform}")
+                };
+
+                await SaveAuthorizedConnectorAsync(oauthSession, tokenInfo, CancellationToken.None);
+                return tokenInfo;
+            }
+            catch (Exception ex)
+            {
+                foreach (var entry in _db.ChangeTracker.Entries()
+                             .Where(entry => entry.Entity != oauthSession &&
+                                             entry.State is not EntityState.Unchanged and not EntityState.Detached)
+                             .ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
+                oauthSession.Status = "FAILED";
+                oauthSession.CallbackError = Truncate(ex.Message, 2000);
+                oauthSession.UpdateDate = DateTime.UtcNow;
+                await _db.SaveChangesAsync(CancellationToken.None);
+                throw;
+            }
         }
 
         private async Task LoadAppCredentialAsync(PlatformType platform, long credentialId, CancellationToken cancellationToken)
@@ -105,13 +207,22 @@ namespace OmsApi.Services.Implementation
                 ?? throw new InvalidOperationException("Connector was not found.");
             if (!string.Equals(appShop.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("Connector platform does not match the OAuth platform.");
-            if (appShop.IsActive != "YES" || appShop.PlatformApp.IsActive != "YES")
-                throw new InvalidOperationException("Connector or App Master is inactive.");
+            if (appShop.IsActive != "YES")
+                throw new InvalidOperationException("Connector is inactive.");
+            LoadAppCredential(platform, appShop.PlatformApp);
+        }
+
+        private void LoadAppCredential(PlatformType platform, PlatformApp platformApp)
+        {
+            if (!string.Equals(platformApp.Platform, platform.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("App Master platform does not match the OAuth platform.");
+            if (platformApp.IsActive != "YES")
+                throw new InvalidOperationException("App Master is inactive.");
             try
             {
-                var appKey = _tokenProtector.Unprotect(appShop.PlatformApp.AppKeyEncrypted);
-                var appSecret = _tokenProtector.Unprotect(appShop.PlatformApp.AppSecretEncrypted);
-                var redirectUrl = appShop.PlatformApp.RedirectUrl?.Trim();
+                var appKey = _tokenProtector.Unprotect(platformApp.AppKeyEncrypted);
+                var appSecret = _tokenProtector.Unprotect(platformApp.AppSecretEncrypted);
+                var redirectUrl = platformApp.RedirectUrl?.Trim();
                 if (string.IsNullOrWhiteSpace(redirectUrl)) throw new InvalidOperationException("Redirect URL is not configured.");
                 switch (platform)
                 {
@@ -121,14 +232,12 @@ namespace OmsApi.Services.Implementation
                     case PlatformType.Lazada:
                         _lazadaAppKey = appKey; _lazadaAppSecret = appSecret; _lazadaRedirectUrl = redirectUrl; break;
                     case PlatformType.TikTok:
-                        _tiktokAppKey = appKey; _tiktokAppSecret = appSecret; _tiktokRedirectUrl = redirectUrl; _tiktokServiceId = appShop.PlatformApp.ServiceId?.Trim() ?? string.Empty; break;
+                        _tiktokAppKey = appKey; _tiktokAppSecret = appSecret; _tiktokRedirectUrl = redirectUrl; _tiktokServiceId = platformApp.ServiceId?.Trim() ?? string.Empty; break;
                 }
             }
             catch (PlatformCredentialException) { throw; }
             catch (Exception ex) { throw new InvalidOperationException("Connector app credential could not be decrypted or is incomplete.", ex); }
         }
-
-        private sealed record OAuthState(long PlatformAppShopId, PlatformType Platform, DateTime ExpiresAtUtc);
 
         public async Task<TokenInfo> RefreshTokenAsync(PlatformType platform, string refreshToken, string? shopId = null)
         {
@@ -218,7 +327,8 @@ namespace OmsApi.Services.Implementation
         {
             _logger.LogInformation("Processing Shopee OAuth callback for shop {ShopId}", shopId);
 
-            var shopIdLong = long.TryParse(shopId, out var sid) ? sid : 0;
+            if (!long.TryParse(shopId, out var shopIdLong) || shopIdLong <= 0)
+                throw new ArgumentException("Shopee callback did not contain a valid shop_id.");
             var timestamp  = DateTimeHelper.CurrentUnixTimestamp();
             var apiPath    = "/api/v2/auth/token/get";
             var sign       = SignatureHelper.GenerateShopeeSignature(_shopeePartnerKey, _shopeePartnerId, apiPath, timestamp);
@@ -233,7 +343,9 @@ namespace OmsApi.Services.Implementation
                 var response       = await http.PostAsync(url, content);
                 var responseBody   = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation("🛒 Shopee token response: {Body}", responseBody);
+                _logger.LogInformation(
+                    "Shopee token exchange completed with HTTP {StatusCode}",
+                    response.StatusCode);
 
                 var json = JsonDocument.Parse(responseBody);
                 var root = json.RootElement;
@@ -258,7 +370,6 @@ namespace OmsApi.Services.Implementation
 
                 };
 
-                await SaveCredentialAsync(tokenInfo);
                 return tokenInfo;
             }
             catch (Exception ex) when (ex is not InvalidOperationException)
@@ -287,7 +398,9 @@ namespace OmsApi.Services.Implementation
                 var response       = await http.PostAsync(url, content);
                 var responseBody   = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation("🔄 Shopee refresh response: {Body}", responseBody);
+                _logger.LogInformation(
+                    "Shopee token refresh completed with HTTP {StatusCode}",
+                    response.StatusCode);
 
                 var json = JsonDocument.Parse(responseBody);
                 var root = json.RootElement;
@@ -343,19 +456,103 @@ namespace OmsApi.Services.Implementation
                 };
                 _db.PlatformCredentials.Add(credential);
             }
-            credential.ShopId = shopId;
+
+            var appShop = await _db.PlatformAppShops.SingleOrDefaultAsync(x =>
+                x.Platform == platform && x.ShopId == shopId);
+            if (appShop != null)
+                credential.PlatformAppShopId = appShop.PlatformAppShopId;
+
+            ApplyCredentialValues(credential, tokenInfo, now);
+            await _db.SaveChangesAsync();
+        }
+
+        private async Task SaveAuthorizedConnectorAsync(
+            OAuthSession oauthSession,
+            TokenInfo tokenInfo,
+            CancellationToken cancellationToken)
+        {
+            var platform = tokenInfo.Platform.ToString();
+            var shopId = tokenInfo.ShopId?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(shopId))
+                throw new InvalidOperationException("Marketplace did not return a Shop ID/shop cipher.");
+
+            var now = DateTime.UtcNow;
+            var auditUser = string.IsNullOrWhiteSpace(oauthSession.RequestedBy)
+                ? SystemUser
+                : oauthSession.RequestedBy;
+            var appShop = await _db.PlatformAppShops.SingleOrDefaultAsync(x =>
+                x.Platform == platform && x.ShopId == shopId,
+                cancellationToken);
+
+            if (appShop == null)
+            {
+                appShop = new PlatformAppShop
+                {
+                    PlatformAppId = oauthSession.PlatformAppId,
+                    Platform = platform,
+                    ShopId = shopId,
+                    CreateBy = auditUser,
+                    CreateDate = now
+                };
+                _db.PlatformAppShops.Add(appShop);
+            }
+
+            appShop.PlatformAppId = oauthSession.PlatformAppId;
+            appShop.ShopName = string.IsNullOrWhiteSpace(tokenInfo.ShopName)
+                ? appShop.ShopName
+                : tokenInfo.ShopName.Trim();
+            appShop.ConnectionStatus = "CONNECTED";
+            appShop.AuthorizedDate = now;
+            appShop.DisconnectedDate = null;
+            appShop.LastAuthError = null;
+            appShop.IsActive = "YES";
+            appShop.UpdateBy = auditUser;
+            appShop.UpdateDate = now;
+
+            var credential = await _db.PlatformCredentials.SingleOrDefaultAsync(x =>
+                x.Platform == platform && x.ShopId == shopId,
+                cancellationToken);
+            if (credential == null)
+            {
+                credential = new PlatformCredential
+                {
+                    Platform = platform,
+                    ShopId = shopId,
+                    CreateBy = auditUser,
+                    CreateDate = now
+                };
+                _db.PlatformCredentials.Add(credential);
+            }
+
+            credential.PlatformAppShop = appShop;
+            ApplyCredentialValues(credential, tokenInfo, now, auditUser);
+            oauthSession.CallbackError = null;
+            oauthSession.UpdateDate = now;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ApplyCredentialValues(
+            PlatformCredential credential,
+            TokenInfo tokenInfo,
+            DateTime now,
+            string updateBy = SystemUser)
+        {
+            credential.ShopId = tokenInfo.ShopId?.Trim() ?? credential.ShopId;
             credential.ShopName = tokenInfo.ShopName;
             credential.AccessTokenEncrypted = _tokenProtector.Protect(tokenInfo.AccessToken);
-            credential.RefreshTokenEncrypted = string.IsNullOrWhiteSpace(tokenInfo.RefreshToken) ? null : _tokenProtector.Protect(tokenInfo.RefreshToken);
+            credential.RefreshTokenEncrypted = string.IsNullOrWhiteSpace(tokenInfo.RefreshToken)
+                ? null
+                : _tokenProtector.Protect(tokenInfo.RefreshToken);
             credential.AccessTokenExpiresDate = tokenInfo.ExpiresAt;
-            credential.RefreshTokenExpiresDate = tokenInfo.RefreshExpiresAt > now ? tokenInfo.RefreshExpiresAt : null;
+            credential.RefreshTokenExpiresDate = tokenInfo.RefreshExpiresAt > now
+                ? tokenInfo.RefreshExpiresAt
+                : null;
             credential.IsActive = "YES";
             credential.RequiresReauthorization = "NO";
             credential.LastRefreshDate = now;
             credential.LastError = null;
-            credential.UpdateBy = SystemUser;
+            credential.UpdateBy = updateBy;
             credential.UpdateDate = now;
-            await _db.SaveChangesAsync();
         }
         #endregion
 
@@ -368,7 +565,10 @@ namespace OmsApi.Services.Implementation
                    $"&client_id={_lazadaAppKey}&state={state}";
         }
 
-        private async Task<TokenInfo> HandleLazadaCallbackAsync(string code, string? shopId)
+        private async Task<TokenInfo> HandleLazadaCallbackAsync(
+            string code,
+            string? shopId,
+            string? marketCode = null)
         {
             _logger.LogInformation("🏪 Exchanging Lazada authorization code");
 
@@ -381,7 +581,9 @@ namespace OmsApi.Services.Implementation
             };
 
             return await CallLazadaTokenApiAsync(
-                "/auth/token/create", parameters, "exchanging token", shopId);
+                "/auth/token/create", parameters, "exchanging token", shopId,
+                requestedMarketCode: marketCode,
+                persistCredential: false);
         }
 
         private async Task<TokenInfo> RefreshLazadaTokenAsync(string refreshToken, string? shopId)
@@ -397,7 +599,8 @@ namespace OmsApi.Services.Implementation
             };
 
             return await CallLazadaTokenApiAsync(
-                "/auth/token/refresh", parameters, "refreshing token", shopId, refreshToken);
+                "/auth/token/refresh", parameters, "refreshing token", shopId, refreshToken,
+                persistCredential: true);
         }
 
         private async Task<TokenInfo> CallLazadaTokenApiAsync(
@@ -405,7 +608,9 @@ namespace OmsApi.Services.Implementation
             Dictionary<string, string> parameters,
             string actionDescription,
             string? requestedShopId = null,
-            string? fallbackRefreshToken = null)
+            string? fallbackRefreshToken = null,
+            string? requestedMarketCode = null,
+            bool persistCredential = true)
         {
             var sign = SignatureHelper.GenerateLazadaSignature(_lazadaAppSecret, apiPath, parameters);
             parameters["sign"] = sign;
@@ -453,7 +658,7 @@ namespace OmsApi.Services.Implementation
                 if (string.IsNullOrWhiteSpace(accessToken))
                     throw new InvalidOperationException("Lazada token response does not contain access_token.");
 
-                var shop = ReadLazadaShop(root, requestedShopId);
+                var shop = ReadLazadaShop(root, requestedShopId, requestedMarketCode);
                 if (string.IsNullOrWhiteSpace(shop.ShopId))
                     throw new InvalidOperationException(
                         "Lazada token response does not contain seller_id/user_id required for credential persistence.");
@@ -469,7 +674,8 @@ namespace OmsApi.Services.Implementation
                     ShopName = shop.ShopName
                 };
 
-                await SaveCredentialAsync(tokenInfo);
+                if (persistCredential)
+                    await SaveCredentialAsync(tokenInfo);
                 return tokenInfo;
             }
             catch (Exception ex) when (ex is not InvalidOperationException)
@@ -480,12 +686,15 @@ namespace OmsApi.Services.Implementation
         }
 
         private static (string ShopId, string? ShopName) ReadLazadaShop(
-            JsonElement root, string? requestedShopId)
+            JsonElement root,
+            string? requestedShopId,
+            string? requestedMarketCode = null)
         {
             var account = root.TryGetProperty("account", out var accountElement)
                 ? ReadJsonText(accountElement)
                 : null;
             var shops = new List<(string ShopId, string? ShopName)>();
+            (string ShopId, string? ShopName)? marketShop = null;
 
             if (root.TryGetProperty("country_user_info", out var countryUsers) &&
                 countryUsers.ValueKind == JsonValueKind.Array)
@@ -510,6 +719,12 @@ namespace OmsApi.Services.Implementation
                         ? string.IsNullOrWhiteSpace(country) ? shortCode : $"{shortCode} ({country})"
                         : account;
                     shops.Add((sellerId, shopName));
+                    if (!string.IsNullOrWhiteSpace(requestedMarketCode) &&
+                        string.Equals(country, requestedMarketCode, StringComparison.OrdinalIgnoreCase) &&
+                        marketShop is null)
+                    {
+                        marketShop = (sellerId, shopName);
+                    }
                 }
             }
 
@@ -518,6 +733,12 @@ namespace OmsApi.Services.Implementation
                 var requested = shops.FirstOrDefault(shop => shop.ShopId == requestedShopId);
                 if (!string.IsNullOrWhiteSpace(requested.ShopId)) return requested;
             }
+
+            if (marketShop.HasValue)
+                return marketShop.Value;
+            if (!string.IsNullOrWhiteSpace(requestedMarketCode) && shops.Count > 0)
+                throw new InvalidOperationException(
+                    $"Lazada authorization did not return a shop for market '{requestedMarketCode}'.");
 
             if (shops.Count > 0) return shops[0];
 
@@ -573,7 +794,8 @@ namespace OmsApi.Services.Implementation
                 "auth_code",
                 code,
                 "authorized_code",
-                shopId);
+                shopId,
+                persistCredential: false);
         }
 
         private async Task<TokenInfo> RefreshTikTokTokenAsync(string refreshToken, string? shopId)
@@ -584,7 +806,8 @@ namespace OmsApi.Services.Implementation
                 "refresh_token",
                 refreshToken,
                 "refresh_token",
-                shopId);
+                shopId,
+                persistCredential: true);
         }
 
         private async Task<TokenInfo> CallTikTokTokenApiAsync(
@@ -592,7 +815,8 @@ namespace OmsApi.Services.Implementation
             string credentialParameter,
             string credentialValue,
             string grantType,
-            string? requestedShopId)
+            string? requestedShopId,
+            bool persistCredential)
         {
             if (string.IsNullOrWhiteSpace(_tiktokAppKey) || string.IsNullOrWhiteSpace(_tiktokAppSecret))
                 throw new InvalidOperationException("TIKTOK_APP_KEY and TIKTOK_APP_SECRET must be configured.");
@@ -650,7 +874,8 @@ namespace OmsApi.Services.Implementation
                 ShopName = shop.ShopName
             };
 
-            await SaveCredentialAsync(tokenInfo);
+            if (persistCredential)
+                await SaveCredentialAsync(tokenInfo);
             return tokenInfo;
         }
 
@@ -761,6 +986,36 @@ namespace OmsApi.Services.Implementation
 
             return value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString();
         }
+
+        private static byte[] HashOAuthState(string state) =>
+            SHA256.HashData(Encoding.UTF8.GetBytes(state));
+
+        private static string NormalizeMarketCode(string? marketCode)
+        {
+            var value = string.IsNullOrWhiteSpace(marketCode)
+                ? Environment.GetEnvironmentVariable("OMS_DEFAULT_MARKET_CODE") ?? "TH"
+                : marketCode;
+            value = value.Trim().ToUpperInvariant();
+            if (value.Length != 2 || value.Any(character => character is < 'A' or > 'Z'))
+                throw new ArgumentException("marketCode must be a two-letter market code such as TH, MY, or SG.");
+            return value;
+        }
+
+        private static string NormalizeEnvironment(string? environment)
+        {
+            var value = string.IsNullOrWhiteSpace(environment)
+                ? "PRODUCTION"
+                : environment.Trim().ToUpperInvariant();
+            if (value is not ("PRODUCTION" or "SANDBOX"))
+                throw new InvalidOperationException(
+                    "OMS_PLATFORM_ENVIRONMENT must be PRODUCTION or SANDBOX.");
+            return value;
+        }
+
+        private static string? Truncate(string? value, int maxLength) =>
+            string.IsNullOrEmpty(value) || value.Length <= maxLength
+                ? value
+                : value[..maxLength];
 
         #endregion
     }

@@ -81,6 +81,7 @@ builder.Services.AddScoped<ICount, CountService>();
 builder.Services.AddScoped<IInventory, InventoryService>();
 builder.Services.AddScoped<IPartAttachmentService, PartAttachmentService>();
 builder.Services.AddScoped<IConnectorService, ConnectorService>();
+builder.Services.AddScoped<IPlatformAppService, PlatformAppService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddControllers();

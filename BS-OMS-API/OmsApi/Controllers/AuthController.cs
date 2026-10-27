@@ -31,19 +31,26 @@ namespace OmsApi.Controllers
         /// Get OAuth authorization URL for a platform
         /// </summary>
         /// <param name="platform">Platform name: shopee, lazada, tiktok</param>
-        /// <param name="platformAppShopId">Configured App Master and shop mapping identifier</param>
+        /// <param name="platformAppShopId">Existing connector identifier for reauthorization</param>
+        /// <param name="marketCode">Two-letter market code for a new connection</param>
         /// <param name="cancellationToken">Request cancellation token</param>
         /// <returns>Redirect to platform OAuth page</returns>
         [HttpGet("{platform}/authorize")]
         [SwaggerOperation(Summary = "Redirect to platform OAuth authorization page")]
         [SwaggerResponse(302, "Redirect to OAuth page")]
         [SwaggerResponse(400, "Invalid platform")]
-        public async Task<IActionResult> Authorize(string platform, [FromQuery] long platformAppShopId, CancellationToken cancellationToken)
+        public async Task<IActionResult> Authorize(
+            string platform,
+            [FromQuery] long? platformAppShopId,
+            [FromQuery] string? marketCode,
+            CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId, cancellationToken);
+                var authUrl = platformAppShopId.HasValue
+                    ? await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId.Value, cancellationToken)
+                    : await _authService.GetAuthorizationUrlAsync(platformType, marketCode, cancellationToken: cancellationToken);
 
                 _logger.LogInformation("🔑 Redirecting to {Platform} OAuth: {Url}", platform, authUrl);
                 return Redirect(authUrl);
@@ -64,12 +71,18 @@ namespace OmsApi.Controllers
         /// </summary>
         [HttpGet("{platform}/auth-url")]
         [SwaggerOperation(Summary = "Get OAuth authorization URL")]
-        public async Task<IActionResult> GetAuthUrl(string platform, [FromQuery] long platformAppShopId, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAuthUrl(
+            string platform,
+            [FromQuery] long? platformAppShopId,
+            [FromQuery] string? marketCode,
+            CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId, cancellationToken);
+                var authUrl = platformAppShopId.HasValue
+                    ? await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId.Value, cancellationToken)
+                    : await _authService.GetAuthorizationUrlAsync(platformType, marketCode, cancellationToken: cancellationToken);
                 return Ok(ApiResponse<object>.Ok(new { url = authUrl }));
             }
             catch (ArgumentException ex)

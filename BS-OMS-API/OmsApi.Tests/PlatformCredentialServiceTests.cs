@@ -254,6 +254,13 @@ public class PlatformCredentialServiceTests
         public Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformAppShopId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<string> GetAuthorizationUrlAsync(
+            PlatformType platform,
+            string? marketCode,
+            string? requestedBy = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<TokenInfo> HandleCallbackAsync(
             PlatformType platform,
             string code,

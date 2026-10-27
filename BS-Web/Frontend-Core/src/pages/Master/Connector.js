@@ -2,15 +2,16 @@
 import axios from "axios";
 import {
   AddRounded,
+  AdminPanelSettingsRounded,
   CheckCircleRounded,
   DeleteOutlineRounded,
-  EditOutlined,
   HubRounded,
   PauseCircleOutlineRounded,
   RefreshRounded,
   SyncRounded,
   OpenInNewRounded,
 } from "@mui/icons-material";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Avatar,
   Alert,
@@ -18,7 +19,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Divider,
   IconButton,
   MenuItem,
   Paper,
@@ -79,16 +79,17 @@ const fieldSx = {
 
 const emptyDraft = {
   platform: "shopee",
-  displayName: "",
-  account: "",
-  platformAppId: "",
-  useNewApp: false,
-  appName: "",
-  appKey: "",
-  appSecret: "",
-  redirectUrl: "",
-  serviceId: "",
+  marketCode: process.env.REACT_APP_DEFAULT_MARKET_CODE || "TH",
 };
+
+const markets = [
+  { code: "TH", name: "Thailand" },
+  { code: "MY", name: "Malaysia" },
+  { code: "SG", name: "Singapore" },
+  { code: "ID", name: "Indonesia" },
+  { code: "PH", name: "Philippines" },
+  { code: "VN", name: "Vietnam" },
+];
 
 const mapConnector = (item) => {
   const platform = String(item?.platform || "shopee")
@@ -102,29 +103,28 @@ const mapConnector = (item) => {
       item.shopName || platforms[platform]?.subtitle || item.platform,
     account: item.shopId,
     enabled: item.isActive,
-    status: item.requiresReauthorization ? "error" : "connected",
+    status: item.connectionStatus || (item.requiresReauthorization ? "REAUTHORIZATION_REQUIRED" : "CONNECTED"),
   };
 };
 
 export default function Connector() {
+  const navigate = useNavigate();
+  const { permission = {} } = useOutletContext();
+  const canManageApps = Boolean(permission.is_add || permission.is_edit);
   const [connectors, setConnectors] = useState([]);
-  const [platformApps, setPlatformApps] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
   const [deletingConnectorId, setDeletingConnectorId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState({
     open: false,
     message: "",
     severity: "success",
   });
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(emptyDraft);
-
-  const editingConnector = useMemo(
-    () => connectors.find((item) => item.id === editingId),
-    [connectors, editingId],
+  const connectedCount = useMemo(
+    () => connectors.filter((item) => item.isActive && item.connectionStatus === "CONNECTED").length,
+    [connectors],
   );
   const updateDraft = (key) => (value) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -153,33 +153,13 @@ export default function Connector() {
     }
   }, []);
 
-  const loadPlatformApps = useCallback(async (platform) => {
-    try {
-      const response = await AxiosMaster.get("/Connector/apps", {
-        params: { platform },
-      });
-      const rows = response?.data?.data;
-      if (!Array.isArray(rows)) throw new Error("รูปแบบข้อมูล App Master จาก API ไม่ถูกต้อง");
-      setPlatformApps(rows);
-      return rows;
-    } catch (error) {
-      setPlatformApps([]);
-      setNotice({
-        open: true,
-        severity: "error",
-        message: error?.response?.data?.message_text || error?.message || "โหลด App Master ไม่สำเร็จ",
-      });
-      return [];
-    }
-  }, []);
-
   useEffect(() => {
     loadConnectors();
   }, [loadConnectors]);
 
-  const connectOAuth = async (connector) => {
-    const platform = connector.platform;
-    setOauthRedirecting(connector.id);
+  const connectOAuth = async ({ platform, id, marketCode }) => {
+    const redirectKey = id || `new-${platform}`;
+    setOauthRedirecting(redirectKey);
     const oauthTab = window.open("about:blank", "_blank");
     if (!oauthTab) {
       setOauthRedirecting("");
@@ -196,14 +176,18 @@ export default function Connector() {
 
     try {
       const { data } = await axios.get(
-        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url?platformAppShopId=${encodeURIComponent(connector.id)}`,
-        { timeout: 15000 },
+        `${Config.OMS_API_URL.replace(/\/$/, "")}/auth/${platform}/auth-url`,
+        {
+          params: id ? { platformAppShopId: id } : { marketCode },
+          timeout: 15000,
+        },
       );
       const authUrl = data?.data?.url || data?.url;
       if (!authUrl || !/^https:\/\//i.test(authUrl)) {
         throw new Error("API ไม่ได้ส่ง OAuth URL ที่ถูกต้อง");
       }
       setOauthRedirecting("");
+      setDialogOpen(false);
       oauthTab.location.replace(authUrl);
     } catch (error) {
       oauthTab.close();
@@ -213,106 +197,11 @@ export default function Connector() {
   };
 
   const openAdd = (platform = "shopee") => {
-    setEditingId(null);
     setDraft({ ...emptyDraft, platform });
-    loadPlatformApps(platform);
-    setDialogOpen(true);
-  };
-  const openEdit = (connector) => {
-    setEditingId(connector.id);
-    setDraft({
-      ...emptyDraft,
-      platform: connector.platform,
-      displayName: connector.shopName || connector.displayName,
-      account: connector.shopId || connector.account,
-      platformAppId: String(connector.platformAppId || ""),
-    });
-    loadPlatformApps(connector.platform);
     setDialogOpen(true);
   };
   const selectPlatform = (platform) => {
-    if (editingId) return;
-    setDraft((current) => ({
-      ...current,
-      platform,
-      platformAppId: "",
-      useNewApp: false,
-      appName: "",
-      appKey: "",
-      appSecret: "",
-      redirectUrl: "",
-      serviceId: "",
-    }));
-    loadPlatformApps(platform);
-  };
-  const saveConnector = async () => {
-    if (!draft.account.trim()) {
-      setNotice({
-        open: true,
-        severity: "warning",
-        message: "กรุณาระบุ Shop ID",
-      });
-      return;
-    }
-    if (!draft.useNewApp && !draft.platformAppId) {
-      setNotice({
-        open: true,
-        severity: "warning",
-        message: "กรุณาเลือก App Master หรือสร้าง App ใหม่",
-      });
-      return;
-    }
-    if (draft.useNewApp && (!draft.appName.trim() || !draft.appKey.trim() || !draft.appSecret.trim() || !draft.redirectUrl.trim())) {
-      setNotice({
-        open: true,
-        severity: "warning",
-        message: "กรุณาระบุชื่อ App, App Key, App Secret และ Redirect URL",
-      });
-      return;
-    }
-
-    const payload = {
-      platform: draft.platform,
-      shopId: draft.account.trim(),
-      shopName: draft.displayName.trim() || null,
-      platformAppId: draft.useNewApp ? null : Number(draft.platformAppId),
-      newApp: draft.useNewApp
-        ? {
-            appName: draft.appName.trim(),
-            appKey: draft.appKey.trim(),
-            appSecret: draft.appSecret.trim(),
-            redirectUrl: draft.redirectUrl.trim(),
-            serviceId: draft.serviceId.trim() || null,
-          }
-        : null,
-      isActive: editingConnector?.isActive ?? true,
-    };
-    if (editingId) payload.platformAppShopId = editingId;
-
-    setSaving(true);
-    try {
-      await AxiosMaster.post("/Connector/save", payload);
-      const refreshed = await loadConnectors();
-      setDialogOpen(false);
-      setNotice({
-        open: true,
-        severity: refreshed ? "success" : "warning",
-        message: refreshed
-          ? "บันทึก Connector สำเร็จ"
-          : "บันทึกสำเร็จ แต่โหลดรายการใหม่ไม่สำเร็จ",
-      });
-    } catch (error) {
-      setNotice({
-        open: true,
-        severity: "error",
-        message:
-          error?.response?.data?.message_text ||
-          error?.message ||
-          "บันทึก Connector ไม่สำเร็จ",
-      });
-    } finally {
-      setSaving(false);
-    }
+    setDraft((current) => ({ ...current, platform }));
   };
   const toggleConnector = async (connector) => {
     const nextIsActive = !connector.isActive;
@@ -416,26 +305,38 @@ export default function Connector() {
               </Box>
             </Stack>
           </Box>
-          <Button
-            onClick={() => openAdd()}
-            variant="contained"
-            startIcon={<AddRounded />}
-            sx={{
-              borderRadius: 2,
-              px: 2.25,
-              py: 1.1,
-              textTransform: "none",
-              boxShadow: "none",
-              bgcolor: "#168dae",
-              "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
-            }}
-          >
-            เพิ่ม Connector
-          </Button>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {canManageApps && (
+              <Button
+                onClick={() => navigate("/master/connector/apps")}
+                variant="outlined"
+                startIcon={<AdminPanelSettingsRounded />}
+                sx={{ borderRadius: 2, px: 2.25, py: 1.1, textTransform: "none" }}
+              >
+                จัดการ App กลาง
+              </Button>
+            )}
+            <Button
+              onClick={() => openAdd()}
+              variant="contained"
+              startIcon={<AddRounded />}
+              sx={{
+                borderRadius: 2,
+                px: 2.25,
+                py: 1.1,
+                textTransform: "none",
+                boxShadow: "none",
+                bgcolor: "#168dae",
+                "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
+              }}
+            >
+              เพิ่ม Connector
+            </Button>
+          </Stack>
         </Stack>
 
         <Alert severity="info">
-          เลือก App Master ที่มีอยู่ หรือสร้าง App ใหม่พร้อม Shop ครั้งแรก จากนั้นกด “เชื่อมต่อ OAuth” เพื่อรับ Token อัตโนมัติ
+          เลือก Marketplace และประเทศ จากนั้นระบบจะเลือก App กลางที่ตั้งค่าไว้และเปิดหน้า OAuth ให้โดยอัตโนมัติ
         </Alert>
 
         <Stack
@@ -454,7 +355,7 @@ export default function Connector() {
           </Box>
           <Chip
             icon={<SyncRounded />}
-            label={`${connectors.filter((item) => item.isActive && !item.requiresReauthorization).length} จาก ${connectors.length} เชื่อมต่อแล้ว`}
+            label={`${connectedCount} จาก ${connectors.length} เชื่อมต่อแล้ว`}
             sx={{
               bgcolor: "#eaf7f0",
               color: "#218653",
@@ -501,7 +402,7 @@ export default function Connector() {
           )}
           {connectors.map((connector) => {
             const platform = platforms[connector.platform] || platforms.shopee;
-            const connected = !connector.requiresReauthorization;
+            const connected = connector.connectionStatus === "CONNECTED" && !connector.requiresReauthorization;
             return (
               <Paper
                 key={connector.id}
@@ -537,7 +438,7 @@ export default function Connector() {
                       {connector.displayName || platform.subtitle}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" noWrap>
-                      {platform.name} · {connector.account}
+                      {platform.name} · {connector.countryCode || "—"} · {connector.account}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" noWrap>
                       App: {connector.appName || "—"}
@@ -595,19 +496,6 @@ export default function Connector() {
                         "aria-label": `เปิดใช้งาน ${platform.name}`,
                       }}
                     />
-                    <IconButton
-                      aria-label={`แก้ไข ${platform.name}`}
-                      onClick={() => openEdit(connector)}
-                      size="small"
-                      sx={{
-                        border: "1px solid #e3e9f1",
-                        borderRadius: "50%",
-                        width: 36,
-                        height: 36,
-                      }}
-                    >
-                      <EditOutlined fontSize="small" />
-                    </IconButton>
                     <IconButton
                       aria-label={`ลบ ${platform.name}`}
                       title={`ลบ ${platform.name}`}
@@ -696,32 +584,28 @@ export default function Connector() {
 
       <BSDialog
         open={dialogOpen}
-        onClose={() => !saving && setDialogOpen(false)}
-        maxWidth="md"
+        onClose={() => !oauthRedirecting && setDialogOpen(false)}
+        maxWidth="sm"
         fullWidth
-        title={
-          editingConnector
-            ? `Edit Connector — ${platforms[draft.platform]?.name}`
-            : "Add sales channel"
-        }
+        title="เชื่อมต่อช่องทางขาย"
         contentDividers
         titleSx={{ bgcolor: "#168dae", color: "white" }}
         contentSx={{ p: { xs: 2, sm: 2.5 } }}
         actions={
           <>
             <BSCloseOutlinedButton
-              disabled={saving}
+              disabled={Boolean(oauthRedirecting)}
               onClick={() => setDialogOpen(false)}
               sx={{ textTransform: "none", borderRadius: 2 }}
             >
-              Cancel
+              ยกเลิก
             </BSCloseOutlinedButton>
             <BSSaveOutlinedButton
-              disabled={saving}
-              onClick={saveConnector}
+              disabled={Boolean(oauthRedirecting)}
+              onClick={() => connectOAuth(draft)}
               sx={{ textTransform: "none", borderRadius: 2 }}
             >
-              {saving ? "Saving…" : "Save"}
+              {oauthRedirecting ? "กำลังเปิด OAuth…" : "เชื่อมต่อร้าน"}
             </BSSaveOutlinedButton>
           </>
         }
@@ -734,7 +618,7 @@ export default function Connector() {
               color="#46566b"
               sx={{ mb: 1 }}
             >
-              Select platform
+              เลือก Marketplace
             </Typography>
             <Box
               sx={{
@@ -752,8 +636,7 @@ export default function Connector() {
                     p: 1.2,
                     borderRadius: 2,
                     textAlign: "center",
-                    cursor: editingId ? "default" : "pointer",
-                    opacity: editingId && draft.platform !== key ? 0.45 : 1,
+                    cursor: "pointer",
                     borderColor:
                       draft.platform === key ? platform.color : "#e3e9f1",
                     bgcolor:
@@ -783,111 +666,22 @@ export default function Connector() {
               ))}
             </Box>
           </Box>
-          <Divider />
           <BSTextField
-            label="Shop name (optional)"
-            value={draft.displayName}
-            onChange={updateDraft("displayName")}
+            select
+            label="ประเทศ / Market"
+            value={draft.marketCode}
+            onChange={updateDraft("marketCode")}
             labelAbove
             sx={fieldSx}
-          />
-          <BSTextField
-            label="Shop ID / Seller ID"
-            value={draft.account}
-            onChange={updateDraft("account")}
-            readOnly={Boolean(editingId)}
-            helperText={editingId ? "ไม่สามารถแก้ไข Shop ID หลังสร้าง Connector ได้" : ""}
-            labelAbove
-            sx={fieldSx}
-          />
-          <Divider />
-          <Box>
-            <Typography variant="body2" fontWeight={650} color="#46566b" sx={{ mb: 1 }}>
-              App Master
-            </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button
-                variant={!draft.useNewApp ? "contained" : "outlined"}
-                onClick={() => setDraft((current) => ({ ...current, useNewApp: false }))}
-                sx={{ textTransform: "none", borderRadius: 2 }}
-              >
-                เลือก App ที่มีอยู่
-              </Button>
-              <Button
-                variant={draft.useNewApp ? "contained" : "outlined"}
-                onClick={() => setDraft((current) => ({ ...current, useNewApp: true, platformAppId: "" }))}
-                sx={{ textTransform: "none", borderRadius: 2 }}
-              >
-                สร้าง App ใหม่
-              </Button>
-            </Stack>
-          </Box>
-          {!draft.useNewApp ? (
-            <>
-              <BSTextField
-                select
-                label="App Master"
-                value={draft.platformAppId}
-                onChange={updateDraft("platformAppId")}
-                labelAbove
-                sx={fieldSx}
-              >
-                <MenuItem value="">เลือก App Master</MenuItem>
-                {platformApps.map((app) => (
-                  <MenuItem key={app.platformAppId} value={String(app.platformAppId)}>
-                    {app.appName}{app.shopCount ? ` · ใช้งาน ${app.shopCount} Shop` : ""}
-                  </MenuItem>
-                ))}
-              </BSTextField>
-              {platformApps.length === 0 && (
-                <Alert severity="info">ยังไม่มี App Master สำหรับแพลตฟอร์มนี้ ให้เลือก “สร้าง App ใหม่” เพื่อเพิ่มครั้งแรก</Alert>
-              )}
-            </>
-          ) : (
-            <>
-              <BSTextField
-                label="App name"
-                value={draft.appName}
-                onChange={updateDraft("appName")}
-                labelAbove
-                sx={fieldSx}
-              />
-              <BSTextField
-                label="App Key / Partner ID"
-                type="password"
-                value={draft.appKey}
-                onChange={updateDraft("appKey")}
-                labelAbove
-                sx={fieldSx}
-              />
-              <BSTextField
-                label="App Secret / Partner Key"
-                type="password"
-                value={draft.appSecret}
-                onChange={updateDraft("appSecret")}
-                labelAbove
-                sx={fieldSx}
-              />
-              <BSTextField
-                label="Redirect URL"
-                value={draft.redirectUrl}
-                onChange={updateDraft("redirectUrl")}
-                labelAbove
-                sx={fieldSx}
-              />
-              {draft.platform === "tiktok" && (
-                <BSTextField
-                  label="TikTok Service ID (optional)"
-                  value={draft.serviceId}
-                  onChange={updateDraft("serviceId")}
-                  labelAbove
-                  sx={fieldSx}
-                />
-              )}
-            </>
-          )}
+          >
+            {markets.map((market) => (
+              <MenuItem key={market.code} value={market.code}>
+                {market.name} ({market.code})
+              </MenuItem>
+            ))}
+          </BSTextField>
           <Alert severity="info">
-            App Key และ App Secret จะถูกเข้ารหัสใน App Master ส่วน Access Token และ Refresh Token จะถูกสร้างหลังทำ OAuth และไม่แสดงในหน้านี้
+            ระบบจะเลือก Default App Master ตาม Marketplace และ Market ที่เลือก จากนั้น Marketplace จะส่ง Shop ID กลับมาให้โดยอัตโนมัติ
           </Alert>
         </Stack>
       </BSDialog>
