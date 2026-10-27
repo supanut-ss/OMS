@@ -19,8 +19,17 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DataObjectOutlinedIcon from "@mui/icons-material/DataObjectOutlined";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import PrintOutlinedIcon from "@mui/icons-material/PrintOutlined";
 import AxiosMaster from "../../utils/AxiosMaster";
 import BSDataGrid from "../../components/BSDataGrid";
+import OrderStatusProgress from "./OrderStatusProgress";
+import {
+  ensureWaybills,
+  getWaybills,
+  openWaybillForPrint,
+  unwrapWaybillResponse,
+} from "./waybillClient";
 import {
   formatAmount,
   formatDate,
@@ -127,6 +136,13 @@ const OrderDetail = ({ lang = "th" }) => {
   });
   const [syncHistoryRetry, setSyncHistoryRetry] = useState(0);
   const [activeTab, setActiveTab] = useState("raw");
+  const [waybillState, setWaybillState] = useState({
+    documents: [],
+    loading: false,
+    printingId: null,
+    error: "",
+    message: "",
+  });
 
   const labels = useMemo(
     () => ({
@@ -182,6 +198,23 @@ const OrderDetail = ({ lang = "th" }) => {
       loading: isThai ? "กำลังโหลดข้อมูล Order..." : "Loading order...",
       notFound: isThai ? "ไม่พบข้อมูล Order นี้" : "Order was not found.",
       loadFailed: isThai ? "โหลดข้อมูล Order ไม่สำเร็จ" : "Could not load the order.",
+      progressTitle: isThai ? "เส้นทางสถานะจาก Platform" : "Platform status journey",
+      waybillTitle: isThai ? "ใบปะหน้า / Waybill" : "Shipping label / Waybill",
+      waybillDescription: isThai
+        ? "ดึงไฟล์จาก Platform และเก็บไว้ที่ OMS Server ก่อนเปิดพิมพ์"
+        : "Pull the file from the platform and store it on the OMS server before printing.",
+      prepareWaybill: isThai ? "ดึง / อัปเดต Waybill" : "Fetch / refresh Waybill",
+      preparingWaybill: isThai ? "กำลังดึง Waybill..." : "Fetching Waybill...",
+      printWaybill: isThai ? "เปิด / พิมพ์" : "Open / print",
+      noWaybill: isThai
+        ? "ยังไม่มีไฟล์ Waybill ที่บันทึกไว้ กดดึง Waybill เพื่อขอไฟล์ล่าสุดจาก Platform"
+        : "No saved Waybill yet. Fetch it to request the latest file from the platform.",
+      waybillReady: isThai ? "พร้อมพิมพ์" : "Ready",
+      waybillPending: isThai ? "กำลังจัดเตรียม" : "Pending",
+      waybillFailed: isThai ? "ไม่สำเร็จ" : "Failed",
+      waybillLoadFailed: isThai
+        ? "อ่านสถานะ Waybill ไม่สำเร็จ"
+        : "Could not load Waybill status.",
     }),
     [isThai],
   );
@@ -233,6 +266,58 @@ const OrderDetail = ({ lang = "th" }) => {
       isActive = false;
     };
   }, [hasValidOrderRecordId, labels.loadFailed, labels.notFound, numericOrderRecordId, orderFromRoute]);
+
+  useEffect(() => {
+    if (!order?.platform || !order?.platform_order_id || !order?.shop_id) {
+      setWaybillState((current) => ({
+        ...current,
+        documents: [],
+        loading: false,
+        error: "",
+        message: "",
+      }));
+      return undefined;
+    }
+
+    let isActive = true;
+    setWaybillState((current) => ({
+      ...current,
+      documents: [],
+      loading: true,
+      error: "",
+      message: "",
+    }));
+
+    getWaybills(order)
+      .then((response) => {
+        if (!isActive) return;
+        const result = unwrapWaybillResponse(response);
+        setWaybillState((current) => ({
+          ...current,
+          documents: result.documents,
+          loading: false,
+          error: "",
+          message: result.message,
+        }));
+      })
+      .catch((requestError) => {
+        if (!isActive) return;
+        setWaybillState((current) => ({
+          ...current,
+          documents: [],
+          loading: false,
+          error:
+            requestError.response?.data?.message ||
+            requestError.response?.data?.Message ||
+            labels.waybillLoadFailed,
+          message: "",
+        }));
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [labels.waybillLoadFailed, order]);
 
   useEffect(() => {
     if (!hasValidOrderRecordId) {
@@ -481,6 +566,66 @@ const OrderDetail = ({ lang = "th" }) => {
     [labels.product, labels.quantity, labels.sku, labels.unitPrice, locale, order?.currency],
   );
 
+  const handleEnsureWaybills = async () => {
+    setWaybillState((current) => ({
+      ...current,
+      loading: true,
+      error: "",
+      message: "",
+    }));
+    try {
+      const result = unwrapWaybillResponse(await ensureWaybills(order));
+      setWaybillState((current) => ({
+        ...current,
+        documents: result.documents,
+        loading: false,
+        error: "",
+        message: result.message,
+      }));
+    } catch (requestError) {
+      setWaybillState((current) => ({
+        ...current,
+        loading: false,
+        error:
+          requestError.response?.data?.message ||
+          requestError.response?.data?.Message ||
+          requestError.message ||
+          labels.waybillLoadFailed,
+        message: "",
+      }));
+    }
+  };
+
+  const handlePrintWaybill = async (document, documentIndex) => {
+    const documentId =
+      document?.platformDocumentId ?? document?.PlatformDocumentId ?? documentIndex;
+    setWaybillState((current) => ({
+      ...current,
+      printingId: documentId,
+      error: "",
+    }));
+    try {
+      await openWaybillForPrint(order, document);
+    } catch (requestError) {
+      setWaybillState((current) => ({
+        ...current,
+        error: requestError.message || labels.waybillLoadFailed,
+      }));
+    } finally {
+      setWaybillState((current) => ({ ...current, printingId: null }));
+    }
+  };
+
+  const readDocumentField = (document, camelName, pascalName) =>
+    document?.[camelName] ?? document?.[pascalName];
+
+  const waybillStatusColor = (status) => {
+    const normalized = String(status || "").toUpperCase();
+    if (normalized === "READY") return "success";
+    if (normalized === "FAILED") return "error";
+    return "warning";
+  };
+
   const cardSx = {
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: 2.5,
@@ -664,6 +809,185 @@ const OrderDetail = ({ lang = "th" }) => {
                     </Typography>
                   </DetailField>
                 </Box>
+
+                <Divider sx={{ my: 2.25 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1.25, fontWeight: 750 }}>
+                    {labels.progressTitle}
+                  </Typography>
+                  <OrderStatusProgress
+                    platform={order.platform}
+                    status={order.original_status || order.status}
+                    lang={lang}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card sx={cardSx}>
+              <CardContent sx={{ p: { xs: 1.75, md: 2.25 } }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.5}
+                  alignItems={{ sm: "center" }}
+                  justifyContent="space-between"
+                >
+                  <Stack direction="row" spacing={1.25} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        display: "grid",
+                        placeItems: "center",
+                        borderRadius: 1.5,
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        color: "primary.main",
+                      }}
+                    >
+                      <LocalShippingOutlinedIcon fontSize="small" />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 750 }}>
+                        {labels.waybillTitle}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {labels.waybillDescription}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Button
+                    variant="contained"
+                    startIcon={
+                      waybillState.loading ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        <LocalShippingOutlinedIcon />
+                      )
+                    }
+                    disabled={waybillState.loading}
+                    onClick={handleEnsureWaybills}
+                  >
+                    {waybillState.loading
+                      ? labels.preparingWaybill
+                      : labels.prepareWaybill}
+                  </Button>
+                </Stack>
+
+                {waybillState.error && (
+                  <Alert severity="error" sx={{ mt: 1.5 }}>
+                    {waybillState.error}
+                  </Alert>
+                )}
+                {!waybillState.error && waybillState.message && (
+                  <Alert
+                    severity={waybillState.documents.length > 0 ? "success" : "info"}
+                    sx={{ mt: 1.5 }}
+                  >
+                    {waybillState.message}
+                  </Alert>
+                )}
+
+                {!waybillState.loading && waybillState.documents.length === 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1.75 }}>
+                    {labels.noWaybill}
+                  </Typography>
+                )}
+
+                {waybillState.documents.length > 0 && (
+                  <Stack spacing={1} sx={{ mt: 1.75 }}>
+                    {waybillState.documents.map((document, index) => {
+                      const documentId = readDocumentField(
+                        document,
+                        "platformDocumentId",
+                        "PlatformDocumentId",
+                      );
+                      const packageId = readDocumentField(
+                        document,
+                        "platformPackageId",
+                        "PlatformPackageId",
+                      );
+                      const trackingNumber = readDocumentField(
+                        document,
+                        "trackingNumber",
+                        "TrackingNumber",
+                      );
+                      const documentStatus = readDocumentField(
+                        document,
+                        "documentStatus",
+                        "DocumentStatus",
+                      );
+                      const documentError = readDocumentField(
+                        document,
+                        "error",
+                        "Error",
+                      );
+                      const normalizedStatus = String(documentStatus || "PENDING").toUpperCase();
+                      const isReady = normalizedStatus === "READY";
+                      const isPrinting =
+                        waybillState.printingId === (documentId ?? index);
+
+                      return (
+                        <Box
+                          key={documentId || `${packageId || "order"}-${index}`}
+                          sx={{
+                            display: "flex",
+                            flexDirection: { xs: "column", sm: "row" },
+                            gap: 1.25,
+                            alignItems: { sm: "center" },
+                            justifyContent: "space-between",
+                            p: 1.25,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1.5,
+                            bgcolor: "action.hover",
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {packageId ? `Package ${packageId}` : `Waybill ${index + 1}`}
+                              </Typography>
+                              <Chip
+                                size="small"
+                                color={waybillStatusColor(normalizedStatus)}
+                                label={
+                                  isReady
+                                    ? labels.waybillReady
+                                    : normalizedStatus === "FAILED"
+                                      ? labels.waybillFailed
+                                      : labels.waybillPending
+                                }
+                              />
+                            </Stack>
+                            {(trackingNumber || documentError) && (
+                              <Typography
+                                variant="caption"
+                                color={documentError ? "error.main" : "text.secondary"}
+                                sx={{ display: "block", mt: 0.5, overflowWrap: "anywhere" }}
+                              >
+                                {documentError || `Tracking: ${trackingNumber}`}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Button
+                            variant="outlined"
+                            startIcon={
+                              isPrinting ? (
+                                <CircularProgress size={16} />
+                              ) : (
+                                <PrintOutlinedIcon />
+                              )
+                            }
+                            disabled={!isReady || isPrinting}
+                            onClick={() => handlePrintWaybill(document, index)}
+                          >
+                            {labels.printWaybill}
+                          </Button>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
               </CardContent>
             </Card>
 

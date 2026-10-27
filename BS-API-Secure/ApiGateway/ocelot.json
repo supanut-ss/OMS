@@ -954,6 +954,54 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/api/oms-orders/{platform}/{orderId}/waybills",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/waybills",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/oms-orders/{platform}/{orderId}/waybills/ensure",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/waybills/ensure",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/oms-orders/{platform}/{orderId}/waybills/file",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/waybills/file",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/inbound/save",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

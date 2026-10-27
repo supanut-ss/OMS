@@ -2785,6 +2785,7 @@ const BSDataGrid = forwardRef(
       bsPinColsLeft,
       bsPinColsRight,
       bsRowPerPage = 20,
+      bsRowHeight = 40,
       bsComboBox = [],
       bsSyncDisplayDefault = true, // Default SyncDisplay value for combo configs
       bsFilterMode = "server", // "server" | "client"
@@ -15202,7 +15203,7 @@ ${errorInfo.originalError}
                   // autoFitColumnsToContent (MUI's autosize can't measure
                   // off-screen columns), so MUI's autosize is intentionally off.
                   // Row Heights
-                  rowHeight={40} //{() => "auto"}
+                  rowHeight={bsRowHeight} //{() => "auto"}
                   // showToolbar={showToolbar && !bulkEditMode}
                   //showToolbar
                   // Row Selection (checkbox selection when enabled)

@@ -17,6 +17,7 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import BSDataGrid from "../../components/BSDataGrid";
+import OrderStatusProgress from "./OrderStatusProgress";
 import {
   formatAmount,
   formatDate,
@@ -76,6 +77,7 @@ const HIDDEN_ORDER_COLUMNS = ORDER_COLUMNS.filter(
       "platform",
       "platform_order_id",
       "status",
+      "original_status",
       "sync_status",
       "buyer_name",
       "shop_name",
@@ -145,6 +147,7 @@ const OrderList = ({ lang = "th" }) => {
       orderNumberPlaceholder: isThai ? "ค้นหาเลข Order" : "Search order number",
       platformOrder: isThai ? "เลขที่คำสั่งซื้อ" : "Order Number",
       wm3Status: "WM3 Status",
+      platformProgress: isThai ? "สถานะจาก Platform" : "Platform Progress",
       customer: isThai ? "ลูกค้า" : "Customer",
       shop: isThai ? "ร้านค้า" : "Shop",
       total: isThai ? "ยอดรวม" : "Total",
@@ -277,6 +280,24 @@ const OrderList = ({ lang = "th" }) => {
         },
       },
       {
+        field: "original_status",
+        headerName: labels.platformProgress,
+        minWidth: 510,
+        flex: 2.5,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <Box sx={{ width: "100%", pr: 0.75 }}>
+            <OrderStatusProgress
+              platform={params.row?.platform}
+              status={params.value || params.row?.status}
+              compact
+              lang={lang}
+            />
+          </Box>
+        ),
+      },
+      {
         field: "sync_status",
         headerName: labels.syncStatus,
         minWidth: 140,
@@ -356,7 +377,7 @@ const OrderList = ({ lang = "th" }) => {
         ),
       },
     ],
-    [labels, locale, openOrderDetail, theme],
+    [labels, lang, locale, openOrderDetail],
   );
 
   const handleApplyFilters = (event) => {
@@ -562,6 +583,7 @@ const OrderList = ({ lang = "th" }) => {
             bsFilterMode="server"
             bsShowRowNumber
             bsRowPerPage={20}
+            bsRowHeight={52}
             bsPageSizeOptions={[20, 50, 100, 200, 500, 1000]}
             onRowClick={handleOrderRowClick}
             showAdd={false}

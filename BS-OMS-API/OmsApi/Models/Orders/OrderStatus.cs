@@ -36,8 +36,10 @@ namespace OmsApi.Models.Orders
             "READY_TO_SHIP" => OrderStatus.ReadyToShip,
             "PROCESSED" => OrderStatus.ReadyToShip,
             "SHIPPED" => OrderStatus.Shipped,
+            "TO_CONFIRM_RECEIVE" => OrderStatus.Delivered,
             "COMPLETED" => OrderStatus.Completed,
             "IN_CANCEL" => OrderStatus.ReturnRefund,
+            "TO_RETURN" => OrderStatus.ReturnRefund,
             "CANCELLED" => OrderStatus.Cancelled,
             "INVOICE_PENDING" => OrderStatus.Pending,
             _ => OrderStatus.Unknown
@@ -54,6 +56,7 @@ namespace OmsApi.Models.Orders
             "canceled" => OrderStatus.Cancelled,
             "failed" => OrderStatus.Cancelled,
             "returned" => OrderStatus.ReturnRefund,
+            "completed" => OrderStatus.Completed,
             _ => OrderStatus.Unknown
         };
 
