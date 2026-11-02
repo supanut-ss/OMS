@@ -11,6 +11,73 @@ namespace OmsApi.Tests;
 public class PackageProcessControllerTests
 {
     [Fact]
+    public async Task EnsureWaybills_WhenWgePackagesAreMissing_UsesPlatformPackages()
+    {
+        var documents = new PendingDocumentService();
+        var controller = CreateController(
+            manifest: null,
+            tracking: new TrackingInfo
+            {
+                Platform = PlatformType.TikTok,
+                OrderId = "TIKTOK-ORDER-1",
+                Packages =
+                {
+                    new ShippingPackage
+                    {
+                        PackageId = "PLATFORM-PACKAGE-1",
+                        TrackingNumber = "TRACK-1",
+                        Carrier = "J&T",
+                        Status = "AWAITING_COLLECTION"
+                    }
+                }
+            },
+            documentService: documents);
+
+        var action = await controller.EnsureWaybills(new EnsureWaybillRequest
+        {
+            Platform = PlatformType.TikTok,
+            ShopId = "SHOP-1",
+            PlatformOrderId = "TIKTOK-ORDER-1"
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<List<PlatformDocumentResult>>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Equal("PLATFORM-PACKAGE-1", Assert.Single(documents.EnsuredPackageIds));
+        Assert.Equal("TRACK-1", Assert.Single(response.Data!).TrackingNumber);
+    }
+
+    [Fact]
+    public async Task EnsureWaybills_WhenPlatformReturnsOnlyOrderTracking_BuildsSinglePackage()
+    {
+        var documents = new PendingDocumentService();
+        var controller = CreateController(
+            manifest: null,
+            tracking: new TrackingInfo
+            {
+                Platform = PlatformType.Lazada,
+                OrderId = "LAZADA-ORDER-1",
+                TrackingNumber = "LEX-TRACK-1",
+                Carrier = "LEX",
+                Status = "READY_TO_SHIP"
+            },
+            documentService: documents);
+
+        var action = await controller.EnsureWaybills(new EnsureWaybillRequest
+        {
+            Platform = PlatformType.Lazada,
+            ShopId = "SHOP-1",
+            PlatformOrderId = "LAZADA-ORDER-1"
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<List<PlatformDocumentResult>>>(ok.Value);
+        var document = Assert.Single(response.Data!);
+        Assert.Null(Assert.Single(documents.EnsuredPackageIds));
+        Assert.Equal("LEX-TRACK-1", document.TrackingNumber);
+    }
+
+    [Fact]
     public async Task ProcessPackages_WhenBoxesAreClosed_ReturnsValidatedPackages()
     {
         var packageRef = Guid.NewGuid();

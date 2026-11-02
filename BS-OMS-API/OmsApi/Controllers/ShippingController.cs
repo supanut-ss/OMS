@@ -77,7 +77,28 @@ namespace OmsApi.Controllers
                 request.PlatformOrderId,
                 HttpContext.RequestAborted);
             if (packages.Count == 0)
-                return NotFound(ApiResponse<string>.Fail("No saved platform packages were found for this order."));
+            {
+                try
+                {
+                    var tracking = await _shippingService.GetTrackingInfoAsync(
+                        request.Platform,
+                        request.PlatformOrderId,
+                        request.ShopId);
+                    packages = BuildDocumentPackagesFromPlatform(tracking);
+                }
+                catch (PlatformApiException ex)
+                {
+                    return BadRequest(ApiResponse<string>.Fail(ex.Message));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(ApiResponse<string>.Fail(ex.Message));
+                }
+
+                if (packages.Count == 0)
+                    return BadRequest(ApiResponse<string>.Fail(
+                        "The platform has not issued package or tracking information for this order yet."));
+            }
 
             var packagesRequiringWaybill = packages
                 .Where(package => RequiresPrintableWaybill(request.Platform, package))
@@ -1350,6 +1371,53 @@ namespace OmsApi.Controllers
             return !IsLazadaSellerOwnTracking(package.TrackingNumber) &&
                    !IsLazadaSellerOwnFleet(package.ShippingProviderId) &&
                    !IsLazadaSellerOwnFleet(package.ShippingProviderName);
+        }
+
+        private static List<PlatformPackageRecordResult> BuildDocumentPackagesFromPlatform(
+            TrackingInfo? tracking)
+        {
+            if (tracking == null)
+                return new List<PlatformPackageRecordResult>();
+
+            var platformPackages = tracking.Packages.Count > 0
+                ? tracking.Packages
+                : string.IsNullOrWhiteSpace(tracking.TrackingNumber)
+                    ? new List<ShippingPackage>()
+                    : new List<ShippingPackage>
+                    {
+                        new()
+                        {
+                            TrackingNumber = tracking.TrackingNumber,
+                            Carrier = tracking.Carrier,
+                            Status = tracking.Status
+                        }
+                    };
+
+            return platformPackages.Select((package, index) =>
+            {
+                var packageTracking = package.TrackingNumber;
+                if (platformPackages.Count == 1 && string.IsNullOrWhiteSpace(packageTracking))
+                    packageTracking = tracking.TrackingNumber;
+
+                return new PlatformPackageRecordResult
+                {
+                    WmsPackageRef = Guid.TryParse(package.WmsPackageRef, out var wmsPackageRef)
+                        ? wmsPackageRef
+                        : Guid.Empty,
+                    BoxNumber = package.BoxNumber ?? index + 1,
+                    PlatformPackageId = string.IsNullOrWhiteSpace(package.PackageId)
+                        ? null
+                        : package.PackageId.Trim(),
+                    TrackingNumber = packageTracking?.Trim() ?? string.Empty,
+                    ShippingProviderName = string.IsNullOrWhiteSpace(package.Carrier)
+                        ? tracking.Carrier
+                        : package.Carrier,
+                    PackageStatus = string.IsNullOrWhiteSpace(package.Status)
+                        ? tracking.Status
+                        : package.Status,
+                    SyncStatus = "PLATFORM"
+                };
+            }).ToList();
         }
 
         private static bool IsLazadaSellerOwnTracking(string? trackingNumber)

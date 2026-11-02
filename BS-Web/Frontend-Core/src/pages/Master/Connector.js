@@ -75,10 +75,10 @@ const fieldSx = {
   "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#fff" },
 };
 
-const emptyDraft = {
-  platform: "shopee",
+const createEmptyDraft = (platform = "shopee") => ({
+  platform,
   marketCode: process.env.REACT_APP_DEFAULT_MARKET_CODE || "TH",
-};
+});
 
 const markets = [
   { code: "TH", name: "Thailand" },
@@ -108,6 +108,7 @@ const mapConnector = (item) => {
 export default function Connector() {
   const [connectors, setConnectors] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
+  const [syncingConnectorId, setSyncingConnectorId] = useState(null);
   const [deletingConnectorId, setDeletingConnectorId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState({
@@ -116,7 +117,8 @@ export default function Connector() {
     severity: "success",
   });
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [draft, setDraft] = useState(emptyDraft);
+  const [dialogSession, setDialogSession] = useState(0);
+  const [draft, setDraft] = useState(() => createEmptyDraft());
   const connectedCount = useMemo(
     () => connectors.filter((item) => item.isActive && item.connectionStatus === "CONNECTED").length,
     [connectors],
@@ -183,6 +185,8 @@ export default function Connector() {
       }
       setOauthRedirecting("");
       setDialogOpen(false);
+      setDraft(createEmptyDraft());
+      setDialogSession((current) => current + 1);
       oauthTab.location.replace(authUrl);
     } catch (error) {
       oauthTab.close();
@@ -192,8 +196,15 @@ export default function Connector() {
   };
 
   const openAdd = (platform = "shopee") => {
-    setDraft({ ...emptyDraft, platform });
+    setDraft(createEmptyDraft(platform));
+    setDialogSession((current) => current + 1);
     setDialogOpen(true);
+  };
+  const closeAdd = () => {
+    if (oauthRedirecting) return;
+    setDialogOpen(false);
+    setDraft(createEmptyDraft());
+    setDialogSession((current) => current + 1);
   };
   const selectPlatform = (platform) => {
     setDraft((current) => ({ ...current, platform }));
@@ -224,6 +235,49 @@ export default function Connector() {
           error?.message ||
           "เปลี่ยนสถานะ Connector ไม่สำเร็จ",
       });
+    }
+  };
+
+  const syncOrders = async (connector) => {
+    const platform = platforms[connector.platform] || platforms.shopee;
+    setSyncingConnectorId(connector.id);
+    try {
+      const response = await AxiosMaster.post(
+        `/oms-orders/${encodeURIComponent(connector.platform)}/sync`,
+        null,
+        {
+          params: {
+            shopId: connector.account,
+            lookbackDays: 15,
+          },
+        },
+      );
+      const payload = response?.data?.data ?? response?.data?.Data;
+      const items = payload?.items ?? payload?.Items;
+      const orderCount = Array.isArray(items)
+        ? items.length
+        : Number(payload?.totalCount ?? payload?.TotalCount ?? 0);
+      setNotice({
+        open: true,
+        severity: "success",
+        message:
+          orderCount > 0
+            ? `Sync Order ${platform.name} สำเร็จ ${orderCount} รายการ`
+            : `Sync สำเร็จ แต่ไม่พบ Order ของร้านนี้ในช่วง 15 วันล่าสุด`,
+      });
+    } catch (error) {
+      setNotice({
+        open: true,
+        severity: "error",
+        message:
+          error?.response?.data?.message_text ||
+          error?.response?.data?.message ||
+          error?.response?.data?.Message ||
+          error?.message ||
+          `Sync Order ${platform.name} ไม่สำเร็จ`,
+      });
+    } finally {
+      setSyncingConnectorId(null);
     }
   };
 
@@ -461,7 +515,43 @@ export default function Connector() {
                       </Typography>
                     </Stack>
                   </Box>
-                  <Stack direction="row" alignItems="center" spacing={0.75}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="flex-end"
+                    spacing={0.75}
+                    useFlexGap
+                    sx={{ flexWrap: "wrap" }}
+                  >
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={
+                        syncingConnectorId !== null ||
+                        !connected ||
+                        !connector.isActive ||
+                        !connector.hasAccessToken
+                      }
+                      onClick={() => syncOrders(connector)}
+                      startIcon={
+                        syncingConnectorId === connector.id ? (
+                          <CircularProgress size={14} color="inherit" />
+                        ) : (
+                          <SyncRounded />
+                        )
+                      }
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        boxShadow: "none",
+                        bgcolor: "#168dae",
+                        "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
+                      }}
+                    >
+                      {syncingConnectorId === connector.id
+                        ? "กำลัง Sync…"
+                        : "Sync Order"}
+                    </Button>
                     <Button
                       size="small"
                       variant="outlined"
@@ -566,8 +656,9 @@ export default function Connector() {
       </Stack>
 
       <BSDialog
+        key={`connector-form-${dialogSession}`}
         open={dialogOpen}
-        onClose={() => !oauthRedirecting && setDialogOpen(false)}
+        onClose={closeAdd}
         maxWidth="sm"
         fullWidth
         title="เชื่อมต่อช่องทางขาย"
@@ -578,7 +669,7 @@ export default function Connector() {
           <>
             <BSCloseOutlinedButton
               disabled={Boolean(oauthRedirecting)}
-              onClick={() => setDialogOpen(false)}
+              onClick={closeAdd}
               sx={{ textTransform: "none", borderRadius: 2 }}
             >
               ยกเลิก

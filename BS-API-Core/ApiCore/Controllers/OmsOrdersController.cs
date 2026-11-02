@@ -18,6 +18,38 @@ public sealed class OmsOrdersController : ControllerBase
         _httpClientFactory = httpClientFactory;
     }
 
+    [HttpPost("{platform}/sync")]
+    public async Task<IActionResult> SyncShopOrders(
+        string platform,
+        [FromQuery] string shopId,
+        [FromQuery] int lookbackDays = 15,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizePlatform(platform, out _, out var platformCode))
+            return BadRequest(new { message = "Platform must be shopee, lazada, or tiktok." });
+        if (string.IsNullOrWhiteSpace(shopId))
+            return BadRequest(new { message = "Shop ID is required." });
+        if (lookbackDays is < 1 or > 90)
+            return BadRequest(new { message = "lookbackDays must be between 1 and 90." });
+
+        var dateTo = DateTime.UtcNow;
+        var body = JsonSerializer.Serialize(new
+        {
+            Platform = platformCode,
+            ShopId = shopId.Trim(),
+            DateFrom = dateTo.AddDays(-lookbackDays),
+            DateTo = dateTo,
+            Page = 1,
+            PageSize = 100,
+        });
+
+        return await ProxyOmsJsonAsync(
+            HttpMethod.Post,
+            "api/Order/list",
+            body,
+            cancellationToken);
+    }
+
     [HttpGet("{platform}/{orderId}/resync")]
     public async Task<IActionResult> ResyncOrder(
         string platform,

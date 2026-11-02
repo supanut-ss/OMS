@@ -938,6 +938,22 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/api/oms-orders/{platform}/sync",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "bs_core_api",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/sync",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/oms-orders/{platform}/{orderId}/resync",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

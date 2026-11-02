@@ -79,6 +79,7 @@ export default function PlatformAppAdmin() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogSession, setDialogSession] = useState(0);
   const [form, setForm] = useState(createEmptyForm());
   const [notice, setNotice] = useState({ open: false, severity: "success", message: "" });
 
@@ -117,6 +118,7 @@ export default function PlatformAppAdmin() {
 
   const openAdd = () => {
     setForm(createEmptyForm());
+    setDialogSession((current) => current + 1);
     setDialogOpen(true);
   };
 
@@ -134,7 +136,15 @@ export default function PlatformAppAdmin() {
       isDefault: Boolean(app.isDefault),
       isActive: Boolean(app.isActive),
     });
+    setDialogSession((current) => current + 1);
     setDialogOpen(true);
+  };
+
+  const closeForm = () => {
+    if (saving) return;
+    setDialogOpen(false);
+    setForm(createEmptyForm());
+    setDialogSession((current) => current + 1);
   };
 
   const validateForm = () => {
@@ -161,6 +171,7 @@ export default function PlatformAppAdmin() {
 
     setSaving(true);
     try {
+      const wasEditing = Boolean(form.platformAppId);
       await AxiosMaster.post("/PlatformApp/save", {
         ...form,
         appName: form.appName.trim(),
@@ -171,10 +182,12 @@ export default function PlatformAppAdmin() {
       });
       await loadApps();
       setDialogOpen(false);
+      setForm(createEmptyForm());
+      setDialogSession((current) => current + 1);
       setNotice({
         open: true,
         severity: "success",
-        message: form.platformAppId ? "แก้ไข App Master สำเร็จ" : "สร้าง App Master สำเร็จ",
+        message: wasEditing ? "แก้ไข App Master สำเร็จ" : "สร้าง App Master สำเร็จ",
       });
     } catch (error) {
       setNotice({ open: true, severity: "error", message: getErrorMessage(error, "บันทึก App Master ไม่สำเร็จ") });
@@ -330,7 +343,13 @@ export default function PlatformAppAdmin() {
         )}
       </Stack>
 
-      <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} fullWidth maxWidth="md">
+      <Dialog
+        key={`platform-app-form-${dialogSession}`}
+        open={dialogOpen}
+        onClose={closeForm}
+        fullWidth
+        maxWidth="md"
+      >
         <DialogTitle>{form.platformAppId ? "แก้ไข App Master" : "เพิ่ม App Master"}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2.25} sx={{ pt: 0.5 }}>
@@ -388,7 +407,7 @@ export default function PlatformAppAdmin() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving}>ยกเลิก</Button>
+          <Button onClick={closeForm} disabled={saving}>ยกเลิก</Button>
           <Button variant="contained" onClick={saveApp} disabled={saving} startIcon={saving ? <CircularProgress size={16} /> : null}>
             {saving ? "กำลังบันทึก…" : "บันทึก"}
           </Button>

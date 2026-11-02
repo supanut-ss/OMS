@@ -12,9 +12,11 @@ public class OrderStatusMapperTests
     [InlineData("READY_TO_SHIP", OrderStatus.ReadyToShip)]
     [InlineData("PROCESSED", OrderStatus.ReadyToShip)]
     [InlineData("SHIPPED", OrderStatus.Shipped)]
+    [InlineData("TO_CONFIRM_RECEIVE", OrderStatus.Delivered)]
     [InlineData("COMPLETED", OrderStatus.Completed)]
     [InlineData("CANCELLED", OrderStatus.Cancelled)]
     [InlineData("IN_CANCEL", OrderStatus.ReturnRefund)]
+    [InlineData("TO_RETURN", OrderStatus.ReturnRefund)]
     [InlineData("UNKNOWN_STATUS", OrderStatus.Unknown)]
     [InlineData("", OrderStatus.Unknown)]
     public void FromShopee_ReturnsExpectedStatus(string rawStatus, OrderStatus expected)
@@ -48,6 +50,7 @@ public class OrderStatusMapperTests
     [InlineData("canceled", OrderStatus.Cancelled)]
     [InlineData("failed", OrderStatus.Cancelled)]
     [InlineData("returned", OrderStatus.ReturnRefund)]
+    [InlineData("completed", OrderStatus.Completed)]
     [InlineData("mystery_status", OrderStatus.Unknown)]
     [InlineData("", OrderStatus.Unknown)]
     public void FromLazada_ReturnsExpectedStatus(string rawStatus, OrderStatus expected)
