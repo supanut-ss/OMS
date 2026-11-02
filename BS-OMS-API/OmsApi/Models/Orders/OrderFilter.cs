@@ -35,6 +35,12 @@ namespace OmsApi.Models.Orders
         /// <summary>Page size</summary>
         public int PageSize { get; set; } = 50;
 
+        /// <summary>
+        /// Load platform Order Detail data needed for operational fields such
+        /// as Lazada item-level ship-by SLA. Intended for explicit/manual sync.
+        /// </summary>
+        public bool IncludeDetails { get; set; }
+
         /// <summary>Optional platform/shop selectors for a multi-platform query.</summary>
         public List<PlatformCredentialInput>? PlatformCredentials { get; set; }
     }

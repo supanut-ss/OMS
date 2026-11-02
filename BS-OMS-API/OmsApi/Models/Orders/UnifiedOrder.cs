@@ -35,6 +35,9 @@ namespace OmsApi.Models.Orders
         /// <summary>วันหมดเขตจัดส่ง (ถ้าไม่ส่งภายในวันนี้ order จะถูกยกเลิก)</summary>
         public DateTime? CancellationDeadline { get; set; }
 
+        /// <summary>วันและเวลาที่ผู้ขายต้องส่งมอบสินค้าให้ขนส่งตาม SLA ของ Platform</summary>
+        public DateTime? ShipByDate { get; set; }
+
         /// <summary>จำนวนวันที่เหลือก่อน order จะถูกยกเลิก</summary>
         public int? DaysUntilCancellation => CancellationDeadline.HasValue
             ? (int)Math.Ceiling((CancellationDeadline.Value - DateTime.UtcNow).TotalDays)

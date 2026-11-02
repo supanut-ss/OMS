@@ -154,7 +154,8 @@ namespace OmsApi.Services.Implementation
                     DateFrom = filter.DateFrom,
                     DateTo = filter.DateTo,
                     Page = filter.Page,
-                    PageSize = filter.PageSize
+                    PageSize = filter.PageSize,
+                    IncludeDetails = filter.IncludeDetails
                 };
 
                 var client = _clientFactory.GetClient(selection.Platform);
@@ -415,7 +416,8 @@ namespace OmsApi.Services.Implementation
                 filter.DateFrom,
                 filter.DateTo,
                 filter.Page,
-                filter.PageSize
+                filter.PageSize,
+                filter.IncludeDetails
             });
         }
 
@@ -486,6 +488,7 @@ namespace OmsApi.Services.Implementation
             record.TaxInvoiceAddress = order.TaxInvoice?.Address;
             record.TaxInvoiceBranchCode = order.TaxInvoice?.BranchCode;
             record.CancellationDeadline = ClampToSqlDateTime(order.CancellationDeadline);
+            record.ShipByDate = ClampToSqlDateTime(order.ShipByDate);
             // Some platforms (e.g. Shopee's order list endpoint) omit the
             // create-time field entirely, which maps to DateTime.MinValue —
             // far below SQL Server's datetime floor (1753-01-01). Clamping

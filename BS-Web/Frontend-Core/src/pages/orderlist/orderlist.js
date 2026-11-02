@@ -17,7 +17,6 @@ import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import BSAutoComplete from "../../components/BSAutoComplete";
 import BSDataGrid from "../../components/BSDataGrid";
-import OrderStatusProgress from "./OrderStatusProgress";
 import {
   formatAmount,
   formatDate,
@@ -42,6 +41,7 @@ const ORDER_COLUMNS = [
   "tax_invoice_address",
   "tax_invoice_branch_code",
   "cancellation_deadline",
+  "ship_by_date",
   "order_created_date",
   "order_updated_date",
   "total_amount",
@@ -82,6 +82,7 @@ const HIDDEN_ORDER_COLUMNS = ORDER_COLUMNS.filter(
       "buyer_name",
       "shop_name",
       "total_amount",
+      "ship_by_date",
       "order_created_date",
     ].includes(field),
 );
@@ -147,10 +148,11 @@ const OrderList = ({ lang = "th" }) => {
       orderNumberPlaceholder: isThai ? "ค้นหาเลข Order" : "Search order number",
       platformOrder: isThai ? "เลขที่คำสั่งซื้อ" : "Order Number",
       wm3Status: "WM3 Status",
-      platformProgress: isThai ? "สถานะจาก Platform" : "Platform Progress",
+      platformStatus: isThai ? "สถานะ Platform" : "Platform Status",
       customer: isThai ? "ลูกค้า" : "Customer",
       shop: isThai ? "ร้านค้า" : "Shop",
       total: isThai ? "ยอดรวม" : "Total",
+      shipByDate: isThai ? "ต้องส่งภายใน" : "Ship By Date",
       orderDate: "Order Date",
     }),
     [isThai],
@@ -281,21 +283,34 @@ const OrderList = ({ lang = "th" }) => {
       },
       {
         field: "original_status",
-        headerName: labels.platformProgress,
-        minWidth: 510,
-        flex: 2.5,
-        sortable: false,
-        filterable: false,
-        renderCell: (params) => (
-          <Box sx={{ width: "100%", pr: 0.75 }}>
-            <OrderStatusProgress
-              platform={params.row?.platform}
-              status={params.value || params.row?.status}
-              compact
-              lang={lang}
-            />
-          </Box>
-        ),
+        headerName: labels.platformStatus,
+        minWidth: 165,
+        flex: 0.9,
+        renderCell: (params) => {
+          const status = String(params.value || params.row?.status || "").trim();
+          return (
+            <Box
+              component="span"
+              title={status || undefined}
+              sx={{
+                maxWidth: "100%",
+                px: 1.1,
+                py: 0.45,
+                borderRadius: 1.5,
+                bgcolor: "#eef3f8",
+                color: "#3d5268",
+                fontSize: 12,
+                fontWeight: 650,
+                lineHeight: 1.2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {status ? status.replaceAll("_", " ") : "—"}
+            </Box>
+          );
+        },
       },
       {
         field: "sync_status",
@@ -357,6 +372,59 @@ const OrderList = ({ lang = "th" }) => {
         ),
       },
       {
+        field: "ship_by_date",
+        headerName: labels.shipByDate,
+        minWidth: 190,
+        flex: 1,
+        renderCell: (params) => {
+          const shipByDate = params.value ? new Date(params.value) : null;
+          const isValidDate = shipByDate && !Number.isNaN(shipByDate.getTime());
+          const normalizedStatus = String(params.row?.status || "").toLowerCase();
+          const isCompleted = ["shipped", "delivered", "completed", "cancelled", "returnrefund"]
+            .includes(normalizedStatus);
+          const hoursRemaining = isValidDate
+            ? (shipByDate.getTime() - Date.now()) / 3600000
+            : null;
+          const isOverdue = !isCompleted && hoursRemaining !== null && hoursRemaining < 0;
+          const isUrgent = !isCompleted && hoursRemaining !== null && hoursRemaining >= 0 && hoursRemaining <= 24;
+
+          return (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  px: isValidDate ? 1 : 0,
+                  py: isValidDate ? 0.5 : 0,
+                  borderRadius: 1.5,
+                  fontSize: 12.5,
+                  fontWeight: isOverdue || isUrgent ? 700 : 500,
+                  color: isOverdue
+                    ? "error.dark"
+                    : isUrgent
+                      ? "warning.dark"
+                      : "text.secondary",
+                  bgcolor: isOverdue
+                    ? "#fde8e8"
+                    : isUrgent
+                      ? "#fff4d6"
+                      : "transparent",
+                }}
+              >
+                {formatDate(params.value, locale)}
+                {isOverdue ? (isThai ? " · เกินกำหนด" : " · Overdue") : ""}
+              </Box>
+            </Box>
+          );
+        },
+      },
+      {
         field: "order_created_date",
         headerName: labels.orderDate,
         minWidth: 185,
@@ -377,7 +445,7 @@ const OrderList = ({ lang = "th" }) => {
         ),
       },
     ],
-    [labels, lang, locale, openOrderDetail],
+    [isThai, labels, locale, openOrderDetail],
   );
 
   const handleApplyFilters = (event) => {

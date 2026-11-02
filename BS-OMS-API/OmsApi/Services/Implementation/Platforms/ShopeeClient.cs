@@ -1467,6 +1467,8 @@ namespace OmsApi.Services.Implementation.Platforms
                     ? DateTimeHelper.FromUnixTimestamp(ct.GetInt64()) : DateTime.MinValue,
                 CancellationDeadline = order.TryGetProperty("ship_by_date", out var sbd)
                     ? DateTimeHelper.FromUnixTimestamp(sbd.GetInt64()) : null,
+                ShipByDate = order.TryGetProperty("ship_by_date", out var shipByDate)
+                    ? DateTimeHelper.FromUnixTimestamp(shipByDate.GetInt64()) : null,
                 Currency = order.TryGetProperty("currency", out var cur) ? cur.GetString() ?? "THB" : "THB"
             };
 

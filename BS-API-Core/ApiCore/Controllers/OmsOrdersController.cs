@@ -41,6 +41,7 @@ public sealed class OmsOrdersController : ControllerBase
             DateTo = dateTo,
             Page = 1,
             PageSize = 100,
+            IncludeDetails = true,
         });
 
         return await ProxyOmsJsonAsync(

@@ -244,6 +244,7 @@ namespace OmsApi.Services.Implementation.Platforms
             unified.CancellationDeadline =
                 GetUnixDateTime(order, "cancel_order_sla_time") ??
                 GetUnixDateTime(order, "cancel_order_sn_deadline");
+            unified.ShipByDate = GetUnixDateTime(order, "rts_sla_time");
 
             // Tax invoice
             if (order.TryGetProperty("invoice_request", out var inv) && inv.ValueKind != JsonValueKind.Null)

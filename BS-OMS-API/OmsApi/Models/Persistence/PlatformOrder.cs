@@ -21,6 +21,7 @@ public class PlatformOrder
     public string? TaxInvoiceAddress { get; set; }
     public string? TaxInvoiceBranchCode { get; set; }
     public DateTime? CancellationDeadline { get; set; }
+    public DateTime? ShipByDate { get; set; }
     public DateTime OrderCreatedDate { get; set; }
     public DateTime? OrderUpdatedDate { get; set; }
     public decimal TotalAmount { get; set; }

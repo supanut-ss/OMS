@@ -265,6 +265,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TaxInvoiceAddress).HasColumnName("tax_invoice_address").HasMaxLength(500);
             entity.Property(e => e.TaxInvoiceBranchCode).HasColumnName("tax_invoice_branch_code").HasColumnType("varchar(20)");
             entity.Property(e => e.CancellationDeadline).HasColumnName("cancellation_deadline").HasColumnType("datetime");
+            entity.Property(e => e.ShipByDate).HasColumnName("ship_by_date").HasColumnType("datetime");
             entity.Property(e => e.OrderCreatedDate).HasColumnName("order_created_date").HasColumnType("datetime").IsRequired();
             entity.Property(e => e.OrderUpdatedDate).HasColumnName("order_updated_date").HasColumnType("datetime");
             entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasColumnType("decimal(18,2)").IsRequired();

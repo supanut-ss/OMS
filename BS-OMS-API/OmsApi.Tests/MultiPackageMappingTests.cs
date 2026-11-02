@@ -14,6 +14,7 @@ public class MultiPackageMappingTests
         {
           "order_sn": "order-1",
           "order_status": "SHIPPED",
+          "ship_by_date": 1793592000,
           "package_list": [
             { "package_number": "pkg-a", "tracking_number": "track-a", "shipping_carrier": "Carrier A", "logistics_status": "SHIPPED" },
             { "package_number": "pkg-b", "tracking_number": "track-b", "shipping_carrier": "Carrier B", "logistics_status": "SHIPPED" }
@@ -33,6 +34,28 @@ public class MultiPackageMappingTests
         Assert.Contains("101", order.Packages[0].ItemIds);
         Assert.Contains("102", order.Packages[1].ItemIds);
         Assert.Equal("pkg-a", order.Shipping!.PackageNumber);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1793592000).UtcDateTime, order.ShipByDate);
+    }
+
+    [Fact]
+    public void LazadaOrderItems_UsesEarliestActiveSlaAsShipByDate()
+    {
+        const string json = """
+        [
+          { "status": "canceled", "sla_time_stamp": "2026-11-01 08:00:00" },
+          { "status": "packed", "sla_time_stamp": "2026-11-02 14:00:00" },
+          { "status": "pending", "sla_time_stamp": "2026-11-02 09:00:00" }
+        ]
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var method = typeof(LazadaClient).GetMethod(
+            "GetLazadaShipByDate",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        var shipByDate = Assert.IsType<DateTime>(method!.Invoke(null, [document.RootElement]));
+
+        Assert.Equal(new DateTime(2026, 11, 2, 9, 0, 0), shipByDate);
     }
 
     [Fact]

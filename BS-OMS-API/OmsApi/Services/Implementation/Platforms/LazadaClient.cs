@@ -101,6 +101,14 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
                 }
 
+                if (filter.IncludeDetails && result.Items.Count > 0)
+                {
+                    result.Items = await EnrichActiveOrderDetailsAsync(
+                        result.Items,
+                        accessToken,
+                        shopId);
+                }
+
                 _logger.LogInformation("✅ Lazada: Retrieved {Count} orders", result.Items.Count);
                 return result;
             }
@@ -109,6 +117,33 @@ namespace OmsApi.Services.Implementation.Platforms
                 _logger.LogError(ex, "❌ Lazada: Error fetching orders");
                 return new PaginatedResult<UnifiedOrder>();
             }
+        }
+
+        private async Task<List<UnifiedOrder>> EnrichActiveOrderDetailsAsync(
+            IReadOnlyCollection<UnifiedOrder> orders,
+            string accessToken,
+            string? shopId)
+        {
+            using var concurrency = new SemaphoreSlim(4, 4);
+            var tasks = orders.Select(async order =>
+            {
+                if (order.Status is OrderStatus.Unpaid or OrderStatus.Shipped or
+                    OrderStatus.Delivered or OrderStatus.Completed or
+                    OrderStatus.Cancelled or OrderStatus.ReturnRefund)
+                    return order;
+
+                await concurrency.WaitAsync();
+                try
+                {
+                    return await GetOrderDetailAsync(accessToken, shopId, order.OrderId) ?? order;
+                }
+                finally
+                {
+                    concurrency.Release();
+                }
+            });
+
+            return (await Task.WhenAll(tasks)).ToList();
         }
 
         // A transient HTTP error, network exception, or a success response
@@ -167,8 +202,9 @@ namespace OmsApi.Services.Implementation.Platforms
                         var unified = MapLazadaOrderDetail(data);
 
                         // Fetch order items separately
-                        var items = await GetOrderItemsAsync(accessToken, orderId, client);
-                        unified.Items = items;
+                        var itemResult = await GetOrderItemsAsync(accessToken, orderId, client);
+                        unified.Items = itemResult.Items;
+                        unified.ShipByDate = itemResult.ShipByDate;
 
                         return unified;
                     }
@@ -194,7 +230,10 @@ namespace OmsApi.Services.Implementation.Platforms
             return null;
         }
 
-        private async Task<List<OrderItem>> GetOrderItemsAsync(string accessToken, string orderId, HttpClient client)
+        private async Task<(List<OrderItem> Items, DateTime? ShipByDate)> GetOrderItemsAsync(
+            string accessToken,
+            string orderId,
+            HttpClient client)
         {
             var apiPath = "/order/items/get";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
@@ -213,6 +252,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
             var queryString = string.Join("&", parameters.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
             var items = new List<OrderItem>();
+            DateTime? shipByDate = null;
 
             try
             {
@@ -222,6 +262,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 var json = JsonDocument.Parse(content);
                 if (json.RootElement.TryGetProperty("data", out var data))
                 {
+                    shipByDate = GetLazadaShipByDate(data);
                     foreach (var item in data.EnumerateArray())
                     {
                         var orderItemId = GetLazadaString(
@@ -254,7 +295,27 @@ namespace OmsApi.Services.Implementation.Platforms
                 _logger.LogError(ex, "❌ Lazada: Error fetching order items");
             }
 
-            return items;
+            return (items, shipByDate);
+        }
+
+        private static DateTime? GetLazadaShipByDate(JsonElement items)
+        {
+            if (items.ValueKind != JsonValueKind.Array)
+                return null;
+
+            DateTime? earliest = null;
+            foreach (var item in items.EnumerateArray())
+            {
+                var status = GetLazadaString(item, "status").Trim().ToLowerInvariant();
+                if (status is "canceled" or "cancelled" or "returned" or "failed")
+                    continue;
+
+                var candidate = GetNullableLazadaDateTime(item, "sla_time_stamp");
+                if (candidate.HasValue && (!earliest.HasValue || candidate.Value < earliest.Value))
+                    earliest = candidate;
+            }
+
+            return earliest;
         }
 
         private static UnifiedOrder MapLazadaOrder(JsonElement order)

@@ -22,6 +22,7 @@ public class TikTokOrderMappingTests
           "create_time": 1788170578,
           "update_time": 1788171181,
           "cancel_order_sla_time": 1788454799,
+          "rts_sla_time": 1788364800,
           "buyer_message": "",
           "tracking_number": "174099746111735",
           "shipping_provider": "TT Virtual# J&T Express",
@@ -78,6 +79,7 @@ public class TikTokOrderMappingTests
         Assert.Equal("https://example.test/item.jpeg", order.Items.Single().ImageUrl);
         Assert.Equal(1, order.Items.Single().Quantity);
         Assert.Equal(500m, order.Items.Single().Discount);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1788364800).UtcDateTime, order.ShipByDate);
         Assert.Single(order.Packages);
         Assert.Equal("1209239909803787274", order.Packages[0].PackageId);
         Assert.Contains("585819642581124106", order.Packages[0].ItemIds);
