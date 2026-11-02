@@ -34,7 +34,9 @@ public class MultiPackageMappingTests
         Assert.Contains("101", order.Packages[0].ItemIds);
         Assert.Contains("102", order.Packages[1].ItemIds);
         Assert.Equal("pkg-a", order.Shipping!.PackageNumber);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1793592000).UtcDateTime, order.ShipByDate);
+        Assert.Equal(
+            new DateTime(2026, 11, 2, 11, 0, 0, DateTimeKind.Unspecified),
+            order.ShipByDate);
     }
 
     [Fact]
@@ -55,7 +57,28 @@ public class MultiPackageMappingTests
 
         var shipByDate = Assert.IsType<DateTime>(method!.Invoke(null, [document.RootElement]));
 
-        Assert.Equal(new DateTime(2026, 11, 2, 9, 0, 0), shipByDate);
+        Assert.Equal(new DateTime(2026, 11, 2, 9, 0, 0, DateTimeKind.Unspecified), shipByDate);
+    }
+
+    [Fact]
+    public void LazadaOrderItems_PreservesThailandWallClockFromExplicitOffset()
+    {
+        const string json = """
+        [
+          { "status": "pending", "sla_time_stamp": "2026-11-02 23:59:59 +0700" }
+        ]
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var method = typeof(LazadaClient).GetMethod(
+            "GetLazadaShipByDate",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        var shipByDate = Assert.IsType<DateTime>(method!.Invoke(null, [document.RootElement]));
+
+        Assert.Equal(
+            new DateTime(2026, 11, 2, 23, 59, 59, DateTimeKind.Unspecified),
+            shipByDate);
     }
 
     [Fact]

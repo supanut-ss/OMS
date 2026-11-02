@@ -244,7 +244,17 @@ namespace OmsApi.Services.Implementation.Platforms
             unified.CancellationDeadline =
                 GetUnixDateTime(order, "cancel_order_sla_time") ??
                 GetUnixDateTime(order, "cancel_order_sn_deadline");
-            unified.ShipByDate = GetUnixDateTime(order, "rts_sla_time");
+            // Ship By is the next hard operational deadline for the origin:
+            // - before shipment is arranged, RTS is the deadline to ship;
+            // - after status reaches AWAITING_COLLECTION, TTS is the deadline
+            //   for the carrier to collect/scan the parcel.
+            var rtsDeadline = GetUnixThailandDateTime(order, "rts_sla_time");
+            var ttsDeadline = GetUnixThailandDateTime(order, "tts_sla_time");
+            var collectionDeadlineApplies = status.Trim().ToUpperInvariant() is
+                "AWAITING_COLLECTION" or "IN_TRANSIT" or "DELIVERED" or "COMPLETED";
+            unified.ShipByDate = collectionDeadlineApplies
+                ? ttsDeadline ?? rtsDeadline
+                : rtsDeadline ?? ttsDeadline;
 
             // Tax invoice
             if (order.TryGetProperty("invoice_request", out var inv) && inv.ValueKind != JsonValueKind.Null)
@@ -623,6 +633,13 @@ namespace OmsApi.Services.Implementation.Platforms
         {
             return long.TryParse(GetString(element, propertyName), out var timestamp)
                 ? DateTimeHelper.FromUnixTimestamp(timestamp)
+                : null;
+        }
+
+        private static DateTime? GetUnixThailandDateTime(JsonElement element, string propertyName)
+        {
+            return long.TryParse(GetString(element, propertyName), out var timestamp)
+                ? DateTimeHelper.ToThailandTime(timestamp)
                 : null;
         }
 

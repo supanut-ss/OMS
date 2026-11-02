@@ -83,4 +83,14 @@ public class DateTimeHelperTests
         var thai = DateTimeHelper.ToThailandTime(ts);
         Assert.Equal(7, thai.Hour);
     }
+
+    [Fact]
+    public void ToThailandTime_ConvertsUtcInstantToMarketplaceTime()
+    {
+        var utc = new DateTimeOffset(2026, 11, 2, 16, 59, 59, TimeSpan.Zero);
+
+        var thailand = DateTimeHelper.ToThailandTime(utc);
+
+        Assert.Equal(new DateTime(2026, 11, 2, 23, 59, 59, DateTimeKind.Unspecified), thailand);
+    }
 }

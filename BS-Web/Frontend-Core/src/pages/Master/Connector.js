@@ -109,6 +109,7 @@ export default function Connector() {
   const [connectors, setConnectors] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
   const [syncingConnectorId, setSyncingConnectorId] = useState(null);
+  const [syncingProgress, setSyncingProgress] = useState("");
   const [deletingConnectorId, setDeletingConnectorId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState({
@@ -241,22 +242,67 @@ export default function Connector() {
   const syncOrders = async (connector) => {
     const platform = platforms[connector.platform] || platforms.shopee;
     setSyncingConnectorId(connector.id);
+    setSyncingProgress("1");
     try {
-      const response = await AxiosMaster.post(
-        `/oms-orders/${encodeURIComponent(connector.platform)}/sync`,
-        null,
-        {
-          params: {
-            shopId: connector.account,
-            lookbackDays: 15,
+      const pageSize = 100;
+      const maxPages = 1000;
+      const syncTo = new Date().toISOString();
+      let page = 1;
+      let orderCount = 0;
+      let previousPageSignature = "";
+
+      while (page <= maxPages) {
+        const response = await AxiosMaster.post(
+          `/oms-orders/${encodeURIComponent(connector.platform)}/sync`,
+          null,
+          {
+            params: {
+              shopId: connector.account,
+              lookbackDays: 15,
+              page,
+              syncTo,
+            },
           },
-        },
-      );
-      const payload = response?.data?.data ?? response?.data?.Data;
-      const items = payload?.items ?? payload?.Items;
-      const orderCount = Array.isArray(items)
-        ? items.length
-        : Number(payload?.totalCount ?? payload?.TotalCount ?? 0);
+        );
+        const payload = response?.data?.data ?? response?.data?.Data;
+        const items = payload?.items ?? payload?.Items;
+        const pageItems = Array.isArray(items) ? items : [];
+        const totalCount = Number(
+          payload?.totalCount ?? payload?.TotalCount ?? 0,
+        );
+        const hasMore = Boolean(payload?.hasMore ?? payload?.HasMore);
+
+        if (pageItems.length > 0) {
+          const pageSignature = pageItems
+            .map((item) => item?.orderId ?? item?.OrderId ?? "")
+            .join("|");
+          if (page > 1 && pageSignature === previousPageSignature) {
+            throw new Error(
+              "Platform ส่ง Order หน้าเดิมซ้ำ ระบบจึงหยุด Sync เพื่อป้องกันการวนไม่จบ",
+            );
+          }
+          previousPageSignature = pageSignature;
+        }
+
+        orderCount += pageItems.length;
+        const expectedPages =
+          totalCount > 0 ? Math.ceil(totalCount / pageSize) : null;
+        setSyncingProgress(
+          expectedPages ? `${page}/${expectedPages}` : `${page}`,
+        );
+
+        // Some platforms do not report a reliable total count. A full page
+        // therefore means that the next page must still be checked.
+        if (!hasMore && pageItems.length < pageSize) break;
+        page += 1;
+      }
+
+      if (page > maxPages) {
+        throw new Error(
+          `Sync เกิน ${maxPages * pageSize} รายการ กรุณาลดช่วงวันที่แล้วลองใหม่`,
+        );
+      }
+
       setNotice({
         open: true,
         severity: "success",
@@ -278,6 +324,7 @@ export default function Connector() {
       });
     } finally {
       setSyncingConnectorId(null);
+      setSyncingProgress("");
     }
   };
 
@@ -456,119 +503,49 @@ export default function Connector() {
                   },
                 }}
               >
-                <Stack direction="row" alignItems="center" spacing={1.75}>
-                  <Avatar
-                    variant="rounded"
-                    sx={{
-                      width: 54,
-                      height: 54,
-                      borderRadius: 2.5,
-                      bgcolor: "white",
-                      border: `1px solid ${platform.color}22`,
-                      boxShadow: `0 5px 12px ${platform.color}25`,
-                    }}
-                  >
-                    <PlatformLogo platform={connector.platform} size={38} />
-                  </Avatar>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography fontWeight={700} color="#172b4d" noWrap>
-                      {connector.displayName || platform.subtitle}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {platform.name} · {connector.countryCode || "—"} · {connector.account}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap>
-                      App: {connector.appName || "—"}
-                    </Typography>
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      spacing={0.65}
-                      sx={{ mt: 0.8 }}
-                    >
-                      {connected ? (
-                        <CheckCircleRounded
-                          sx={{ fontSize: 16, color: "#26a269" }}
-                        />
-                      ) : (
-                        <PauseCircleOutlineRounded
-                          sx={{ fontSize: 16, color: "#d9364f" }}
-                        />
-                      )}
-                      <Typography
-                        variant="caption"
-                        fontWeight={650}
-                        color={connected ? "success.main" : "error.main"}
-                      >
-                        {connected ? "เชื่อมต่อแล้ว" : "ต้องยืนยันตัวตนใหม่"}
-                      </Typography>
-                      <Typography variant="caption" color="text.disabled">
-                        ·
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Token หมดอายุ{" "}
-                        {connector.accessTokenExpiresDate
-                          ? new Date(
-                              connector.accessTokenExpiresDate,
-                            ).toLocaleDateString()
-                          : "—"}
-                      </Typography>
-                    </Stack>
-                  </Box>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="flex-end"
-                    spacing={0.75}
-                    useFlexGap
-                    sx={{ flexWrap: "wrap" }}
-                  >
-                    <Button
-                      size="small"
-                      variant="contained"
-                      disabled={
-                        syncingConnectorId !== null ||
-                        !connected ||
-                        !connector.isActive ||
-                        !connector.hasAccessToken
-                      }
-                      onClick={() => syncOrders(connector)}
-                      startIcon={
-                        syncingConnectorId === connector.id ? (
-                          <CircularProgress size={14} color="inherit" />
-                        ) : (
-                          <SyncRounded />
-                        )
-                      }
+                <Stack spacing={2} sx={{ height: "100%" }}>
+                  <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+                    <Avatar
+                      variant="rounded"
                       sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        boxShadow: "none",
-                        bgcolor: "#168dae",
-                        "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
+                        width: 54,
+                        height: 54,
+                        flexShrink: 0,
+                        borderRadius: 2.5,
+                        bgcolor: "white",
+                        border: `1px solid ${platform.color}22`,
+                        boxShadow: `0 5px 12px ${platform.color}25`,
                       }}
                     >
-                      {syncingConnectorId === connector.id
-                        ? "กำลัง Sync…"
-                        : "Sync Order"}
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={Boolean(oauthRedirecting) || !connector.hasAppKey || !connector.hasAppSecret}
-                      onClick={() => connectOAuth(connector)}
-                      startIcon={oauthRedirecting === connector.id ? <CircularProgress size={14} /> : <OpenInNewRounded />}
-                      sx={{ textTransform: "none", borderRadius: 2 }}
-                    >
-                      {oauthRedirecting === connector.id ? "กำลังเปิด OAuth…" : connected ? "เชื่อมต่อใหม่" : "เชื่อมต่อ OAuth"}
-                    </Button>
-                    <IOSSwitch
-                      checked={connector.isActive}
-                      onChange={() => toggleConnector(connector)}
-                      inputProps={{
-                        "aria-label": `เปิดใช้งาน ${platform.name}`,
-                      }}
-                    />
+                      <PlatformLogo platform={connector.platform} size={38} />
+                    </Avatar>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography
+                        title={connector.displayName || platform.subtitle}
+                        fontWeight={700}
+                        color="#172b4d"
+                        noWrap
+                      >
+                        {connector.displayName || platform.subtitle}
+                      </Typography>
+                      <Typography
+                        title={`${platform.name} · ${connector.countryCode || "—"} · ${connector.account || "—"}`}
+                        variant="body2"
+                        color="text.secondary"
+                        noWrap
+                      >
+                        {platform.name} · {connector.countryCode || "—"} · {connector.account || "—"}
+                      </Typography>
+                      <Typography
+                        title={`App: ${connector.appName || "—"}`}
+                        variant="caption"
+                        color="text.secondary"
+                        noWrap
+                        component="div"
+                      >
+                        App: {connector.appName || "—"}
+                      </Typography>
+                    </Box>
                     <IconButton
                       aria-label={`ลบ ${platform.name}`}
                       title={`ลบ ${platform.name}`}
@@ -576,8 +553,8 @@ export default function Connector() {
                       disabled={deletingConnectorId !== null}
                       onClick={() => deleteConnector(connector)}
                       sx={{
+                        flexShrink: 0,
                         border: "1px solid #e3e9f1",
-                        borderRadius: "50%",
                         width: 36,
                         height: 36,
                         color: "text.secondary",
@@ -595,18 +572,136 @@ export default function Connector() {
                       )}
                     </IconButton>
                   </Stack>
-                </Stack>
-                {!connector.isActive && (
-                  <Chip
-                    size="small"
-                    label="ปิดใช้งานชั่วคราว"
+
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Chip
+                      size="small"
+                      icon={
+                        connected ? (
+                          <CheckCircleRounded />
+                        ) : (
+                          <PauseCircleOutlineRounded />
+                        )
+                      }
+                      label={connected ? "เชื่อมต่อแล้ว" : "ต้องยืนยันตัวตนใหม่"}
+                      sx={{
+                        bgcolor: connected ? "#eaf7f0" : "#fff1f2",
+                        color: connected ? "#218653" : "#c6283d",
+                        fontWeight: 650,
+                        "& .MuiChip-icon": { color: "inherit" },
+                      }}
+                    />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`Token หมดอายุ ${
+                        connector.accessTokenExpiresDate
+                          ? new Date(connector.accessTokenExpiresDate).toLocaleDateString()
+                          : "—"
+                      }`}
+                      sx={{ borderColor: "#dce3ec", color: "text.secondary" }}
+                    />
+                    {!connector.isActive && (
+                      <Chip
+                        size="small"
+                        label="ปิดใช้งานชั่วคราว"
+                        sx={{ bgcolor: "#f1f3f6", color: "text.secondary" }}
+                      />
+                    )}
+                  </Stack>
+
+                  <Box
                     sx={{
-                      mt: 1.5,
-                      bgcolor: "#f1f3f6",
-                      color: "text.secondary",
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        sm: "repeat(2, minmax(0, 1fr))",
+                      },
+                      gap: 1,
+                      pt: 1.75,
+                      mt: "auto !important",
+                      borderTop: "1px solid #edf1f5",
                     }}
-                  />
-                )}
+                  >
+                    <Button
+                      size="small"
+                      variant="contained"
+                      fullWidth
+                      disabled={
+                        syncingConnectorId !== null ||
+                        !connected ||
+                        !connector.isActive ||
+                        !connector.hasAccessToken
+                      }
+                      onClick={() => syncOrders(connector)}
+                      startIcon={
+                        syncingConnectorId === connector.id ? (
+                          <CircularProgress size={14} color="inherit" />
+                        ) : (
+                          <SyncRounded />
+                        )
+                      }
+                      sx={{
+                        minHeight: 38,
+                        textTransform: "none",
+                        borderRadius: 2,
+                        boxShadow: "none",
+                        bgcolor: "#168dae",
+                        "&:hover": { bgcolor: "#107b98", boxShadow: "none" },
+                      }}
+                    >
+                      {syncingConnectorId === connector.id
+                        ? `กำลัง Sync ${syncingProgress}…`
+                        : "Sync Order"}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      fullWidth
+                      disabled={
+                        Boolean(oauthRedirecting) ||
+                        !connector.hasAppKey ||
+                        !connector.hasAppSecret
+                      }
+                      onClick={() => connectOAuth(connector)}
+                      startIcon={
+                        oauthRedirecting === connector.id ? (
+                          <CircularProgress size={14} />
+                        ) : (
+                          <OpenInNewRounded />
+                        )
+                      }
+                      sx={{ minHeight: 38, textTransform: "none", borderRadius: 2 }}
+                    >
+                      {oauthRedirecting === connector.id
+                        ? "กำลังเปิด OAuth…"
+                        : connected
+                          ? "เชื่อมต่อใหม่"
+                          : "เชื่อมต่อ OAuth"}
+                    </Button>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{
+                        gridColumn: { xs: "auto", sm: "1 / -1" },
+                        px: 0.5,
+                        minHeight: 34,
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                        เปิดใช้งาน Connector
+                      </Typography>
+                      <IOSSwitch
+                        checked={connector.isActive}
+                        onChange={() => toggleConnector(connector)}
+                        inputProps={{
+                          "aria-label": `เปิดใช้งาน ${platform.name}`,
+                        }}
+                      />
+                    </Stack>
+                  </Box>
+                </Stack>
               </Paper>
             );
           })}

@@ -310,7 +310,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 if (status is "canceled" or "cancelled" or "returned" or "failed")
                     continue;
 
-                var candidate = GetNullableLazadaDateTime(item, "sla_time_stamp");
+                var candidate = GetNullableLazadaMarketplaceDateTime(item, "sla_time_stamp");
                 if (candidate.HasValue && (!earliest.HasValue || candidate.Value < earliest.Value))
                     earliest = candidate;
             }
@@ -574,6 +574,49 @@ namespace OmsApi.Services.Implementation.Platforms
         {
             var value = GetLazadaDateTime(element, propertyNames);
             return value == DateTime.MinValue ? null : value;
+        }
+
+        private static DateTime? GetNullableLazadaMarketplaceDateTime(
+            JsonElement element,
+            params string[] propertyNames)
+        {
+            var value = GetLazadaString(element, propertyNames);
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            var hasExplicitOffset =
+                value.EndsWith("Z", StringComparison.OrdinalIgnoreCase) ||
+                System.Text.RegularExpressions.Regex.IsMatch(value, @"[+-]\d{2}:?\d{2}$");
+            if (hasExplicitOffset && DateTimeOffset.TryParse(
+                    value,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AllowWhiteSpaces,
+                    out var dateTimeOffset))
+                return DateTimeHelper.ToThailandTime(dateTimeOffset);
+
+            if (DateTime.TryParse(
+                    value,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AllowWhiteSpaces,
+                    out var localDateTime))
+                return DateTime.SpecifyKind(localDateTime, DateTimeKind.Unspecified);
+
+            if (long.TryParse(value, out var timestamp))
+            {
+                try
+                {
+                    var instant = value.Length >= 13
+                        ? DateTimeOffset.FromUnixTimeMilliseconds(timestamp)
+                        : DateTimeOffset.FromUnixTimeSeconds(timestamp);
+                    return DateTimeHelper.ToThailandTime(instant);
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // Keep the response usable when a provider sends an invalid timestamp.
+                }
+            }
+
+            return null;
         }
 
         private static UnifiedOrder MapLazadaOrderDetail(JsonElement order)

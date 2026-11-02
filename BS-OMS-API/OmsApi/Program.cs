@@ -30,7 +30,26 @@ if (string.IsNullOrWhiteSpace(dataProtectionAppName) || string.IsNullOrWhiteSpac
 
 var keyDirectory = Path.GetFullPath(dataProtectionKeysPath.Trim());
 // ─── ดูการเชื่อมต่อ ได้ที่ docs/Connected.md ───────────────────────────────────────────────
-Directory.CreateDirectory(keyDirectory);
+try
+{
+    Directory.CreateDirectory(keyDirectory);
+}
+catch (Exception ex) when (
+    builder.Environment.IsDevelopment()
+    && ex is IOException or UnauthorizedAccessException)
+{
+    // Keep local development and Swagger available when the shared key server
+    // is temporarily unreachable. Credentials encrypted with the shared key
+    // ring cannot be used until that share is available again.
+    keyDirectory = Path.Combine(
+        builder.Environment.ContentRootPath,
+        "obj",
+        "DataProtection-Keys");
+    Directory.CreateDirectory(keyDirectory);
+    Console.Error.WriteLine(
+        $"WARNING: Shared Data Protection keys are unavailable ({ex.Message}). "
+        + $"Development is using local keys at '{keyDirectory}'.");
+}
 builder.Services
     .AddDataProtection()
     .SetApplicationName(dataProtectionAppName.Trim())

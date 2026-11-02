@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using OmsApi.Helpers;
 using OmsApi.Models.Common;
 using OmsApi.Models.Orders;
 using OmsApi.Models.Shipping;
@@ -23,6 +24,7 @@ public class TikTokOrderMappingTests
           "update_time": 1788171181,
           "cancel_order_sla_time": 1788454799,
           "rts_sla_time": 1788364800,
+          "tts_sla_time": 1788451199,
           "buyer_message": "",
           "tracking_number": "174099746111735",
           "shipping_provider": "TT Virtual# J&T Express",
@@ -79,10 +81,79 @@ public class TikTokOrderMappingTests
         Assert.Equal("https://example.test/item.jpeg", order.Items.Single().ImageUrl);
         Assert.Equal(1, order.Items.Single().Quantity);
         Assert.Equal(500m, order.Items.Single().Discount);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1788364800).UtcDateTime, order.ShipByDate);
+        Assert.Equal(DateTimeHelper.ToThailandTime(1788451199), order.ShipByDate);
         Assert.Single(order.Packages);
         Assert.Equal("1209239909803787274", order.Packages[0].PackageId);
         Assert.Contains("585819642581124106", order.Packages[0].ItemIds);
+    }
+
+    [Fact]
+    public void MapTikTokOrderDetail_FallsBackToRtsWhenTtsIsMissing()
+    {
+        const string json = """
+        {
+          "id": "order-rts-fallback",
+          "status": "AWAITING_SHIPMENT",
+          "rts_sla_time": 1788364800
+        }
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var method = typeof(TikTokClient).GetMethod(
+            "MapTikTokOrderDetail",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        var order = Assert.IsType<UnifiedOrder>(method!.Invoke(null, [document.RootElement]));
+
+        Assert.Equal(DateTimeHelper.ToThailandTime(1788364800), order.ShipByDate);
+    }
+
+    [Fact]
+    public void MapTikTokOrderDetail_UsesCollectionDeadlineInThailandTime()
+    {
+        const string json = """
+        {
+          "id": "586923758620148746",
+          "status": "AWAITING_COLLECTION",
+          "rts_sla_time": 1793606400,
+          "tts_sla_time": 1793638799
+        }
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var method = typeof(TikTokClient).GetMethod(
+            "MapTikTokOrderDetail",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        var order = Assert.IsType<UnifiedOrder>(method!.Invoke(null, [document.RootElement]));
+
+        Assert.Equal(
+            new DateTime(2026, 11, 2, 23, 59, 59, DateTimeKind.Unspecified),
+            order.ShipByDate);
+    }
+
+    [Fact]
+    public void MapTikTokOrderDetail_UsesReadyToShipDeadlineBeforeShipmentIsArranged()
+    {
+        const string json = """
+        {
+          "id": "order-awaiting-shipment",
+          "status": "AWAITING_SHIPMENT",
+          "rts_sla_time": 1793606400,
+          "tts_sla_time": 1793638799
+        }
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var method = typeof(TikTokClient).GetMethod(
+            "MapTikTokOrderDetail",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        var order = Assert.IsType<UnifiedOrder>(method!.Invoke(null, [document.RootElement]));
+
+        Assert.Equal(
+            new DateTime(2026, 11, 2, 15, 0, 0, DateTimeKind.Unspecified),
+            order.ShipByDate);
     }
 
     [Fact]

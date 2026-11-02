@@ -23,6 +23,8 @@ public sealed class OmsOrdersController : ControllerBase
         string platform,
         [FromQuery] string shopId,
         [FromQuery] int lookbackDays = 15,
+        [FromQuery] int page = 1,
+        [FromQuery] DateTimeOffset? syncTo = null,
         CancellationToken cancellationToken = default)
     {
         if (!TryNormalizePlatform(platform, out _, out var platformCode))
@@ -31,15 +33,17 @@ public sealed class OmsOrdersController : ControllerBase
             return BadRequest(new { message = "Shop ID is required." });
         if (lookbackDays is < 1 or > 90)
             return BadRequest(new { message = "lookbackDays must be between 1 and 90." });
+        if (page is < 1 or > 10000)
+            return BadRequest(new { message = "page must be between 1 and 10000." });
 
-        var dateTo = DateTime.UtcNow;
+        var dateTo = syncTo?.UtcDateTime ?? DateTime.UtcNow;
         var body = JsonSerializer.Serialize(new
         {
             Platform = platformCode,
             ShopId = shopId.Trim(),
             DateFrom = dateTo.AddDays(-lookbackDays),
             DateTo = dateTo,
-            Page = 1,
+            Page = page,
             PageSize = 100,
             IncludeDetails = true,
         });
