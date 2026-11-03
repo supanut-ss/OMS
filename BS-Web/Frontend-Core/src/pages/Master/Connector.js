@@ -109,7 +109,6 @@ export default function Connector() {
   const [connectors, setConnectors] = useState([]);
   const [oauthRedirecting, setOauthRedirecting] = useState("");
   const [syncingConnectorId, setSyncingConnectorId] = useState(null);
-  const [syncingProgress, setSyncingProgress] = useState("");
   const [deletingConnectorId, setDeletingConnectorId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState({
@@ -242,7 +241,11 @@ export default function Connector() {
   const syncOrders = async (connector) => {
     const platform = platforms[connector.platform] || platforms.shopee;
     setSyncingConnectorId(connector.id);
-    setSyncingProgress("1");
+    setNotice({
+      open: true,
+      severity: "info",
+      message: `กำลัง Sync Order ${platform.name}: หน้า 1, พบแล้ว 0 รายการ`,
+    });
     try {
       const pageSize = 100;
       const maxPages = 1000;
@@ -287,9 +290,12 @@ export default function Connector() {
         orderCount += pageItems.length;
         const expectedPages =
           totalCount > 0 ? Math.ceil(totalCount / pageSize) : null;
-        setSyncingProgress(
-          expectedPages ? `${page}/${expectedPages}` : `${page}`,
-        );
+        const pageProgress = expectedPages ? `${page}/${expectedPages}` : `${page}`;
+        setNotice({
+          open: true,
+          severity: "info",
+          message: `กำลัง Sync Order ${platform.name}: หน้า ${pageProgress}, พบแล้ว ${orderCount} รายการ`,
+        });
 
         // Some platforms do not report a reliable total count. A full page
         // therefore means that the next page must still be checked.
@@ -324,7 +330,6 @@ export default function Connector() {
       });
     } finally {
       setSyncingConnectorId(null);
-      setSyncingProgress("");
     }
   };
 
@@ -651,7 +656,7 @@ export default function Connector() {
                       }}
                     >
                       {syncingConnectorId === connector.id
-                        ? `กำลัง Sync ${syncingProgress}…`
+                        ? "กำลัง Sync…"
                         : "Sync Order"}
                     </Button>
                     <Button
@@ -856,7 +861,7 @@ export default function Connector() {
       </BSDialog>
       <Snackbar
         open={notice.open}
-        autoHideDuration={6000}
+        autoHideDuration={syncingConnectorId !== null ? null : 6000}
         onClose={() => setNotice((current) => ({ ...current, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
