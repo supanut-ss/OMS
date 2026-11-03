@@ -1,5 +1,6 @@
 import { Box, Tooltip, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import { formatStatusLabel } from "./orderlistUtils";
 
 const STATUS_FLOWS = {
   shopee: [
@@ -82,7 +83,7 @@ const compactStatusLabel = (status) => {
     PARTIALLY_SHIPPING: "PARTIAL",
     AWAITING_COLLECTION: "AWAIT PICKUP",
   };
-  return labels[status] || status.replaceAll("_", " ");
+  return labels[status] || formatStatusLabel(status);
 };
 
 const resolveProgress = (platformValue, statusValue) => {
@@ -135,7 +136,7 @@ const OrderStatusProgress = ({
   if (progress.steps.length === 0) {
     return (
       <Typography variant="caption" color="text.secondary">
-        {progress.rawStatus || "—"}
+        {formatStatusLabel(progress.rawStatus)}
       </Typography>
     );
   }
@@ -158,10 +159,10 @@ const OrderStatusProgress = ({
               : progress.currentIndex > index
                 ? "done"
                 : "pending";
-          const label = compact ? compactStatusLabel(step) : step;
+          const label = compact ? compactStatusLabel(step) : formatStatusLabel(step);
 
           return (
-            <Tooltip key={step} title={step.replaceAll("_", " ")} arrow>
+            <Tooltip key={step} title={formatStatusLabel(step)} arrow>
               <Box
                 sx={{
                   position: "relative",
@@ -204,7 +205,7 @@ const OrderStatusProgress = ({
         })}
 
         {progress.exceptionType && (
-          <Tooltip title={progress.rawStatus.replaceAll("_", " ")} arrow>
+          <Tooltip title={formatStatusLabel(progress.rawStatus)} arrow>
             <Box
               sx={{
                 flex: "0 0 auto",
@@ -228,7 +229,7 @@ const OrderStatusProgress = ({
       </Box>
       {!compact && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: "block" }}>
-          {lang === "th" ? "สถานะปัจจุบัน" : "Current status"}: {progress.rawStatus || "—"}
+          {lang === "th" ? "สถานะปัจจุบัน" : "Current status"}: {formatStatusLabel(progress.rawStatus)}
         </Typography>
       )}
     </Box>

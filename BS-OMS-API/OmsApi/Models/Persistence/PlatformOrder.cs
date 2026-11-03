@@ -15,6 +15,9 @@ public class PlatformOrder
     public string OriginalStatus { get; set; } = string.Empty;
     public string? BuyerName { get; set; }
     public string? BuyerRemarks { get; set; }
+    public string? BuyerTaxId { get; set; }
+    public string? BuyerInvoiceName { get; set; }
+    public string? BuyerInvoiceAddress { get; set; }
     public bool TaxInvoiceRequested { get; set; }
     public string? TaxInvoiceTaxId { get; set; }
     public string? TaxInvoiceCompanyName { get; set; }

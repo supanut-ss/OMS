@@ -26,6 +26,15 @@ namespace OmsApi.Models.Orders
         /// <summary>หมายเหตุจากลูกค้า (Buyer Remarks / Customer Comment)</summary>
         public string BuyerRemarks { get; set; } = string.Empty;
 
+        /// <summary>เลขประจำตัวผู้เสียภาษีที่ผู้ซื้อใช้ขอใบกำกับภาษี</summary>
+        public string BuyerTaxId { get; set; } = string.Empty;
+
+        /// <summary>ชื่อบุคคลหรือนิติบุคคลสำหรับออกใบกำกับภาษี</summary>
+        public string BuyerInvoiceName { get; set; } = string.Empty;
+
+        /// <summary>ที่อยู่สำหรับออกใบกำกับภาษี</summary>
+        public string BuyerInvoiceAddress { get; set; } = string.Empty;
+
         /// <summary>Flag ขอใบกำกับภาษี</summary>
         public bool TaxInvoiceRequested { get; set; }
 

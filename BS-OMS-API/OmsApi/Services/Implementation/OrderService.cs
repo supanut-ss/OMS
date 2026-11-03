@@ -290,7 +290,7 @@ namespace OmsApi.Services.Implementation
                         existingByOrderId[order.OrderId] = record;
                     }
 
-                    MapToRecord(order, record, now);
+                    MapToRecord(order, record, now, isNew);
                     synced.Add((record, isNew ? SyncActionInsert : SyncActionUpdate, oldStatus));
 
                     // Replace items wholesale; this table is a read-through
@@ -475,13 +475,31 @@ namespace OmsApi.Services.Implementation
         private static string Truncate(string value, int maxLength) =>
             value.Length <= maxLength ? value : value[..maxLength];
 
-        private static void MapToRecord(UnifiedOrder order, PlatformOrder record, DateTime now)
+        private static void MapToRecord(
+            UnifiedOrder order,
+            PlatformOrder record,
+            DateTime now,
+            bool isNew)
         {
             record.ShopName = order.ShopName;
             record.Status = order.Status.ToString();
             record.OriginalStatus = order.OriginalStatus;
             record.BuyerName = order.BuyerName;
             record.BuyerRemarks = order.BuyerRemarks;
+            // Buyer invoice APIs can be permission- or platform-dependent.
+            // Preserve a previously retrieved value when a later list sync
+            // cannot return the invoice fields instead of erasing good data.
+            var buyerTaxId = NullIfWhiteSpace(order.BuyerTaxId);
+            var buyerInvoiceName = NullIfWhiteSpace(order.BuyerInvoiceName);
+            var buyerInvoiceAddress = NullIfWhiteSpace(order.BuyerInvoiceAddress);
+            if (isNew || buyerTaxId != null)
+                record.BuyerTaxId = buyerTaxId == null ? null : Truncate(buyerTaxId, 100);
+            if (isNew || buyerInvoiceName != null)
+                record.BuyerInvoiceName = buyerInvoiceName == null ? null : Truncate(buyerInvoiceName, 100);
+            if (isNew || buyerInvoiceAddress != null)
+                record.BuyerInvoiceAddress = buyerInvoiceAddress == null
+                    ? null
+                    : Truncate(buyerInvoiceAddress, 500);
             record.TaxInvoiceRequested = order.TaxInvoiceRequested;
             record.TaxInvoiceTaxId = order.TaxInvoice?.TaxId;
             record.TaxInvoiceCompanyName = order.TaxInvoice?.CompanyName;
@@ -528,5 +546,8 @@ namespace OmsApi.Services.Implementation
             record.UpdateBy = SystemUser;
             record.UpdateDate = now;
         }
+
+        private static string? NullIfWhiteSpace(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

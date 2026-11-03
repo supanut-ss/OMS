@@ -33,6 +33,7 @@ import {
 import {
   formatAmount,
   formatDate,
+  formatStatusLabel,
   getPlatformBadgeSx,
   getSyncStatusPalette,
   getWm3StatusPalette,
@@ -156,6 +157,9 @@ const OrderDetail = ({ lang = "th" }) => {
       recipient: isThai ? "ชื่อผู้รับ" : "Ship To Name",
       address: isThai ? "ที่อยู่จัดส่ง" : "Ship To Address",
       postalCode: isThai ? "รหัสไปรษณีย์" : "Ship To Postal Code",
+      buyerTaxId: isThai ? "เลขประจำตัวผู้เสียภาษี" : "Buyer Tax ID",
+      buyerInvoiceName: isThai ? "ชื่อสำหรับออกใบกำกับภาษี" : "Invoice Name",
+      buyerInvoiceAddress: isThai ? "ที่อยู่ออกใบกำกับภาษี" : "Invoice Address",
       carrier: isThai ? "บริษัทขนส่ง" : "Carrier",
       tracking: isThai ? "เลข Tracking" : "Tracking Number",
       syncStatus: "Sync Status",
@@ -747,7 +751,7 @@ const OrderDetail = ({ lang = "th" }) => {
                         lineHeight: 1.2,
                       }}
                     >
-                      {order.status || "—"}
+                      {formatStatusLabel(order.status)}
                     </Box>
                   </Stack>
                 </Stack>
@@ -768,7 +772,7 @@ const OrderDetail = ({ lang = "th" }) => {
                     {order.platform_order_id}
                   </DetailField>
                   <DetailField label={labels.rawStatus}>
-                    {order.original_status || order.status}
+                    {formatStatusLabel(order.original_status || order.status)}
                   </DetailField>
                   <DetailField label={labels.createdAt}>
                     {formatDate(order.order_created_date, locale)}
@@ -781,6 +785,15 @@ const OrderDetail = ({ lang = "th" }) => {
                   </DetailField>
                   <DetailField label={labels.postalCode}>
                     {order.recipient_postal_code}
+                  </DetailField>
+                  <DetailField label={labels.buyerTaxId}>
+                    {order.buyer_tax_id}
+                  </DetailField>
+                  <DetailField label={labels.buyerInvoiceName}>
+                    {order.buyer_invoice_name}
+                  </DetailField>
+                  <DetailField label={labels.buyerInvoiceAddress} span={2}>
+                    {order.buyer_invoice_address}
                   </DetailField>
                   <DetailField label={labels.carrier}>
                     {order.shipping_carrier}
@@ -1250,7 +1263,7 @@ const OrderDetail = ({ lang = "th" }) => {
                           ).trim();
                           const transition =
                             oldStatus || newStatus
-                              ? `${oldStatus || "—"} → ${newStatus || "—"}`
+                              ? `${formatStatusLabel(oldStatus)} → ${formatStatusLabel(newStatus)}`
                               : "";
                           const duration = Number(event.duration_ms);
 
@@ -1298,7 +1311,7 @@ const OrderDetail = ({ lang = "th" }) => {
                                         event.run_status,
                                       )}
                                       variant={isError ? "filled" : "outlined"}
-                                      label={event.run_status || "—"}
+                                      label={formatStatusLabel(event.run_status)}
                                       sx={{
                                         height: 23,
                                         fontSize: 10,

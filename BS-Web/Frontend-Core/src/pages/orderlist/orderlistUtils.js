@@ -28,6 +28,21 @@ export const formatAmount = (value, currency, locale) => {
   }
 };
 
+export const formatStatusLabel = (value) => {
+  const text = String(value || "")
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  if (!text) return "—";
+  return text
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const BADGE_PALETTES = {
   success: { backgroundColor: "#d4edda", color: "#155724" },
   warning: { backgroundColor: "#fff3cd", color: "#856404" },

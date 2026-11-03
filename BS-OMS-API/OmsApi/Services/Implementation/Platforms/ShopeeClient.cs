@@ -159,7 +159,7 @@ namespace OmsApi.Services.Implementation.Platforms
                               $"&order_sn_list={orderId}" +
                               $"&response_optional_fields=buyer_user_id,buyer_username,estimated_shipping_fee," +
                               $"recipient_address,actual_shipping_fee,note,item_list,pay_time," +
-                              $"message_to_seller,ship_by_date,invoice_data,package_list,shipping_carrier";
+                              $"message_to_seller,ship_by_date,package_list,shipping_carrier";
 
             try
             {
@@ -177,7 +177,21 @@ namespace OmsApi.Services.Implementation.Platforms
                     resp.TryGetProperty("order_list", out var orderList))
                 {
                     var orderArr = orderList.EnumerateArray().ToList();
-                    if (orderArr.Count > 0) return MapShopeeOrderDetail(orderArr[0]);
+                    if (orderArr.Count > 0)
+                    {
+                        var detail = MapShopeeOrderDetail(orderArr[0]);
+                        var details = new Dictionary<string, UnifiedOrder>
+                        {
+                            [detail.OrderId] = detail
+                        };
+                        await ApplyShopeeBuyerInvoiceInfoAsync(
+                            client,
+                            accessToken,
+                            shopIdLong,
+                            new[] { detail.OrderId },
+                            details);
+                        return detail;
+                    }
                 }
                 return null;
             }
@@ -197,14 +211,15 @@ namespace OmsApi.Services.Implementation.Platforms
 
             foreach (var batch in orderSns.Where(sn => !string.IsNullOrEmpty(sn)).Distinct().Chunk(50))
             {
+                var batchOrderSns = batch.ToArray();
                 var timestamp = DateTimeHelper.CurrentUnixTimestamp();
                 var sign = SignatureHelper.GenerateShopeeSignature(_partnerKey, _partnerId, apiPath, timestamp, accessToken, shopIdLong);
                 var queryParams = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}" +
                                   $"&shop_id={shopIdLong}&sign={sign}" +
-                                  $"&order_sn_list={string.Join(",", batch)}" +
+                                  $"&order_sn_list={string.Join(",", batchOrderSns)}" +
                                   $"&response_optional_fields=buyer_user_id,buyer_username,estimated_shipping_fee," +
                                   $"recipient_address,actual_shipping_fee,note,item_list,pay_time," +
-                                  $"message_to_seller,ship_by_date,invoice_data,package_list,shipping_carrier";
+                                  $"message_to_seller,ship_by_date,package_list,shipping_carrier";
 
                 try
                 {
@@ -221,11 +236,20 @@ namespace OmsApi.Services.Implementation.Platforms
                     if (json.RootElement.TryGetProperty("response", out var resp) &&
                         resp.TryGetProperty("order_list", out var orderList))
                     {
+                        var batchDetails = new Dictionary<string, UnifiedOrder>();
                         foreach (var order in orderList.EnumerateArray())
                         {
                             var detail = MapShopeeOrderDetail(order);
                             details[detail.OrderId] = detail;
+                            batchDetails[detail.OrderId] = detail;
                         }
+
+                        await ApplyShopeeBuyerInvoiceInfoAsync(
+                            client,
+                            accessToken,
+                            shopIdLong,
+                            batchOrderSns,
+                            batchDetails);
                     }
                 }
                 catch (Exception ex)
@@ -236,6 +260,185 @@ namespace OmsApi.Services.Implementation.Platforms
 
             return details;
         }
+
+        /// <summary>
+        /// Buyer-entered invoice information is intentionally loaded from
+        /// get_buyer_invoice_info. Shopee's order-detail invoice_data describes
+        /// an invoice already issued and is not the buyer invoice request.
+        /// </summary>
+        private async Task ApplyShopeeBuyerInvoiceInfoAsync(
+            HttpClient client,
+            string accessToken,
+            long shopId,
+            IReadOnlyCollection<string> orderSns,
+            IReadOnlyDictionary<string, UnifiedOrder> orders)
+        {
+            var queries = orderSns
+                .Where(orderSn => !string.IsNullOrWhiteSpace(orderSn))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(orderSn => new { order_sn = orderSn })
+                .ToArray();
+            if (queries.Length == 0 || orders.Count == 0)
+                return;
+
+            const string apiPath = "/api/v2/order/get_buyer_invoice_info";
+            var timestamp = DateTimeHelper.CurrentUnixTimestamp();
+            var sign = SignatureHelper.GenerateShopeeSignature(
+                _partnerKey,
+                _partnerId,
+                apiPath,
+                timestamp,
+                accessToken,
+                shopId);
+            var queryParams = $"?partner_id={_partnerId}&timestamp={timestamp}&access_token={accessToken}" +
+                              $"&shop_id={shopId}&sign={sign}";
+            var body = JsonSerializer.Serialize(new { queries });
+
+            try
+            {
+                using var content = new StringContent(body, Encoding.UTF8, "application/json");
+                using var response = await client.PostAsync(apiPath + queryParams, content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+                using var json = JsonDocument.Parse(responseBody);
+                var error = GetShopeeString(json.RootElement, "error");
+                if (!response.IsSuccessStatusCode || !string.IsNullOrWhiteSpace(error))
+                {
+                    _logger.LogWarning(
+                        "Shopee buyer invoice request failed: status={StatusCode}, error={Error}",
+                        response.StatusCode,
+                        error);
+                    return;
+                }
+
+                var payload = json.RootElement.TryGetProperty("response", out var responsePayload)
+                    ? responsePayload
+                    : json.RootElement;
+                foreach (var entry in EnumerateShopeeInvoiceEntries(payload))
+                {
+                    if (entry.ValueKind != JsonValueKind.Object)
+                        continue;
+                    var orderSn = GetShopeeString(entry, "order_sn", "order_id");
+                    if (string.IsNullOrWhiteSpace(orderSn) &&
+                        entry.TryGetProperty("query", out var query) &&
+                        query.ValueKind == JsonValueKind.Object)
+                        orderSn = GetShopeeString(query, "order_sn", "order_id");
+                    if (!orders.TryGetValue(orderSn, out var order))
+                        continue;
+
+                    var invoiceDetail = entry;
+                    foreach (var propertyName in new[] { "invoice_detail", "invoice_info", "invoice_data" })
+                    {
+                        if (entry.TryGetProperty(propertyName, out var nested) &&
+                            nested.ValueKind == JsonValueKind.Object)
+                        {
+                            invoiceDetail = nested;
+                            break;
+                        }
+                    }
+
+                    ApplyShopeeBuyerInvoice(invoiceDetail, order);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Invoice permission/data availability must not make the order
+                // or ship-by sync fail. Empty buyer_* fields mean unavailable.
+                _logger.LogWarning(ex, "Shopee buyer invoice information could not be loaded");
+            }
+        }
+
+        private static IEnumerable<JsonElement> EnumerateShopeeInvoiceEntries(JsonElement payload)
+        {
+            if (payload.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var propertyName in new[]
+                         {
+                             "invoice_data_list",
+                             "invoice_info_list",
+                             "invoice_list",
+                             "result_list",
+                             "data_list",
+                             "data",
+                             "result"
+                         })
+                {
+                    if (!payload.TryGetProperty(propertyName, out var list) ||
+                        list.ValueKind != JsonValueKind.Array)
+                        continue;
+
+                    foreach (var entry in list.EnumerateArray())
+                        yield return entry;
+                    yield break;
+                }
+
+                foreach (var wrapperName in new[] { "data", "result" })
+                {
+                    if (!payload.TryGetProperty(wrapperName, out var nestedPayload) ||
+                        nestedPayload.ValueKind != JsonValueKind.Object)
+                        continue;
+                    foreach (var entry in EnumerateShopeeInvoiceEntries(nestedPayload))
+                        yield return entry;
+                    yield break;
+                }
+            }
+
+            if (payload.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var entry in payload.EnumerateArray())
+                    yield return entry;
+            }
+            else if (payload.ValueKind == JsonValueKind.Object &&
+                     !string.IsNullOrWhiteSpace(GetShopeeString(payload, "order_sn", "order_id")))
+            {
+                yield return payload;
+            }
+        }
+
+        private static void ApplyShopeeBuyerInvoice(JsonElement invoice, UnifiedOrder order)
+        {
+            var buyerTaxId = GetShopeeString(invoice, "company_tax_id", "tax_id");
+            var buyerName = GetShopeeString(invoice, "company_name", "name");
+            var buyerAddress = GetShopeeNestedString(
+                invoice,
+                "company_address_breakdown",
+                "company_full_address");
+            if (string.IsNullOrWhiteSpace(buyerAddress))
+                buyerAddress = GetShopeeString(invoice, "company_address");
+            if (string.IsNullOrWhiteSpace(buyerAddress))
+                buyerAddress = GetShopeeNestedString(invoice, "address_breakdown", "full_address");
+            if (string.IsNullOrWhiteSpace(buyerAddress))
+                buyerAddress = GetShopeeString(invoice, "id_card_address", "address");
+
+            if (string.IsNullOrWhiteSpace(buyerTaxId) &&
+                string.IsNullOrWhiteSpace(buyerName) &&
+                string.IsNullOrWhiteSpace(buyerAddress))
+                return;
+
+            order.BuyerTaxId = buyerTaxId;
+            order.BuyerInvoiceName = buyerName;
+            order.BuyerInvoiceAddress = buyerAddress;
+            order.TaxInvoiceRequested = true;
+            order.TaxInvoice = new TaxInvoiceInfo
+            {
+                TaxId = buyerTaxId,
+                CompanyName = buyerName,
+                Address = buyerAddress,
+                BranchCode = GetShopeeString(
+                    invoice,
+                    "company_branch_code",
+                    "branch_code",
+                    "branch_number")
+            };
+        }
+
+        private static string GetShopeeNestedString(
+            JsonElement element,
+            string objectProperty,
+            string valueProperty) =>
+            element.TryGetProperty(objectProperty, out var nested) &&
+            nested.ValueKind == JsonValueKind.Object
+                ? GetShopeeString(nested, valueProperty)
+                : string.Empty;
 
         #endregion
 
@@ -1471,17 +1674,6 @@ namespace OmsApi.Services.Implementation.Platforms
                     ? DateTimeHelper.ToThailandTime(shipByDate.GetInt64()) : null,
                 Currency = order.TryGetProperty("currency", out var cur) ? cur.GetString() ?? "THB" : "THB"
             };
-
-            if (order.TryGetProperty("invoice_data", out var inv) && inv.ValueKind != JsonValueKind.Null)
-            {
-                unified.TaxInvoiceRequested = true;
-                unified.TaxInvoice = new TaxInvoiceInfo
-                {
-                    TaxId = inv.TryGetProperty("tax_id", out var tid) ? tid.GetString() ?? "" : "",
-                    CompanyName = inv.TryGetProperty("company_name", out var cn) ? cn.GetString() ?? "" : "",
-                    Address = inv.TryGetProperty("address", out var addr) ? addr.GetString() ?? "" : ""
-                };
-            }
 
             var orderCarrier = order.TryGetProperty("shipping_carrier", out var carrier)
                 ? GetShopeeString(carrier) : "";

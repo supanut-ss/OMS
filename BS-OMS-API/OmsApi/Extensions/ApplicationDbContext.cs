@@ -259,6 +259,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OriginalStatus).HasColumnName("original_status").HasColumnType("varchar(64)");
             entity.Property(e => e.BuyerName).HasColumnName("buyer_name").HasMaxLength(256);
             entity.Property(e => e.BuyerRemarks).HasColumnName("buyer_remarks").HasMaxLength(1000);
+            entity.Property(e => e.BuyerTaxId).HasColumnName("buyer_tax_id").HasMaxLength(100);
+            entity.Property(e => e.BuyerInvoiceName).HasColumnName("buyer_invoice_name").HasMaxLength(100);
+            entity.Property(e => e.BuyerInvoiceAddress).HasColumnName("buyer_invoice_address").HasMaxLength(500);
             entity.Property(e => e.TaxInvoiceRequested).HasColumnName("tax_invoice_requested").IsRequired().HasDefaultValue(false);
             entity.Property(e => e.TaxInvoiceTaxId).HasColumnName("tax_invoice_tax_id").HasColumnType("varchar(32)");
             entity.Property(e => e.TaxInvoiceCompanyName).HasColumnName("tax_invoice_company_name").HasMaxLength(256);

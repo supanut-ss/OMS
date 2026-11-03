@@ -640,16 +640,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 UpdatedAt = GetNullableLazadaDateTime(order, "updated_at")
             };
 
-            // Tax invoice
-            var taxCode = GetLazadaString(order, "tax_code");
-            if (!string.IsNullOrEmpty(taxCode))
-            {
-                unified.TaxInvoiceRequested = true;
-                unified.TaxInvoice = new TaxInvoiceInfo
-                {
-                    TaxId = taxCode
-                };
-            }
+            MapLazadaBuyerInvoice(order, unified);
 
             // Shipping deadline (cancellation)
             var shippingDeadline = GetLazadaString(order, "shipping_deadline");
@@ -706,6 +697,67 @@ namespace OmsApi.Services.Implementation.Platforms
                     FullAddress = fullAddress
                 };
             }
+        }
+
+        private static void MapLazadaBuyerInvoice(JsonElement order, UnifiedOrder unified)
+        {
+            var buyerTaxId = GetLazadaString(order, "tax_code", "buyer_tax_id", "tax_id");
+            var buyerName = GetLazadaString(order, "buyer_invoice_name", "invoice_name");
+            var buyerAddress = GetLazadaString(order, "buyer_invoice_address", "invoice_address");
+
+            if (TryGetLazadaProperty(order, "address_billing", out var billing) &&
+                billing.ValueKind == JsonValueKind.Object)
+            {
+                var firstName = GetLazadaString(billing, "first_name");
+                var lastName = GetLazadaString(billing, "last_name");
+                var billingName = string.Join(
+                    " ",
+                    new[] { firstName, lastName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+                if (string.IsNullOrWhiteSpace(billingName))
+                    billingName = GetLazadaString(billing, "company_name", "name", "full_name");
+                if (!string.IsNullOrWhiteSpace(billingName))
+                    buyerName = billingName;
+
+                var fullAddress = GetLazadaString(
+                    billing,
+                    "full_address",
+                    "address_detail");
+                if (string.IsNullOrWhiteSpace(fullAddress))
+                {
+                    fullAddress = string.Join(
+                        " ",
+                        new[]
+                        {
+                            GetLazadaString(billing, "address1"),
+                            GetLazadaString(billing, "address2"),
+                            GetLazadaString(billing, "address3"),
+                            GetLazadaString(billing, "address4"),
+                            GetLazadaString(billing, "address5"),
+                            GetLazadaString(billing, "city"),
+                            GetLazadaString(billing, "post_code", "postcode", "zip_code"),
+                            GetLazadaString(billing, "country")
+                        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+                }
+                if (!string.IsNullOrWhiteSpace(fullAddress))
+                    buyerAddress = fullAddress;
+            }
+
+            if (string.IsNullOrWhiteSpace(buyerTaxId) &&
+                string.IsNullOrWhiteSpace(buyerName) &&
+                string.IsNullOrWhiteSpace(buyerAddress))
+                return;
+
+            unified.BuyerTaxId = buyerTaxId;
+            unified.BuyerInvoiceName = buyerName;
+            unified.BuyerInvoiceAddress = buyerAddress;
+            unified.TaxInvoiceRequested = true;
+            unified.TaxInvoice = new TaxInvoiceInfo
+            {
+                TaxId = buyerTaxId,
+                CompanyName = buyerName,
+                Address = buyerAddress,
+                BranchCode = GetLazadaString(order, "branch_number", "branch_code")
+            };
         }
 
         /// <summary>

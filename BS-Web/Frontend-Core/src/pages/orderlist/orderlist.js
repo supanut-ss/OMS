@@ -20,6 +20,7 @@ import BSDataGrid from "../../components/BSDataGrid";
 import {
   formatAmount,
   formatDate,
+  formatStatusLabel,
   getPlatformBadgeSx,
   getSyncStatusPalette,
   getWm3StatusPalette,
@@ -35,6 +36,9 @@ const ORDER_COLUMNS = [
   "original_status",
   "buyer_name",
   "buyer_remarks",
+  "buyer_tax_id",
+  "buyer_invoice_name",
+  "buyer_invoice_address",
   "tax_invoice_requested",
   "tax_invoice_tax_id",
   "tax_invoice_company_name",
@@ -276,7 +280,7 @@ const OrderList = ({ lang = "th" }) => {
                 lineHeight: 1.2,
               }}
             >
-              {params.value || "—"}
+              {formatStatusLabel(params.value)}
             </Box>
           );
         },
@@ -287,11 +291,12 @@ const OrderList = ({ lang = "th" }) => {
         minWidth: 165,
         flex: 0.9,
         renderCell: (params) => {
-          const status = String(params.value || params.row?.status || "").trim();
+          const status = params.value || params.row?.status;
+          const statusLabel = formatStatusLabel(status);
           return (
             <Box
               component="span"
-              title={status || undefined}
+              title={statusLabel}
               sx={{
                 maxWidth: "100%",
                 px: 1.1,
@@ -307,7 +312,7 @@ const OrderList = ({ lang = "th" }) => {
                 whiteSpace: "nowrap",
               }}
             >
-              {status ? status.replaceAll("_", " ") : "—"}
+              {statusLabel}
             </Box>
           );
         },
