@@ -59,6 +59,13 @@ namespace OmsApi.Services.Implementation
             _tiktokApiUrl = Environment.GetEnvironmentVariable("TIKTOK_API_URL") ?? "https://open-api.tiktokglobalshop.com";
         }
 
+        public async Task<string> GetAuthorizationUrlForAppAsync(PlatformType platform, long platformAppId, CancellationToken cancellationToken = default)
+        {
+            var app = await _db.PlatformApps.SingleOrDefaultAsync(x => x.PlatformAppId == platformAppId, cancellationToken)
+                ?? throw new InvalidOperationException("App was not found.");
+            return await CreateAuthorizationUrlAsync(platform, app, null, cancellationToken);
+        }
+
         public async Task<string> GetAuthorizationUrlAsync(PlatformType platform, long platformAppShopId, CancellationToken cancellationToken = default)
         {
             var appShop = await _db.PlatformAppShops

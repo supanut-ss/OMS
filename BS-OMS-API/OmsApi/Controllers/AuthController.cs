@@ -33,6 +33,7 @@ namespace OmsApi.Controllers
         /// <param name="platform">Platform name: shopee, lazada, tiktok</param>
         /// <param name="platformAppShopId">Existing connector identifier for reauthorization</param>
         /// <param name="marketCode">Two-letter market code for a new connection</param>
+        /// <param name="platformAppId">App to use for a new connection</param>
         /// <param name="cancellationToken">Request cancellation token</param>
         /// <returns>Redirect to platform OAuth page</returns>
         [HttpGet("{platform}/authorize")]
@@ -43,12 +44,17 @@ namespace OmsApi.Controllers
             string platform,
             [FromQuery] long? platformAppShopId,
             [FromQuery] string? marketCode,
+            [FromQuery] long? platformAppId,
             CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = platformAppShopId.HasValue
+                if (platformAppId.HasValue && platformAppShopId.HasValue)
+                    return BadRequest(ApiResponse<string>.Fail("Specify either an app or a connector."));
+                var authUrl = platformAppId.HasValue
+                    ? await _authService.GetAuthorizationUrlForAppAsync(platformType, platformAppId.Value, cancellationToken)
+                    : platformAppShopId.HasValue
                     ? await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId.Value, cancellationToken)
                     : await _authService.GetAuthorizationUrlAsync(platformType, marketCode, cancellationToken: cancellationToken);
 
@@ -75,12 +81,17 @@ namespace OmsApi.Controllers
             string platform,
             [FromQuery] long? platformAppShopId,
             [FromQuery] string? marketCode,
+            [FromQuery] long? platformAppId,
             CancellationToken cancellationToken)
         {
             try
             {
                 var platformType = ParsePlatform(platform);
-                var authUrl = platformAppShopId.HasValue
+                if (platformAppId.HasValue && platformAppShopId.HasValue)
+                    return BadRequest(ApiResponse<string>.Fail("Specify either an app or a connector."));
+                var authUrl = platformAppId.HasValue
+                    ? await _authService.GetAuthorizationUrlForAppAsync(platformType, platformAppId.Value, cancellationToken)
+                    : platformAppShopId.HasValue
                     ? await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId.Value, cancellationToken)
                     : await _authService.GetAuthorizationUrlAsync(platformType, marketCode, cancellationToken: cancellationToken);
                 return Ok(ApiResponse<object>.Ok(new { url = authUrl }));
@@ -131,10 +142,18 @@ namespace OmsApi.Controllers
 
         private IActionResult OAuthResult(string? connectorUrl, string platform, bool success)
         {
+            if (string.IsNullOrWhiteSpace(connectorUrl))
+            {
+                if (success)
+                    return Ok(ApiResponse<object>.Ok(new { platform = platform.ToLowerInvariant() }, "OAuth authorization completed."));
+                return BadRequest(ApiResponse<string>.Fail("OAuth authorization failed."));
+            }
+
             if (!Uri.TryCreate(connectorUrl, UriKind.Absolute, out var target) ||
-                (target.Scheme != Uri.UriSchemeHttps && !_environment.IsDevelopment()))
+                (target.Scheme != Uri.UriSchemeHttps &&
+                    !(target.Scheme == Uri.UriSchemeHttp && _environment.IsDevelopment())))
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { success = false, message = "OAuth return URL is not configured." });
+                    new { success = false, message = "OAuth return URL is invalid." });
 
             var builder = new UriBuilder(target);
             var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(builder.Query);
