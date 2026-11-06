@@ -1562,7 +1562,7 @@ namespace OmsApi.Controllers
         }
 
         private static string NormalizeItemNumber(string value) =>
-            value.Trim().Replace(" ", string.Empty).ToUpperInvariant();
+            value.Trim().ToUpperInvariant();
 
         private static bool ShopeePackageNeedsArrange(ShippingPackage package)
         {

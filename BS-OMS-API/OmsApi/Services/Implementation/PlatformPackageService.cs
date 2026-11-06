@@ -117,7 +117,7 @@ public class PlatformPackageService : IPlatformPackageService
         WmsPackageManifest manifest,
         CancellationToken cancellationToken = default)
     {
-        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
+        request.ShopId = await PlatformShopIdResolver.ResolveAsync(_db, request.Platform, request.ShopId, cancellationToken);
         var platformName = request.Platform.ToString();
         var shopId = request.ShopId.Trim();
         var platformOrderId = request.PlatformOrderId.Trim();
@@ -291,7 +291,7 @@ public class PlatformPackageService : IPlatformPackageService
         string error,
         CancellationToken cancellationToken = default)
     {
-        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
+        request.ShopId = await PlatformShopIdResolver.ResolveAsync(_db, request.Platform, request.ShopId, cancellationToken);
         var platformName = request.Platform.ToString();
         var shopId = request.ShopId.Trim();
         var orderId = request.PlatformOrderId.Trim();
@@ -318,7 +318,7 @@ public class PlatformPackageService : IPlatformPackageService
         SyncPlatformPackagesRequest request,
         CancellationToken cancellationToken = default)
     {
-        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
+        request.ShopId = await PlatformShopIdResolver.ResolveAsync(_db, request.Platform, request.ShopId, cancellationToken);
         var platformName = request.Platform.ToString();
         var result = new SyncPlatformPackagesResult
         {
@@ -535,7 +535,7 @@ public class PlatformPackageService : IPlatformPackageService
         TrackingInfo tracking,
         CancellationToken cancellationToken = default)
     {
-        request.ShopId = PlatformShopIdResolver.Resolve(request.Platform, request.ShopId);
+        request.ShopId = await PlatformShopIdResolver.ResolveAsync(_db, request.Platform, request.ShopId, cancellationToken);
         var manifest = await GetWmsPackageManifestAsync(
             request.CustomerOrderNumber, request.Platform, cancellationToken);
         if (manifest == null || manifest.Packages.Count == 0)
@@ -799,7 +799,7 @@ public class PlatformPackageService : IPlatformPackageService
     }
 
     private static string NormalizeItemNumber(string value) =>
-        value.Trim().Replace(" ", string.Empty).ToUpperInvariant();
+        value.Trim().ToUpperInvariant();
 
     private static bool SamePersistedItemQuantities(
         IReadOnlyCollection<PlatformPackageItem> persistedItems,
@@ -826,7 +826,7 @@ public class PlatformPackageService : IPlatformPackageService
         string platformOrderId,
         CancellationToken cancellationToken = default)
     {
-        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
+        shopId = await PlatformShopIdResolver.ResolveAsync(_db, platform, shopId, cancellationToken);
         var rows = await _db.PlatformPackages
             .AsNoTracking()
             .Where(x => x.Platform == platform.ToString() &&

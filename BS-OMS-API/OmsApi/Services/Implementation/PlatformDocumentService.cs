@@ -38,7 +38,7 @@ public class PlatformDocumentService : IPlatformDocumentService
         string shippingDocumentType = "NORMAL_AIR_WAYBILL",
         CancellationToken cancellationToken = default)
     {
-        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
+        shopId = await PlatformShopIdResolver.ResolveAsync(_db, platform, shopId, cancellationToken);
         if (packages.Count == 0)
             throw new InvalidOperationException("No platform packages were found for this order.");
         if (packages.Any(x => string.IsNullOrWhiteSpace(x.TrackingNumber)))
@@ -176,7 +176,7 @@ public class PlatformDocumentService : IPlatformDocumentService
         string platformOrderId,
         CancellationToken cancellationToken = default)
     {
-        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
+        shopId = await PlatformShopIdResolver.ResolveAsync(_db, platform, shopId, cancellationToken);
         var rows = await _db.PlatformDocuments.AsNoTracking()
             .Where(x => x.Platform == platform.ToString() &&
                         x.ShopId == shopId &&
@@ -194,7 +194,7 @@ public class PlatformDocumentService : IPlatformDocumentService
         bool markPrinted,
         CancellationToken cancellationToken = default)
     {
-        shopId = PlatformShopIdResolver.Resolve(platform, shopId);
+        shopId = await PlatformShopIdResolver.ResolveAsync(_db, platform, shopId, cancellationToken);
         platformPackageId = NullIfWhiteSpace(platformPackageId);
         var document = await _db.PlatformDocuments.FirstOrDefaultAsync(x =>
                 x.Platform == platform.ToString() &&

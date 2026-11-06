@@ -84,6 +84,7 @@ builder.Services.AddHttpClient("Shopee", client =>
     client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("SHOPEE_API_URL") ?? "https://partner.shopeemobile.com");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
+builder.Services.AddTransient<LazadaRateLimitHandler>();
 builder.Services.AddHttpClient("Lazada", client =>
 {
     // A trailing slash is required when Lazada API paths are sent as relative
@@ -92,7 +93,7 @@ builder.Services.AddHttpClient("Lazada", client =>
         ?? "https://api.lazada.co.th/rest";
     client.BaseAddress = new Uri($"{lazadaApiUrl.TrimEnd('/')}/");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
+}).AddHttpMessageHandler<LazadaRateLimitHandler>();
 builder.Services.AddHttpClient("TikTok", client =>
 {
     client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("TIKTOK_API_URL") ?? "https://open-api.tiktokglobalshop.com");

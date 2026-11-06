@@ -86,6 +86,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 }
 
                 var json = JsonDocument.Parse(content);
+                ThrowIfReadRateLimited(json.RootElement);
                 if (json.RootElement.TryGetProperty("data", out var data))
                 {
                     if (data.TryGetProperty("count", out var count))
@@ -112,6 +113,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 _logger.LogInformation("✅ Lazada: Retrieved {Count} orders", result.Items.Count);
                 return result;
             }
+            catch (PlatformApiException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Lazada: Error fetching orders");
@@ -197,6 +199,7 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
 
                     var json = JsonDocument.Parse(content);
+                    ThrowIfReadRateLimited(json.RootElement);
                     if (json.RootElement.TryGetProperty("data", out var data))
                     {
                         var unified = MapLazadaOrderDetail(data);
@@ -218,6 +221,7 @@ namespace OmsApi.Services.Implementation.Platforms
                         return null;
                     await Task.Delay(OrderDetailRetryDelay);
                 }
+                catch (PlatformApiException) { throw; }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "❌ Lazada: Error fetching order detail (attempt {Attempt}/{MaxAttempts})", attempt, OrderDetailMaxAttempts);
@@ -260,6 +264,7 @@ namespace OmsApi.Services.Implementation.Platforms
                 var content = await response.Content.ReadAsStringAsync();
 
                 var json = JsonDocument.Parse(content);
+                ThrowIfReadRateLimited(json.RootElement);
                 if (json.RootElement.TryGetProperty("data", out var data))
                 {
                     shipByDate = GetLazadaShipByDate(data);
@@ -275,12 +280,7 @@ namespace OmsApi.Services.Implementation.Platforms
                             ItemId = GetLazadaProductItemNumber(item),
                             OrderItemId = numericOrderItemId,
                             Name = GetLazadaString(item, "name", "item_name"),
-                            Sku = GetLazadaString(
-                                item,
-                                "seller_sku",
-                                "shop_sku",
-                                "sku",
-                                "sku_id"),
+                            Sku = GetLazadaString(item, "seller_sku", "sku"),
                             Quantity = 1, // Lazada treats each item individually
                             UnitPrice = GetLazadaDecimal(item, "paid_price", "item_price", "price"),
                             TotalPrice = GetLazadaDecimal(item, "paid_price", "item_price", "price"),
@@ -290,12 +290,21 @@ namespace OmsApi.Services.Implementation.Platforms
                     }
                 }
             }
+            catch (PlatformApiException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Lazada: Error fetching order items");
             }
 
             return (items, shipByDate);
+        }
+
+        private static void ThrowIfReadRateLimited(JsonElement root)
+        {
+            var code = GetLazadaString(root, "code");
+            if (string.Equals(code, "SellerCallLimit", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(code, "ApiCallLimit", StringComparison.OrdinalIgnoreCase))
+                throw new PlatformApiException("Lazada", code, GetLazadaString(root, "message"), GetLazadaString(root, "request_id"));
         }
 
         private static DateTime? GetLazadaShipByDate(JsonElement items)
@@ -1143,7 +1152,7 @@ namespace OmsApi.Services.Implementation.Platforms
                         throw new InvalidOperationException(
                             $"WMS item '{wmsItem.ItemNumber}' in box {package.BoxNumber} " +
                             $"could not be allocated at quantity {wmsItem.Quantity} from Lazada order items. " +
-                            "Ensure the WMS item_number and quantity match Lazada seller_sku/shop_sku.");
+                            "Ensure the WMS item_number and quantity match Lazada seller_sku.");
                     }
 
                     var alreadyPacked = matches.FirstOrDefault(item => IsLazadaPackedStatus(item.Status));
@@ -1842,19 +1851,9 @@ namespace OmsApi.Services.Implementation.Platforms
                     var carrier = GetLazadaString(item, "shipment_provider", "shipping_provider", "shipping_carrier");
                     var status = GetLazadaString(item, "status", "package_status", "logistics_status");
                     var itemId = GetLazadaString(item, "order_item_id", "order_line_id", "id");
-                    // Lazada exposes the seller's item number under different
-                    // names depending on the API version/market. Keep every
-                    // non-empty form so matching can choose the one used by WMS.
                     var itemNumberAliases = new[]
                     {
-                        GetLazadaProductItemNumber(item),
-                        GetLazadaString(item, "seller_sku"),
-                        GetLazadaString(item, "shop_sku"),
-                        GetLazadaString(item, "sku"),
-                        GetLazadaString(item, "sku_id"),
-                        GetLazadaString(item, "product_id"),
-                        GetLazadaString(item, "item_id"),
-                        GetLazadaString(item, "order_item_id")
+                        GetLazadaString(item, "seller_sku", "sku")
                     }
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1976,14 +1975,7 @@ namespace OmsApi.Services.Implementation.Platforms
 
                 var aliases = new[]
                 {
-                    GetLazadaProductItemNumber(item),
-                    GetLazadaString(item, "seller_sku"),
-                    GetLazadaString(item, "shop_sku"),
-                    GetLazadaString(item, "sku"),
-                    GetLazadaString(item, "sku_id"),
-                    GetLazadaString(item, "product_id"),
-                    GetLazadaString(item, "item_id"),
-                    itemId
+                    GetLazadaString(item, "seller_sku", "sku")
                 }
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -2177,7 +2169,7 @@ namespace OmsApi.Services.Implementation.Platforms
         }
 
         private static string NormalizeLazadaItemNumber(string value) =>
-            (value ?? string.Empty).Trim().Replace(" ", string.Empty).ToUpperInvariant();
+            (value ?? string.Empty).Trim().ToUpperInvariant();
 
         private sealed class LazadaPackItem
         {

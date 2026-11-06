@@ -178,7 +178,7 @@ namespace OmsApi.Services.Implementation
                 StringComparer.OrdinalIgnoreCase);
             foreach (var orderItem in order.Items)
             {
-                var matchingWmsItems = new[] { orderItem.Sku, orderItem.ItemId }
+                var matchingWmsItems = new[] { orderItem.Sku }
                     .Where(value => !string.IsNullOrWhiteSpace(value))
                     .Select(NormalizeItemNumber)
                     .Where(wmsTotals.ContainsKey)
@@ -191,7 +191,7 @@ namespace OmsApi.Services.Implementation
                         : orderItem.Sku;
                     throw new InvalidOperationException(
                         $"{platform} item '{identity}' could not be matched uniquely " +
-                        "to a WMS item by seller SKU or item ID.");
+                        "to a WMS item by seller SKU. Check the seller SKU configured on the platform.");
                 }
 
                 var itemNumber = matchingWmsItems[0];
@@ -240,7 +240,7 @@ namespace OmsApi.Services.Implementation
             var platformTotals = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
             foreach (var orderItem in order.Items)
             {
-                var matchingWmsItems = new[] { orderItem.Sku, orderItem.ItemId }
+                var matchingWmsItems = new[] { orderItem.Sku }
                     .Where(value => !string.IsNullOrWhiteSpace(value))
                     .Select(NormalizeItemNumber)
                     .Where(wmsTotals.ContainsKey)
@@ -252,7 +252,7 @@ namespace OmsApi.Services.Implementation
                         ? orderItem.ItemId
                         : orderItem.Sku;
                     throw new InvalidOperationException(
-                        $"Shopee item '{identity}' could not be matched uniquely to a WMS item by seller SKU or item_id.");
+                        $"Shopee item '{identity}' could not be matched uniquely to a WMS item by seller SKU. Check the seller SKU configured on the platform.");
                 }
 
                 var itemNumber = matchingWmsItems[0];
@@ -275,7 +275,7 @@ namespace OmsApi.Services.Implementation
         }
 
         private static string NormalizeItemNumber(string? value) =>
-            (value ?? string.Empty).Trim().Replace(" ", string.Empty).ToUpperInvariant();
+            (value ?? string.Empty).Trim().ToUpperInvariant();
 
         public async Task<SplitPlatformOrderResult> SplitOrderAsync(SplitPlatformOrderRequest request)
         {

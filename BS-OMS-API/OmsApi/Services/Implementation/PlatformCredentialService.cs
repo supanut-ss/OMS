@@ -97,7 +97,7 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var platformName = platform.ToString();
-        var shopId = ResolveRequestedShopId(platform, requestedShopId);
+        var shopId = await PlatformShopIdResolver.ResolveAsync(db, platform, requestedShopId, cancellationToken);
 
         var query = db.PlatformCredentials.AsNoTracking()
             .Where(x =>
@@ -309,15 +309,6 @@ public sealed class PlatformCredentialService : IPlatformCredentialService
         credential.LastError = Truncate(error, 2000);
         credential.UpdateDate = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
-    }
-
-    private static string? ResolveRequestedShopId(PlatformType platform, string? requestedShopId)
-    {
-        if (!string.IsNullOrWhiteSpace(requestedShopId))
-            return requestedShopId.Trim();
-
-        return Environment.GetEnvironmentVariable(
-            $"{platform.ToString().ToUpperInvariant()}_DEFAULT_SHOP_ID")?.Trim();
     }
 
     private async Task<PlatformAccessCredential> ToContextAsync(

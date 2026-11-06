@@ -155,12 +155,10 @@ OMS_PLATFORM_ENVIRONMENT=PRODUCTION
 # ─── Shopee Open Platform ───────────────────────────────
 SHOPEE_PARTNER_ID=<Partner ID จาก Shopee Developer Console>
 SHOPEE_PARTNER_KEY=<Partner Key>
-SHOPEE_DEFAULT_SHOP_ID=<Shopee shop_id>
 SHOPEE_API_URL=https://partner.shopeemobile.com
 SHOPEE_REDIRECT_URL=http://localhost:5170/api/auth/shopee/callback
 
 # ─── Lazada Open Platform ───────────────────────────────
-LAZADA_DEFAULT_SHOP_ID=<Lazada seller_id หรือ shop cipher>
 LAZADA_APP_KEY=<App Key จาก Lazada Developer Console>
 LAZADA_APP_SECRET=<App Secret>
 LAZADA_API_URL=https://api.lazada.co.th/rest
@@ -172,14 +170,13 @@ LAZADA_REDIRECT_URL=http://localhost:5170/api/auth/lazada/callback
 TIKTOK_APP_KEY=<App Key จาก TikTok Partner Center>
 TIKTOK_APP_SECRET=<App Secret>
 # TIKTOK_SERVICE_ID=<ถ้ามี Service ID ให้ระบุ; ถ้าไม่มี ระบบใช้ TIKTOK_APP_KEY แบบเดิม>
-TIKTOK_DEFAULT_SHOP_ID=<TikTok shop cipher>
 TIKTOK_API_URL=https://open-api.tiktokglobalshop.com
 TIKTOK_AUTH_URL=https://services.tiktokshop.com/open/authorize
 TIKTOK_AUTH_API_URL=https://auth.tiktok-shops.com
 TIKTOK_REDIRECT_URL=http://localhost:5170/api/auth/tiktok/callback
 ```
 
-`*_DEFAULT_SHOP_ID` เป็นตัวเลือกเริ่มต้นของ OMS เมื่อคำขอจาก WMS ไม่ระบุ `shopId` โดย OMS จะใช้ค่านี้ค้น credential ที่ active ในตาราง `dbo.t_interface_platform_credentials` และ refresh token เมื่อจำเป็น
+เมื่อไม่ระบุ `shopId` OMS จะเลือกร้านจาก `oms.t_oms_platform_credential` หากมี credential ที่ active และไม่ต้อง authorize ใหม่เพียงรายการเดียวต่อ platform หากมีหลายร้านต้องระบุ `shopId` ในคำขอ
 
 ### วิธีลงทะเบียน App Developer
 
@@ -227,6 +224,38 @@ TIKTOK_REDIRECT_URL=http://localhost:5170/api/auth/tiktok/callback
 ---
 
 ### 1. Authentication (OAuth)
+
+`OMS_FRONTEND_CONNECTOR_URL` is optional. When configured with a valid HTTPS
+URL, the OAuth callback redirects there with `oauth` and `platform` query
+parameters. If omitted, the callback returns a JSON success or failure result.
+HTTP redirect URLs are allowed only in Development.
+
+#### Create a platform app
+
+`POST /api/platform-apps` creates an active app in `oms.t_oms_platform_apps`.
+Provide the normal `X-Api-Key` header when `OMS_API_KEY` is configured, as for
+other OMS endpoints. Use HTTPS for requests containing app credentials.
+
+```json
+{
+  "platform": "Lazada",
+  "appName": "Main app",
+  "appKey": "APP_KEY",
+  "appSecret": "APP_SECRET",
+  "redirectUrl": "https://example.com/api/auth/lazada/callback",
+  "serviceId": null,
+  "countryCode": "TH",
+  "environment": "PRODUCTION",
+  "isDefault": true
+}
+```
+
+Send the original key and secret as `appKey` and `appSecret`; the API encrypts
+them with the configured OMS Data Protection key ring and never returns them.
+Preserve that key ring across deployments. `environment` is `SANDBOX` or
+`PRODUCTION`; only one active default is allowed per platform, country and
+environment. A duplicate app name or default returns 409. Creating an app does
+not authorize a shop: complete the existing OAuth flow separately.
 
 ใช้สำหรับ authorize ร้านค้าให้ OMS เข้าถึงข้อมูลได้
 

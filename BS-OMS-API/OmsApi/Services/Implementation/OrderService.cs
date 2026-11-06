@@ -261,7 +261,7 @@ namespace OmsApi.Services.Implementation
 
             try
             {
-                var shopId = PlatformShopIdResolver.Resolve(platform, rawShopId);
+                var shopId = await PlatformShopIdResolver.ResolveAsync(_db, platform, rawShopId);
                 syncLog.ShopId = shopId;
                 var orderIds = orders.Select(o => o.OrderId).ToList();
 

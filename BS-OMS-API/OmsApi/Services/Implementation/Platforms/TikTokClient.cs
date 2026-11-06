@@ -279,7 +279,7 @@ namespace OmsApi.Services.Implementation.Platforms
                     {
                         ItemId = GetString(item, "product_id", GetString(item, "id")),
                         Name = GetString(item, "product_name"),
-                        Sku = GetString(item, "seller_sku", GetString(item, "sku_id")),
+                        Sku = GetString(item, "seller_sku"),
                         Quantity = quantity,
                         UnitPrice = salePrice,
                         TotalPrice = salePrice * quantity,
@@ -513,9 +513,6 @@ namespace OmsApi.Services.Implementation.Platforms
             var aliases = new List<string>();
 
             AddTikTokAlias(aliases, item, "seller_sku");
-            AddTikTokAlias(aliases, item, "sku_id");
-            AddTikTokAlias(aliases, item, "product_id");
-            AddTikTokAlias(aliases, item, "id");
 
             // Some order-detail variants expose the SKU inside a nested
             // object. Keep this as a fallback for test/marketplace payloads
@@ -524,24 +521,6 @@ namespace OmsApi.Services.Implementation.Platforms
                 sku.ValueKind == JsonValueKind.Object)
             {
                 AddTikTokAlias(aliases, sku, "seller_sku");
-                AddTikTokAlias(aliases, sku, "sku_id");
-                AddTikTokAlias(aliases, sku, "product_id");
-                AddTikTokAlias(aliases, sku, "id");
-            }
-
-            // Virtual-bundle order details can expose the child SKU values
-            // below combined_listing_skus. They are valid aliases for WMS
-            // matching when WMS stores the child SKU.
-            if (item.TryGetProperty("combined_listing_skus", out var children) &&
-                children.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var child in children.EnumerateArray())
-                {
-                    AddTikTokAlias(aliases, child, "seller_sku");
-                    AddTikTokAlias(aliases, child, "sku_id");
-                    AddTikTokAlias(aliases, child, "product_id");
-                    AddTikTokAlias(aliases, child, "id");
-                }
             }
 
             return aliases
@@ -982,7 +961,7 @@ namespace OmsApi.Services.Implementation.Platforms
                         throw new InvalidOperationException(
                             $"WMS item '{wmsItem.ItemNumber}' in box {package.BoxNumber} " +
                             $"could not be matched to TikTok order lines at quantity {wmsItem.Quantity}. " +
-                            "Ensure WMS item_number matches TikTok seller_sku, sku_id, or product_id. " +
+                            "Ensure WMS item_number matches TikTok seller_sku. " +
                             $"TikTok returned: {availableLines}");
                     }
 
@@ -1220,7 +1199,7 @@ namespace OmsApi.Services.Implementation.Platforms
         }
 
         private static string NormalizeTikTokItemNumber(string value) =>
-            (value ?? string.Empty).Trim().Replace(" ", string.Empty).ToUpperInvariant();
+            (value ?? string.Empty).Trim().ToUpperInvariant();
 
         private static bool IsTikTokShippedStatus(string status)
         {

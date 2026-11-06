@@ -1535,23 +1535,10 @@ namespace OmsApi.Services.Implementation.Platforms
                     var matches = order.Items
                         .Where(x => string.Equals(x.Sku?.Trim(), wmsItem.ItemNumber, StringComparison.OrdinalIgnoreCase))
                         .ToList();
-                    // The Shopee sandbox Test Order screen displays item_id as
-                    // "Item ID" and frequently leaves both model_sku and item_sku
-                    // empty. Production WMS data should continue to match seller
-                    // SKU first; item_id is an exact, unique sandbox fallback.
-                    if (matches.Count == 0)
-                    {
-                        matches = order.Items
-                            .Where(x => string.Equals(
-                                x.ItemId?.Trim(),
-                                wmsItem.ItemNumber,
-                                StringComparison.OrdinalIgnoreCase))
-                            .ToList();
-                    }
                     if (matches.Count != 1)
                         throw new InvalidOperationException(
                             $"WMS item '{wmsItem.ItemNumber}' could not be matched uniquely to Shopee item_list " +
-                            $"by seller SKU or item_id.");
+                            "by seller SKU. Check model_sku or item_sku on the platform.");
 
                     var orderItem = matches[0];
                     if (!long.TryParse(orderItem.ItemId, out var itemId) || itemId <= 0)
