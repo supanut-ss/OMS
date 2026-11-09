@@ -74,6 +74,7 @@ public class WmsOutboundMaster
     public string OutboundOrderNumber { get; set; } = string.Empty;
     public string CustomerOrderNumber { get; set; } = string.Empty;
     public string? Platform { get; set; }
+    public string? ShopId { get; set; }
 }
 
 public class WmsOutboundPackingMaster

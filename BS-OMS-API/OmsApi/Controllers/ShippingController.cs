@@ -165,7 +165,6 @@ namespace OmsApi.Controllers
         {
             if (_platformDocumentService == null)
                 return StatusCode(503, ApiResponse<string>.Fail("Platform document service is unavailable."));
-
             var savedPackages = await _platformPackageService.GetPackagesAsync(
                 request.Platform, request.ShopId, request.PlatformOrderId, HttpContext.RequestAborted);
             var selectedRefs = request.WmsPackageRefs.ToHashSet();
@@ -321,7 +320,6 @@ namespace OmsApi.Controllers
         {
             if (!Enum.IsDefined(request.Platform))
                 return BadRequest(ApiResponse<string>.Fail("Invalid platform."));
-
             var manifest = await _platformPackageService.GetWmsPackageManifestAsync(
                 request.CustomerOrderNumber,
                 request.Platform,
@@ -329,6 +327,11 @@ namespace OmsApi.Controllers
             if (manifest == null)
                 return NotFound(ApiResponse<string>.Fail(
                     "WMS outbound order was not found or is ambiguous for the requested platform."));
+            if (!string.IsNullOrWhiteSpace(request.ShopId) &&
+                !string.IsNullOrWhiteSpace(manifest.ShopId) &&
+                !string.Equals(request.ShopId.Trim(), manifest.ShopId, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(ApiResponse<string>.Fail(
+                    "The requested shopId does not match WMS Outbound Master."));
             if (manifest.Packages.Count == 0)
                 return BadRequest(ApiResponse<string>.Fail("No WMS packing boxes were found for this order."));
 
@@ -1740,9 +1743,6 @@ namespace OmsApi.Controllers
             string orderId,
             [FromQuery] string shopId)
         {
-            if (string.IsNullOrWhiteSpace(shopId))
-                return BadRequest(ApiResponse<string>.Fail("shopId is required."));
-
             var packages = await _platformPackageService.GetPackagesAsync(
                 platform, shopId, orderId, HttpContext.RequestAborted);
             return Ok(ApiResponse<List<PlatformPackageRecordResult>>.Ok(

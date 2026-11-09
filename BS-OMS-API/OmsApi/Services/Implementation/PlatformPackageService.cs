@@ -62,7 +62,8 @@ public class PlatformPackageService : IPlatformPackageService
                 CustomerOrderNumber = order.CustomerOrderNumber,
                 OutboundOrderNumber = order.OutboundOrderNumber,
                 OutboundOrderMasterId = order.OutboundOrderMasterId,
-                Platform = ToPlatformType(order.Platform)
+                Platform = ToPlatformType(order.Platform),
+                ShopId = order.ShopId?.Trim() ?? string.Empty
             };
 
         // Use a relational join instead of translating an in-memory Contains
@@ -87,6 +88,7 @@ public class PlatformPackageService : IPlatformPackageService
             OutboundOrderNumber = order.OutboundOrderNumber,
             OutboundOrderMasterId = order.OutboundOrderMasterId,
             Platform = ToPlatformType(order.Platform),
+            ShopId = order.ShopId?.Trim() ?? string.Empty,
             Packages = masters.Select(master => new WmsPackageManifestPackage
             {
                 WmsPackageRef = master.OutboundSortMasterId,

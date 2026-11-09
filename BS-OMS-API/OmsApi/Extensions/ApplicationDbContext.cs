@@ -427,6 +427,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OutboundOrderNumber).HasColumnName("outbound_order_number").HasMaxLength(128);
             entity.Property(e => e.CustomerOrderNumber).HasColumnName("customer_order_number").HasMaxLength(128);
             entity.Property(e => e.Platform).HasColumnName("platform").HasMaxLength(32);
+            entity.Property(e => e.ShopId).HasColumnName("shop_id").HasMaxLength(50);
         });
 
         builder.Entity<WmsOutboundPackingMaster>(entity =>

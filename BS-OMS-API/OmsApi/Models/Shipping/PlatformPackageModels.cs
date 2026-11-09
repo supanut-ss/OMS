@@ -13,6 +13,7 @@ public class WmsPackageManifest
     public string OutboundOrderNumber { get; set; } = string.Empty;
     public Guid OutboundOrderMasterId { get; set; }
     public PlatformType? Platform { get; set; }
+    public string ShopId { get; set; } = string.Empty;
     public List<WmsPackageManifestPackage> Packages { get; set; } = new();
 }
 
