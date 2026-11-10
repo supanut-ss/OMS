@@ -41,6 +41,8 @@
             if (!context.Request.Headers.TryGetValue(ApiKeyHeader, out var providedKey) ||
                 !string.Equals(providedKey, requiredKey, StringComparison.Ordinal))
             {
+                context.Items[RequestAuditMiddleware.AuthResultKey] = "FAILED";
+                context.Items[RequestAuditMiddleware.ReasonKey] = "INVALID_OR_MISSING_API_KEY";
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(
@@ -48,6 +50,8 @@
                 return;
             }
 
+            context.Items[RequestAuditMiddleware.AuthResultKey] = "PASSED";
+            context.Items[RequestAuditMiddleware.ReasonKey] = "API_KEY_VALID";
             await _next(context);
         }
 
@@ -55,9 +59,7 @@
         {
             if (!path.StartsWith("/api/auth/", StringComparison.OrdinalIgnoreCase))
                 return false;
-            return path.EndsWith("/authorize", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith("/auth-url", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith("/callback", StringComparison.OrdinalIgnoreCase);
+            return path.EndsWith("/callback", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

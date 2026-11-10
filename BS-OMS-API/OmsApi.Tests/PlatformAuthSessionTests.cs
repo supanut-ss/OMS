@@ -55,5 +55,10 @@ public sealed class PlatformAuthSessionTests
         Assert.Equal("test-user", session.RequestedBy);
         Assert.Equal(32, session.StateHash.Length);
         Assert.True(session.ExpiresDate > session.CreateDate);
+
+        var selectedUrl = await service.GetAuthorizationUrlForAppAsync(PlatformType.Lazada, session.PlatformAppId);
+        Assert.Contains("state=", selectedUrl);
+        Assert.Equal(2, await db.OAuthSessions.CountAsync());
+        await Assert.ThrowsAsync<ArgumentException>(() => service.GetAuthorizationUrlForAppAsync(PlatformType.Shopee, session.PlatformAppId));
     }
 }

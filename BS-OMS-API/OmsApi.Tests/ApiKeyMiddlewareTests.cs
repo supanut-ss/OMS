@@ -5,6 +5,36 @@ namespace OmsApi.Tests;
 
 public class ApiKeyMiddlewareTests
 {
+    [Theory]
+    [InlineData("/api/auth/shopee/auth-url", null, false)]
+    [InlineData("/api/auth/lazada/authorize", "wrong-key", false)]
+    [InlineData("/api/auth/tiktok/auth-url", "valid-key", true)]
+    [InlineData("/api/auth/shopee/authorize", "valid-key", true)]
+    [InlineData("/api/auth/shopee/callback", null, true)]
+    public async Task Invoke_OAuthRoutes_RequireKeyExceptCallback(string path, string? key, bool allowed)
+    {
+        var originalKey = Environment.GetEnvironmentVariable("OMS_API_KEY");
+        try
+        {
+            Environment.SetEnvironmentVariable("OMS_API_KEY", "valid-key");
+            var nextCalled = false;
+            var middleware = new ApiKeyMiddleware(_ => { nextCalled = true; return Task.CompletedTask; });
+            var context = CreateContext(key);
+            context.Request.Path = path;
+
+            await middleware.InvokeAsync(context);
+
+            Assert.Equal(allowed, nextCalled);
+            Assert.Equal(allowed ? 200 : 401, context.Response.StatusCode);
+            Assert.Equal(path.EndsWith("/callback") ? null : allowed ? "PASSED" : "FAILED",
+                context.Items[RequestAuditMiddleware.AuthResultKey]);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OMS_API_KEY", originalKey);
+        }
+    }
+
     private static DefaultHttpContext CreateContext(string? apiKey = null)
     {
         var context = new DefaultHttpContext();

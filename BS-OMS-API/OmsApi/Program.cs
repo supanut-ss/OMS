@@ -64,8 +64,18 @@ const string corsKey = "OmsApiCors";
 string[] allowedOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-if (allowedOrigins.Length == 0)
-    allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:8080" , "https://localhost:53954/" };
+if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+    allowedOrigins = new[] { "https://wms-uat.winnergroup.co.th" };
+
+if (!builder.Environment.IsDevelopment() &&
+    (allowedOrigins.Length == 0 || string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("OMS_API_KEY"))))
+    throw new InvalidOperationException("CORS_ALLOWED_ORIGINS and OMS_API_KEY must be configured outside Development.");
+
+if (allowedOrigins.Any(origin => !Uri.TryCreate(origin, UriKind.Absolute, out var uri) ||
+    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+    uri.UserInfo.Length != 0 || uri.AbsolutePath != "/" || uri.Query.Length != 0 || uri.Fragment.Length != 0 ||
+    origin.EndsWith('/')))
+    throw new InvalidOperationException("CORS_ALLOWED_ORIGINS must contain HTTP(S) origins without paths or trailing slashes.");
 
 builder.Services.AddCors(options =>
 {
@@ -164,6 +174,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+app.UseRouting();
+app.UseMiddleware<RequestAuditMiddleware>();
 app.UseCors(corsKey);
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseHttpsRedirection();

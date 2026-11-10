@@ -8,6 +8,22 @@ namespace OmsApi.Tests;
 
 public class ShippingServiceValidationTests
 {
+    [Theory]
+    [InlineData(PlatformType.Shopee)]
+    [InlineData(PlatformType.Lazada)]
+    [InlineData(PlatformType.TikTok)]
+    public void RejectsPlatformItemIdWhenSellerSkuDoesNotMatch(PlatformType platform)
+    {
+        var order = MarketplaceOrder(platform, "SELLER-OTHER", 1);
+        var packages = new List<WmsPackageManifestPackage> { Box("101", 1) };
+        var error = Assert.Throws<TargetInvocationException>(() =>
+        {
+            if (platform == PlatformType.Shopee) InvokeValidation(order, packages);
+            else InvokeMarketplaceValidation(platform, order, packages);
+        });
+        Assert.Contains("seller SKU", error.InnerException!.Message);
+    }
+
     [Fact]
     public void ValidateShopeeItemAllocation_AcceptsSingleBoxWithExactSkuAndQuantity()
     {

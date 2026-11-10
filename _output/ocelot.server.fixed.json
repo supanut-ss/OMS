@@ -1,0 +1,2589 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/oms_auth/test-db",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/test",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/auth/login",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/login",
+      "UpstreamHttpMethod": ["post"],
+      "DelegatingHandlers": ["AddClientIpDelegatingHandler"],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 5
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/auth/logout",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/logout",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/role",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/role",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/reset_password",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/reset_password",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/auth/refresh",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/refresh",
+      "UpstreamHttpMethod": ["post"]
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/alive/user",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/alive",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/alive/status",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/alive/status",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/resource",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/resource",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/resource/save",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/resource/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/switch/lang",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/switch/lang",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/menu",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/menu",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/menu/menuAssign",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/menu/menuAssign",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/menu/saveAssign",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/menu/saveAssign",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/autocomplete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/autocomplete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/schema",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/schema",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 50
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/metadata/{tableName}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/metadata/{tableName}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/datagrid",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/datagrid",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 100
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/bs-datagrid",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bs-datagrid",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 100
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/record/{tableName}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/record/{tableName}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/create",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/create",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 50
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/update",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/update",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 50
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 50
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/bulk-create",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bulk-create",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 10
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/bulk-update",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bulk-update",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 10
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/dynamic/bulk-delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/bulk-delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 10
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/combobox",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/combobox",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 100
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/enhanced-procedure",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/enhanced-procedure",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1s",
+        "Limit": 100
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/procedure/{procedureName}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/procedure/{procedureName}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/procedure-metadata/{procedureName}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/procedure-metadata/{procedureName}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/query",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/query",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/dynamic/exists/{tableName}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/dynamic/exists/{tableName}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/{outbound_master_id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/{outbound_master_id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/update/{outbound_master_id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/update/{outbound_master_id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/{outbound_master_id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/{outbound_master_id}",
+      "UpstreamHttpMethod": ["delete"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/delete/{outbound_master_id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/delete/{outbound_master_id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/release-user",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/release-user",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/release",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/release",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/unrelease-user",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/unrelease-user",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/unrelease",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/unrelease",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/cancel-order",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/cancel-order",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Outbound/confirm-ship/{outbound_master_id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/outbound/confirm-ship/{outbound_master_id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/save",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/delete-order",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/delete-order",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/close-order",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/close-order",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/close-receipt",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/close-receipt",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/save-receipt",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/save-receipt",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/receipt/{receiptHeaderId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/receipt/{receiptHeaderId}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inbound/details/{inboundMasterId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inbound/details/{inboundMasterId}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/count/insert",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/count/insert",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/count/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/count/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/count/cycleCountData",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/count/cycleCountData",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Inventory/ChangeLocation",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/ChangeLocation",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Inventory/StatusChange",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/StatusChange",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Inventory/Adjustment",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/Adjustment",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Inventory/AdjustIn",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Inventory/AdjustIn",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/register",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/register",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/update",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/update",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/reset",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/reset",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/users/clear_logon",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/users/clear_logon",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/version",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/version",
+      "UpstreamHttpMethod": ["post"]
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/menu/favorite",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/menu/favorite",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/all",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/all",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/user/{userId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/user/{userId}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/delete/{userId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/delete/{userId}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/read/{notifyId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/read/{notifyId}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/manage",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner/manage",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/{id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner/{id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/banner/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_notification/api/Notify/banner/detail/{banner_id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/notify/detail/{banner_id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_auth/api/activity-log",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/activity-log",
+      "UpstreamHttpMethod": ["post", "options"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/logging/log",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/logging/log",
+      "UpstreamHttpMethod": ["post", "options"]
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/inventory-viewer/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/inventory-viewer/{everything}",
+      "UpstreamHttpMethod": ["get", "post", "options"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/checkversion",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/checkversion",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/ConfigApp/GetDecimal",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/ConfigApp/GetDecimal",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/AppVersion/downloadApp",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/AppVersion/downloadApp",
+      "UpstreamHttpMethod": ["get"]
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetProductionHeader",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetProductionHeader",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/ScanItemInProductionDetail",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/ScanItemInProductionDetail",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetItemTranDetail",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetItemTranDetail",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/SaveIssueForProduction",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/SaveIssueForProduction",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/SaveReceiveForProduction",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/SaveReceiveForProduction",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Production/GetQuantityRemain",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Production/GetQuantityRemain",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Combobox/GetCombobox",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Combobox/GetCombobox",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetSaleHeader",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetSaleHeader",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetDeliveryDetails",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetDeliveryDetails",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetScanSaleDetailByDocNum",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetScanSaleDetailByDocNum",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetQuantityRemainSale",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetQuantityRemainSale",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveDeliveryOrder",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveDeliveryOrder",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveBlindDeliveryOrder",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveBlindDeliveryOrder",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetScanItemBlindDelivery",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetScanItemBlindDelivery",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/GetBlindDeliveryHeader",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/GetBlindDeliveryHeader",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/ConfigApp/GetBarcodeFormat",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/ConfigApp/GetBarcodeFormat",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Delivery/SaveBlindDeliveryDetails",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Delivery/SaveBlindDeliveryDetails",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/save",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/item/{itemNumber}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/item/{itemNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/{docNumber}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/{docNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Counting/pending-success-status",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/Counting/pending-success-status",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/save",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/item/{itemNumber}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/item/{itemNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/pending-success-status",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/pending-success-status",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsIssue/{docNumber}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsIssue/{docNumber}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/Uom/GetUom",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GetUom",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetComboboxPo",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetComboboxPo",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataReceiptPage",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataReceiptPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataForAddItem",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataForAddItem",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataForEdit",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataForEdit",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/GetDataConfirmPage",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/GetDataConfirmPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/GoodsReceipt/SaveGoodsReceipt",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/GoodsReceipt/SaveGoodsReceipt",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetComboboxTransfer",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetComboboxTransfer",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataTransferPage",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataTransferPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataForAddItem",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataForAddItem",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataForEdit",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataForEdit",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/GetDataConfirmPage",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/GetDataConfirmPage",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/TransferMobile/SaveTransferItem",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Mobile/TransferMobile/SaveTransferItem",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/ValidateToyota",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [{ "Host": "demo.oga.co.th", "Port": 443 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/ValidateToyota",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/ValidateGtec",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [{ "Host": "demo.oga.co.th", "Port": 443 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/ValidateGtec",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/PartAttachment/{attachmentId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [{ "Host": "demo.oga.co.th", "Port": 443 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/PartAttachment/{attachmentId}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/MyItemCount",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [{ "Host": "demo.oga.co.th", "Port": 443 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/MyItemCount",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_api_mobile/api/MatchingTag/SaveDelivery",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [{ "Host": "demo.oga.co.th", "Port": 443 }],
+      "UpstreamPathTemplate": "/v1/api/Mobile/MatchingTag/SaveDelivery",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/PartAttachment/{partId}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PartAttachment/{partId}",
+      "UpstreamHttpMethod": ["get", "post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/PartAttachment/{partId}/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PartAttachment/{partId}/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/PartAttachment/part/{partId}/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PartAttachment/part/{partId}/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/GtecAttachment/Download",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/GtecAttachment/Download",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/UploadExcelBulk",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/UploadExcelBulk",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/UploadHistory",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/UploadHistory",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/CreateStagingTable",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/CreateStagingTable",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/DropStagingTable",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/DropStagingTable",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/GridConfig",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/GridConfig",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/Import/DownloadTemplateByMapping",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/DownloadTemplateByMapping",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/GetImportMasters",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/GetImportMasters",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/GetImportMaster",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/GetImportMaster",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/CreateImportMaster",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/CreateImportMaster",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+ {
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector/{id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/{id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+{
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector/{id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/{id}",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector/save",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+{
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector/apps",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/apps",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+{
+      "DownstreamPathTemplate": "/oms_api_core/api/PlatformApp",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PlatformApp",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+{
+      "DownstreamPathTemplate": "/oms_api_core/api/PlatformApp/{id}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PlatformApp/{id}",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+{
+      "DownstreamPathTemplate": "/oms_api_core/api/PlatformApp/save",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PlatformApp/save",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/PlatformApp/{id}/delete",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/PlatformApp/{id}/delete",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector/set-active",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/set-active",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/Connector/set-reauthorization",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/Connector/set-reauthorization",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/oms-orders/{platform}/sync",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/sync",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/oms-orders/{platform}/{orderId}/resync",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/resync",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/oms-orders/{platform}/{orderId}/waybills",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/waybills",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/oms-orders/{platform}/{orderId}/waybills/ensure",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/waybills/ensure",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/oms_api_core/api/oms-orders/{platform}/{orderId}/waybills/file",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/oms-orders/{platform}/{orderId}/waybills/file",
+      "UpstreamHttpMethod": ["get"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/UpdateImportMaster",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/UpdateImportMaster",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/bs_import_export_manager/api/ImportMaster/DeleteImportMaster",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "demo.oga.co.th",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/v1/api/DeleteImportMaster",
+      "UpstreamHttpMethod": ["post"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "Limit": 20
+      }
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "https://0.0.0.0/oms_gateway"
+  }
+}

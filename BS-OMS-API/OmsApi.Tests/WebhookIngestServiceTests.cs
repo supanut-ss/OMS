@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OmsApi.Extensions;
 using OmsApi.Helpers;
 using OmsApi.Models.Common;
+using OmsApi.Models.Persistence;
 using OmsApi.Services.Implementation;
 
 namespace OmsApi.Tests;
@@ -15,6 +16,8 @@ public class WebhookIngestServiceTests
     {
         using var environment = ConfigureShopee();
         await using var db = CreateDb();
+        db.PlatformCredentials.Add(new PlatformCredential { Platform = "Shopee", ShopId = "123", IsActive = "YES", RequiresReauthorization = "NO" });
+        await db.SaveChangesAsync();
         var service = CreateService(db);
         var body = ShopeeBody("ORD-1", 1660124246);
         var signature = WebhookSignatureVerifier.ComputeShopee(
@@ -29,6 +32,21 @@ public class WebhookIngestServiceTests
         Assert.Equal(200, duplicate.StatusCode);
         Assert.True(duplicate.Duplicate);
         Assert.Equal(1, await db.PlatformWebhookEvents.CountAsync());
+    }
+
+    [Fact]
+    public async Task SignedWebhook_ForUnknownShop_IsRejected()
+    {
+        using var environment = ConfigureShopee();
+        await using var db = CreateDb();
+        var body = ShopeeBody("ORD-3", 1660124248);
+        var signature = WebhookSignatureVerifier.ComputeShopee(
+            Environment.GetEnvironmentVariable("SHOPEE_WEBHOOK_URL")!, body, "partner-key");
+
+        var result = await CreateService(db).ReceiveAsync(PlatformType.Shopee, body, signature);
+
+        Assert.Equal(403, result.StatusCode);
+        Assert.Equal(0, await db.PlatformWebhookEvents.CountAsync());
     }
 
     [Fact]

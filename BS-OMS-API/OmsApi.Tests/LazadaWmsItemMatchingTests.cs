@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using OmsApi.Models.Common;
+using OmsApi.Models.Auth;
 using OmsApi.Models.Orders;
 using OmsApi.Models.Shipping;
 using OmsApi.Services.Implementation;
@@ -13,8 +14,9 @@ namespace OmsApi.Tests;
 public class LazadaWmsItemMatchingTests
 {
     [Fact]
-    public async Task OrderItems_MapProductIdAndMatchWmsProductNumbers()
+    public async Task OrderItems_MatchSellerSkuRatherThanProductId()
     {
+        using var credential = PlatformCredentialExecutionContext.Push(new PlatformAccessCredential(1, PlatformType.Lazada, "seller-1", "token", "key", "secret", "https://example.test", null));
         var client = new LazadaClient(
             new StubHttpClientFactory(new HttpClient(new OrderHandler())
             {
@@ -41,9 +43,13 @@ public class LazadaWmsItemMatchingTests
             order,
             new List<WmsPackageManifestPackage>
             {
-                Box(1, "16275649164", 2),
-                Box(2, "16277521262", 2)
+                Box(1, "KTEST01003X", 2),
+                Box(2, "1003937(3)", 2)
             });
+
+        var error = Assert.Throws<TargetInvocationException>(() => InvokeMarketplaceValidation(order,
+            new List<WmsPackageManifestPackage> { Box(1, "16275649164", 2), Box(2, "16277521262", 2) }));
+        Assert.Contains("seller SKU", error.InnerException!.Message);
     }
 
     private static WmsPackageManifestPackage Box(
@@ -99,7 +105,7 @@ public class LazadaWmsItemMatchingTests
                         "order_item_id": 101,
                         "product_id": 16275649164,
                         "shop_sku": "16275649164_TH-127602487591",
-                        "seller_sku": "KTEST01003X",
+                        "sku": "KTEST01003X",
                         "paid_price": "85.00"
                       },
                       {
@@ -113,7 +119,7 @@ public class LazadaWmsItemMatchingTests
                         "order_item_id": 201,
                         "product_id": 16277521262,
                         "shop_sku": "16277521262_TH-127602487592",
-                        "seller_sku": "1003937(3)",
+                        "sku": "1003937(3)",
                         "paid_price": "300.00"
                       },
                       {

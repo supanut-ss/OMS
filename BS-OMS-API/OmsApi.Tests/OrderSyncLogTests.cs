@@ -54,9 +54,7 @@ public class OrderSyncLogTests
     [Fact]
     public async Task GetOrderDetailAsync_WritesErrorLog_WhenSyncFails()
     {
-        // An empty shop id with no TIKTOK_DEFAULT_SHOP_ID makes the shop
-        // resolver throw inside the sync, which must be logged, not rethrown.
-        Environment.SetEnvironmentVariable("TIKTOK_DEFAULT_SHOP_ID", null);
+        // No active credential makes shop resolution fail during sync.
         await using var db = CreateDb();
         var client = new FakeOrderClient
         {
@@ -71,10 +69,45 @@ public class OrderSyncLogTests
         var log = await db.PlatformSyncLogs.Include(x => x.Details).SingleAsync();
         Assert.Equal("ERROR", log.SyncStatus);
         Assert.Equal(1, log.TotalFailed);
-        Assert.Contains("TIKTOK_DEFAULT_SHOP_ID", log.ErrorMessage);
+        Assert.Contains("No active TikTok credential", log.ErrorMessage);
         var detail = Assert.Single(log.Details);
         Assert.Equal("ERROR", detail.Action);
         Assert.Equal("ORD-9", detail.PlatformOrderId);
+    }
+
+    [Fact]
+    public async Task GetOrderDetailAsync_PersistsAndPreservesBuyerInvoiceFields()
+    {
+        await using var db = CreateDb();
+        var client = new FakeOrderClient
+        {
+            Order = new UnifiedOrder
+            {
+                OrderId = "ORD-INVOICE-1",
+                Status = OrderStatus.ReadyToShip,
+                BuyerTaxId = "0105559999999",
+                BuyerInvoiceName = "OGA Test Co., Ltd.",
+                BuyerInvoiceAddress = "99 Test Road Bangkok 10110"
+            }
+        };
+        var service = CreateService(db, client, shopId: "shop-1");
+
+        await service.GetOrderDetailAsync(PlatformType.Shopee, client.Order.OrderId, "shop-1");
+
+        var saved = await db.PlatformOrders.SingleAsync();
+        Assert.Equal("0105559999999", saved.BuyerTaxId);
+        Assert.Equal("OGA Test Co., Ltd.", saved.BuyerInvoiceName);
+        Assert.Equal("99 Test Road Bangkok 10110", saved.BuyerInvoiceAddress);
+
+        client.Order.BuyerTaxId = string.Empty;
+        client.Order.BuyerInvoiceName = string.Empty;
+        client.Order.BuyerInvoiceAddress = string.Empty;
+        await service.GetOrderDetailAsync(PlatformType.Shopee, client.Order.OrderId, "shop-1");
+
+        saved = await db.PlatformOrders.SingleAsync();
+        Assert.Equal("0105559999999", saved.BuyerTaxId);
+        Assert.Equal("OGA Test Co., Ltd.", saved.BuyerInvoiceName);
+        Assert.Equal("99 Test Road Bangkok 10110", saved.BuyerInvoiceAddress);
     }
 
     private static ApplicationDbContext CreateDb() =>

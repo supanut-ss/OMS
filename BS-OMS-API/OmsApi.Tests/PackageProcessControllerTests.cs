@@ -114,6 +114,45 @@ public class PackageProcessControllerTests
     }
 
     [Fact]
+    public async Task ProcessPackages_WhenShopIdIsMissing_RemainsBackwardCompatible()
+    {
+        var controller = CreateController(
+            new WmsPackageManifest
+            {
+                CustomerOrderNumber = "ORDER-1",
+                Platform = PlatformType.Shopee,
+                Packages = { ClosedBox(1) }
+            },
+            defaultManifestShopId: false);
+
+        var request = CreateRequest();
+        request.ShopId = null;
+        var action = await controller.ProcessPackages(request);
+
+        var ok = Assert.IsType<OkObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<ProcessPlatformPackagesResult>>(ok.Value);
+        Assert.True(response.Success);
+    }
+
+    [Fact]
+    public async Task ProcessPackages_WhenRequestedShopDoesNotMatchOutbound_ReturnsBadRequest()
+    {
+        var controller = CreateController(new WmsPackageManifest
+        {
+            CustomerOrderNumber = "ORDER-1",
+            Platform = PlatformType.Shopee,
+            ShopId = "OTHER-SHOP",
+            Packages = { ClosedBox(1) }
+        });
+
+        var action = await controller.ProcessPackages(CreateRequest());
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(action);
+        var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+        Assert.Equal("The requested shopId does not match WMS Outbound Master.", response.Message);
+    }
+
+    [Fact]
     public async Task ProcessPackages_WhenABoxIsOpen_ReturnsBadRequest()
     {
         var controller = CreateController(new WmsPackageManifest
@@ -500,8 +539,12 @@ public class PackageProcessControllerTests
         TrackingInfo? tracking = null,
         TrackingInfo? trackingAfterSplit = null,
         UnusedShippingService? shippingService = null,
-        IPlatformDocumentService? documentService = null)
+        IPlatformDocumentService? documentService = null,
+        bool defaultManifestShopId = true)
     {
+        if (manifest != null && defaultManifestShopId && string.IsNullOrWhiteSpace(manifest.ShopId))
+            manifest.ShopId = "227762129";
+
         var controller = new ShippingController(
             shippingService ?? new UnusedShippingService(tracking, trackingAfterSplit),
             new StubPlatformPackageService(manifest),

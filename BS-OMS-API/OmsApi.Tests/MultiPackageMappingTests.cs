@@ -40,6 +40,35 @@ public class MultiPackageMappingTests
     }
 
     [Fact]
+    public void ShopeeBuyerInvoice_MapsCorporateInvoiceRequest()
+    {
+        const string json = """
+        {
+          "company_tax_id": "0105559999999",
+          "company_name": "OGA Test Co., Ltd.",
+          "company_address_breakdown": {
+            "company_full_address": "99 Test Road Bangkok 10110"
+          },
+          "company_branch_code": "00000"
+        }
+        """;
+
+        using var document = JsonDocument.Parse(json);
+        var order = new UnifiedOrder();
+        var method = typeof(ShopeeClient).GetMethod(
+            "ApplyShopeeBuyerInvoice",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        method!.Invoke(null, [document.RootElement, order]);
+
+        Assert.Equal("0105559999999", order.BuyerTaxId);
+        Assert.Equal("OGA Test Co., Ltd.", order.BuyerInvoiceName);
+        Assert.Equal("99 Test Road Bangkok 10110", order.BuyerInvoiceAddress);
+        Assert.True(order.TaxInvoiceRequested);
+        Assert.Equal("00000", order.TaxInvoice!.BranchCode);
+    }
+
+    [Fact]
     public void LazadaOrderItems_UsesEarliestActiveSlaAsShipByDate()
     {
         const string json = """
@@ -118,8 +147,18 @@ public class MultiPackageMappingTests
           "customer_first_name": "L**r",
           "buyer_note": "test note",
           "tax_code": "3333333333333",
+          "branch_number": "00001",
           "items_count": 4,
           "statuses": ["packed"],
+          "address_billing": {
+            "country": "Thailand",
+            "address1": "99 Billing Road",
+            "address5": "Lumphini",
+            "city": "Pathum Wan",
+            "post_code": "10330",
+            "first_name": "Billing",
+            "last_name": "Customer"
+          },
           "address_shipping": {
             "country": "Thailand",
             "address1": "W**n",
@@ -138,6 +177,12 @@ public class MultiPackageMappingTests
         Assert.Equal("test note", order.BuyerRemarks);
         Assert.True(order.TaxInvoiceRequested);
         Assert.Equal("3333333333333", order.TaxInvoice!.TaxId);
+        Assert.Equal("3333333333333", order.BuyerTaxId);
+        Assert.Equal("Billing Customer", order.BuyerInvoiceName);
+        Assert.Equal(
+            "99 Billing Road Lumphini Pathum Wan 10330 Thailand",
+            order.BuyerInvoiceAddress);
+        Assert.Equal("00001", order.TaxInvoice.BranchCode);
         Assert.Equal(2026, order.CreatedAt.Year);
         Assert.Equal(2026, order.UpdatedAt!.Value.Year);
         Assert.Equal("TH", order.Shipping!.RecipientAddress!.Country);

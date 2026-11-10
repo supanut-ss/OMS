@@ -58,7 +58,7 @@ namespace OmsApi.Controllers
                     ? await _authService.GetAuthorizationUrlAsync(platformType, platformAppShopId.Value, cancellationToken)
                     : await _authService.GetAuthorizationUrlAsync(platformType, marketCode, cancellationToken: cancellationToken);
 
-                _logger.LogInformation("🔑 Redirecting to {Platform} OAuth: {Url}", platform, authUrl);
+                _logger.LogInformation("Redirecting to {Platform} OAuth", platform);
                 return Redirect(authUrl);
             }
             catch (ArgumentException ex)

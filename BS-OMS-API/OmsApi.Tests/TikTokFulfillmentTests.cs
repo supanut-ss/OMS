@@ -3,7 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using OmsApi.Models.Common;
+using OmsApi.Models.Auth;
 using OmsApi.Models.Shipping;
+using OmsApi.Services.Implementation;
 using OmsApi.Services.Implementation.Platforms;
 
 namespace OmsApi.Tests;
@@ -13,6 +15,7 @@ public class TikTokFulfillmentTests
     [Fact]
     public async Task SplitOrder_MapsNewAndOriginalPackagesToTheirWmsBoxes()
     {
+        using var credential = PlatformCredentialExecutionContext.Push(new PlatformAccessCredential(1, PlatformType.TikTok, "shop-cipher", "token", "key", "secret", "https://example.test", null));
         var handler = new SplitHandler();
         var client = CreateClient(handler);
         var firstBox = Guid.NewGuid();

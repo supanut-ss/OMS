@@ -3,7 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using OmsApi.Models.Common;
+using OmsApi.Models.Auth;
 using OmsApi.Models.Shipping;
+using OmsApi.Services.Implementation;
 using OmsApi.Services.Implementation.Platforms;
 
 namespace OmsApi.Tests;
@@ -183,14 +185,15 @@ public class LazadaTrackingTests
     [Fact]
     public async Task SplitOrderAsync_PacksEachWmsBoxUsingItsSkuAndQuantity()
     {
+        using var credential = PlatformCredentialExecutionContext.Push(new PlatformAccessCredential(1, PlatformType.Lazada, "shop", "token", "key", "secret", "https://example.test", null));
         const string orderItemsJson = """
         {
           "code": "0",
           "data": [
-            { "order_item_id": 101, "seller_sku": "16262078600", "quantity": 1, "status": "pending" },
-            { "order_item_id": 102, "seller_sku": "16262078600", "quantity": 1, "status": "pending" },
-            { "order_item_id": 201, "seller_sku": "16261083348", "quantity": 1, "status": "pending" },
-            { "order_item_id": 202, "seller_sku": "16261083348", "quantity": 1, "status": "pending" }
+            { "order_item_id": 101, "sku": "TEST1API11001", "product_id": "16355033160", "quantity": 1, "status": "pending" },
+            { "order_item_id": 102, "sku": "TEST1API11001", "product_id": "16355033160", "quantity": 1, "status": "pending" },
+            { "order_item_id": 201, "sku": "TEST1API11002", "product_id": "16357226193", "quantity": 1, "status": "pending" },
+            { "order_item_id": 202, "sku": "TEST1API11002", "product_id": "16357226193", "quantity": 1, "status": "pending" }
           ]
         }
         """;
@@ -220,7 +223,7 @@ public class LazadaTrackingTests
                         BoxNumber = 1,
                         Items = new List<WmsPackageManifestItem>
                         {
-                            new() { ItemNumber = "16262078600", Quantity = 2 }
+                            new() { ItemNumber = "TEST1API11001", Quantity = 2 }
                         }
                     },
                     new()
@@ -229,7 +232,7 @@ public class LazadaTrackingTests
                         BoxNumber = 2,
                         Items = new List<WmsPackageManifestItem>
                         {
-                            new() { ItemNumber = "16261083348", Quantity = 2 }
+                            new() { ItemNumber = "TEST1API11002", Quantity = 2 }
                         }
                     }
                 }

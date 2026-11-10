@@ -127,7 +127,7 @@ public sealed class WebhookEventProcessor : IWebhookEventProcessor
         PlatformWebhookEvent webhookEvent,
         CancellationToken cancellationToken)
     {
-        if (webhookEvent.EventType == "SHOP_DEAUTHORIZATION")
+        if (webhookEvent.EventType is "SHOP_DEAUTHORIZATION" or "SHOP_AUTHORIZATION")
             return;
 
         var key = $"{webhookEvent.Platform}|{webhookEvent.ShopId}";

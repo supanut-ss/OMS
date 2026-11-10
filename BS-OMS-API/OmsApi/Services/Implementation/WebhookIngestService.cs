@@ -66,6 +66,22 @@ public sealed class WebhookIngestService : IWebhookIngestService
             return Rejected(StatusCodes.Status400BadRequest, "Webhook body must be valid JSON.");
         }
 
+        // A valid platform signature authenticates the app, not an individual shop.
+        // Authorization notifications may precede the OAuth callback that creates
+        // the credential, so they must not be gated on an existing credential.
+        if (!envelope.IsAuthorizationEvent)
+        {
+            var platformName = platform.ToString();
+            if (string.IsNullOrWhiteSpace(envelope.ShopId) ||
+                !await _db.PlatformCredentials.AsNoTracking().AnyAsync(
+                    x => x.Platform == platformName && x.ShopId == envelope.ShopId &&
+                         x.IsActive == "YES" && x.RequiresReauthorization == "NO", cancellationToken))
+            {
+                _logger.LogWarning("Rejected {Platform} webhook for an unknown or inactive shop", platform);
+                return Rejected(StatusCodes.Status403Forbidden, "Webhook shop is not authorized.");
+            }
+        }
+
         var existing = await _db.PlatformWebhookEvents
             .SingleOrDefaultAsync(x => x.EventKey == envelope.EventKey, cancellationToken);
         if (existing != null)

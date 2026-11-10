@@ -237,6 +237,7 @@ public class PlatformCredentialServiceTests
 
     private sealed class FakePlatformAuthService : IPlatformAuthService
     {
+        public Task<string> GetAuthorizationUrlForAppAsync(PlatformType platform, long id, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         private readonly ApplicationDbContext _db;
         private readonly IDataProtector _protector;
         private readonly FakeAuthState _state;

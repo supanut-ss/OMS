@@ -3,7 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using OmsApi.Models.Common;
+using OmsApi.Models.Auth;
 using OmsApi.Models.Shipping;
+using OmsApi.Services.Implementation;
 using OmsApi.Services.Implementation.Platforms;
 
 namespace OmsApi.Tests;
@@ -13,6 +15,7 @@ public class ShopeeSplitOrderTests
     [Fact]
     public async Task SplitOrder_UsesWmsBoxesAndReturnsPackageMappings()
     {
+        using var credential = PlatformCredentialExecutionContext.Push(new PlatformAccessCredential(1, PlatformType.Shopee, "123", "token", "123", "secret", "https://example.test", null));
         const string orderJson = """
         {
           "error": "",
@@ -83,8 +86,9 @@ public class ShopeeSplitOrderTests
     }
 
     [Fact]
-    public async Task SplitOrder_MatchesSandboxItemsByItemId_WhenSellerSkuIsEmpty()
+    public async Task SplitOrder_RejectsItemId_WhenSellerSkuIsEmpty()
     {
+        using var credential = PlatformCredentialExecutionContext.Push(new PlatformAccessCredential(1, PlatformType.Shopee, "123", "token", "123", "secret", "https://example.test", null));
         const string orderJson = """
         {
           "error": "",
@@ -133,7 +137,7 @@ public class ShopeeSplitOrderTests
             }),
             NullLogger<ShopeeClient>.Instance);
 
-        var result = await client.SplitOrderAsync("token", "123", new SplitPlatformOrderRequest
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => client.SplitOrderAsync("token", "123", new SplitPlatformOrderRequest
         {
             OrderId = "ORDER-ITEM-ID",
             Packages =
@@ -149,13 +153,10 @@ public class ShopeeSplitOrderTests
                     Items = { new WmsPackageManifestItem { ItemNumber = "802601428", Quantity = 1 } }
                 }
             }
-        });
+        }));
 
-        Assert.Equal(2, result.PackageMappings.Count);
-        using var body = JsonDocument.Parse(handler.SplitBody!);
-        var packages = body.RootElement.GetProperty("package_list");
-        Assert.Equal(802601569, packages[0].GetProperty("item_list")[0].GetProperty("item_id").GetInt64());
-        Assert.Equal(802601428, packages[1].GetProperty("item_list")[0].GetProperty("item_id").GetInt64());
+        Assert.Contains("seller SKU", error.Message);
+        Assert.Null(handler.SplitBody);
     }
 
     [Fact]
